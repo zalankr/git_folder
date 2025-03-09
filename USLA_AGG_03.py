@@ -15,16 +15,16 @@ def save_dataframe_to_excel(df, filename):
 
 
 # AGG 데이터
-AGG = yf.download('AGG', start=start, end=end, auto_adjust=True, interval='1mo', progress=True, 
+AGG = yf.download('AGG', start=start, end=end, auto_adjust=True, interval='1d', progress=True, 
                   multi_level_index=False)
 
 AGG.drop(['Open','High','Low','Volume'], axis=1, inplace=True)
 
 # Average
-AGG.loc[:,'MA'] = AGG.loc[:,'Close'].rolling(window=4).mean()
-AGG.loc[:,'Regime Signal'] = AGG.loc[:,'Close'].shift(1) >= AGG.loc[:,'MA'].shift(1)
+AGG.loc[:,'MA'] = AGG.loc[:,'Close'].rolling(window=85).mean()
+AGG.loc[:,'Regime Signal'] = AGG.loc[:,'Close'] >= AGG.loc[:,'MA']
 
 # Excel 파일로 저장
 AGG.sort_index(axis=0, ascending=False, inplace=True)
-save_dataframe_to_excel(AGG, 'AGG_ajM.xlsx')
+save_dataframe_to_excel(AGG, 'AGG.xlsx')
 
