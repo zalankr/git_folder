@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
+import time
 
 # 18개월전 투자 MDD
 def max_drawdown(trade):
@@ -13,10 +14,12 @@ def max_drawdown(trade):
     trade['drawdown'] = trade['Sell'] / trade['cum_max'] - 1
     return trade['drawdown'].min()
 
-# N개월전 가격 비교 투자
-def Before_Model(df, tax):
-    bsignal = df['Close'] >= df['Be']
-    ssignal = df['Close'] < df['Be']
+# 이동평균선을 활용한 투자 전략
+def Moving_Average_Model(df, ma_period, tax):
+    df['MA'] = df['Close'].rolling(window=ma_period).mean()
+
+    bsignal = df['Close'] > df['MA']
+    ssignal = df['Close'] <= df['MA']
 
     differ = bsignal != bsignal.shift(1)
 
@@ -75,11 +78,10 @@ def CAGR(ret, years):
     return ret**(1 / years) - 1 if years > 0 else 0
 
 # GLD 데이터 로드
-def Data_load(month, start, end):
-    df = yf.download('GLD', start=start, end=end, auto_adjust=True, interval='1mo', progress=False, multi_level_index=False)
+def Data_load(start, end):
+    df = yf.download('GLD', start=start, end=end, auto_adjust=True, interval='1d', progress=False, multi_level_index=False)
     df.drop(['Open', 'High', 'Low', 'Volume'], axis=1, inplace=True)
 
-    df['Be'] = df['Close'].shift(month)
     df.dropna(inplace=True)
 
     return df
@@ -92,21 +94,22 @@ end = '2025-02-28'
 tax = 0.0033 + 0.0002
 
 # 실행
-for month in range(18, 61):
-    df = Data_load(month, start, end)
+for ma_period in range(3, 51):
+    df = Data_load(start, end)
     year = Years(df)
 
-    Before_Model_return, Before_Model_trade_count, Before_Model_MDD = Before_Model(df, tax)
-    Before_Model_CAGR = CAGR(Before_Model_return, year)
+    MA_Model_return, MA_Model_trade_count, MA_Model_MDD = Moving_Average_Model(df, ma_period, tax)
+    MA_Model_CAGR = CAGR(MA_Model_return, year)
+    time.sleep(0.05)
 
-    print(f"\nGLD Monthly trend invest : {month}개월전 가격비교")
+    print(f"\nGLD Moving Average Strategy : {ma_period}일 이동평균선")
     print(f"Invest period : {start} ~ {end}, {round(year, 1)}년")
-    print(f"Before months Return : {Before_Model_return:.2%}")
-    print(f"Before months CAGR : {Before_Model_CAGR:.2%}")
-    print(f"Before months trade_count : {Before_Model_trade_count}")
-    print(f"Before months MDD : {Before_Model_MDD:.2%}")
+    print(f"MA Strategy Return : {MA_Model_return:.2%}")
+    print(f"MA Strategy CAGR : {MA_Model_CAGR:.2%}")
+    print(f"MA Strategy trade_count : {MA_Model_trade_count}")
+    print(f"MA Strategy MDD : {MA_Model_MDD:.2%}")
 
-df = Data_load(1, start, end)
+df = Data_load(start, end)
 year = Years(df)
 
 BH_return, BH_MDD = buy_and_hold_return(df, tax)
@@ -117,3 +120,4 @@ print(f"Invest period : {start} ~ {end}, {round(year, 1)}년")
 print(f"Buy and holding Return : {BH_return:.2%}")
 print(f"Buy and holding CAGR : {BH_CAGR:.2%}")
 print(f"Buy and holding MDD : {BH_MDD:.2%}")
+

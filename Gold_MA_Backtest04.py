@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import yfinance as yf
+from datetime import datetime
 
 # 18개월전 투자 MDD
 def max_drawdown(trade):
@@ -27,8 +27,8 @@ def Before_Model(df, tax):
     trade = df.loc[df['Buy'].notna() | df['Sell'].notna(), ['Buy', 'Sell']].copy()
 
     # 매수와 매도 인덱스를 초기화하여 정렬 문제 해결
-    buy_prices = trade['Buy'].dropna().reset_index(drop=True)
-    sell_prices = trade['Sell'].dropna().reset_index(drop=True)
+    buy_prices = trade['Buy'].dropna().astype(float).reset_index(drop=True)
+    sell_prices = trade['Sell'].dropna().astype(float).reset_index(drop=True)
 
     # 매수-매도 쌍의 길이를 맞추기
     min_len = min(len(buy_prices), len(sell_prices))
@@ -58,8 +58,8 @@ def BNH_MDD(df):
 
 # Buy and hold 수익률 계산
 def buy_and_hold_return(df, tax):
-    buy = df['Close'].iloc[0]
-    sell = df['Close'].iloc[-1]
+    buy = float(df['Close'].iloc[0])
+    sell = float(df['Close'].iloc[-1])
 
     ROI = (sell * (1 - tax)) / (buy * (1 + tax))
     max_dd = BNH_MDD(df)
@@ -74,26 +74,37 @@ def Years(df):
 def CAGR(ret, years):
     return ret**(1 / years) - 1 if years > 0 else 0
 
-# GLD 데이터 로드
-def Data_load(month, start, end):
-    df = yf.download('GLD', start=start, end=end, auto_adjust=True, interval='1mo', progress=False, multi_level_index=False)
-    df.drop(['Open', 'High', 'Low', 'Volume'], axis=1, inplace=True)
+# GLD 데이터 로드 # CSV 불러오기
+def csv_to_dataframe(file_path, month):
+    try:
+        # CSV 파일을 읽어 DataFrame으로 변환
+        df = pd.read_csv(file_path)
+        
+        df['Be'] = df['Close'].shift(month)
+        df.dropna(inplace=True)
+        df.iat[-1,2] = 100000
 
-    df['Be'] = df['Close'].shift(month)
-    df.dropna(inplace=True)
+        # Date 형식 변환
+        df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y')
+        df.set_index('Date', inplace=True)
 
-    return df
+        return df
+    except Exception as e:
+        print(f"오류 발생: {e}")
+        return None
+
+file_path = 'C:/Users/ilpus/PythonProjects/git_folder/Gold Futures Historical Data.csv'
 
 # GLD 투자 기간 및 세팅
-start = '2004-12-01'
-end = '2025-02-28'
+start = '1975-12-01'
+end = '2025-03-13'
 
 # 수수료 및 슬리피지
 tax = 0.0033 + 0.0002
 
 # 실행
 for month in range(18, 61):
-    df = Data_load(month, start, end)
+    df = csv_to_dataframe(file_path, month)
     year = Years(df)
 
     Before_Model_return, Before_Model_trade_count, Before_Model_MDD = Before_Model(df, tax)
@@ -106,10 +117,10 @@ for month in range(18, 61):
     print(f"Before months trade_count : {Before_Model_trade_count}")
     print(f"Before months MDD : {Before_Model_MDD:.2%}")
 
-df = Data_load(1, start, end)
-year = Years(df)
+df1 = csv_to_dataframe(file_path, 0)
+year = Years(df1)
 
-BH_return, BH_MDD = buy_and_hold_return(df, tax)
+BH_return, BH_MDD = buy_and_hold_return(df1, tax)
 BH_CAGR = CAGR(BH_return, year)
 
 print("\nGLD Buy and Hold Investment")
