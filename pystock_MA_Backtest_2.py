@@ -1,8 +1,6 @@
 import pandas as pd
 import pybithumb
 
-# BTC 오류는 하기연도별 함수에 리스트에 2013년 데이터 삭제로 해결
-
 def MA투자(df, period):
     df.loc[:,'MA'] = df.loc[:,'close'].rolling(window=period).mean()
 
