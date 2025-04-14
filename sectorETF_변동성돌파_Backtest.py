@@ -12,11 +12,12 @@ def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
         return None
 
 
+## 변수 모음
 
-# 변수 모음
 # xlsx 파일명
 file_name = 'kodex반도체.xlsx'
 df = xlsx_to_dataframe(file_name)
+
 # 변수들
 k = 0.5
 tax = 0.000015
