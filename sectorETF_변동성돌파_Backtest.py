@@ -6,27 +6,79 @@ def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
     try:
         file_path = f'C:/Users/GSR/Desktop/Python_project/git_folder/{file_name}'
         df = pd.read_excel(file_path)
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
         return df
     except Exception as e:
         print(f"오류 발생: {e}")
         return None
+    
+def Investment_Period(df): # 투자 기간 계산 함수
+    start_date = df.iloc[0,0]
+    end_date = df.iloc[-1,0]
+    days = (end_date - start_date).days
+    years = days / 365 if days > 0 else 0
+    return years
 
+def MDD(df): # MDD 함수
+    df['balance'] = 100 * df['return'].cumprod()
+    df['peak'] = df['balance'].cummax()
+    df['dd'] = (df['balance'] - df['peak']) / df['peak']
+    # mdd = df['dd'].min()
+    return df
+
+def Return_CAGR(df): # 누적 수익률과 CAGR 함수
+    total_return = df['return'].cumprod().iloc[-1]
+    if years == 0:
+        cagr = 0
+    else:
+        cagr = (total_return) ** (1 / years) - 1
+    return total_return, cagr
+
+def Sharpe_SortinoRatio(df): # sharpe_ratio과 sortino_ratio 함수
+    df['log_return'] = np.log(df['return']) # 로그 수익률 계산
+    mean_return = df['log_return'].mean()
+    std_return = df['log_return'].std()
+    down_std = df[df['log_return'] < 0]['log_return'].std()
+
+    # 무위험 수익률
+    rf = 0.01
+
+    # Sharpe & Sortino Ratio 계산 (예외처리 포함)
+    if std_return == 0 or np.isnan(std_return):
+        sharpe_ratio = 0
+    else:
+        sharpe_ratio = (mean_return - rf / 252) / std_return * np.sqrt(252)
+
+    if down_std == 0 or np.isnan(down_std):
+        sortino_ratio = 0
+    else:
+        sortino_ratio = (mean_return - rf / 252) / down_std * np.sqrt(252)
+
+    return df, sharpe_ratio, sortino_ratio
 
 ## 변수 모음
+# kodex2차전지.xlsx
+# kodex반도체.xlsx
+# kodex은행.xlsx
+# kodex자동차.xlsx
+# tiger200중공업.xlsx
+# tiger리츠부동산.xlsx
+# tiger헬스케어.xlsx
+# tiger화장품.xlsx
+# range_model = (df['high'] - df['low']) * k
+# range_model = (df['high'] - df['open']) * k
+# range_model = (df['open'] - df['low']) * k
 
-# xlsx 파일명
+# 변수들 #
 file_name = 'kodex반도체.xlsx'
 df = xlsx_to_dataframe(file_name)
 
-# 변수들
-k = 0.5
 tax = 0.000015
-
+슬리피지 = 0.0005
+k = 0.5
 range_model = (df['high'] - df['low']) * k
-range_model = (df['high'] - df['open']) * k
-range_model = (df['open'] - df['low']) * k
 
-### 리니어 변동성 돌파 전략 당일 종가 ###
+## 리니어 변동성 돌파 전략 익일 시가 ###
 
 df['range'] = range_model
 df['target'] = df['open'] + df['range'].shift(1)
@@ -34,357 +86,302 @@ df['cond'] = df['high'] >= df['target']
 cond = df['cond']
 
 df['buy'] = df.loc[cond, 'target']
-df['sell'] = df.loc[cond, 'close']
+df['open-1'] = df['open'].shift(-1)
+df['sell'] = df.loc[cond, 'open-1']
+
 
 trading = df.loc[cond, 'close']
 trading_count = len(trading)
 
-df['return'] = (df['sell'] - (df['sell'] * tax)) / (df['buy'] + (df['buy'] * tax))
+df['return'] = (df['sell'] - (df['sell'] * (tax+슬리피지))) / (df['buy'] + (df['buy'] * tax))
 df['return'] = df['return'].fillna(1)
 
-df['balance'] = 100 * df['return'].cumprod()
-df['peak'] = df['balance'].cummax()
-df['dd'] = (df['balance'] - df['peak']) / df['peak']
-max_mdd = df['dd'].min()
+# MDD 계산
+df = MDD(df)
+mdd = df['dd'].min()
 
 # 투자 기간 계산
-start_date = df.iloc[0,0]
-end_date = df.iloc[-1,0]
+years = Investment_Period(df)
 
-days = (end_date - start_date).days
-years = days / 365 if days > 0 else 0
+# 누적 수익률과 CAGR 계산
+total_return = Return_CAGR(df)[0]
+cagr = Return_CAGR(df)[1]
 
-# 누적 수익률과 CAGR 계산 (예외처리 포함)
-total_return = df['return'].cumprod().iloc[-1]
-if years == 0:
-    cagr = 0
-else:
-    cagr = (total_return) ** (1 / years) - 1
+# Sharpe & Sortino Ratio 계산
+df = Sharpe_SortinoRatio(df)[0]
+sharpe_ratio = Sharpe_SortinoRatio(df)[1]
+sortino_ratio = Sharpe_SortinoRatio(df)[2]
 
-# 로그 수익률 계산
-df['log_return'] = np.log(df['return'])
-mean_return = df['log_return'].mean()
-std_return = df['log_return'].std()
-down_std = df[df['log_return'] < 0]['log_return'].std()
-
-# 무위험 수익률
-rf = 0.01
-
-# Sharpe & Sortino Ratio 계산 (예외처리 포함)
-if std_return == 0 or np.isnan(std_return):
-    sharpe_ratio = 0
-else:
-    sharpe_ratio = (mean_return - rf / 252) / std_return * np.sqrt(252)
-
-if down_std == 0 or np.isnan(down_std):
-    sortino_ratio = 0
-else:
-    sortino_ratio = (mean_return - rf / 252) / down_std * np.sqrt(252)
+# 결과값 데이터프레임 만들기
+# 1) 요약
+# data = 
+# rdf = pd.DataFrame(data=data, 
+#                    index=['Total Return','CAGR', 'Max Drawdown', 'Sharpe Ratio', 'Sortino Ratio',
+#                           'Trading Count', 'Investment Period'], columns=['file_name'])
 
 # 출력
 print(df.head(10))
 print(f"Total Return: {total_return:.2%}")
 print(f"CAGR: {cagr:.2%}")
-print(f"Max Drawdown: {max_mdd:.2%}")
+print(f"Max Drawdown: {mdd:.2%}")
 print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
 print(f"Sortino Ratio: {sortino_ratio:.4f}")
 print(f"Trading Count: {trading_count}")
 print(f"Investment Period: {years:.2f} years")
-
-df.set_index('date', inplace=True)
-
-yearly_returns = {}
-yearly_mdds = {}
-
-for year, group in df.groupby(df.index.year):
-    year_return = group['return'].cumprod().iloc[-1]
-    balance = 100 * group['return'].cumprod()
-    peak = balance.cummax()
-    dd = (balance - peak) / peak
-    mdd = dd.min()
-
-    yearly_returns[year] = year_return
-    yearly_mdds[year] = mdd
-
-# 연도별 수익률 출력
-print("\n📈 연도별 수익률:")
-for year, r in yearly_returns.items():
-    print(f"{year}: {r:.2%}")
-
-# 연도별 MDD 출력
-print("\n📉 연도별 최대 낙폭 (MDD):")
-for year, m in yearly_mdds.items():
-    print(f"{year}: {m:.2%}")
-
 
 print('*'*30)
 
-## 리니어 변동성 돌파 전략 익일 시가 ###
-df['range'] = range_model
-df['target'] = df['open'] + df['range'].shift(1)
-df['cond'] = df['high'] >= df['target']
-cond = df['cond']
+# df.set_index('date', inplace=True)
 
-df['buy'] = df.loc[cond, 'target']
-df['sell'] = df.loc[:,'open'].shift(-1)
-df['sell'] = df.loc[cond, 'sell']
+# yearly_returns = {}
+# yearly_mdds = {}
 
-trading = df.loc[cond, 'close']
-trading_count = len(trading)
+# for year, group in df.groupby(df.index.year):
+#     year_return = group['return'].cumprod().iloc[-1]
+#     balance = 100 * group['return'].cumprod()
+#     peak = balance.cummax()
+#     dd = (balance - peak) / peak
+#     mdd = dd.min()
 
-df['return'] = (df['sell'] - (df['sell'] * tax)) / (df['buy'] + (df['buy'] * tax))
-df['return'] = df['return'].fillna(1)
+#     yearly_returns[year] = year_return
+#     yearly_mdds[year] = mdd
 
-df['balance'] = 100 * df['return'].cumprod()
-df['peak'] = df['balance'].cummax()
-df['dd'] = (df['balance'] - df['peak']) / df['peak']
-max_mdd = df['dd'].min()
+# # 연도별 수익률 출력
+# print("\n📈 연도별 수익률:")
+# for year, r in yearly_returns.items():
+#     print(f"{year}: {r:.2%}")
 
-# 투자 기간 계산
-start_date = df.iloc[0,0]
-end_date = df.iloc[-1,0]
+# # 연도별 MDD 출력
+# print("\n📉 연도별 최대 낙폭 (MDD):")
+# for year, m in yearly_mdds.items():
+#     print(f"{year}: {m:.2%}")
 
-days = (end_date - start_date).days
-years = days / 365 if days > 0 else 0
+print('*'*30)
 
-# 누적 수익률과 CAGR 계산 (예외처리 포함)
-total_return = df['return'].cumprod().iloc[-1]
-if years == 0:
-    cagr = 0
-else:
-    cagr = (total_return) ** (1 / years) - 1
+# # 월별 수익률 및 MDD 계산
+# monthly_returns = {}
+# monthly_mdds = {}
 
-# 로그 수익률 계산
-df['log_return'] = np.log(df['return'])
-mean_return = df['log_return'].mean()
-std_return = df['log_return'].std()
-down_std = df[df['log_return'] < 0]['log_return'].std()
+# # 월 단위로 그룹화
+# for (year, month), group in df.groupby([df.index.year, df.index.month]):
+#     month_key = f"{year}-{month:02d}"
+#     month_return = group['return'].cumprod().iloc[-1]
+#     balance = 100 * group['return'].cumprod()
+#     peak = balance.cummax()
+#     dd = (balance - peak) / peak
+#     mdd = dd.min()
 
-# 무위험 수익률
-rf = 0.01
+#     monthly_returns[month_key] = month_return
+#     monthly_mdds[month_key] = mdd
 
-# Sharpe & Sortino Ratio 계산 (예외처리 포함)
-if std_return == 0 or np.isnan(std_return):
-    sharpe_ratio = 0
-else:
-    sharpe_ratio = (mean_return - rf / 252) / std_return * np.sqrt(252)
+# # 월별 수익률 출력
+# print("\n📅 월별 수익률:")
+# for month, r in monthly_returns.items():
+#     print(f"{month}: {r:.2%}")
 
-if down_std == 0 or np.isnan(down_std):
-    sortino_ratio = 0
-else:
-    sortino_ratio = (mean_return - rf / 252) / down_std * np.sqrt(252)
+# # 월별 MDD 출력
+# print("\n📉 월별 최대 낙폭 (MDD):")
+# for month, m in monthly_mdds.items():
+#     print(f"{month}: {m:.2%}")
 
-# 출력
-print(df.head(10))
-print(f"Total Return: {total_return:.2%}")
-print(f"CAGR: {cagr:.2%}")
-print(f"Max Drawdown: {max_mdd:.2%}")
-print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
-print(f"Sortino Ratio: {sortino_ratio:.4f}")
-print(f"Trading Count: {trading_count}")
-print(f"Investment Period: {years:.2f} years")
-
-df.set_index('date', inplace=True)
-
-yearly_returns = {}
-yearly_mdds = {}
-
-for year, group in df.groupby(df.index.year):
-    year_return = group['return'].cumprod().iloc[-1]
-    balance = 100 * group['return'].cumprod()
-    peak = balance.cummax()
-    dd = (balance - peak) / peak
-    mdd = dd.min()
-
-    yearly_returns[year] = year_return
-    yearly_mdds[year] = mdd
-
-# 연도별 수익률 출력
-print("\n📈 연도별 수익률:")
-for year, r in yearly_returns.items():
-    print(f"{year}: {r:.2%}")
-
-# 연도별 MDD 출력
-print("\n📉 연도별 최대 낙폭 (MDD):")
-for year, m in yearly_mdds.items():
-    print(f"{year}: {m:.2%}")
+# print('*'*30)
 
 
 
-########### 리니어 buy_and_hold k와 tax는 변수로 ###################
-tax = 0
+## 리니어 변동성 돌파 전략 당일 종가 ###
 
-df['buy'] = df['close'].shift(1)
-df['sell'] = df['close']
+# df['range'] = range_model
+# df['target'] = df['open'] + df['range'].shift(1)
+# df['cond'] = df['high'] >= df['target']
+# cond = df['cond']
 
-df['return'] = df['sell']/df['buy']
-df['return'] = df['return'].fillna(1)
+# df['buy'] = df.loc[cond, 'target']
+# df['sell'] = df.loc[cond, 'close']
 
-df['balance'] = 100 * df['return'].cumprod()
-df['peak'] = df['balance'].cummax()
-df['dd'] = (df['balance'] - df['peak']) / df['peak']
-max_mdd = df['dd'].min()
+# trading = df.loc[cond, 'close']
+# trading_count = len(trading)
 
-# 투자 기간 계산
-start_date = df.iloc[0,0]
-end_date = df.iloc[-1,0]
+# df['return'] = (df['sell'] - (df['sell'] * (tax+슬리피지))) / (df['buy'] + (df['buy'] * tax))
+# df['return'] = df['return'].fillna(1)
 
-days = (end_date - start_date).days
-years = days / 365 if days > 0 else 0
+# # MDD 계산
+# df = MDD(df)
+# mdd = df['dd'].min()
 
-# 누적 수익률과 CAGR 계산 (예외처리 포함)
-total_return = df['return'].cumprod().iloc[-1]
-if years == 0:
-    cagr = 0
-else:
-    cagr = (total_return) ** (1 / years) - 1
+# # 투자 기간 계산
+# years = Investment_Period(df)
 
-# 로그 수익률 계산
-df['log_return'] = np.log(df['return'])
-mean_return = df['log_return'].mean()
-std_return = df['log_return'].std()
-down_std = df[df['log_return'] < 0]['log_return'].std()
+# # 누적 수익률과 CAGR 계산
+# total_return = Return_CAGR(df)[0]
+# cagr = Return_CAGR(df)[1]
 
-# 무위험 수익률
-rf = 0.01
+# # Sharpe & Sortino Ratio 계산
+# df = Sharpe_SortinoRatio(df)[0]
+# sharpe_ratio = Sharpe_SortinoRatio(df)[1]
+# sortino_ratio = Sharpe_SortinoRatio(df)[2]
 
-# Sharpe & Sortino Ratio 계산 (예외처리 포함)
-if std_return == 0 or np.isnan(std_return):
-    sharpe_ratio = 0
-else:
-    sharpe_ratio = (mean_return - rf / 252) / std_return * np.sqrt(252)
-
-if down_std == 0 or np.isnan(down_std):
-    sortino_ratio = 0
-else:
-    sortino_ratio = (mean_return - rf / 252) / down_std * np.sqrt(252)
+# 결과값 데이터프레임 만들기
+# 1) 요약
+# data = 
+# rdf = pd.DataFrame(data=data, 
+#                    index=['Total Return','CAGR', 'Max Drawdown', 'Sharpe Ratio', 'Sortino Ratio',
+#                           'Trading Count', 'Investment Period'], columns=['file_name'])
 
 # 출력
-print(df.head(10))
-print(f"Total Return: {total_return:.2%}")
-print(f"CAGR: {cagr:.2%}")
-print(f"Max Drawdown: {max_mdd:.2%}")
-print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
-print(f"Sortino Ratio: {sortino_ratio:.4f}")
-print(f"Investment Period: {years:.2f} years")
+# print(df.head(10))
+# print(f"Total Return: {total_return:.2%}")
+# print(f"CAGR: {cagr:.2%}")
+# print(f"Max Drawdown: {mdd:.2%}")
+# print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+# print(f"Sortino Ratio: {sortino_ratio:.4f}")
+# print(f"Trading Count: {trading_count}")
+# print(f"Investment Period: {years:.2f} years")
 
-df.set_index('date', inplace=True)
+# print('*'*30)
 
-yearly_returns = {}
-yearly_mdds = {}
+# df.set_index('date', inplace=True)
 
-for year, group in df.groupby(df.index.year):
-    year_return = group['return'].cumprod().iloc[-1]
-    balance = 100 * group['return'].cumprod()
-    peak = balance.cummax()
-    dd = (balance - peak) / peak
-    mdd = dd.min()
+# yearly_returns = {}
+# yearly_mdds = {}
 
-    yearly_returns[year] = year_return
-    yearly_mdds[year] = mdd
+# for year, group in df.groupby(df.index.year):
+#     year_return = group['return'].cumprod().iloc[-1]
+#     balance = 100 * group['return'].cumprod()
+#     peak = balance.cummax()
+#     dd = (balance - peak) / peak
+#     mdd = dd.min()
 
-# 연도별 수익률 출력
-print("\n📈 연도별 수익률:")
-for year, r in yearly_returns.items():
-    print(f"{year}: {r:.2%}")
+#     yearly_returns[year] = year_return
+#     yearly_mdds[year] = mdd
 
-# 연도별 MDD 출력
-print("\n📉 연도별 최대 낙폭 (MDD):")
-for year, m in yearly_mdds.items():
-    print(f"{year}: {m:.2%}")
+# # 연도별 수익률 출력
+# print("\n📈 연도별 수익률:")
+# for year, r in yearly_returns.items():
+#     print(f"{year}: {r:.2%}")
 
+# # 연도별 MDD 출력
+# print("\n📉 연도별 최대 낙폭 (MDD):")
+# for year, m in yearly_mdds.items():
+#     print(f"{year}: {m:.2%}")
 
+# print('*'*30)
 
+# # 월별 수익률 및 MDD 계산
+# monthly_returns = {}
+# monthly_mdds = {}
 
-# def buy_and_hold_CAGR(df, cac):
-#     buy = df.iloc[0,0]
-#     sell = df.iloc[-1,3]
-#     ret = (sell-(sell*tax))/(buy+(buy*tax))
-#     BNH_CAGR = ret**(1/cac) - 1     
-#     return BNH_CAGR
+# # 월 단위로 그룹화
+# for (year, month), group in df.groupby([df.index.year, df.index.month]):
+#     month_key = f"{year}-{month:02d}"
+#     month_return = group['return'].cumprod().iloc[-1]
+#     balance = 100 * group['return'].cumprod()
+#     peak = balance.cummax()
+#     dd = (balance - peak) / peak
+#     mdd = dd.min()
 
+#     monthly_returns[month_key] = month_return
+#     monthly_mdds[month_key] = mdd
 
-        
-#     result=[]
-    
-#     for y in year:
-#         dfv = df.loc[y]
-#         dfv.loc[:,'MA'] = dfv.loc[:,'close'].rolling(window=period).mean()
-        
-#         signal = dfv['close'].shift(1) >= dfv['MA'].shift(1)
-    
-#         rangea = (dfv["high"] - dfv["low"]) * k
-#         Target = dfv["open"] + rangea.shift(1)
-    
-#         cond = dfv['high'] >= Target
-                
-#         buy = Target[cond]
-#         sell = dfv.loc[cond, 'close']
-             
-#         buy = buy[signal]
-#         sell = sell[signal]
-        
-#         n = len(sell)
-    
-#         ret = ((sell-(sell*tax))/(buy+(buy*tax)))
-#         a = ret.cumprod().iloc[-1]
-#         b = buy_and_hold(dfv)
-#         n = len(sell)
-        
-#         result.append([y, a, b, n])
-        
-#     return result
+# # 월별 수익률 출력
+# print("\n📅 월별 수익률:")
+# for month, r in monthly_returns.items():
+#     print(f"{month}: {r:.2%}")
 
-# ticker = input("Ticker?: ")
+# # 월별 MDD 출력
+# print("\n📉 월별 최대 낙폭 (MDD):")
+# for month, m in monthly_mdds.items():
+#     print(f"{month}: {m:.2%}")
 
-# tax = 0.000015
-
-# data = []
-# cac = 연수(df)
-
-# for period in range(5,101,5):   
-#     for k in range(1,11):
-#         ret = 변동성돌파(df, k/10, period)[0]
-#         trading = 변동성돌파(df, k/10, period)[1]
-#         CAG = CAGR(ret, cac)
-#         data.append([period, k/10, ret, CAG, trading])
-   
-# rdf = pd.DataFrame(data)
-# rdf.columns = ["period", "k", "return", "CAGR", "trading"]
-
-# rdf = rdf.sort_values("return")
-
-# best_k = rdf.iloc[-1, 1]
-# best_MA = rdf.iloc[-1, 0]
-
-# BNH = buy_and_hold(df)
-# BNH_CAGR = buy_and_hold_CAGR(df, cac)
-
-# yr = 연도별수익률(df, best_k, best_MA)
-
-# yret = pd.DataFrame(data=yr, columns=['year', 'return', 'buy & hold', 'trading'])
-# yret = yret.set_index(keys='year')
-
-# yret['return'] = yret['return']-1
-# yret['buy & hold'] = yret['buy & hold']-1
-
-# print("-"*20)
-# print("MA : {}".format(rdf.iloc[-1, 0]))
-# print("K : {}".format(rdf.iloc[-1, 1]))
-# print("Return : {:.2%}".format(rdf.iloc[-1, 2]-1))
-# print("투자횟수 :", rdf.iloc[-1, 4], "수수료 : {:.2%}".format(수수료), 
-#       "슬리피지 : {:.2%}".format(슬리피지))
-# print("단순 보유 후 홀딩 : {:.2%}".format(BNH-1))
-# print("차이 {:.2%}".format((rdf.iloc[-1, 2]-1)-(BNH-1)))
-# print("CAGR : {:.2%}".format(rdf.iloc[-1, 3]))
-# print("Buy&Hold CAGR : {:.2%}".format(BNH_CAGR))
-# print("-"*20)
-# print("연도별 수익")
-
-# for y, r, b, d, n in zip(yret.index, yret['return'], yret['buy & hold'], yret['return']-yret['buy & hold'], 
-#                       yret['trading']):
-#     print(f"{y}: 변동성돌파 수익률 {r:.2%}, 단순보유수익률 {b:.2%}, 차이 {d:.2%}, 투자횟수 {n}")
+# print('*'*30)
 
 
+# ########### 리니어 buy_and_hold k와 tax는 변수로 ###################
+# # 변수들
+# file_name = 'kodex반도체.xlsx'
+# df = xlsx_to_dataframe(file_name)
 
+# tax = 0
+# ####################################################################
+# df['buy'] = df['close'].shift(1)
+# df['sell'] = df['close']
 
+# df['return'] = df['sell']/df['buy']
+# df['return'] = df['return'].fillna(1)
+
+# # MDD 계산
+# df = MDD(df)
+# mdd = df['dd'].min()
+
+# # 투자 기간 계산
+# years = Investment_Period(df)
+
+# # 누적 수익률과 CAGR 계산
+# total_return = Return_CAGR(df)[0]
+# cagr = Return_CAGR(df)[1]
+
+# # Sharpe & Sortino Ratio 계산
+# df = Sharpe_SortinoRatio(df)[0]
+# sharpe_ratio = Sharpe_SortinoRatio(df)[1]
+# sortino_ratio = Sharpe_SortinoRatio(df)[2]
+
+# # 출력
+# print(df.head(10))
+# print(f"Total Return: {total_return:.2%}")
+# print(f"CAGR: {cagr:.2%}")
+# print(f"Max Drawdown: {mdd:.2%}")
+# print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+# print(f"Sortino Ratio: {sortino_ratio:.4f}")
+# print(f"Investment Period: {years:.2f} years")
+
+# df.set_index('date', inplace=True)
+
+# yearly_returns = {}
+# yearly_mdds = {}
+
+# for year, group in df.groupby(df.index.year):
+#     year_return = group['return'].cumprod().iloc[-1]
+#     balance = 100 * group['return'].cumprod()
+#     peak = balance.cummax()
+#     dd = (balance - peak) / peak
+#     mdd = dd.min()
+
+#     yearly_returns[year] = year_return
+#     yearly_mdds[year] = mdd
+
+# # 연도별 수익률 출력
+# print("\n📈 연도별 수익률:")
+# for year, r in yearly_returns.items():
+#     print(f"{year}: {r:.2%}")
+
+# # 연도별 MDD 출력
+# print("\n📉 연도별 최대 낙폭 (MDD):")
+# for year, m in yearly_mdds.items():
+#     print(f"{year}: {m:.2%}")
+
+# print('*'*30)
+
+# # 월별 수익률 및 MDD 계산
+# monthly_returns = {}
+# monthly_mdds = {}
+
+# # 월 단위로 그룹화
+# for (year, month), group in df.groupby([df.index.year, df.index.month]):
+#     month_key = f"{year}-{month:02d}"
+#     month_return = group['return'].cumprod().iloc[-1]
+#     balance = 100 * group['return'].cumprod()
+#     peak = balance.cummax()
+#     dd = (balance - peak) / peak
+#     mdd = dd.min()
+
+#     monthly_returns[month_key] = month_return
+#     monthly_mdds[month_key] = mdd
+
+# # 월별 수익률 출력
+# print("\n📅 월별 수익률:")
+# for month, r in monthly_returns.items():
+#     print(f"{month}: {r:.2%}")
+
+# # 월별 MDD 출력
+# print("\n📉 월별 최대 낙폭 (MDD):")
+# for month, m in monthly_mdds.items():
+#     print(f"{month}: {m:.2%}")
