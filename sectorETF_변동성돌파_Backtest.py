@@ -57,10 +57,13 @@ def Sharpe_SortinoRatio(df): # sharpe_ratio과 sortino_ratio 함수
     return df, sharpe_ratio, sortino_ratio
 
 ## 변수 모음
-# kodex2차전지.xlsx
-# kodex반도체.xlsx
+# KODEX200.xlsx #3500
+# KODEX코스닥150.xlsx #2500
+# 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
+# kodex2차전지.xlsx 
+# kodex반도체.xlsx 
 # kodex은행.xlsx
-# kodex자동차.xlsx
+# kodex자동차.xlsx 
 # tiger200중공업.xlsx
 # tiger리츠부동산.xlsx
 # tiger헬스케어.xlsx
@@ -70,47 +73,56 @@ def Sharpe_SortinoRatio(df): # sharpe_ratio과 sortino_ratio 함수
 # range_model = (df['open'] - df['low']) * k
 
 # 변수들 #
-file_name = 'kodex반도체.xlsx'
+file_name = 'KODEX200.xlsx'
 df = xlsx_to_dataframe(file_name)
-
 tax = 0.000015
-슬리피지 = 0.0005
-k = 0.5
-range_model = (df['high'] - df['low']) * k
+슬리피지 = 0.0002 # ETF별 조정
+k = 0.4 # 테스트
 
-## 리니어 변동성 돌파 전략 익일 시가 ###
+# range_model = (df['high'] - df['low']) * k # 테스트
+# range_modelstr = "전일고가-전일저가"
+range_model = (df['open'] - df['low']) * k 
+range_modelstr = "전일시가-전일저가"
 
-df['range'] = range_model
-df['target'] = df['open'] + df['range'].shift(1)
-df['cond'] = df['high'] >= df['target']
-cond = df['cond']
+print(f"ETF: {file_name[:-5]}")
+print('*'*30)
 
-df['buy'] = df.loc[cond, 'target']
-df['open-1'] = df['open'].shift(-1)
-df['sell'] = df.loc[cond, 'open-1']
+## 변동성 돌파 전략 익일시가 청산 ##
+# 기본 트레잉딩 모델 익일청산
+model = '변동성돌파_익일시가청산'
+df1 = df
+
+df1['range'] = range_model
+df1['target'] = df1['open'] + df1['range'].shift(1)
+df1['cond'] = df1['high'] >= df1['target']
+cond = df1['cond']
+
+df1['buy'] = df1.loc[cond, 'target']
+df1['open-1'] = df1['open'].shift(-1)
+df1['sell'] = df1.loc[cond, 'open-1']
 
 
-trading = df.loc[cond, 'close']
+trading = df1.loc[cond, 'close']
 trading_count = len(trading)
 
-df['return'] = (df['sell'] - (df['sell'] * (tax+슬리피지))) / (df['buy'] + (df['buy'] * tax))
-df['return'] = df['return'].fillna(1)
+df1['return'] = (df1['sell'] - (df1['sell'] * (tax+슬리피지))) / (df1['buy'] + (df1['buy'] * tax))
+df1['return'] = df1['return'].fillna(1)
 
 # MDD 계산
-df = MDD(df)
-mdd = df['dd'].min()
+df1 = MDD(df)
+mdd = df1['dd'].min()
 
 # 투자 기간 계산
-years = Investment_Period(df)
+years = Investment_Period(df1)
 
 # 누적 수익률과 CAGR 계산
-total_return = Return_CAGR(df)[0]
-cagr = Return_CAGR(df)[1]
+total_return = Return_CAGR(df1)[0]
+cagr = Return_CAGR(df1)[1]
 
 # Sharpe & Sortino Ratio 계산
-df = Sharpe_SortinoRatio(df)[0]
-sharpe_ratio = Sharpe_SortinoRatio(df)[1]
-sortino_ratio = Sharpe_SortinoRatio(df)[2]
+df1 = Sharpe_SortinoRatio(df1)[0]
+sharpe_ratio = Sharpe_SortinoRatio(df1)[1]
+sortino_ratio = Sharpe_SortinoRatio(df1)[2]
 
 # 결과값 데이터프레임 만들기
 # 1) 요약
@@ -120,7 +132,9 @@ sortino_ratio = Sharpe_SortinoRatio(df)[2]
 #                           'Trading Count', 'Investment Period'], columns=['file_name'])
 
 # 출력
-print(df.head(10))
+# print(df1.head(5))
+print(f"Model: {model}")
+print(f"Range: {range_modelstr}")
 print(f"Total Return: {total_return:.2%}")
 print(f"CAGR: {cagr:.2%}")
 print(f"Max Drawdown: {mdd:.2%}")
@@ -131,6 +145,107 @@ print(f"Investment Period: {years:.2f} years")
 
 print('*'*30)
 
+
+## 변동성 돌파 전략 당일종가 청산 ##
+# 기본 트레잉딩 모델 당일청산
+# 변수들 #
+model = '변동성돌파_당일종가청산'
+df2 = df
+
+df2['range'] = range_model
+df2['target'] = df2['open'] + df2['range'].shift(1)
+df2['cond'] = df2['high'] >= df2['target']
+cond = df2['cond']
+
+df2['buy'] = df2.loc[cond, 'target']
+df2['sell'] = df2.loc[cond, 'close']
+
+trading = df2.loc[cond, 'close']
+trading_count = len(trading)
+
+df2['return'] = (df2['sell'] - (df2['sell'] * (tax+슬리피지))) / (df2['buy'] + (df2['buy'] * tax))
+df2['return'] = df2['return'].fillna(1)
+
+# MDD 계산
+df2 = MDD(df2)
+mdd = df2['dd'].min()
+
+# 투자 기간 계산
+years = Investment_Period(df2)
+
+# 누적 수익률과 CAGR 계산
+total_return = Return_CAGR(df2)[0]
+cagr = Return_CAGR(df2)[1]
+
+# Sharpe & Sortino Ratio 계산
+df = Sharpe_SortinoRatio(df2)[0]
+sharpe_ratio = Sharpe_SortinoRatio(df2)[1]
+sortino_ratio = Sharpe_SortinoRatio(df2)[2]
+
+# 결과값 데이터프레임 만들기
+# 1) 요약
+# data = 
+# rdf = pd.DataFrame(data=data, 
+#                    index=['Total Return','CAGR', 'Max Drawdown', 'Sharpe Ratio', 'Sortino Ratio',
+#                           'Trading Count', 'Investment Period'], columns=['file_name'])
+
+# 출력
+# print(df2.head(5))
+print(f"Model: {model}")
+print(f"Range: {range_modelstr}")
+print(f"Total Return: {total_return:.2%}")
+print(f"CAGR: {cagr:.2%}")
+print(f"Max Drawdown: {mdd:.2%}")
+print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+print(f"Sortino Ratio: {sortino_ratio:.4f}")
+print(f"Trading Count: {trading_count}")
+print(f"Investment Period: {years:.2f} years")
+
+print('*'*30)
+
+
+########### 리니어 buy_and_hold k###################
+# 변수들
+model = 'buy_and_hold'
+df0 = df
+tax = 0
+
+df0['buy'] = df0['close'].shift(1)
+df0['sell'] = df0['close']
+
+df0['return'] = df0['sell']/df0['buy']
+df0['return'] = df0['return'].fillna(1)
+
+# MDD 계산
+df0 = MDD(df0)
+mdd = df0['dd'].min()
+
+# 투자 기간 계산
+years = Investment_Period(df0)
+
+# 누적 수익률과 CAGR 계산
+total_return = Return_CAGR(df0)[0]
+cagr = Return_CAGR(df0)[1]
+
+# Sharpe & Sortino Ratio 계산
+df = Sharpe_SortinoRatio(df0)[0]
+sharpe_ratio = Sharpe_SortinoRatio(df0)[1]
+sortino_ratio = Sharpe_SortinoRatio(df0)[2]
+
+# 출력
+# print(df0.head(10))
+print(f"Model: {model}")
+print(f"Total Return: {total_return:.2%}")
+print(f"CAGR: {cagr:.2%}")
+print(f"Max Drawdown: {mdd:.2%}")
+print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+print(f"Sortino Ratio: {sortino_ratio:.4f}")
+print(f"Investment Period: {years:.2f} years")
+
+########################################################################################################
+
+
+### 기간수익률
 # df.set_index('date', inplace=True)
 
 # yearly_returns = {}
@@ -156,7 +271,7 @@ print('*'*30)
 # for year, m in yearly_mdds.items():
 #     print(f"{year}: {m:.2%}")
 
-print('*'*30)
+# print('*'*30)
 
 # # 월별 수익률 및 MDD 계산
 # monthly_returns = {}
@@ -183,59 +298,6 @@ print('*'*30)
 # print("\n📉 월별 최대 낙폭 (MDD):")
 # for month, m in monthly_mdds.items():
 #     print(f"{month}: {m:.2%}")
-
-# print('*'*30)
-
-
-
-## 리니어 변동성 돌파 전략 당일 종가 ###
-
-# df['range'] = range_model
-# df['target'] = df['open'] + df['range'].shift(1)
-# df['cond'] = df['high'] >= df['target']
-# cond = df['cond']
-
-# df['buy'] = df.loc[cond, 'target']
-# df['sell'] = df.loc[cond, 'close']
-
-# trading = df.loc[cond, 'close']
-# trading_count = len(trading)
-
-# df['return'] = (df['sell'] - (df['sell'] * (tax+슬리피지))) / (df['buy'] + (df['buy'] * tax))
-# df['return'] = df['return'].fillna(1)
-
-# # MDD 계산
-# df = MDD(df)
-# mdd = df['dd'].min()
-
-# # 투자 기간 계산
-# years = Investment_Period(df)
-
-# # 누적 수익률과 CAGR 계산
-# total_return = Return_CAGR(df)[0]
-# cagr = Return_CAGR(df)[1]
-
-# # Sharpe & Sortino Ratio 계산
-# df = Sharpe_SortinoRatio(df)[0]
-# sharpe_ratio = Sharpe_SortinoRatio(df)[1]
-# sortino_ratio = Sharpe_SortinoRatio(df)[2]
-
-# 결과값 데이터프레임 만들기
-# 1) 요약
-# data = 
-# rdf = pd.DataFrame(data=data, 
-#                    index=['Total Return','CAGR', 'Max Drawdown', 'Sharpe Ratio', 'Sortino Ratio',
-#                           'Trading Count', 'Investment Period'], columns=['file_name'])
-
-# 출력
-# print(df.head(10))
-# print(f"Total Return: {total_return:.2%}")
-# print(f"CAGR: {cagr:.2%}")
-# print(f"Max Drawdown: {mdd:.2%}")
-# print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
-# print(f"Sortino Ratio: {sortino_ratio:.4f}")
-# print(f"Trading Count: {trading_count}")
-# print(f"Investment Period: {years:.2f} years")
 
 # print('*'*30)
 
