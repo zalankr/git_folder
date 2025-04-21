@@ -4,7 +4,8 @@ from datetime import datetime
 
 def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
     try:
-        file_path = f'C:/Users/GSR/Desktop/Python_project/git_folder/{file_name}'
+        # file_path = f'C:/Users/GSR/Desktop/Python_project/git_folder/{file_name}'
+        file_path = f'C:/Users/ilpus/PythonProjects/git_folder/{file_name}'
         df = pd.read_excel(file_path)
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
         return df
@@ -79,16 +80,18 @@ tax = 0.000015
 슬리피지 = 0.0002 # ETF별 조정
 k = 0.4 # 테스트
 
-range_model = (df['high'] - df['low']) * k # 테스트
-range_modelstr = "전일고가-전일저가"
+# range_model = (df['high'] - df['low']) * k # 테스트
+# range_modelstr = "전일고가-전일저가"
+range_model = (df['high'] - df['open']) * k
+range_modelstr = "전일고가-전일시가"
 # range_model = (df['open'] - df['low']) * k 
 # range_modelstr = "전일시가-전일저가"
 
 print(f"ETF: {file_name[:-5]}")
-print('*'*30)
+print('*'*40)
 
 ## 변동성 돌파 전략 익일시가 청산 ##
-# 기본 트레잉딩 모델 익일청산
+# 기본 트레잉딩 모델 익일청산 
 model = '변동성돌파_익일시가청산'
 df1 = df
 
@@ -124,16 +127,8 @@ df1 = Sharpe_SortinoRatio(df1)[0]
 sharpe_ratio = Sharpe_SortinoRatio(df1)[1]
 sortino_ratio = Sharpe_SortinoRatio(df1)[2]
 
-# 결과값 데이터프레임 만들기
-# 1) 요약
-# data = 
-# rdf = pd.DataFrame(data=data, 
-#                    index=['Total Return','CAGR', 'Max Drawdown', 'Sharpe Ratio', 'Sortino Ratio',
-#                           'Trading Count', 'Investment Period'], columns=['file_name'])
-
 # 출력
-# print(df1.head(5))
-print(f"Model: {model}")
+print(f"Model: {model} - K: {k}")
 print(f"Range: {range_modelstr}")
 print(f"Total Return: {total_return:.2%}")
 print(f"CAGR: {cagr:.2%}")
@@ -143,8 +138,14 @@ print(f"Sortino Ratio: {sortino_ratio:.4f}")
 print(f"Trading Count: {trading_count}")
 print(f"Investment Period: {years:.2f} years")
 
-print('*'*30)
+print('*'*40)
 
+# 결과값 데이터프레임 만들기
+# 1) 요약
+# data = 
+# rdf = pd.DataFrame(data=data, 
+#                    index=['Total Return','CAGR', 'Max Drawdown', 'Sharpe Ratio', 'Sortino Ratio',
+#                           'Trading Count', 'Investment Period'], columns=['file_name'])
 
 ## 변동성 돌파 전략 당일종가 청산 ##
 # 기본 트레잉딩 모델 당일청산
@@ -191,7 +192,7 @@ sortino_ratio = Sharpe_SortinoRatio(df2)[2]
 
 # 출력
 # print(df2.head(5))
-print(f"Model: {model}")
+print(f"Model: {model} - K: {k}")
 print(f"Range: {range_modelstr}")
 print(f"Total Return: {total_return:.2%}")
 print(f"CAGR: {cagr:.2%}")
@@ -201,7 +202,7 @@ print(f"Sortino Ratio: {sortino_ratio:.4f}")
 print(f"Trading Count: {trading_count}")
 print(f"Investment Period: {years:.2f} years")
 
-print('*'*30)
+print('*'*40)
 
 
 ########### 리니어 buy_and_hold k###################
