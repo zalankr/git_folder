@@ -90,7 +90,6 @@ range_modelstr = "전일고가-전일시가"
 print(f"ETF: {file_name[:-5]}")
 # print('*'*40)
 
-
 ## 변동성 돌파 전략 익일시가 청산 ##
 class vol_breakout_open:
     def __init__(self, df, tax, 슬리피지, k, range_model, range_modelstr):
@@ -143,6 +142,10 @@ class vol_breakout_open:
         print(f"Trading Count: {self.trading_count}")
         print(f"Investment Period: {self.years:.2f} years")
         print('*' * 40)
+
+
+
+
 
 
 
