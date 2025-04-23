@@ -97,16 +97,21 @@ class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
         self.df, self.sharpe_ratio, self.sortino_ratio = Sharpe_SortinoRatio(self.df)
 
         # 출력
-        print(f"Model: {self.model} - K: {self.k}")
-        print(f"Range: {self.range_modelstr}")
-        print(f"Total Return: {self.total_return:.2%}")
-        print(f"CAGR: {self.cagr:.2%}")
-        print(f"Max Drawdown: {self.mdd:.2%}")
-        print(f"Sharpe Ratio: {self.sharpe_ratio:.4f}")
-        print(f"Sortino Ratio: {self.sortino_ratio:.4f}")
-        print(f"Trading Count: {self.trading_count}")
-        print(f"Investment Period: {self.years:.2f} years")
-        print('*' * 40)
+        # print(f"Model: {self.model} - K: {self.k}")
+        # print(f"Range: {self.range_modelstr}")
+        # print(f"Total Return: {self.total_return:.2%}")
+        # print(f"CAGR: {self.cagr:.2%}")
+        # print(f"Max Drawdown: {self.mdd:.2%}")
+        # print(f"Sharpe Ratio: {self.sharpe_ratio:.4f}")
+        # print(f"Sortino Ratio: {self.sortino_ratio:.4f}")
+        # print(f"Trading Count: {self.trading_count}")
+        # print(f"Investment Period: {self.years:.2f} years")
+        # print('*' * 40)
+
+        data = [self.model, self.range_modelstr, self.k, self.total_return*100, self.cagr*100, self.mdd*100, self.sharpe_ratio, self.sortino_ratio, self.trading_count, self.years]
+        result1 = pd.DataFrame(data = [data], columns = ['Model', 'Range', 'k', 'Total Return', 'CAGR', 'MDD', 'Sharpe Ratio', 'Sortino Ratio', 'Trading Count', 'Investment Period'])
+        return result1
+
 
 class vol_breakout_close: ## 변동성 돌파 전략 당일종가 청산 CLASS
     def __init__(self, df, tax, 슬리피지, k, range_model, range_modelstr):
@@ -185,23 +190,25 @@ class buy_and_hold: ## buy_and_hold CLASS
         self.df, self.sharpe_ratio, self.sortino_ratio = Sharpe_SortinoRatio(self.df)
 
         # 출력
-        print(f"Model: {self.model}")
-        print(f"Total Return: {self.total_return:.2%}")
-        print(f"CAGR: {self.cagr:.2%}")
-        print(f"Max Drawdown: {self.mdd:.2%}")
-        print(f"Sharpe Ratio: {self.sharpe_ratio:.4f}")
-        print(f"Sortino Ratio: {self.sortino_ratio:.4f}")
-        print(f"Investment Period: {self.years:.2f} years")
-        print('*' * 40)
+        # print(f"Model: {self.model}")
+        # print(f"Total Return: {self.total_return:.2%}")
+        # print(f"CAGR: {self.cagr:.2%}")
+        # print(f"Max Drawdown: {self.mdd:.2%}")
+        # print(f"Sharpe Ratio: {self.sharpe_ratio:.4f}")
+        # print(f"Sortino Ratio: {self.sortino_ratio:.4f}")
+        # print(f"Investment Period: {self.years:.2f} years")
+        # print('*' * 40)
+       
+        data = [self.model, 'NA', 'NA', self.total_return*100, self.cagr*100, self.mdd*100, self.sharpe_ratio, self.sortino_ratio, 'NA', self.years]
+        result = pd.DataFrame(data = [data], columns = ['Model', 'Range', 'k', 'Total Return', 'CAGR', 'MDD', 'Sharpe Ratio', 'Sortino Ratio', 'Trading Count', 'Investment Period'])
+        return result
 
 # 변수설정 #
 file_name = 'KODEX200.xlsx'
 df = xlsx_to_dataframe(file_name)
-
+k= 0.1
 tax = 0.000015
 슬리피지 = 0.0002 # ETF별 조정
-
-k = 0.4 # 테스트
 
 rm1 = [(df['high'] - df['low']) * k, "전일고가-전일저가"]
 rm2 = [(df['high'] - df['open']) * k, "전일고가-전일시가"]
@@ -212,18 +219,25 @@ rm_list = [rm1, rm2, rm3]
 print(f"ETF: {file_name[:-5]}")
 print('*'*40)
 
-for i in range(3):
-    range_model = rm_list[i][0]
-    range_modelstr = rm_list[i][1]
-    
-    t1 = vol_breakout_open(df, tax, 슬리피지, k, range_model, range_modelstr)
-    t1.back_test()
-
-    t2 = vol_breakout_close(df, tax, 슬리피지, k, range_model, range_modelstr)
-    t2.back_test()
-
 t3 = buy_and_hold(df)
-t3.back_test()
+# t3.back_test()
+
+result = t3.back_test()
+
+for j in range(9):
+    k = 0.1 + (j * 0.1)
+    for i in range(3):
+        range_model = rm_list[i][0]
+        range_modelstr = rm_list[i][1]
+        
+        t1 = vol_breakout_open(df, tax, 슬리피지, k, range_model, range_modelstr)
+
+        result = pd.concat([result, t1.back_test()])
+
+        # t2 = vol_breakout_close(df, tax, 슬리피지, k, range_model, range_modelstr)
+        # t2.back_test()
+
+print(result.head(10))
 
 ## 변수 모음
 # KODEX200.xlsx #3500
