@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import os
+from openpyxl import load_workbook
 
 def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
     try:
@@ -63,7 +65,7 @@ class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
         self.tax = tax
         self.슬리피지 = 슬리피지
         self.k = k
-        self.range_model = range_model
+        self.range_model = range_model * k
         self.range_modelstr = range_modelstr
         self.model = '변동성돌파_익일시가청산'
     
@@ -96,10 +98,9 @@ class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
         # Sharpe & Sortino Ratio 계산
         self.df, self.sharpe_ratio, self.sortino_ratio = Sharpe_SortinoRatio(self.df)
 
-        data = [self.model, self.range_modelstr, self.k, self.total_return*100, self.cagr*100, self.mdd*100, self.sharpe_ratio, self.sortino_ratio, self.trading_count, self.years]
+        data = [self.model, self.range_modelstr, self.k, self.total_return, self.cagr, self.mdd, self.sharpe_ratio, self.sortino_ratio, self.trading_count, self.years]
         result1 = pd.DataFrame(data = [data], columns = ['Model', 'Range', 'k', 'Total Return', 'CAGR', 'MDD', 'Sharpe Ratio', 'Sortino Ratio', 'Trading Count', 'Investment Period'])
         return result1
-
 
 class vol_breakout_close: ## 변동성 돌파 전략 당일종가 청산 CLASS
     def __init__(self, df, tax, 슬리피지, k, range_model, range_modelstr):
@@ -107,7 +108,7 @@ class vol_breakout_close: ## 변동성 돌파 전략 당일종가 청산 CLASS
         self.tax = tax
         self.슬리피지 = 슬리피지
         self.k = k
-        self.range_model = range_model
+        self.range_model = range_model * k
         self.range_modelstr = range_modelstr
         self.model = '변동성돌파_당일종가청산'
     
@@ -139,23 +140,9 @@ class vol_breakout_close: ## 변동성 돌파 전략 당일종가 청산 CLASS
         # Sharpe & Sortino Ratio 계산
         self.df, self.sharpe_ratio, self.sortino_ratio = Sharpe_SortinoRatio(self.df)
 
-        data = [self.model, self.range_modelstr, self.k, self.total_return*100, self.cagr*100, self.mdd*100, self.sharpe_ratio, self.sortino_ratio, self.trading_count, self.years]
+        data = [self.model, self.range_modelstr, self.k, self.total_return, self.cagr, self.mdd, self.sharpe_ratio, self.sortino_ratio, self.trading_count, self.years]
         result2 = pd.DataFrame(data = [data], columns = ['Model', 'Range', 'k', 'Total Return', 'CAGR', 'MDD', 'Sharpe Ratio', 'Sortino Ratio', 'Trading Count', 'Investment Period'])
         return result2
-
-
-
-        # 출력
-        # print(f"Model: {self.model} - K: {self.k}")
-        # print(f"Range: {self.range_modelstr}")
-        # print(f"Total Return: {self.total_return:.2%}")
-        # print(f"CAGR: {self.cagr:.2%}")
-        # print(f"Max Drawdown: {self.mdd:.2%}")
-        # print(f"Sharpe Ratio: {self.sharpe_ratio:.4f}")
-        # print(f"Sortino Ratio: {self.sortino_ratio:.4f}")
-        # print(f"Trading Count: {self.trading_count}")
-        # print(f"Investment Period: {self.years:.2f} years")
-        # print('*' * 40)
 
 class buy_and_hold: ## buy_and_hold CLASS
     def __init__(self, df):
@@ -193,9 +180,10 @@ class buy_and_hold: ## buy_and_hold CLASS
         # print(f"Investment Period: {self.years:.2f} years")
         # print('*' * 40)
        
-        data = [self.model, 'NA', 'NA', self.total_return*100, self.cagr*100, self.mdd*100, self.sharpe_ratio, self.sortino_ratio, 'NA', self.years]
+        data = [self.model, 'NA', 'NA', self.total_return, self.cagr, self.mdd, self.sharpe_ratio, self.sortino_ratio, 'NA', self.years]
         result = pd.DataFrame(data = [data], columns = ['Model', 'Range', 'k', 'Total Return', 'CAGR', 'MDD', 'Sharpe Ratio', 'Sortino Ratio', 'Trading Count', 'Investment Period'])
         return result
+
 
 # 변수설정 #
 file_name = 'KODEX200.xlsx'
@@ -204,10 +192,11 @@ k= 0.1
 tax = 0.000015
 슬리피지 = 0.0002 # ETF별 조정
 
-rm1 = [(df['high'] - df['low']) * k, "전일고가-전일저가"]
-rm2 = [(df['high'] - df['open']) * k, "전일고가-전일시가"]
-rm3 = [(df['open'] - df['low']) * k, "전일시가-전일저가"]
+rm1 = [(df['high'] - df['low']), "전일고가-전일저가"]
+rm2 = [(df['high'] - df['open']), "전일고가-전일시가"]
+rm3 = [(df['open'] - df['low']), "전일시가-전일저가"]
 rm_list = [rm1, rm2, rm3]
+
 
 # 실행코드 #
 print(f"ETF: {file_name[:-5]}")
@@ -218,24 +207,39 @@ t3 = buy_and_hold(df)
 
 result = t3.back_test()
 
-for j in range(9):
-    k = 0.1 + (j * 0.1)
-    for i in range(3):
-        range_model = rm_list[i][0]
-        range_modelstr = rm_list[i][1]
+for i in range(3):
+    range_model = rm_list[i][0]
+    range_modelstr = rm_list[i][1]
+    for j in range(9):
+        k = 0.1 + (j * 0.1)
         
         t1 = vol_breakout_open(df, tax, 슬리피지, k, range_model, range_modelstr)
         result = pd.concat([result, t1.back_test()])
 
-        # t2 = vol_breakout_close(df, tax, 슬리피지, k, range_model, range_modelstr)
-        # t2.back_test()
+        t2 = vol_breakout_close(df, tax, 슬리피지, k, range_model, range_modelstr)
+        result = pd.concat([result, t2.back_test()])
 
-print(result.head(20))
+print(result.head(5))
 
-## 변수 모음
+# 저장 경로 및 파일 이름 설정
+save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder'
+save_file_name = '변동성돌파Result.xlsx'
+sheet_name = f'{file_name}'
+save_path = os.path.join(save_dir, save_file_name)
+
+# 파일이 이미 존재하면 시트를 추가, 아니면 새로 생성
+if os.path.exists(save_path):
+    with pd.ExcelWriter(save_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+        result.to_excel(writer, index=False, sheet_name=sheet_name)
+else:
+    with pd.ExcelWriter(save_path, engine='openpyxl') as writer:
+        result.to_excel(writer, index=False, sheet_name=sheet_name)
+
+print(f"엑셀 파일이 저장되었습니다: {save_path}")
+
+# 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
 # KODEX200.xlsx #3500
 # KODEX코스닥150.xlsx #2500
-# 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
 # kodex2차전지.xlsx 
 # kodex반도체.xlsx 
 # kodex은행.xlsx
