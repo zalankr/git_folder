@@ -186,11 +186,11 @@ class buy_and_hold: ## buy_and_hold CLASS
 
 
 # 변수설정 #
-file_name = 'KODEX200.xlsx'
+file_name = 'tiger화장품.xlsx'
 df = xlsx_to_dataframe(file_name)
 k= 0.1
 tax = 0.000015
-슬리피지 = 0.0002 # ETF별 조정
+슬리피지 = 0.0005 # ETF별 지수ETF = 0.02%, 섹터ETF = 0.05%
 
 rm1 = [(df['high'] - df['low']), "전일고가-전일저가"]
 rm2 = [(df['high'] - df['open']), "전일고가-전일시가"]
