@@ -199,6 +199,7 @@ rm_list = [rm1, rm2, rm3]
 
 
 # 실행코드 #
+print('*'*40)
 print(f"ETF: {file_name[:-5]}")
 print('*'*40)
 
@@ -238,8 +239,8 @@ else:
 print(f"엑셀 파일이 저장되었습니다: {save_path}")
 
 # 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
-# KODEX200.xlsx #3500
-# KODEX코스닥150.xlsx #2500
+# KODEX200.xlsx #4000
+# KODEX코스닥150.xlsx #2000
 # kodex2차전지.xlsx 
 # kodex반도체.xlsx 
 # kodex은행.xlsx
