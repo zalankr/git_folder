@@ -224,6 +224,7 @@ print(result.head(5))
 
 # 저장 경로 및 파일 이름 설정
 save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder'
+save_dir = 'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF'
 save_file_name = '변동성돌파Result.xlsx'
 sheet_name = f'{file_name}'
 save_path = os.path.join(save_dir, save_file_name)
@@ -239,16 +240,19 @@ else:
 print(f"엑셀 파일이 저장되었습니다: {save_path}")
 
 # 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
-# KODEX200.xlsx #4000
-# KODEX코스닥150.xlsx #2000
-# kodex2차전지.xlsx 
-# kodex반도체.xlsx 
-# kodex은행.xlsx
-# kodex자동차.xlsx 
-# tiger200중공업.xlsx
-# tiger리츠부동산.xlsx
-# tiger헬스케어.xlsx
-# tiger화장품.xlsx
+# KODEX 200.xlsx #4000
+# KODEX 코스닥150.xlsx #2000
+# KODEX 2차전지산업.xlsx 
+# KODEX 반도체.xlsx 
+# KODEX 은행.xlsx
+# KODEX 자동차.xlsx 
+# PLUS K방산.xlsx
+# SOL 조선TOP3플러스.xlsx
+# TIGER 200 IT.xlsx
+# TIGER 200 중공업.xlsx
+# TIGER 리츠부동산인프라
+# TIGER 헬스케어
+# TIGER 화장품
 
 ########################################################################################################
 ### 기간수익률
