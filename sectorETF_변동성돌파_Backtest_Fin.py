@@ -6,8 +6,8 @@ from openpyxl import load_workbook
 
 def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
     try:
-        file_path = f'C:/Users/GSR/Desktop/Python_project/git_folder/{file_name}'
-        # file_path = f'C:/Users/ilpus/PythonProjects/git_folder/{file_name}'
+        file_path = f'C:/Users/GSR\Desktop/Python_project/git_folder/SECTOR_ETF/{file_name}'
+        # file_path = f'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF/{file_name}'
         df = pd.read_excel(file_path)
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
         return df
@@ -67,7 +67,7 @@ class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
         self.k = k
         self.range_model = range_model * k
         self.range_modelstr = range_modelstr
-        self.model = '변동성돌파_익일시가청산'
+        self.model = '익일시가'
     
     def back_test(self):
         self.df['range'] = self.range_model
@@ -110,7 +110,7 @@ class vol_breakout_close: ## 변동성 돌파 전략 당일종가 청산 CLASS
         self.k = k
         self.range_model = range_model * k
         self.range_modelstr = range_modelstr
-        self.model = '변동성돌파_당일종가청산'
+        self.model = '당일종가'
     
     def back_test(self):
         self.df['range'] = self.range_model
@@ -186,15 +186,15 @@ class buy_and_hold: ## buy_and_hold CLASS
 
 
 # 변수설정 #
-file_name = 'tiger화장품.xlsx'
+file_name = 'TIGER 화장품.xlsx'
 df = xlsx_to_dataframe(file_name)
 k= 0.1
 tax = 0.000015
 슬리피지 = 0.0005 # ETF별 지수ETF = 0.02%, 섹터ETF = 0.05%
 
-rm1 = [(df['high'] - df['low']), "전일고가-전일저가"]
-rm2 = [(df['high'] - df['open']), "전일고가-전일시가"]
-rm3 = [(df['open'] - df['low']), "전일시가-전일저가"]
+rm1 = [(df['high'] - df['low']), "고가-저가"]
+rm2 = [(df['high'] - df['open']), "고가-시가"]
+rm3 = [(df['open'] - df['low']), "시가-저가"]
 rm_list = [rm1, rm2, rm3]
 
 
@@ -223,8 +223,8 @@ for i in range(3):
 print(result.head(5))
 
 # 저장 경로 및 파일 이름 설정
-save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder'
-save_dir = 'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF'
+save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder/SECTOR_ETF'
+# save_dir = 'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF'
 save_file_name = '변동성돌파Result.xlsx'
 sheet_name = f'{file_name}'
 save_path = os.path.join(save_dir, save_file_name)
