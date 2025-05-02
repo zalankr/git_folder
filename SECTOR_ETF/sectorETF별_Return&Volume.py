@@ -14,14 +14,22 @@ def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
     except Exception as e:
         print(f"오류 발생: {e}")
         return None
+    
+def ETF_char(df): # ETF 특성 계산 함수
+    IndexETF = ['KODEX 200.xlsx', 'KODEX 코스닥150.xlsx']
+    if file_name in IndexETF:
+        Slipage = 0.0002 # ETF별 지수ETF = 0.02%
+    else:
+        Slipage = 0.0005 # ETF별 개별종목 = 0.05%
+
 
 def Slipage(file_name): # 슬리피지 계산 함수
     IndexETF = ['KODEX 200.xlsx', 'KODEX 코스닥150.xlsx']
     if file_name in IndexETF:
-        슬리피지 = 0.0002 # ETF별 지수ETF = 0.02%
+        Slipage = 0.0002 # ETF별 지수ETF = 0.02%
     else:
-        슬리피지 = 0.0005 # ETF별 개별종목 = 0.05%
-    return 슬리피지
+        Slipage = 0.0005 # ETF별 개별종목 = 0.05%
+    return Slipage
 
 def Investment_Period(df): # 투자 기간 계산 함수
     start_date = df.iloc[0,0]
@@ -75,10 +83,10 @@ def range_list(df):
     return rm_list
 
 class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
-    def __init__(self, df, tax, 슬리피지, k, range_model, range_modelstr):
+    def __init__(self, df, tax, Slipage, k, range_model, range_modelstr):
         self.df = df
         self.tax = tax
-        self.슬리피지 = 슬리피지
+        self.Slipage = Slipage
         self.k = k
         self.range_model = range_model * k
         self.range_modelstr = range_modelstr
@@ -94,9 +102,6 @@ class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
         self.df['open-1'] = self.df['open'].shift(-1)
         self.df['sell'] = self.df.loc[cond, 'open-1']
 
-        self.trading = self.df.loc[cond, 'close']
-        self.trading_count = len(self.trading)
-
         self.df['return'] = (self.df['sell'] - (self.df['sell'] * (self.tax + self.슬리피지))) / (self.df['buy'] + (self.df['buy'] * self.tax))
         self.df['return'] = self.df['return'].fillna(1)
 
@@ -104,24 +109,14 @@ class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
         self.df = MDD(self.df)
         self.mdd = self.df['dd'].min()
 
-        # 투자 기간 계산
-        self.years = Investment_Period(self.df)
-
-        # 누적 수익률과 CAGR 계산
-        self.total_return, self.cagr = Return_CAGR(self.df, self.years)
-
-        # Sharpe & Sortino Ratio 계산
-        self.df, self.sharpe_ratio, self.sortino_ratio = Sharpe_SortinoRatio(self.df)
-
-        data = [self.model, self.range_modelstr, self.k, self.total_return, self.cagr, self.mdd, self.sharpe_ratio, self.sortino_ratio, self.trading_count, self.years]
-        result1 = pd.DataFrame(data = [data], columns = ['Model', 'Range', 'k', 'Total Return', 'CAGR', 'MDD', 'Sharpe Ratio', 'Sortino Ratio', 'Trading Count', 'Investment Period'])
+        result1 = self.df.loc['date', 'return', 'volume'].copy()
         return result1
 
 class vol_breakout_close: ## 변동성 돌파 전략 당일종가 청산 CLASS
-    def __init__(self, df, tax, 슬리피지, k, range_model, range_modelstr):
+    def __init__(self, df, tax, Slipage, k, range_model, range_modelstr):
         self.df = df
         self.tax = tax
-        self.슬리피지 = 슬리피지
+        self.Slipage = Slipage
         self.k = k
         self.range_model = range_model * k
         self.range_modelstr = range_modelstr
@@ -253,8 +248,12 @@ save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder/SECTOR_ETF'
 # TIGER 200 IT.xlsx # TIGER 200 중공업.xlsx # TIGER 리츠부동산인프라.xlsx # TIGER 헬스케어.xlsx # TIGER 화장품.xlsx
 # save_dir = 'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF'
 
-finrun = run_back_test(file_name)
-finrun.run()
+
+vol_breakout_close = vol_breakout_close
+
+print(result.head(5))
+# finrun = run_back_test(file_name)
+# finrun.run()
 
 ########################################################################################################
 ### 기간수익률
