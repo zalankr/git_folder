@@ -14,7 +14,15 @@ def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
     except Exception as e:
         print(f"오류 발생: {e}")
         return None
-    
+
+def Slipage(file_name): # 슬리피지 계산 함수
+    IndexETF = ['KODEX 200.xlsx', 'KODEX 코스닥150.xlsx']
+    if file_name in IndexETF:
+        슬리피지 = 0.0002 # ETF별 지수ETF = 0.02%
+    else:
+        슬리피지 = 0.0005 # ETF별 개별종목 = 0.05%
+    return 슬리피지
+
 def Investment_Period(df): # 투자 기간 계산 함수
     start_date = df.iloc[0,0]
     end_date = df.iloc[-1,0]
@@ -58,6 +66,13 @@ def Sharpe_SortinoRatio(df): # sharpe_ratio과 sortino_ratio 함수
         sortino_ratio = (mean_return - rf / 252) / down_std * np.sqrt(252)
 
     return df, sharpe_ratio, sortino_ratio
+
+def range_list(df):
+    rm1 = [(df['high'] - df['low']), "고가-저가"]
+    rm2 = [(df['high'] - df['open']), "고가-시가"]
+    rm3 = [(df['open'] - df['low']), "시가-저가"]
+    rm_list = [rm1, rm2, rm3]
+    return rm_list
 
 class vol_breakout_open: ## 변동성 돌파 전략 익일시가 청산 CLASS
     def __init__(self, df, tax, 슬리피지, k, range_model, range_modelstr):
@@ -169,90 +184,77 @@ class buy_and_hold: ## buy_and_hold CLASS
 
         # Sharpe & Sortino Ratio 계산
         self.df, self.sharpe_ratio, self.sortino_ratio = Sharpe_SortinoRatio(self.df)
-
-        # 출력
-        # print(f"Model: {self.model}")
-        # print(f"Total Return: {self.total_return:.2%}")
-        # print(f"CAGR: {self.cagr:.2%}")
-        # print(f"Max Drawdown: {self.mdd:.2%}")
-        # print(f"Sharpe Ratio: {self.sharpe_ratio:.4f}")
-        # print(f"Sortino Ratio: {self.sortino_ratio:.4f}")
-        # print(f"Investment Period: {self.years:.2f} years")
-        # print('*' * 40)
        
         data = [self.model, 'NA', 'NA', self.total_return, self.cagr, self.mdd, self.sharpe_ratio, self.sortino_ratio, 'NA', self.years]
         result = pd.DataFrame(data = [data], columns = ['Model', 'Range', 'k', 'Total Return', 'CAGR', 'MDD', 'Sharpe Ratio', 'Sortino Ratio', 'Trading Count', 'Investment Period'])
         return result
 
+class Save_Result: # 결과 저장 클래스
+    def __init__(self, file_name, df):
+        self.file_name = file_name
+        self.df = df
+
+    def save_to_excel(self, result):
+        save_file_name = '변동성돌파Result.xlsx'
+        sheet_name = f'{self.file_name}'
+        save_path = os.path.join(save_dir, save_file_name)
+
+        # 파일이 이미 존재하면 시트를 추가, 아니면 새로 생성
+        if os.path.exists(save_path):
+            with pd.ExcelWriter(save_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                result.to_excel(writer, index=False, sheet_name=sheet_name)
+        else:
+            with pd.ExcelWriter(save_path, engine='openpyxl') as writer:
+                result.to_excel(writer, index=False, sheet_name=sheet_name)
+
+        print(f"엑셀 파일이 저장되었습니다: {save_path}")
+
+class run_back_test:
+    def __init__(self, file_name):
+        self.file_name = file_name
+        self.df = xlsx_to_dataframe(file_name)
+        self.slipage = Slipage(file_name)
+        self.tax = 0.000015 # 세금
+        self.k = 0.1 # k값
+        self.rm_list = range_list(self.df)
+
+    def run(self):
+        print('*'*40)
+        print(f"ETF: {file_name[:-5]}")
+        print('*'*40)
+
+        t3 = buy_and_hold(self.df)
+        result = t3.back_test()
+
+        for i in range(3):
+            range_model = self.rm_list[i][0]
+            range_modelstr = self.rm_list[i][1]
+            for j in range(9):
+                k = 0.1 + (j * 0.1)
+                
+                t1 = vol_breakout_open(self.df, self.tax, self.slipage, k, range_model, range_modelstr)
+                result = pd.concat([result, t1.back_test()])
+
+                t2 = vol_breakout_close(self.df, self.tax, self.slipage, k, range_model, range_modelstr)
+                result = pd.concat([result, t2.back_test()])
+
+        print(result.head(5))
+        M_result = Save_Result(file_name, self.df)
+        M_result.save_to_excel(result)
+
+        return result
 
 # 변수설정 #
-file_name = 'TIGER 화장품.xlsx'
-df = xlsx_to_dataframe(file_name)
-k= 0.1
-tax = 0.000015
-슬리피지 = 0.0005 # ETF별 지수ETF = 0.02%, 섹터ETF = 0.05%
-
-rm1 = [(df['high'] - df['low']), "고가-저가"]
-rm2 = [(df['high'] - df['open']), "고가-시가"]
-rm3 = [(df['open'] - df['low']), "시가-저가"]
-rm_list = [rm1, rm2, rm3]
-
-
-# 실행코드 #
-print('*'*40)
-print(f"ETF: {file_name[:-5]}")
-print('*'*40)
-
-t3 = buy_and_hold(df)
-# t3.back_test()
-
-result = t3.back_test()
-
-for i in range(3):
-    range_model = rm_list[i][0]
-    range_modelstr = rm_list[i][1]
-    for j in range(9):
-        k = 0.1 + (j * 0.1)
-        
-        t1 = vol_breakout_open(df, tax, 슬리피지, k, range_model, range_modelstr)
-        result = pd.concat([result, t1.back_test()])
-
-        t2 = vol_breakout_close(df, tax, 슬리피지, k, range_model, range_modelstr)
-        result = pd.concat([result, t2.back_test()])
-
-print(result.head(5))
-
-# 저장 경로 및 파일 이름 설정
+file_name = 'TIGER 화장품.xlsx' # 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
 save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder/SECTOR_ETF'
+# KODEX 200.xlsx #4000 # KODEX 코스닥150.xlsx #2000
+# KODEX 2차전지산업.xlsx # KODEX 반도체.xlsx # KODEX 은행.xlsx# KODEX 자동차.xlsx 
+# PLUS K방산.xlsx# SOL 조선TOP3플러스.xlsx
+# TIGER 200 IT.xlsx # TIGER 200 중공업.xlsx # TIGER 리츠부동산인프라.xlsx # TIGER 헬스케어.xlsx # TIGER 화장품.xlsx
 # save_dir = 'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF'
-save_file_name = '변동성돌파Result.xlsx'
-sheet_name = f'{file_name}'
-save_path = os.path.join(save_dir, save_file_name)
 
-# 파일이 이미 존재하면 시트를 추가, 아니면 새로 생성
-if os.path.exists(save_path):
-    with pd.ExcelWriter(save_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-        result.to_excel(writer, index=False, sheet_name=sheet_name)
-else:
-    with pd.ExcelWriter(save_path, engine='openpyxl') as writer:
-        result.to_excel(writer, index=False, sheet_name=sheet_name)
-
-print(f"엑셀 파일이 저장되었습니다: {save_path}")
-
-# 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
-# KODEX 200.xlsx #4000
-# KODEX 코스닥150.xlsx #2000
-# KODEX 2차전지산업.xlsx 
-# KODEX 반도체.xlsx 
-# KODEX 은행.xlsx
-# KODEX 자동차.xlsx 
-# PLUS K방산.xlsx
-# SOL 조선TOP3플러스.xlsx
-# TIGER 200 IT.xlsx
-# TIGER 200 중공업.xlsx
-# TIGER 리츠부동산인프라
-# TIGER 헬스케어
-# TIGER 화장품
+finrun = run_back_test(file_name)
+finrun.run()
 
 ########################################################################################################
 ### 기간수익률
