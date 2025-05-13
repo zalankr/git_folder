@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 from openpyxl import load_workbook
 
+# KODEX200 + KOSDAQ100 결합
 def xlsx_to_dataframe(sheet_Num): # XLSX 불러오기 함수
     result = pd.DataFrame()
     try:
@@ -17,17 +18,68 @@ def xlsx_to_dataframe(sheet_Num): # XLSX 불러오기 함수
         return None
 
 # 엑셀 파일 불러오기+데이터프레임으로 변환
-sheet_Num = [0, 1]
-df_list = []
-for i in sheet_Num:
-    temp_df = xlsx_to_dataframe(i)
-    if temp_df is not None:
-        df_list.append(temp_df)
-df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
+df1 = xlsx_to_dataframe(0)
+df2 = xlsx_to_dataframe(-1)
 
-print(df.tail(5))
+# dataframe 조정
+df1.drop(columns=['balance', 'dd', 'volume'], inplace=True)
+df2.drop(columns=['balance', 'dd', 'volume'], inplace=True)
+df1.rename(columns={'return': 'KODEX200_return'}, inplace=True)
+df2.rename(columns={'return': 'KOSDAQ100_return'}, inplace=True)
+
+# dataframe 병합
+df = pd.merge(df1, df2, on='date', how='inner')
+df.dropna(inplace=True)
+df['date'] = pd.to_datetime(df['date'], errors='coerce')
+
+initial_kodex = 40000000  # 4000만원
+initial_kosdaq = 30000000  # 3000만원
+
+df['KODEX200_profit'] = (df['KODEX200_return'] - 1) * initial_kodex
+df['KOSDAQ100_profit'] = (df['KOSDAQ100_return'] - 1) * initial_kosdaq
+
+# 합산 수익
+df['total_profit'] = df['KODEX200_profit'] + df['KOSDAQ100_profit']
+df['cumulative_profit'] = df['total_profit'].cumsum() + (initial_kodex + initial_kosdaq)
+
+# CAGR 계산
+start_value = initial_kodex + initial_kosdaq
+end_value = df['cumulative_profit'].iloc[-1]
+days = (df['date'].iloc[-1] - df['date'].iloc[0]).days
+years = days / 365.0
+CAGR = (end_value / start_value) ** (1 / years) - 1
+
+# MDD 계산
+cumulative = df['cumulative_profit']
+rolling_max = cumulative.cummax()
+drawdown = (cumulative - rolling_max) / rolling_max
+MDD = drawdown.min()
+
+# 결과 출력
+print(f"CAGR: {CAGR:.4%}")
+print(f"MDD: {MDD:.2%}")
 
 
+
+print(df.head(10))
+############################ GPT 영역 #############################
+
+
+
+
+
+# 수익계산 4000, 2000
+# df['KODEX200_balance'] = 4000
+# df['KOSDAQ100_balance'] = 2000
+# df['Total_balance'] = 0
+
+# df['Total_return'] = (df['KODEX200_balance'] * df['KODEX200_return'] + df['KOSDAQ100_balance'] * df['KOSDAQ100_return']) - 6000
+# df['Total_balance'].iloc[0] = 6000
+# df['Total_balance'] = df['Total_return']+df['Total_balance'].shift(1)
+
+
+# print(df.tail(10))
+# print(df['Total_return'].sum() / 22 / 60)
 
     
 # def Investment_Period(df): # 투자 기간 계산 함수
