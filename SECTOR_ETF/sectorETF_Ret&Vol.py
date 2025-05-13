@@ -72,7 +72,7 @@ class Back_test: # 백테스트 클래스
         self.df['sell'] = self.df.loc[cond, 'open-1']
 
         # 수익률 계산
-        self.df['return'] = (self.df['sell'] - (self.df['sell'] * 0.000015)) / (self.df['buy'] + (self.df['buy'] * self.slipage))
+        self.df['return'] = (self.df['sell'] - (self.df['sell'] * 0.00015)) / (self.df['buy'] + (self.df['buy'] * self.slipage))
         self.df['return'] = self.df['return'].fillna(1)
 
         # MDD 계산

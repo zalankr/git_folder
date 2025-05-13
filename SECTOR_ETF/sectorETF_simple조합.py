@@ -17,33 +17,56 @@ def xlsx_to_dataframe(sheet_Num): # XLSX 불러오기 함수
         print(f"오류 발생: {e}")
         return None
 
-# 엑셀 파일 불러오기+데이터프레임으로 변환
-df1 = xlsx_to_dataframe(0)
-df2 = xlsx_to_dataframe(-1)
-
 # dataframe 조정
-df1.drop(columns=['balance', 'dd', 'volume'], inplace=True)
-df2.drop(columns=['balance', 'dd', 'volume'], inplace=True)
-df1.rename(columns={'return': 'KODEX200_return'}, inplace=True)
-df2.rename(columns={'return': 'KOSDAQ100_return'}, inplace=True)
+def df_adjust(df, sheet_Num):
+    df.drop(columns=['balance', 'dd', 'volume'], inplace=True)
+    df.rename(columns={'return': f'{sheet_Num}_return'}, inplace=True)
+    return df
+
+# dataframe 생성 클래스
+class df_make:
+    def __init__(self, sheet_Num):
+        self.sheet_Num = sheet_Num
+        self.df = xlsx_to_dataframe(sheet_Num)
+        self.df = df_adjust(self.df, self.sheet_Num)
+    def get_df(self):
+        return self.df
+
+# 엑셀 파일 불러오기+데이터프레임으로 변환
+df1 = df_make(0)
+df2 = df_make(-1)
+df3 = df_make(3)
+df4 = df_make(4)
+df5 = df_make(5)
+
+df1 = df1.get_df()
+df2 = df2.get_df()
+df3 = df3.get_df()
+df4 = df4.get_df()
+df5 = df5.get_df()
 
 # dataframe 병합
-df = pd.merge(df1, df2, on='date', how='inner')
+df = pd.merge(pd.merge(pd.merge(pd.merge(df1, df2, on='date', how='inner'), df3, on='date', how='inner'), 
+                       df4, on='date', how='inner'), df5, on='date', how='inner')
 df.dropna(inplace=True)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 
 initial_kodex = 40000000  # 4000만원
 initial_kosdaq = 30000000  # 3000만원
+initial_sector = 20000000  # 2000만원
 
-df['KODEX200_profit'] = (df['KODEX200_return'] - 1) * initial_kodex
-df['KOSDAQ100_profit'] = (df['KOSDAQ100_return'] - 1) * initial_kosdaq
+df['0_profit'] = (df['0_return'] - 1) * initial_kodex
+df['-1_profit'] = (df['-1_return'] - 1) * initial_kosdaq
+df['3_profit'] = (df['3_return'] - 1) * initial_sector
+df['4_profit'] = (df['4_return'] - 1) * initial_sector
+df['5_profit'] = (df['5_return'] - 1) * initial_sector
 
 # 합산 수익
-df['total_profit'] = df['KODEX200_profit'] + df['KOSDAQ100_profit']
-df['cumulative_profit'] = df['total_profit'].cumsum() + (initial_kodex + initial_kosdaq)
+df['total_profit'] = df['0_profit'] + df['-1_profit'] + df['3_profit'] + df['4_profit'] + df['5_profit']
+df['cumulative_profit'] = df['total_profit'].cumsum() + (initial_kodex + initial_kosdaq + (initial_sector * 3))
 
 # CAGR 계산
-start_value = initial_kodex + initial_kosdaq
+start_value = initial_kodex + initial_kosdaq + (initial_sector * 3)
 end_value = df['cumulative_profit'].iloc[-1]
 days = (df['date'].iloc[-1] - df['date'].iloc[0]).days
 years = days / 365.0

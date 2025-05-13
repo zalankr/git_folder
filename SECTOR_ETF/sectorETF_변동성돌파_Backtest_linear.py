@@ -26,7 +26,7 @@ def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
 file_name = 'kodex반도체.xlsx'
 df = xlsx_to_dataframe(file_name)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
-tax = 0.000015
+tax = 0.00015
 k = 0.5
 
 range_model = (df['high'] - df['low']) * k

@@ -214,7 +214,7 @@ class run_back_test:
         self.file_name = file_name
         self.df = xlsx_to_dataframe(file_name)
         self.slipage = Slipage(file_name)
-        self.tax = 0.000015 # 세금
+        self.tax = 0.00015 # 세금
         self.k = 0.1 # k값
         self.rm_list = range_list(self.df)
 
