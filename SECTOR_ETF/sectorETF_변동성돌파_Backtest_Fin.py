@@ -245,9 +245,9 @@ class run_back_test:
         return result
 
 # 변수설정 #
-file_name = 'KOSDAQ 100.xlsx' # 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
+file_name = 'TIGER 화장품.xlsx' # 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
 save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder/SECTOR_ETF'
-# KODEX 200.xlsx #4000 # KODEX 코스닥150.xlsx # KOSDAQ 100.xlsx #2000
+# KODEX 200.xlsx #4000 # KOSDAQ 100.xlsx #2000 # KODEX 코스닥150.xlsx
 # KODEX 2차전지산업.xlsx # KODEX 반도체.xlsx # KODEX 은행.xlsx# KODEX 자동차.xlsx 
 # PLUS K방산.xlsx# SOL 조선TOP3플러스.xlsx
 # TIGER 200 IT.xlsx # TIGER 200 중공업.xlsx # TIGER 리츠부동산인프라.xlsx # TIGER 헬스케어.xlsx # TIGER 화장품.xlsx
