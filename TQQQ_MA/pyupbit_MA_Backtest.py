@@ -95,7 +95,7 @@ ticker = input("Ticker?: ")
 df = data(ticker)
 
 수수료 = 0.0005
-슬리피지 = 0.0002
+슬리피지 = 0.0005
 
 tax = 수수료 + 슬리피지
 
@@ -140,6 +140,5 @@ for y, r, b, d, n in zip(yret.index, yret['return'], yret['buy & hold'], yret['r
                       yret['trade_count']):
     print(f"{y}: MA수익률 {r:.2%}, 단순보유수익률 {b:.2%}, 차이 {d:.2%}, 투자횟수 {n}")
 
-
-
+print(rdf.tail(20))
 
