@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 
 # 1. 데이터 로딩
-df = yf.download('QQQ', progress=False, multi_level_index=False)
+df = yf.download('TQQQ', progress=False, multi_level_index=False)
 df = df[['Close']].rename(columns={'Close': 'price'})
 
 results = []

@@ -1,5 +1,12 @@
 import pandas as pd
-import pybithumb
+import pyupbit as py
+
+# BTC 오류는 하기연도별 함수에 리스트에 2013년 데이터 삭제로 해결
+
+def data(ticker):
+    ticker = "KRW-"+ticker
+    df = py.get_ohlcv_from(ticker=ticker, fromDatetime="2017-09-25", interval="day")
+    return df
 
 def MA투자(df, period):
     df.loc[:,'MA'] = df.loc[:,'close'].rolling(window=period).mean()
@@ -71,7 +78,7 @@ def 연도별수익률(df, period):
         if y not in year: 
             year.append(y)
     
-    del year[0] # BTC만 적용
+    del year[0]
         
     result=[]
     
@@ -85,8 +92,7 @@ def 연도별수익률(df, period):
 
 
 ticker = input("Ticker?: ")
-
-df = pybithumb.get_ohlcv(ticker)
+df = data(ticker)
 
 수수료 = 0.0005
 슬리피지 = 0.0005
@@ -133,6 +139,6 @@ print("연도별 수익")
 for y, r, b, d, n in zip(yret.index, yret['return'], yret['buy & hold'], yret['return']-yret['buy & hold'], 
                       yret['trade_count']):
     print(f"{y}: MA수익률 {r:.2%}, 단순보유수익률 {b:.2%}, 차이 {d:.2%}, 투자횟수 {n}")
-    
+
 print(rdf.tail(20))
 
