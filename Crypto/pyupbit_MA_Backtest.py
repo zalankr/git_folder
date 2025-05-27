@@ -141,5 +141,5 @@ for y, r, b, d, n in zip(yret.index, yret['return'], yret['buy & hold'], yret['r
     print(f"{y}: MA수익률 {r:.2%}, 단순보유수익률 {b:.2%}, 차이 {d:.2%}, 투자횟수 {n}")
 
 
-
-
+print(rdf.head(10))
+print(rdf.tail(10))
