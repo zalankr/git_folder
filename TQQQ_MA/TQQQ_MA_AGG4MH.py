@@ -25,14 +25,22 @@ df['MA225'] = df['price'].rolling(225).mean()
 # AGG 데이터와 TQQQ 데이터 병합
 df = df.join(AGG['regime'], how='left')
 
-# 결측치 처리
-df['regime'] = df['regime'].fillna(method='ffill')
-#############################################################################
+# 데이터 정렬
+df = df.sort_index()
 
+# 데이터 전처리
+df = df.dropna(subset=['MA225', 'regime'])
 
 # 시그널 생성 (정렬된 인덱스로 비교)
-df['signal'] = (df['price'] > df['MA225']).astype(int)
+df['signal1'] = (df['price'] > df['MA225']).astype(int)
+df['signal'] = np.where(df['regime'] == True, df['signal1'], 0)
+# df.drop(['signal1','regime'], axis=1, inplace=True)
+
 df.loc[:df.index[225], 'signal'] = 0  # MA 이전 구간은 신호 없음
+
+print(df.tail(10))
+print(df.head(50))
+#############################################################################
 
 # 포지션 (전일 신호 유지)
 df['position'] = df['signal'].shift(1).fillna(0)
