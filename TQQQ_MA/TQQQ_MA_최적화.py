@@ -23,6 +23,9 @@ for ma in range(10, 301, 5):
     # 포지션 (전일 신호 유지)
     temp_df['position'] = temp_df['signal'].shift(1).fillna(0)
 
+    # 기간 통일
+    temp_df = temp_df.drop(index=temp_df.index[:300])
+
     # 수익률 계산
     temp_df['daily_return'] = temp_df['price'].pct_change().fillna(0)
     temp_df['strategy_return'] = temp_df['daily_return'] * temp_df['position']
@@ -66,6 +69,10 @@ for ma in range(10, 301, 5):
 # 결과 정리 및 출력
 result = pd.DataFrame(results)
 result = result.sort_values(by='CAGR', ascending=False).reset_index(drop=True)
-print(result.head(10))
+print(result.head(50))
 
-
+df['cum_market'] = (1 + df['price'].pct_change().fillna(0)).cumprod()
+BH_cagr = df['cum_market'].iloc[-1] ** (1 / n_years) - 1
+BH_mdd = (df['cum_market'] / df['cum_market'].cummax() - 1).min()
+print(f"Buy and Hold CAGR: {BH_cagr:.2%}")
+print(f"Buy and Hold MDD: {BH_mdd:.2%}")

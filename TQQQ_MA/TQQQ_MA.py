@@ -7,12 +7,12 @@ from datetime import datetime
 df = yf.download('TQQQ', start='2010-01-01', progress=False, multi_level_index=False)
 df = df[['Close']].rename(columns={'Close': 'price'})
 
-# 2. 50일 이동평균선
-df['ma20'] = df['price'].rolling(20).mean()
+# 2. 225일 이동평균선
+df['ma225'] = df['price'].rolling(225).mean()
 
 # 3. 매수/매도 시그널 생성
 df['signal'] = 0
-df['signal'][20:] = np.where(df['price'][20:] > df['ma20'][20:], 1, 0)
+df['signal'][225:] = np.where(df['price'][225:] > df['ma225'][225:], 1, 0)
 
 # 4. 포지션 계산 (전일 signal 유지)
 df['position'] = df['signal'].shift(1).fillna(0)

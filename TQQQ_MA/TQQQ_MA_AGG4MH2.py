@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 
 # MA 기간 설정
-MA = 20
+MA = 185
 
 # 데이터 로드
 AGG = yf.download('AGG', start='2010-02-09', auto_adjust=True, interval='1d', progress=True, multi_level_index=False)
