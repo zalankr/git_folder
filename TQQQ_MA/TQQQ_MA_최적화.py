@@ -66,6 +66,6 @@ for ma in range(10, 301, 5):
 # 결과 정리 및 출력
 result = pd.DataFrame(results)
 result = result.sort_values(by='CAGR', ascending=False).reset_index(drop=True)
-print(result)
+print(result.head(10))
 
 

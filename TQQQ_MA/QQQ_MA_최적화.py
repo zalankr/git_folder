@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 
 # 1. 데이터 로딩
-df = yf.download('TQQQ', progress=False, multi_level_index=False)
+df = yf.download('QQQ', progress=False, multi_level_index=False)
 df = df[['Close']].rename(columns={'Close': 'price'})
 
 results = []
@@ -66,6 +66,6 @@ for ma in range(10, 301, 5):
 # 결과 정리 및 출력
 result = pd.DataFrame(results)
 result = result.sort_values(by='CAGR', ascending=False).reset_index(drop=True)
-print(result)
+print(result.head(10))
 
 

@@ -3,7 +3,17 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-# 1. 데이터 로딩
+# AGG 데이터 regimr signal 생성
+AGG = yf.download('AGG', start='2009-08-01', auto_adjust=True, interval='1d', progress=True, 
+                  multi_level_index=False)
+
+AGG.drop(['Open','High','Low','Volume'], axis=1, inplace=True)
+
+AGG.loc[:,'MA'] = AGG.loc[:,'Close'].rolling(window=85).mean()
+AGG.loc[:,'regime'] = AGG.loc[:,'Close'] >= AGG.loc[:,'MA']
+AGG.drop(['MA','Close'], axis=1, inplace=True)
+
+# TQQQ 데이터
 df = yf.download('TQQQ', start='2010-01-01', progress=False, multi_level_index=False)
 df = df[['Close']].rename(columns={'Close': 'price'})
 
@@ -11,6 +21,14 @@ results = []
 
 # 이동평균선 계산
 df['MA225'] = df['price'].rolling(225).mean()
+
+# AGG 데이터와 TQQQ 데이터 병합
+df = df.join(AGG['regime'], how='left')
+
+# 결측치 처리
+df['regime'] = df['regime'].fillna(method='ffill')
+#############################################################################
+
 
 # 시그널 생성 (정렬된 인덱스로 비교)
 df['signal'] = (df['price'] > df['MA225']).astype(int)
