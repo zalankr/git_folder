@@ -33,8 +33,11 @@ df = df.dropna(subset=['TQQQ_MA', 'AGG_MA'])
 df['Position'] = np.where((df['Long'] == 1) & (df['Regime'] == 1), 1, 0)
 df['MAPosition'] = np.where((df['Long'] == 1), 1, 0)
 
-df['Position'] = df['Position'].shift(0).fillna(0)
-df['MAPosition'] = df['MAPosition'].shift(0).fillna(0) # 당일 신호 당일 종가
+df['Position'] = df['Position'].shift(1).fillna(0)
+df['MAPosition'] = df['MAPosition'].shift(1).fillna(0) # 당일 신호 당일 종가
+
+# 기간 통일
+# df = df.drop(index=temp_df.index[:225])
 
 # 수익률 계산
 df['daily_return'] = df['TQQQ'].pct_change().fillna(0)
