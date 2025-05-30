@@ -4,16 +4,30 @@ import numpy as np
 from datetime import datetime
 
 # MA 기간 설정
-MA = 185
+MA = 20
 
 # 데이터 로드
-AGG = yf.download('AGG', start='2010-02-09', auto_adjust=True, interval='1d', progress=True, multi_level_index=False)
+# AGG 데이터
+AGG = yf.download('AGG', start='2010-02-09', auto_adjust=True, interval='1mo', progress=True, multi_level_index=False)
 AGG.drop(['Open','High','Low','Volume'], axis=1, inplace=True)
 
-AGG.loc[:,'AGG_MA'] = AGG.loc[:,'Close'].rolling(window=85).mean()
+# Average
+AGG.loc[:,'AGG_MA'] = AGG.loc[:,'Close'].rolling(window=4).mean()
 AGG = AGG[['Close', 'AGG_MA']].rename(columns={'Close': 'AGG'})
-AGG.loc[:,'Regime'] = AGG.loc[:,'AGG'] >= AGG.loc[:,'AGG_MA']
 
+AGG.loc[:,'Regime'] = AGG.loc[:,'AGG'].shift(1) >= AGG.loc[:,'AGG_MA'].shift(1)
+# AGG 데이터의 인덱스를 일간 데이터로 변환
+AGG = AGG.resample('1d').ffill()  # 월간 데이터를 일간 데이터로 변환하고 결측값을 채움
+# AGG 데이터의 Regime 컬럼을 일간 데이터로 변환
+AGG['Regime'] = AGG['Regime'].ffill()  # Regime 컬럼을 일간 데이터로 변환
+# AGG 데이터의 인덱스를 datetime으로 변환
+AGG.index = pd.to_datetime(AGG.index)
+# AGG 데이터의 Regime 컬럼을 boolean으로 변환
+AGG['Regime'] = AGG['Regime'].astype(bool)
+# AGG 데이터의 결측값 제거
+AGG = AGG.dropna(subset=['AGG_MA'])
+
+# TQQQ 데이터
 TQQQ = yf.download('TQQQ', start='2010-02-09', auto_adjust=True, interval='1d', progress=True, multi_level_index=False)
 TQQQ.drop(['Open','High','Low','Volume'], axis=1, inplace=True)
 
@@ -37,7 +51,7 @@ df['Position'] = df['Position'].shift(1).fillna(0)
 df['MAPosition'] = df['MAPosition'].shift(1).fillna(0) # 당일 신호 당일 종가
 
 # 기간 통일
-# df = df.drop(index=temp_df.index[:225])
+df = df.drop(index=df.index[:225])
 
 # 수익률 계산
 df['daily_return'] = df['TQQQ'].pct_change().fillna(0)
@@ -129,8 +143,6 @@ BH_results.append({
     'Sortino': BH_sortino_ratio,
     })
 
-
-
 # 결과 정리 및 출력
 Strategy_results = pd.DataFrame(Strategy_results)
 Strategy_results = Strategy_results.sort_values(by='CAGR', ascending=False).reset_index(drop=True)
@@ -144,5 +156,4 @@ BH_results = pd.DataFrame(BH_results)
 BH_results = BH_results.sort_values(by='CAGR', ascending=False).reset_index(drop=True)
 print(BH_results)
 
-print(df.head(5))
 print(df.tail(5))
