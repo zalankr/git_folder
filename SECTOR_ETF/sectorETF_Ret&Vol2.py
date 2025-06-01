@@ -6,8 +6,8 @@ from openpyxl import load_workbook
 
 def xlsx_to_dataframe(file_name): # XLSX 불러오기 함수
     try:
-        file_path = f'C:/Users/GSR\Desktop/Python_project/git_folder/SECTOR_ETF/{file_name}'
-        # file_path = f'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF/{file_name}'
+        # file_path = f'C:/Users/GSR\Desktop/Python_project/git_folder/SECTOR_ETF/{file_name}'
+        file_path = f'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF/{file_name}'
         df = pd.read_excel(file_path)
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
         return df
@@ -32,20 +32,20 @@ def MDD(df): # MDD 함수
 def ETF_char(file_name): 
     # ETF별 특성
     ETF_char_dict = {
-        'KODEX 200.xlsx': ['KODEX 200', 0.4, df['high']-df['low'], 0.000215],
-        'KODEX 코스닥150.xlsx': ['KODEX 코스닥150', 0.4, df['high']-df['low'], 0.000215],
-        'KOSDAQ 100.xlsx': ['KOSDAQ 100', 0.4, df['high']-df['low'], 0.000215],
-        'KODEX 2차전지산업.xlsx': ['KODEX 2차전지산업', 0.6, df['high']-df['low'], 0.000515],
-        'KODEX 반도체.xlsx': ['KODEX 반도체', 0.1, df['high']-df['low'], 0.000515],
-        'KODEX 은행.xlsx': ['KODEX 은행', 0.1, df['high']-df['low'], 0.000515],
-        'KODEX 자동차.xlsx': ['KODEX 자동차', 0.1, df['high']-df['low'], 0.000515],
-        'PLUS K방산.xlsx': ['PLUS K방산', 0.5, df['high']-df['open'], 0.000515],
-        'SOL 조선TOP3플러스.xlsx': ['SOL 조선TOP3플러스', 0.1, df['high']-df['low'], 0.000515],
-        'TIGER 200 IT.xlsx': ['TIGER 200 IT', 0.3, df['high']-df['low'], 0.000515],
-        'TIGER 200 중공업.xlsx': ['TIGER 200 중공업', 0.1, df['high']-df['low'], 0.000515],
-        'TIGER 리츠부동산인프라.xlsx': ['TIGER 리츠부동산인프라', 0.4, df['high']-df['low'], 0.000515],
-        'TIGER 헬스케어.xlsx': ['TIGER 헬스케어', 0.4, df['high']-df['low'], 0.000515],
-        'TIGER 화장품.xlsx': ['TIGER 화장품', 0.3, df['high']-df['low'], 0.000515]
+        'KODEX 200.xlsx': ['KODEX 200', 0.4, df['high']-df['low'], 0.00035],
+        'KODEX 코스닥150.xlsx': ['KODEX 코스닥150', 0.4, df['high']-df['low'], 0.00035],
+        'KOSDAQ 100.xlsx': ['KOSDAQ 100', 0.4, df['high']-df['low'], 0.00035],
+        'KODEX 2차전지산업.xlsx': ['KODEX 2차전지산업', 0.6, df['high']-df['low'], 0.00055],
+        'KODEX 반도체.xlsx': ['KODEX 반도체', 0.1, df['high']-df['low'], 0.00055],
+        'KODEX 은행.xlsx': ['KODEX 은행', 0.1, df['high']-df['low'], 0.00055],
+        'KODEX 자동차.xlsx': ['KODEX 자동차', 0.1, df['high']-df['low'], 0.00055],
+        'PLUS K방산.xlsx': ['PLUS K방산', 0.5, df['high']-df['open'], 0.00055],
+        'SOL 조선TOP3플러스.xlsx': ['SOL 조선TOP3플러스', 0.1, df['high']-df['low'], 0.00055],
+        'TIGER 200 IT.xlsx': ['TIGER 200 IT', 0.3, df['high']-df['low'], 0.00055],
+        'TIGER 200 중공업.xlsx': ['TIGER 200 중공업', 0.1, df['high']-df['low'], 0.00055],
+        'TIGER 리츠부동산인프라.xlsx': ['TIGER 리츠부동산인프라', 0.4, df['high']-df['low'], 0.00055],
+        'TIGER 헬스케어.xlsx': ['TIGER 헬스케어', 0.4, df['high']-df['low'], 0.00055],
+        'TIGER 화장품.xlsx': ['TIGER 화장품', 0.3, df['high']-df['low'], 0.00055]
     }
     for ETF in ETF_char_dict:
         if file_name in ETF:
@@ -105,7 +105,7 @@ class Save_Result: # 결과 저장 클래스
 
         print(f"엑셀 파일이 저장되었습니다: {save_path}")
 
-file_name = 'KOSDAQ 100.xlsx' # 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
+file_name = 'TIGER 화장품.xlsx' # 직전 1개월간 거래대급 상위 국내섹터별 ETF 4개 #1,2위 2000, 3,4위 1000
 # KODEX 200.xlsx #4000 # KODEX 코스닥150.xlsx #2000 # KOSDAQ 100.xlsx
 # KODEX 2차전지산업.xlsx # KODEX 반도체.xlsx # KODEX 은행.xlsx# KODEX 자동차.xlsx 
 # PLUS K방산.xlsx # SOL 조선TOP3플러스.xlsx
@@ -123,8 +123,8 @@ t1 = Back_test(df, etf_K, etf_range, etf_slipage)
 result = t1.back_test()
 print(result.head(5))
 
-save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder/SECTOR_ETF'
-# save_dir = 'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF'
+# save_dir = 'C:/Users/GSR/Desktop/Python_project/git_folder/SECTOR_ETF'
+save_dir = 'C:/Users/ilpus/PythonProjects/git_folder/SECTOR_ETF'
 M_result = Save_Result(file_name, result, Period)
 M_result.save_to_excel(result)
 ######################################################################################################################
