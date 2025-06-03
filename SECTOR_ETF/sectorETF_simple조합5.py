@@ -33,40 +33,42 @@ class df_make:
         return self.df
 
 # 엑셀 파일 불러오기+데이터프레임으로 변환
-df1 = df_make(0)
-df2 = df_make(-1)
-df3 = df_make(3)
-df4 = df_make(4)
-df5 = df_make(5)
+KODEX_200 = df_make(0)
+KOSDAQ_100 = df_make(2)
+KODEX_SC = df_make(4)
+KODEX_BK = df_make(5)
+KODEX_MO = df_make(6)
 
-df1 = df1.get_df()
-df2 = df2.get_df()
-df3 = df3.get_df()
-df4 = df4.get_df()
-df5 = df5.get_df()
+KODEX_200 = KODEX_200.get_df()
+KOSDAQ_100 = KOSDAQ_100.get_df()
+KODEX_SC = KODEX_SC.get_df()
+KODEX_BK = KODEX_BK.get_df()
+KODEX_MO = KODEX_MO.get_df()
 
 # dataframe 병합
-df = pd.merge(pd.merge(pd.merge(pd.merge(df1, df2, on='date', how='inner'), df3, on='date', how='inner'), 
-                       df4, on='date', how='inner'), df5, on='date', how='inner')
+df = pd.merge(pd.merge(pd.merge(pd.merge(KODEX_200, KOSDAQ_100, on='date', how='inner'), KODEX_SC, on='date', how='inner'), 
+                       KODEX_BK, on='date', how='inner'), KODEX_MO, on='date', how='inner')
 df.dropna(inplace=True)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 
-initial_kodex = 40000000  # 4000만원
-initial_kosdaq = 30000000  # 3000만원
-initial_sector = 20000000  # 2000만원
+initial_200 = 50000000  # 5000만원
+initial_100 = 25000000  # 2500만원
+initial_OTHER = 25000000  # 2500만원
+수수료 = 0.00015  # 수수료율
 
-df['0_profit'] = (df['0_return'] - 1) * initial_kodex
-df['-1_profit'] = (df['-1_return'] - 1) * initial_kosdaq
-df['3_profit'] = (df['3_return'] - 1) * initial_sector
-df['4_profit'] = (df['4_return'] - 1) * initial_sector
-df['5_profit'] = (df['5_return'] - 1) * initial_sector
+# 수익률 계산
+df['0_profit'] = np.where(df['0_return'] == 1, df['0_return'], (df['0_return'] - 1) * initial_200 - (initial_200 * 수수료 * 2))
+df['2_profit'] = np.where(df['2_return'] == 1, df['2_return'], (df['2_return'] - 1) * initial_100 - (initial_100 * 수수료 * 2))
+df['4_profit'] = np.where(df['4_return'] == 1, df['4_return'], (df['4_return'] - 1) * initial_OTHER - (initial_OTHER * 수수료 * 2))
+df['5_profit'] = np.where(df['5_return'] == 1, df['5_return'], (df['5_return'] - 1) * initial_OTHER - (initial_OTHER * 수수료 * 2))
+df['6_profit'] = np.where(df['6_return'] == 1, df['6_return'], (df['6_return'] - 1) * initial_OTHER - (initial_OTHER * 수수료 * 2))
 
 # 합산 수익
-df['total_profit'] = df['0_profit'] + df['-1_profit'] + df['3_profit'] + df['4_profit'] + df['5_profit']
-df['cumulative_profit'] = df['total_profit'].cumsum() + (initial_kodex + initial_kosdaq + (initial_sector * 3))
+df['total_profit'] = df['0_profit'] + df['2_profit'] + df['4_profit'] + df['5_profit'] + df['6_profit']
+df['cumulative_profit'] = df['total_profit'].cumsum() + (initial_200 + initial_100 + (initial_OTHER * 3))
 
 # CAGR 계산
-start_value = initial_kodex + initial_kosdaq + (initial_sector * 3)
+start_value = initial_200 + initial_100 + (initial_OTHER * 3)
 end_value = df['cumulative_profit'].iloc[-1]
 days = (df['date'].iloc[-1] - df['date'].iloc[0]).days
 years = days / 365.0
@@ -82,7 +84,5 @@ MDD = drawdown.min()
 print(f"CAGR: {CAGR:.4%}")
 print(f"MDD: {MDD:.2%}")
 
-
-
-print(df.head(10))
+print(df.head(5))
 ############################ GPT 영역 #############################
