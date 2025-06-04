@@ -6,7 +6,7 @@ import os
 from openpyxl import load_workbook
 
 # 결과 엑셀 파일 초기 생성
-file_path = 'C:/Users/ilpus/PythonProjects/git_folder/TQQQ_MA/TQQQ_Results.xlsx'
+file_path = 'C:/Users/ilpus/PythonProjects/git_folder/TQQQ_MA/UPRO_Results.xlsx'
 if not os.path.exists(file_path):
     with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
         pd.DataFrame().to_excel(writer, sheet_name='sheet1', index=False)
@@ -21,17 +21,18 @@ AGG = AGG.resample('1d').ffill()
 AGG['Regime'] = AGG['Regime'].ffill().astype(bool)
 AGG = AGG.dropna(subset=['AGG_MA'])
 
-TQQQ = yf.download('TQQQ', start='2010-02-09', auto_adjust=True, interval='1d', progress=True, multi_level_index=False)
-TQQQ.drop(['Open','High','Low','Volume'], axis=1, inplace=True)
+# UPRO 데이터
+UPRO = yf.download('UPRO', start='2010-02-09', auto_adjust=True, interval='1d', progress=True, multi_level_index=False)
+UPRO.drop(['Open','High','Low','Volume'], axis=1, inplace=True)
 
 for MA in range(5, 256, 5):
-    TQ = TQQQ.copy()
+    UP = UPRO.copy()
     AG = AGG.copy()
-    TQ['TQ_MA'] = TQ['Close'].rolling(window=MA).mean()
-    TQ = TQ[['Close', 'TQ_MA']].rename(columns={'Close': 'TQ'})
-    TQ['Long'] = TQ['TQ'] >= TQ['TQ_MA']
+    UP['TQ_MA'] = UP['Close'].rolling(window=MA).mean()
+    UP = UP[['Close', 'TQ_MA']].rename(columns={'Close': 'TQ'})
+    UP['Long'] = UP['TQ'] >= UP['TQ_MA']
 
-    df = TQ.join(AG, how='left').sort_index()
+    df = UP.join(AG, how='left').sort_index()
     df = df.dropna(subset=['TQ_MA', 'AGG_MA'])
 
     df['Position'] = np.where((df['Long'] == 1) & (df['Regime'] == 1), 1, 0)
@@ -110,7 +111,7 @@ for MA in range(5, 256, 5):
     MA_sortino_ratio = (MA_mean_return / neg_MA_std) * np.sqrt(252) if neg_MA_std != 0 else np.nan
 
     Strategy_results.append({
-        'Model': 'TQQQ MA+AGG',
+        'Model': 'UPRO MA+AGG',
         'MA': MA,
         'CAGR': cagr,
         'Taxed CAGR': taxed_cagr,
@@ -121,7 +122,7 @@ for MA in range(5, 256, 5):
     })
 
     MA_results.append({
-        'Model': 'TQQQ MA',
+        'Model': 'UPRO MA',
         'MA': MA,
         'MA CAGR': MA_cagr,
         'MA MDD': MA_mdd,
@@ -130,7 +131,7 @@ for MA in range(5, 256, 5):
     })
 
     BH_results.append({
-        'Model': 'TQQQ BH',
+        'Model': 'UPRO BH',
         'CAGR': buy_and_hold_cagr,
         'MDD': buy_and_hold_mdd,
         'Sharpe': BH_sharpe_ratio,
