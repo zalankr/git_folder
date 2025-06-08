@@ -31,4 +31,4 @@ for coin in Coins:
 # upbit.buy_limit_order("KRW-BTC", buy_price, (won / buy_price))
 # print("Buy limit order placed at", buy_price, "for", won, "KRW worth of BTC")
 
-chapter 3-5
+# chapter 3-5
