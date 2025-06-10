@@ -5,6 +5,48 @@ access_key = "Wl6CAHw8AtcYoFuxydCCzAVAv8AlgMNUe0EChW2x"
 secret_key = "2cxa4xE5ocdpXUG3zN5K7slGGvGrW4X6lMIUz4lR"
 upbit = pu.Upbit(access_key, secret_key)
 
+# chapter 3-5
+
+tickers = pu.get_tickers(fiat="KRW")
+
+for ticker in tickers:
+    if ticker == "KRW-BTC":
+        df = pu.get_ohlcv(ticker, interval="day")
+        print(df['close'].tail(20))
+        print("-" * 30)
+        print(df.index[-1], ":", df['close'].iloc[-1])
+        break
+
+# chapter 4-1
+
+
+
+
+# balance = upbit.get_balances()
+# print("Balance:", balance)
+
+# for coin_balance in balance:
+#     ticker = coin_balance['currency']
+#     if ticker == "KRW" or ticker == "APENFT":
+#         continue
+
+#     print(f"Ticker: {ticker}, Balance: {coin_balance['balance']}")
+#     print(f"Avg Buy Price: {coin_balance['avg_buy_price']}")
+#     current_price = pu.get_current_price(f"KRW-{ticker}")
+#     수익률 = (current_price - float(coin_balance['avg_buy_price'])) / float(coin_balance['avg_buy_price']) * 100
+#     수익률 = round(수익률, 2)  # Round to 2 decimal places
+#     print(f"Return: {수익률}%")
+  
+
+#     if 수익률 < -0.6:
+#         upbit.sell_limit_order(f"KRW-{ticker}", pu.get_tick_size(current_price * 1.09), float(coin_balance['balance'])/20)
+#         print(f"Sell order placed for {ticker} at {pu.get_tick_size(current_price * 1.09)} KRW")
+
+#     print("-" * 30)
+
+
+
+
 """
 Coins = pu.get_tickers(fiat="KRW")
 for coin in Coins:
@@ -30,5 +72,3 @@ for coin in Coins:
 
 # upbit.buy_limit_order("KRW-BTC", buy_price, (won / buy_price))
 # print("Buy limit order placed at", buy_price, "for", won, "KRW worth of BTC")
-
-# chapter 3-5
