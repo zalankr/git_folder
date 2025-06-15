@@ -70,7 +70,7 @@ end = f'{B1year}-{B1month}-{endday}'
 start = f'{B4year}-{B4month}-01'
 
 # AGG 데이터
-AGG = yf.download('AGG', start=start, end=end, auto_adjust=True, interval='1mo', progress=True, 
+AGG = yf.download(tickers='AGG', start=start, end=end, auto_adjust=True, interval='1mo', progress=True, 
                   multi_level_index=False)
 
 

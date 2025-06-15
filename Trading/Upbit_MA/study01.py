@@ -5,8 +5,6 @@ access_key = "Wl6CAHw8AtcYoFuxydCCzAVAv8AlgMNUe0EChW2x"
 secret_key = "2cxa4xE5ocdpXUG3zN5K7slGGvGrW4X6lMIUz4lR"
 upbit = pu.Upbit(access_key, secret_key)
 
-# chapter 3-5
-
 tickers = pu.get_tickers(fiat="KRW")
 
 for ticker in tickers:
@@ -16,8 +14,6 @@ for ticker in tickers:
         print("-" * 30)
         print(df.index[-1], ":", df['close'].iloc[-1])
         break
-
-# chapter 4-1
 
 
 
