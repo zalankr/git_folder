@@ -4,7 +4,7 @@ import os
 
 # Kakao token file path
 # kakao_token_file_path = "/var/autobot/kakao/kakao_token.json"  # 변경: 실제 경로로 수정
-kakao_token_file_path = "C:/Users/GSR\Desktop/Python_project/git_folder/Crypto/kakao_token.json"  # 경로
+kakao_token_file_path = "C:\Users\GSR\Desktop\Python_project/kakao_token.json"  # 경로
 # Kakao API 정보
 url = 'https://kauth.kakao.com/oauth/token'
 rest_api_key = '90d41aca9915d7346e1dd4a2596f767f'  # REST API 키
