@@ -1,13 +1,16 @@
 import pyupbit
 import time
 import pandas as pd
+import kakao_alert
 
-
-access = "Wl6CAHw8AtcYoFuxydCCzAVAv8AlgMNUe0EChW2x"          # 본인 값으로 변경
-secret = "2cxa4xE5ocdpXUG3zN5K7slGGvGrW4X6lMIUz4lR"          # 본인 값으로 변경
+access = "CvRZ8L3uWWx7SxeixwwX5mQVFXpJUaN7lxxT9gTe"          # 본인 값으로 변경
+secret = "3iOZ7kGlSUP2v1yIUc7Y6zfOn50mXp2dMqHUqJR1"          # 본인 값으로 변경
 
 upbit = pyupbit.Upbit(access, secret)
 
+# 카카오톡 메세지 보내는 함수
+def SendMessage(msg):
+    kakao_alert.SendMessage(msg)
 #아래 함수안의 내용은 참고로만 보세요! 제가 말씀드렸죠? 검증된 함수니 안의 내용 몰라도 그냥 가져다 쓰기만 하면 끝!
 #RSI지표 수치를 구해준다. 첫번째: 분봉/일봉 정보, 두번째: 기간, 세번째: 기준 날짜
 def GetRSI(ohlcv, period=14, st=-1):
@@ -138,9 +141,11 @@ def GetCoinNowMoney(balances, Ticker):
     return CoinMoney
 
 #티커에 해당하는 코인이 매수된 상태면 참을 리턴하는함수
-def IsHasCoin(balances,Ticker):
+def IsHasCoin(balances, Ticker):
     HasCoin = False
     for value in balances:
+        if not isinstance(value, dict):
+            continue
         realTicker = value['unit_currency'] + "-" + value['currency']
         if Ticker == realTicker:
             HasCoin = True
@@ -150,191 +155,136 @@ def IsHasCoin(balances,Ticker):
 def GetHasCoinCnt(balances):
     CoinCnt = 0
     for value in balances:
-        avg_buy_price = float(value['avg_buy_price'])
-        if avg_buy_price != 0: #원화, 드랍받은 코인(평균매입단가가 0이다) 제외!
-            CoinCnt += 1
+        try:
+            if not isinstance(value, dict):
+                continue
+            avg_buy_price = float(value['avg_buy_price'])
+            if avg_buy_price != 0: #원화, 드랍받은 코인(평균매입단가가 0이다) 제외!
+                CoinCnt += 1
+        except Exception as e:
+            continue
     return CoinCnt
 
 #총 원금을 구한다!
 def GetTotalMoney(balances):
     total = 0.0
-    for value in balances:
+    for balance in balances:
         try:
-            ticker = value['currency']
-            if ticker == "KRW": #원화일 때는 평균 매입 단가가 0이므로 구분해서 총 평가금액을 구한다.
-                total += (float(value['balance']) + float(value['locked']))
-            else:
-                avg_buy_price = float(value['avg_buy_price'])
-
-                #매수평균가(avg_buy_price)가 있으면서 잔고가 0이 아닌 코인들의 총 매수가격을 더해줍니다.
-                if avg_buy_price != 0 and (float(value['balance']) != 0 or float(value['locked']) != 0):
-                    #balance(잔고 수량) + locked(지정가 매도로 걸어둔 수량) 이렇게 해야 제대로 된 값이 구해집니다.
-                    #지정가 매도 주문이 없다면 balance에 코인 수량이 100% 있지만 지정가 매도 주문을 걸면 그 수량만큼이 locked로 옮겨지기 때문입니다.
-                    total += (avg_buy_price * (float(value['balance']) + float(value['locked'])))
+            # 키가 존재하는지 먼저 확인
+            if 'currency' in balance and 'balance' in balance:
+                #원화일 때는 실제값을 더한다.
+                if balance['currency'] == "KRW":
+                    total += float(balance['balance'])
+                #코인일 때는 매수 금액을 더한다
+                elif 'avg_buy_price' in balance:
+                    total += float(balance['avg_buy_price']) * float(balance['balance'])
         except Exception as e:
-            print("GetTotalMoney error:", e)
+            pass
     return total
 
-#총 평가금액을 구한다! 
-#위 원금을 구하는 함수와 유사하지만 코인의 매수 평균가가 아니라 현재 평가가격 기준으로 총 평가 금액을 구한다.
+#총 평가 금액을 구한다.
 def GetTotalRealMoney(balances):
     total = 0.0
-    for value in balances:
-
+    for balance in balances:
         try:
-            ticker = value['currency']
-            if ticker == "KRW": #원화일 때는 평균 매입 단가가 0이므로 구분해서 총 평가금액을 구한다.
-                total += (float(value['balance']) + float(value['locked']))
-            else:
-            
-                avg_buy_price = float(value['avg_buy_price'])
-                if avg_buy_price != 0 and (float(value['balance']) != 0 or float(value['locked']) != 0): #드랍받은 코인(평균매입단가가 0이다) 제외 하고 현재가격으로 평가금액을 구한다,.
-                    realTicker = value['unit_currency'] + "-" + value['currency']
-
-                    time.sleep(0.1)
-                    nowPrice = pyupbit.get_current_price(realTicker)
-                    total += (float(nowPrice) * (float(value['balance']) + float(value['locked'])))
+            # 키가 존재하는지 먼저 확인
+            if 'currency' in balance and 'balance' in balance:
+                #원화일 때는 실제값을 더한다.
+                if balance['currency'] == "KRW":
+                    total += float(balance['balance'])
+                #코인일 때는 현재가를 가져와서 더한다
+                else:
+                    ticker = "KRW-" + balance['currency']
+                    data = pyupbit.get_current_price(ticker)
+                    total += float(data) * float(balance['balance'])
         except Exception as e:
-            print("GetTotalRealMoney error:", e)
-
-
+            pass
     return total
 
-ohlcv = pyupbit.get_ohlcv("KRW-BTC", interval="minute60") #60분봉 캔들 정보를 가져온다.
-RSI = GetRSI(ohlcv, period=14, st=-1)
-print("RSI:", RSI)
+##########################################################################################3
 
-MA20 = GetMA(ohlcv, period=20, st=-1)
-print("MA20:", MA20)
-
-Coinlist = GetTopCoinList(interval="day", top=10)
-print("Top 10 Coin List:", Coinlist)
-
-balances = upbit.get_balances() #잔고 정보를 가져온다.
-Check = CheckCoinInList(CoinList=Coinlist, Ticker="KRW-BTC")
-print("Check Coin in List:", Check)
-
-Revenue = GetRevenueRate(balances=balances, Ticker="KRW-BTC")
-print("Revenue Rate for KRW-BTC:", Revenue)
-
-NowMoney = GetCoinNowMoney(balances=balances, Ticker="KRW-BTC")
-print("Now Money for KRW-BTC:", NowMoney)
-
-Check보유 = IsHasCoin(balances=balances, Ticker="KRW-BTC")
-
-
-
-
-
-
-"""
 #내가 매수할 총 코인 개수
 MaxCoinCnt = 5.0
-
 #처음 매수할 비중(퍼센트) 
 FirstRate = 10.0
-#추가 매수할 비중 (퍼센트) 
+#추가 매수할 비중 (퍼센트)
 WaterRate = 5.0
 
-#내가 가진 잔고 데이터를 다 가져온다.
+# 잔고 데이터
 balances = upbit.get_balances()
 
-TotalMoeny = GetTotalMoney(balances) #총 원금
-TotalRealMoney = GetTotalRealMoney(balances) #총 평가금액
+TotalMoney = GetTotalMoney(balances)
+TotalRealMoney = GetTotalRealMoney(balances)
+# 내 총 수익률
+TotalRevenue = (TotalRealMoney - TotalMoney) * 100.0 / TotalMoney
 
-#내 총 수익율
-TotalRevenue = (TotalRealMoney - TotalMoeny) * 100.0/ TotalMoeny
+# 코인 당 매수 금액 리미트
+CoinMaxMoney = TotalRealMoney / MaxCoinCnt
 
-#코인당 매수할 최대 매수금액
-CoinMaxMoney = TotalMoeny / MaxCoinCnt
+#처음 매수할 금액
+FirstEnterMoney = CoinMaxMoney / 100.0 * FirstRate
 
-
-#처음에 매수할 금액 
-FirstEnterMoney = CoinMaxMoney / 100.0 * FirstRate 
-
-#그 이후 매수할 금액 - 즉 물 탈 금액 
+#그 이후 매수할 금액 - 즉 물 탈 금액
 WaterEnterMoeny = CoinMaxMoney / 100.0 * WaterRate
 
-print("-----------------------------------------------")
-print ("Total Money:", GetTotalMoney(balances))
-print ("Total Real Money:", GetTotalRealMoney(balances))
-print ("Total Revenue", TotalRevenue)
-print("-----------------------------------------------")
-print ("CoinMaxMoney : ", CoinMaxMoney)
-print ("FirstEnterMoney : ", FirstEnterMoney)
-print ("WaterEnterMoeny : ", WaterEnterMoeny)
+print("-"*30)
+print("Total Money:", TotalMoney)
+print("Total Real Money:", TotalRealMoney)
+print("Total Revenue: {:.2f}%".format(TotalRevenue))
+print("-"*30)
+print ("Coin Max Money:", CoinMaxMoney)
+print ("First Enter Money:", FirstEnterMoney)
+print ("Water Enter Money:", WaterEnterMoeny)
+print("-"*30)
 
-#거래대금이 많은 탑코인 10개의 리스트
-#여러분의 전략대로 마음껏 바꾸세요. 
-#첫번째 파라메타에 넣을 수 있는 값 day/minute1/minute3/minute5/minute10/minute15/minute30/minute60/minute240/week/month
-#ex) TopCoinList = GetTopCoinList("minute10",30) <- 최근 10여분 동안 거래대금이 많은 코인 30개를 리스트로 리턴
-TopCoinList = GetTopCoinList("week",10)
+# 거래대금이 많은 탑코인 10개의 리스트
+TopCoinList = GetTopCoinList(interval="day", top=10)
 
-#제외할 코인들을 넣어두세요. 상폐예정이나 유의뜬 코인등등 원하는 코인을 넣어요! 
+# 위험한 코인 리스트
 DangerCoinList = ['KRW-MARO','KRW-TSHP','KRW-PXL']
 
-#만약 나는 내가 원하는 코인만 지정해서 사고 싶다면 여기에 코인 티커를 넣고 아래 for문에서 LovelyCoinList를 활용하시면 되요!
-LovelyCoinList = ['KRW-BTC','KRW-ETH','KRW-DOGE','KRW-DOT']
+# 내가 선호하는 코인 리스트
+LovelyCoinList = ['KRW-BTC','KRW-ETH','KRW-XRP','KRW-SOL']
 
-
-Tickers = pyupbit.get_tickers("KRW")
-
+Tickers = pyupbit.get_tickers(fiat="KRW")
 
 for ticker in Tickers:
-    try: 
-
-        #위험한 코인이라면 스킵!!!
-        if CheckCoinInList(DangerCoinList,ticker) == True:
+    try:
+        # 거래량 상위 TopCoinList에 포함되어 있지 않으면 스킵!
+        if CheckCoinInList(TopCoinList, ticker) == False:
             continue
-        #나만의 러블리만 사겠다! 그 이외의 코인이라면 스킵!!!
-        #if CheckCoinInList(LovelyCoinList,ticker) == False:
-        #    continue
-
-        #이렇게 쉬어주는거 잊지 마세요!
+        # 위험한 코인 리스트에 포함되어 있으면 스킵!
+        if CheckCoinInList(DangerCoinList, ticker) == True:
+            continue
         time.sleep(0.05)
+        df_60 = pyupbit.get_ohlcv(ticker=ticker, interval="minute60")# 600분봉
+        rsi60_min_before = GetRSI(df_60, period=14, st=-2) 
+        rsi60_min = GetRSI(df_60, period=14, st=-1)
 
-        df_60 = pyupbit.get_ohlcv(ticker,interval="minute60") #60분봉 데이타를 가져온다.
+        revenue_rate = GetRevenueRate(balances, ticker)
+        print("ticker:", ticker, rsi60_min_before, "->", rsi60_min)
+        print("revenue_rate:", revenue_rate)
 
-        #RSI지표를 구한다.
-        rsi60_min_before = GetRSI(df_60,14,-2)
-        rsi60_min = GetRSI(df_60,14,-1)
+        # 이미 매수된 코인
+        if IsHasCoin(balances, ticker) == True:
+            # 매수 코인의 총 매수 금액
+            NowCoinTotalMoney = GetCoinNowMoney(balances, ticker)
+            # 코인당 리미트 매수금액 
+            Total_Rate = NowCoinTotalMoney / CoinMaxMoney *100.0
 
-
-        print(ticker , ", RSI :", rsi60_min_before, " -> ", rsi60_min)
-
-
-
-        #보유하고 있는 코인들 즉 매수 상태인 코인들
-        if IsHasCoin(balances,ticker) == True:
-
-            #수익율을 구한다.
-            revenu_rate = GetRevenueRate(balances,ticker)
-            print("revenu_rate : ",revenu_rate)
-
-
-            #현재 코인의 총 매수금액
-            NowCoinTotalMoney = GetCoinNowMoney(balances,ticker)
-
-            #할당된 최대코인매수금액 대비 매수된 코인 비율
-            Total_Rate = NowCoinTotalMoney / CoinMaxMoney * 100.0
-
-            #60분봉 기준 RSI지표 30 이하일때 
             if rsi60_min <= 30.0:
-
-                #할당된 최대코인매수금액 대비 매수된 코인 비중이 50%이하일때..
-                if Total_Rate <= 50.0:
+                if Total_Rate < 50.0:
                     time.sleep(0.05)
-                    print(upbit.buy_market_order(ticker,WaterEnterMoeny))
-                #50%를 초과하면
+                    print("rsi60_min <= 30.0 & Total_Rate < 50.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")
+                    SendMessage("rsi60_min <= 30.0 & Total_Rate < 50.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")
                 else:
-                    #수익율이 마이너스 5% 이하 일때만 매수를 진행하여 원금 소진을 늦춘다.
-                    if revenu_rate <= -5.0:
+                    if revenue_rate <= -5.0 :
                         time.sleep(0.05)
-                        print(upbit.buy_market_order(ticker,WaterEnterMoeny))
-
-        #아직 매수하기 전인 코인들 즉 매수 대상
+                        print("rsi60_min <= 30.0 & revenue_rate <= -5.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")
+                        SendMessage("rsi60_min <= 30.0 & revenue_rate <= -5.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")  
+            
+        # 아직 매수하기 전인 코인
         else:
-
             #거래량 많은 탑코인 리스트안의 코인이 아니라면 스킵! 탑코인에 해당하는 코인만 이후 로직을 수행한다.
             if CheckCoinInList(TopCoinList,ticker) == False:
                 continue
@@ -342,15 +292,11 @@ for ticker in Tickers:
             #60분봉 기준 RSI지표 30 이하이면서 아직 매수한 코인이 MaxCoinCnt보다 작다면 매수 진행!
             if rsi60_min <= 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt :
                 time.sleep(0.05)
-                print(upbit.buy_market_order(ticker,FirstEnterMoney))
+                print("rsi60_min <= 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt, upbit.buy_market_order(ticker, FirstEnterMoney)")
+                SendMessage("rsi60_min <= 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt, upbit.buy_market_order(ticker, FirstEnterMoney)")
 
     except Exception as e:
         print("error:", e)
-"""
-
-
-
-
 
 
 

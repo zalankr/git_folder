@@ -4,8 +4,8 @@ import pandas as pd
 # import kakao_alert
 
 # 업비트 계좌 연결
-access_key = "Wl6CAHw8AtcYoFuxydCCzAVAv8AlgMNUe0EChW2x"
-secret_key = "2cxa4xE5ocdpXUG3zN5K7slGGvGrW4X6lMIUz4lR"         # 본인 값으로 변경
+access_key = ""
+secret_key = ""         # 본인 값으로 변경
 
 #업비트 객체를 만들어요 액세스 키와 시크릿 키를 넣어서요.
 upbit = pu.Upbit(access_key, secret_key)
