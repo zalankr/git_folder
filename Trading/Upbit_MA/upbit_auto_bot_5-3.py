@@ -250,7 +250,8 @@ LovelyCoinList = ['KRW-BTC','KRW-ETH','KRW-XRP','KRW-SOL']
 Tickers = pyupbit.get_tickers(fiat="KRW")
 
 Now = datetime.datetime.now()
-print(f"현재 시각: {Now.strftime('%Y-%m-%d %H:%M:%S')}")
+
+SendMessage(f"현재 시각: {Now.strftime('%Y-%m-%d %H:%M:%S')}")
 print("-"*30)
 
 for ticker in Tickers:
