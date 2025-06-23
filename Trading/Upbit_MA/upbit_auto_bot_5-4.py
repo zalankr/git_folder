@@ -251,8 +251,8 @@ Tickers = pyupbit.get_tickers(fiat="KRW")
 
 Now = datetime.datetime.now()
 
-SendMessage(f"현재 시각: {Now.strftime('%Y-%m-%d %H:%M:%S')}")
 print("-"*30)
+SendMessage(f"현재 시각: {Now.strftime('%Y-%m-%d %H:%M:%S')}")
 
 for ticker in Tickers:
     try:
@@ -267,23 +267,50 @@ for ticker in Tickers:
         rsi60_min_before = GetRSI(df_60, period=14, st=-2) 
         rsi60_min = GetRSI(df_60, period=14, st=-1)
 
-        revenue_rate = GetRevenueRate(balances, ticker)
-        print("ticker:", ticker, rsi60_min_before, "->", rsi60_min)
-        print("revenue_rate:", revenue_rate)
+        
+
+        # 원화잔고
+        time.sleep(0.05)
+        won = float(upbit.get_balance("KRW"))
 
         # 이미 매수된 코인
         if IsHasCoin(balances, ticker) == True:
-            # 매수 코인의 총 매수 금액
+            # 현재 코인의 수익률
+            revenue_rate = GetRevenueRate(balances, ticker)
+            print("ticker:", ticker, rsi60_min_before, "->", rsi60_min)
+            print("revenue_rate:", revenue_rate)
+
+            # 현재 코인의 총 매수금액
             NowCoinTotalMoney = GetCoinNowMoney(balances, ticker)
+            
+            # 60분봉 기준 RSI지표 70이상이면서 수익권일때 분할 매도
+            if rsi60_min >= 70.0 or revenue_rate >= 5.0:
+                # 최대 코인 매수금액의 1/4보다 작다면 전체를 시장가 매도
+                if NowCoinTotalMoney < (CoinMaxMoney / 4.0):
+                    print(f"upbit.sell_market_order({ticker}, upbit.get_balance(ticker))")
+                    SendMessage(f"upbit.sell_market_order({ticker}, upbit.get_balance(ticker))")
+                # 최대 코인 매수금액의 1/4보다 크다면 절반씩 시장가 매도
+                else:
+                    print(f"upbit.sell_market_order({ticker}, upbit.get_balance(ticker) / 2.0)")
+                    SendMessage(f"upbit.sell_market_order({ticker}, upbit.get_balance(ticker) / 2.0)")
+            
+            # 내가 가진 원화가 물탈 돈보다 적고 수익률 -10%이하인 경우
+            if won < WaterEnterMoeny and revenue_rate <= -10.0:
+                print(f"upbit.sell_market_order({ticker}, upbit.get_balance(ticker) / 2.0)")
+                SendMessage(f"upbit.sell_market_order({ticker}, upbit.get_balance(ticker) / 2.0)")
+
             # 코인당 리미트 매수금액 
             Total_Rate = NowCoinTotalMoney / CoinMaxMoney *100.0
-
-            if rsi60_min <= 30.0:
+            # 60분봉 기준 RSI지표 30을 상향돌파 할때
+            if rsi60_min_before <= 30.0 and rsi60_min > 30.0:
+                # 할당된 최대 코인매수 금액 대비 코인 비중이 50% 이하이면
                 if Total_Rate < 50.0:
                     time.sleep(0.05)
                     print(f"rsi60_min: {rsi60_min} & Total_Rate: {Total_Rate}, upbit.buy_market_order({ticker}, WaterEnterMoeny)")
                     SendMessage(f"rsi60_min: {rsi60_min} & Total_Rate: {Total_Rate}, upbit.buy_market_order({ticker}, WaterEnterMoeny)")
+                # 50%를 초과하면
                 else:
+                    # 수익률이 -5% 이하일때만 매수 진행
                     if revenue_rate <= -5.0 :
                         time.sleep(0.05)
                         print(f"rsi60_min: {rsi60_min} & revenue_rate: {Total_Rate}, upbit.buy_market_order({ticker}, WaterEnterMoeny)")
@@ -295,8 +322,8 @@ for ticker in Tickers:
             if CheckCoinInList(TopCoinList,ticker) == False:
                 continue
 
-            #60분봉 기준 RSI지표 30 이하이면서 아직 매수한 코인이 MaxCoinCnt보다 작다면 매수 진행!
-            if rsi60_min <= 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt :
+            #60분봉 기준 RSI지표 30을 상향돌파하면서 아직 매수한 코인이 MaxCoinCnt보다 작다면 매수 진행!
+            if rsi60_min_before <= 30.0 and rsi60_min > 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt :
                 time.sleep(0.05)
                 print(f"rsi60_min: {rsi60_min} and {GetHasCoinCnt(balances)}, upbit.buy_market_order({ticker}, FirstEnterMoney)")
                 SendMessage(f"rsi60_min: {rsi60_min} and {GetHasCoinCnt(balances)}, upbit.buy_market_order({ticker}, FirstEnterMoney)")
@@ -305,7 +332,8 @@ for ticker in Tickers:
         print("error:", e)
 
 
-
+SendMessage(f"Finished")
+print("-"*30)
 
 
 
