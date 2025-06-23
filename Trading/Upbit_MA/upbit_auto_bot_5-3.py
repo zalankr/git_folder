@@ -2,6 +2,7 @@ import pyupbit
 import time
 import pandas as pd
 import kakao_alert
+import datetime
 
 access = "CvRZ8L3uWWx7SxeixwwX5mQVFXpJUaN7lxxT9gTe"          # 본인 값으로 변경
 secret = "3iOZ7kGlSUP2v1yIUc7Y6zfOn50mXp2dMqHUqJR1"          # 본인 값으로 변경
@@ -248,6 +249,10 @@ LovelyCoinList = ['KRW-BTC','KRW-ETH','KRW-XRP','KRW-SOL']
 
 Tickers = pyupbit.get_tickers(fiat="KRW")
 
+Now = datetime.datetime.now()
+print(f"현재 시각: {Now.strftime('%Y-%m-%d %H:%M:%S')}")
+print("-"*30)
+
 for ticker in Tickers:
     try:
         # 거래량 상위 TopCoinList에 포함되어 있지 않으면 스킵!
@@ -275,14 +280,14 @@ for ticker in Tickers:
             if rsi60_min <= 30.0:
                 if Total_Rate < 50.0:
                     time.sleep(0.05)
-                    print("rsi60_min <= 30.0 & Total_Rate < 50.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")
-                    SendMessage("rsi60_min <= 30.0 & Total_Rate < 50.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")
+                    print(f"rsi60_min: {rsi60_min} & Total_Rate: {Total_Rate}, upbit.buy_market_order({ticker}, WaterEnterMoeny)")
+                    SendMessage(f"rsi60_min: {rsi60_min} & Total_Rate: {Total_Rate}, upbit.buy_market_order({ticker}, WaterEnterMoeny)")
                 else:
                     if revenue_rate <= -5.0 :
                         time.sleep(0.05)
-                        print("rsi60_min <= 30.0 & revenue_rate <= -5.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")
-                        SendMessage("rsi60_min <= 30.0 & revenue_rate <= -5.0, upbit.buy_market_order(ticker=ticker, volume = WaterEnterMoeny)")  
-            
+                        print(f"rsi60_min: {rsi60_min} & revenue_rate: {Total_Rate}, upbit.buy_market_order({ticker}, WaterEnterMoeny)")
+                        SendMessage(f"rsi60_min: {rsi60_min} & revenue_rate: {Total_Rate}, upbit.buy_market_order({ticker}, WaterEnterMoeny)")
+
         # 아직 매수하기 전인 코인
         else:
             #거래량 많은 탑코인 리스트안의 코인이 아니라면 스킵! 탑코인에 해당하는 코인만 이후 로직을 수행한다.
@@ -292,8 +297,8 @@ for ticker in Tickers:
             #60분봉 기준 RSI지표 30 이하이면서 아직 매수한 코인이 MaxCoinCnt보다 작다면 매수 진행!
             if rsi60_min <= 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt :
                 time.sleep(0.05)
-                print("rsi60_min <= 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt, upbit.buy_market_order(ticker, FirstEnterMoney)")
-                SendMessage("rsi60_min <= 30.0 and GetHasCoinCnt(balances) < MaxCoinCnt, upbit.buy_market_order(ticker, FirstEnterMoney)")
+                print(f"rsi60_min: {rsi60_min} and {GetHasCoinCnt(balances)}, upbit.buy_market_order({ticker}, FirstEnterMoney)")
+                SendMessage(f"rsi60_min: {rsi60_min} and {GetHasCoinCnt(balances)}, upbit.buy_market_order({ticker}, FirstEnterMoney)")
 
     except Exception as e:
         print("error:", e)
