@@ -216,6 +216,7 @@ balances = upbit.get_balances()
 
 TotalMoney = GetTotalMoney(balances)
 TotalRealMoney = GetTotalRealMoney(balances)
+
 # 내 총 수익률
 TotalRevenue = (TotalRealMoney - TotalMoney) * 100.0 / TotalMoney
 
@@ -264,14 +265,18 @@ for ticker in Tickers:
             continue
         time.sleep(0.05)
         df_60 = pyupbit.get_ohlcv(ticker=ticker, interval="minute60")# 600분봉
-        rsi60_min_before = GetRSI(df_60, period=14, st=-2) 
-        rsi60_min = GetRSI(df_60, period=14, st=-1)
+        rsi60_min_before = GetRSI(df_60, period=14, st=-3) 
+        rsi60_min = GetRSI(df_60, period=14, st=-2)
 
         
 
         # 원화잔고
         time.sleep(0.05)
         won = float(upbit.get_balance("KRW"))
+        print("# Remain Won :", won)
+        print("------------------------------------")
+        print("- Recently RSI :", rsi60_min_before, " -> ", rsi60_min)
+        SendMessage(f"ticker: {ticker}, {rsi60_min_before} -> {rsi60_min}")
 
         # 이미 매수된 코인
         if IsHasCoin(balances, ticker) == True:
@@ -284,7 +289,7 @@ for ticker in Tickers:
             NowCoinTotalMoney = GetCoinNowMoney(balances, ticker)
             
             # 60분봉 기준 RSI지표 70이상이면서 수익권일때 분할 매도
-            if rsi60_min >= 70.0 or revenue_rate >= 5.0:
+            if rsi60_min >= 70.0 and revenue_rate >= 1.0:
                 # 최대 코인 매수금액의 1/4보다 작다면 전체를 시장가 매도
                 if NowCoinTotalMoney < (CoinMaxMoney / 4.0):
                     print(f"upbit.sell_market_order({ticker}, upbit.get_balance(ticker))")
