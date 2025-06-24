@@ -34,7 +34,7 @@ def GetMA(ohlcv, period=20, st=-1):
     return float(ma.iloc[st])
 
 #거래대금이 많은 순으로 코인 리스트를 얻는다. 첫번째 : Interval기간(day,week,minute15 ....), 두번째 : 몇개까지 
-def GetTopCoinList(interval="day", top=10):
+def GetTopCoinList(interval="day", top=5):
     print("--------------GetTopCoinList Start-------------------")
     #원화 마켓의 코인 티커를 리스트로 담아요.
     Tickers = pyupbit.get_tickers("KRW")
@@ -205,7 +205,7 @@ def GetTotalRealMoney(balances):
 ##########################################################################################3
 
 #내가 매수할 총 코인 개수
-MaxCoinCnt = 5.0
+MaxCoinCnt = 3.0
 #처음 매수할 비중(퍼센트) 
 FirstRate = 10.0
 #추가 매수할 비중 (퍼센트)
@@ -240,7 +240,7 @@ print ("Water Enter Money:", WaterEnterMoeny)
 print("-"*30)
 
 # 거래대금이 많은 탑코인 10개의 리스트
-TopCoinList = GetTopCoinList(interval="day", top=10)
+TopCoinList = GetTopCoinList(interval="day", top=5)
 
 # 위험한 코인 리스트
 DangerCoinList = ['KRW-MARO','KRW-TSHP','KRW-PXL']
@@ -343,15 +343,6 @@ for ticker in Tickers:
 
 SendMessage(f"Finished")
 print("-"*30)
-
-
-
-
-
-
-
-
-
 
 
 
