@@ -188,7 +188,7 @@ for posi in balance['info']['positions']:
 #영상엔 없지만 격리모드가 아니라면 격리모드로 처음 포지션 잡기 전에 셋팅해 줍니다,.
 if isolated == False:
     try:
-        print(binanceX.fapiPrivate_post_margintype({'symbol': Target_Coin_Symbol, 'marginType': 'ISOLATED'}))
+        print(binanceX.fapiprivate_post_margintype({'symbol': Target_Coin_Symbol, 'marginType': 'ISOLATED'}))
     except Exception as e:
         try:
             print(binanceX.fapiprivate_post_margintype({'symbol': Target_Coin_Symbol, 'marginType': 'ISOLATED'}))
@@ -238,6 +238,11 @@ rsi14 = GetRSI(df_15, 14, -1)
 # 음수를 제거한 절대값 수량 ex -0.1 > 0.1로 변경
 abs_amt = abs(amt)
 
+#타겟 레이트 0.001 
+target_rate = 0.001
+#타겟 수익율 0.1%
+target_revenue_rate = target_rate * 100.0
+
 # amt가 0이면 포지션 없음
 if amt == 0:
     print("------No Position")
@@ -245,6 +250,11 @@ if amt == 0:
     if ma5 > ma20 and ma5_before3 < ma5_before2 and ma5_before2 > ma5 and rsi14 >=35 :
         binance.cancel_all_orders(Target_Coin_Ticker)
         time.sleep(0.1)
+
+        #해당 코인 가격을 가져온다.
+        coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+        
+        # 숏포지션 잡는 식
         print("sell short: binance.create_limit_sell_order(Target_Coin_Ticker, first_amount, coin_price)")
         # 스탑로스
         print("SetStopLoss(binance, Target_Coin_Ticker, 0.5)")
@@ -253,6 +263,11 @@ if amt == 0:
     if ma5 < ma20 and ma5_before3 > ma5_before2 and ma5_before2 < ma5 and rsi14 <=65 :
         binance.cancel_all_orders(Target_Coin_Ticker)
         time.sleep(0.1)
+
+        #해당 코인 가격을 가져온다.
+        coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+
+        #롯포지션 잡는 식
         print("buy long: binance.create_limit_buy_order(Target_Coin_Ticker, afirst_amount, coin_price)")
         # 스탑로스
         print("SetStopLoss(binance, Target_Coin_Ticker, 0.5)")
@@ -261,30 +276,214 @@ if amt == 0:
 
 # 0이 아니라면 포지션 있는 상태
 else:
+    print("------------------------------------------------------")
+
+    #현재까지 구매한 퍼센트! 현재 보유 수량을 1%의 수량으로 나누면 된다.
+    buy_percent = abs_amt / one_percent_amount
+    print("Buy Percent : ", buy_percent)
+
+    # 수익율을 구한다!
+    revenue_rate = (coin_price - entryPrice) / entryPrice * 100.0
+
+    # 단 숏 포지션일 경우 수익이 나면 마이너스로 표시 되고 손실이 나면 플러스가 표시 되므로 -1을 곱하여 바꿔준다.
+    if amt < 0:
+        revenue_rate = revenue_rate * -1.0
+
+    #레버리지를 곱한 실제 수익율
+    leverage_revenu_rate = revenue_rate * leverage
+
+    print("Revenue Rate : ", revenue_rate,", Real Revenue Rate : ", leverage_revenu_rate)  
+
+    #손절 마이너스 수익율을 셋팅한다.
+    danger_rate = -5.0
+    #레버리지를 곱한 실제 손절 할 마이너스 수익율
+    leverage_danger_rate = danger_rate * leverage
+
+    print("Danger Rate : ", danger_rate,", Real Danger Rate : ", leverage_danger_rate)
+
+    """
+    5 + 5
+    10 + 10
+    20 + 20
+    40 + 40
+    80 + 20
+
+    5+10
+    15+10
+    25+10
+    35+10
+    45+10
+    55+10
+
+    """
+    #추격 매수 즉 물 탈 마이너스 수익율을 셋팅한다.
+    water_rate = -1.0
+
+    if buy_percent <= 5.0:
+        water_rate = -0.5
+    elif buy_percent <= 10.0:
+        water_rate = -1.0
+    elif buy_percent <= 20.0:
+        water_rate = -2.0
+    elif buy_percent <= 40.0:
+        water_rate = -3.0
+    elif buy_percent <= 80.0:
+        water_rate = -5.0
+
     # 음수면 숏포지션
     if amt < 0:
         print("------Short Position")
-    # 양수면 롱포지션
+
+        # 롱 포지션을 잡을 상황
+        if ma5 < ma20 and ma5_before3 > ma5_before2 and ma5_before2 < ma5 :
+            # 수익이 났다! 숏포지션을 청산하고 롱 포지션도 잡기
+            if revenue_rate >= target_revenue_rate :
+                print("buy/long")
+                # 주문취소 후
+                print("binance.cancel_all_orders(Target_Coin_Ticker)")
+                time.sleep(0.1)
+
+                # 해당 코인 가격을 가져오기
+                coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+
+                # 롱 포지션 잡기
+                print("buy long: binance.create_limit_buy_order(Target_Coin_Ticker, abs_amt + first_amount, coin_price)")
+
+                # 스탑로스
+                print("SetStopLoss(binance, Target_Coin_Ticker, 0.5)")
+
+
+        #영상에서 빠져있는 중요한 부분!!! 숏인 상태에서는 숏을 잡을 만한 상황에서 물을 타야 겠죠?
+        #즉 5일 선이 20일 선 위에 있고 하락추세로 꺾였을 때 물을 탑니다.
+        #숏 포지션을 잡을만한 상황!!!!
+        if ma5 > ma20 and ma5_before3 < ma5_before2 and ma5_before2 > ma5:
+            #물탈 수량 
+            water_amount = abs_amt
+
+            if Max_Amount < abs_amt + water_amount:
+                water_amount = Max_Amount - abs_amt
+
+            #물탈 마이너스 수익율 보다 내 수익율이 작다면 물을 타자!!
+            if revenue_rate <= water_rate and Max_Amount >= abs_amt + water_amount:
+
+                #주문 취소후
+                binanceX.cancel_all_orders(Target_Coin_Ticker)
+                time.sleep(0.1)
+                
+                #해당 코인 가격을 가져온다.
+                coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+
+                #숏 포지션을 잡는다
+                #사실 여기는 시장가로 잡는게 맞습니다 나중에 챕터 7-4의 최종코드를 확인하세요!
+                #print(binanceX.create_limit_sell_order(Target_Coin_Ticker, water_amount, coin_price))
+                print("binanceX.create_order(Target_Coin_Ticker, 'limit', 'sell', water_amount, coin_price)")
+
+                #스탑 로스 설정을 건다.
+                print("SetStopLoss(binanceX,Target_Coin_Ticker,0.5)")
+                
+        
+        if revenue_rate <= danger_rate and buy_percent >= 90.0 :
+            print("buy/long")
+            # 주문취소 후
+            print("binance.cancel_all_orders(Target_Coin_Ticker)")
+            time.sleep(0.1)
+
+            # 해당 코인 가격을 가져오기
+            coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+
+            # 롱 포지션 잡기
+            print("buy long: binance.create_limit_buy_order(Target_Coin_Ticker, abs_amt / 2.0, coin_price)")
+
+            # 스탑로스
+            print("SetStopLoss(binance, Target_Coin_Ticker, 0.5)")
+
+        
+
+
+
+
+     #양수면 롱 포지션 상태
     else:
-        print("------Long Position")
-
-# 스탑로스
-print("SetStopLoss(binance, Target_Coin_Ticker, 0.5)")
+        print("-----Long Position")
 
 
-# 지정가 숏 포지션 잡기
-# print(binance.create_limit_sell_order(Target_Coin_Ticker, 0.001, btc_price)
-# 지정가 롱 포지션 잡기
-# print(binance.create_limit_buy_order(Target_Coin_Ticker, 0.001, btc_price)
-# 지정가 롱 포지션 잡기(숏 정리, 잔량, 목표가격)
-# print(binance.create_limit_buy_order(Target_Coin_Ticker, abs_amt, short_entryPrice)
-# 지정가 숏 포지션 잡기(롱 정리, 잔량, 목표가격)
-# print(binance.create_limit_sell_order(Target_Coin_Ticker, abs_amt, long_entryPrice)
+        #숏 포지션을 잡을만한 상황!!!!
+        if ma5 > ma20 and ma5_before3 < ma5_before2 and ma5_before2 > ma5:
+            #수익이 났다!!! 롱 포지션 종료하고 숏 포지션도 잡아주자!
+            if revenue_rate >= target_revenue_rate:
 
-#해당 코인의 정보를 가져옵니다
-btc = binanceX.fetch_ticker(Target_Coin_Ticker)
-#현재 종가 즉 현재가를 읽어옵니다.
-btc_price = btc['close']
+                #주문 취소후
+                binanceX.cancel_all_orders(Target_Coin_Ticker)
+                time.sleep(0.1)
+                
+                #해당 코인 가격을 가져온다.
+                coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+
+                #숏 포지션을 잡는다
+                #사실 여기는 시장가로 잡는게 맞습니다 나중에 챕터 7-4의 최종코드를 확인하세요!
+               # print(binanceX.create_limit_sell_order(Target_Coin_Ticker, abs_amt + first_amount, coin_price))
+                print("binanceX.create_order(Target_Coin_Ticker, 'limit', 'sell', abs_amt + first_amount, coin_price)")
+
+                #스탑 로스 설정을 건다.
+                print("SetStopLoss(binanceX,Target_Coin_Ticker,0.5)")
+            
 
 
-# chapter 6-4
+        #영상에서 빠져있는 중요한 부분!!! 롱인 상태에서는 롱을 잡을 만한 상황에서 물을 타야 겠죠?
+        #즉 5일 선이 20일 선 아래에 있고 상승추세로 꺾였을 때 물을 탑니다.
+        #롱 포지션을 잡을만한 상황!!!!
+        if ma5 < ma20 and ma5_before3 > ma5_before2 and ma5_before2 < ma5:
+            #물탈 수량 
+            water_amount = abs_amt
+
+            if Max_Amount < abs_amt + water_amount:
+                water_amount = Max_Amount - abs_amt
+
+            #물탈 마이너스 수익율 보다 내 수익율이 작다면 물을 타자!!
+            if revenue_rate <= water_rate and Max_Amount >= abs_amt + water_amount:
+
+                #주문 취소후
+                binanceX.cancel_all_orders(Target_Coin_Ticker)
+                time.sleep(0.1)
+                
+                #해당 코인 가격을 가져온다.
+                coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+
+                #롱 포지션을 잡는다
+                #사실 여기는 시장가로 잡는게 맞습니다 나중에 챕터 7-4의 최종코드를 확인하세요!
+                #print(binanceX.create_limit_buy_order(Target_Coin_Ticker, water_amount, coin_price))
+                print("binanceX.create_order(Target_Coin_Ticker, 'limit', 'buy', water_amount, coin_price)")
+
+                #스탑 로스 설정을 건다.
+                print("SetStopLoss(binanceX,Target_Coin_Ticker,0.5)")
+
+           
+
+
+        #내 보유 수량의 절반을 손절한다 단!! 매수 비중이 90% 이상이면서 내 수익율이 손절 마이너스 수익율보다 작을 때
+        if revenue_rate <= danger_rate and buy_percent >= 90.0:
+
+            #주문 취소후
+            binanceX.cancel_all_orders(Target_Coin_Ticker)
+            time.sleep(0.1)
+                
+            #해당 코인 가격을 가져온다.
+            coin_price = GetCoinNowPrice(binanceX, Target_Coin_Ticker)
+
+            #숏 포지션을 잡는다
+            #사실 여기는 시장가로 잡는게 맞습니다 나중에 챕터 7-4의 최종코드를 확인하세요!
+            #print(binanceX.create_limit_sell_order(Target_Coin_Ticker, abs_amt / 2.0, coin_price))
+            print("binanceX.create_order(Target_Coin_Ticker, 'limit', 'sell', abs_amt / 2.0, coin_price)")
+
+            #스탑 로스 설정을 건다.
+            print("SetStopLoss(binanceX,Target_Coin_Ticker,0.5)")
+
+
+
+#지정가 주문만 있기 때문에 혹시나 스탑로스가 안걸릴 수 있어서 마지막에 한번 더 건다
+#해당 봇이 서버에서 주기적으로 실행되기 때문에 실행 될때마다 체크해서 걸어 줄 수 있다.
+#스탑 로스 설정을 건다.
+print("SetStopLoss(binanceX,Target_Coin_Ticker,0.5)")
+
+
+# Chapter 6-5 
