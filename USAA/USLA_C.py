@@ -100,7 +100,7 @@ time.sleep(0.1)
 
 # 포트폴리오 가격 불러오기
 ticker = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV'] # 모멘텀 티커
- 
+ 7
 B12year = str(int(B1year)-1)
 
 end = f'{B1year}-{B1month}-{endday}'
@@ -241,7 +241,7 @@ TR_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV'] # 트레이딩 티커
 price = []
  
 for i in TR_ticker :    
-    j = yf.download(tickers=i, period='1d', interval='1d', progress=False, 
+    j = yf.download(tickers=i, period='1d', interval='1d', progress=False, auto_adjust=False,
                     multi_level_index=False)['Close']
     price.append(round(j.iloc[0],4))
 price.append(1)

@@ -1,13 +1,12 @@
+#-*- coding: utf-8 -*-
 import pyupbit
 import time
 import pandas as pd
 import kakao_alert
 import datetime
+import my_key
 
-access = "CvRZ8L3uWWx7SxeixwwX5mQVFXpJUaN7lxxT9gTe"          # 본인 값으로 변경
-secret = "3iOZ7kGlSUP2v1yIUc7Y6zfOn50mXp2dMqHUqJR1"          # 본인 값으로 변경
-
-upbit = pyupbit.Upbit(access, secret)
+upbit = pyupbit.Upbit(my_key.upbit_access, my_key.upbit_secret)
 
 # 카카오톡 메세지 보내는 함수
 def SendMessage(msg):

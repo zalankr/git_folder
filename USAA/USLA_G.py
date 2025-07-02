@@ -241,7 +241,7 @@ TR_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV'] # 트레이딩 티커
 price = []
  
 for i in TR_ticker :    
-    j = yf.download(tickers=i, period='1d', interval='1d', progress=False, 
+    j = yf.download(tickers=i, period='1d', interval='1d', progress=False, auto_adjust=False,
                     multi_level_index=False)['Close']
     price.append(round(j.iloc[0],4))
 price.append(1)
