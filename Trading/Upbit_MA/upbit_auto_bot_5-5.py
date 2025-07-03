@@ -4,9 +4,12 @@ import time
 import pandas as pd
 import kakao_alert
 import datetime
-import my_key
+import myUpbit
 
-upbit = pyupbit.Upbit(my_key.upbit_access, my_key.upbit_secret)
+upbit_access = "CvRZ8L3uWWx7SxeixwwX5mQVFXpJUaN7lxxT9gTe"
+upbit_secret = "3iOZ7kGlSUP2v1yIUc7Y6zfOn50mXp2dMqHUqJR1"
+
+upbit = pyupbit.Upbit(upbit_access, upbit_secret)
 
 # 카카오톡 메세지 보내는 함수
 def SendMessage(msg):
@@ -165,6 +168,15 @@ def GetHasCoinCnt(balances):
             continue
     return CoinCnt
 
+#티커에 해당하는 코인의 평균 매입단가를 리턴한다.
+def GetAvgBuyPrice(balances, Ticker):
+    avg_buy_price = 0
+    for value in balances:
+        realTicker = value['unit_currency'] + "-" + value['currency']
+        if Ticker == realTicker:
+            avg_buy_price = float(value['avg_buy_price'])
+    return avg_buy_price
+
 #총 원금을 구한다!
 def GetTotalMoney(balances):
     total = 0.0
@@ -263,12 +275,11 @@ for ticker in Tickers:
         if CheckCoinInList(DangerCoinList, ticker) == True:
             continue
         time.sleep(0.05)
-        df_60 = pyupbit.get_ohlcv(ticker=ticker, interval="minute60")# 600분봉
+        df_60 = pyupbit.get_ohlcv(ticker=ticker, interval="minute60")# 60분봉
         rsi60_min_before = GetRSI(df_60, period=14, st=-3) 
         rsi60_min = GetRSI(df_60, period=14, st=-2)
 
         
-
         # 원화잔고
         time.sleep(0.05)
         won = float(upbit.get_balance("KRW"))
@@ -335,6 +346,35 @@ for ticker in Tickers:
                 time.sleep(0.05)
                 print(f"rsi60_min: {rsi60_min} and {GetHasCoinCnt(balances)}, upbit.buy_market_order({ticker}, FirstEnterMoney)")
                 SendMessage(f"rsi60_min: {rsi60_min} and {GetHasCoinCnt(balances)}, upbit.buy_market_order({ticker}, FirstEnterMoney)")
+
+            time.sleep(0.05)
+
+            df_15 = pyupbit.get_ohlcv(ticker=ticker, interval="minute15")# 15분봉 데이터 가져오기
+
+            # 15분봉 기준 5일 이동평균선 값 구하기
+            ma5_before3 = GetMA(df_15, period=5, st=-4)
+            ma5_before2 = GetMA(df_15, period=5, st=-3)
+            ma5 = GetMA(df_15, period=5, st=-2)
+            # 15분봉 기준 20일 이동평균선 값 구하기
+            ma20 = GetMA(df_15, period=20, st=-2)
+
+            if ma5 < ma20 and ma5_before3 > ma5_before2 and ma5_before2 < ma5 :
+                print("!!!!!!First Buy GOOD!!!!!!")
+                time.sleep(0.05)
+                print(f"upbit.buy_market_order({ticker}, {FirstEnterMoney})")
+                SendMessage(f"upbit.buy_market_order({ticker}, {FirstEnterMoney})")
+
+                time.sleep(5.0)
+                # 내가 가진 잔고 데이터를 다 가져온다.
+                balances = upbit.get_balances()
+
+                avgPrice = GetAvgBuyPrice(balances, ticker)
+                coin_bal = upbit.get_balance(ticker)
+
+                avgPrice *= 1.01
+                
+                 
+                
 
     except Exception as e:
         print("error:", e)
