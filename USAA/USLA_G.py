@@ -30,7 +30,7 @@ elif B1month < 10 and B1month >= 1 :
 else:
     B1year = year
 
-# Google spread account 연결 및 오픈 ########################
+# Google spread account 연결 및 오픈 ######################## 회사에서 깃으로 json파일
 gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
 url = 'https://docs.google.com/spreadsheets/d/19KCxCqF32emisAEO1zT0XEDgD_Ye4n2-R3-0jzbZ-zs/edit?gid=1963431369#gid=1963431369'
 # 기 작성 URL기입
