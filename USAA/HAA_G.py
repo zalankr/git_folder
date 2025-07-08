@@ -2,7 +2,6 @@ import yfinance as yf
 import pandas as pd
 import time
 import gspread
-# import line_alert
 import calendar
 
 # 날짜 인풋 받기
@@ -34,8 +33,7 @@ B12year = str(int(B1year)-1)
 
 
 # Google spread account 연결 및 오픈 ###
-gc = gspread.service_account("ilpuss@ilpuss.iam.gserviceaccount.com")
-# gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
+gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
 url = 'https://docs.google.com/spreadsheets/d/16IAqsD_1MEP7tGumz66y4c9hXZ_uAVJEmMQJKYZudck/edit?gid=1303568032#gid=1303568032'
 # 기 작성 URL기입
 # 기 작성된 연도별 USLA gspread URL 기입
@@ -68,20 +66,20 @@ port = yf.download(tickers=ticker, start=start, end=end, auto_adjust=True, inter
                    progress=True, multi_level_index=False)['Close']
 time.sleep(0.01)
 
-
+print(port.tail(5))
 port.sort_index(axis=0, ascending=False, inplace=True)
 #######################################################################################################
 
 end2 = f'{year}-{monstr}-01'  ####
 start2 = f'{B1year}-{B1month}-01'
 
-port2 = yf.download(tickers=ticker, start=start2, end=end2, auto_adjust=True, interval='1d', period='1d', 
+port2 = yf.download(tickers=ticker, start=start2, end=end2, auto_adjust=True, interval='1d', #period='1d', 
                     progress=True, multi_level_index=False)['Close']
 port2.sort_index(axis=0, ascending=False, inplace=True)
 
 for pa in range(10) :
     port.iat[0, pa] = port2.iat[0, pa]
-
+print(port.head(12))
 #######################################################################################################
 
 date1 = list()

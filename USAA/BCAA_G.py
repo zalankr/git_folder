@@ -35,7 +35,7 @@ zero = [0,0,0,0,0,0,0,0,0,0]
 
 
 # Google spread account 연결 및 오픈
-gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
+gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
 # gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
 url = 'https://docs.google.com/spreadsheets/d/1CMz92IRC_7Kih4B48mz8O8PmIs_K4J-8RMlTTOmz5gI/edit?gid=833095653#gid=833095653'
 # 기 작성 URL기입
@@ -74,8 +74,8 @@ port.sort_index(axis=0, ascending=False, inplace=True)
 end2 = f'{year}-{monstr}-01'
 start2 = f'{B1year}-{B1month}-01'
 
-port2 = yf.download(tickers=ticker, start=start2, end=end2, auto_adjust=True, interval='1d', 
-                    period='1d', progress=True, multi_level_index=False)['Close']
+port2 = yf.download(tickers=ticker, start=start2, end=end2, auto_adjust=True, interval='1d', #period='1d'
+                    progress=True, multi_level_index=False)['Close']
 port2.sort_index(axis=0, ascending=False, inplace=True)
 
 for pa in range(9) :
