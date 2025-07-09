@@ -75,7 +75,7 @@ end2 = f'{year}-{monstr}-01'
 start2 = f'{B1year}-{B1month}-01'
 
 port2 = yf.download(tickers=ticker, start=start2, end=end2, auto_adjust=True, interval='1d', 
-                    period='1d', progress=True, multi_level_index=False)['Close']
+                    progress=True, multi_level_index=False)['Close']
 port2.sort_index(axis=0, ascending=False, inplace=True)
 
 for pa in range(9) :

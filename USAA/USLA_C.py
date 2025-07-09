@@ -100,7 +100,7 @@ time.sleep(0.1)
 
 # 포트폴리오 가격 불러오기
 ticker = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV'] # 모멘텀 티커
- 7
+
 B12year = str(int(B1year)-1)
 
 end = f'{B1year}-{B1month}-{endday}'
