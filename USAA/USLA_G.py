@@ -105,9 +105,8 @@ B12year = str(int(B1year)-1)
 end = f'{B1year}-{B1month}-{endday}'
 start = f'{B12year}-{B1month}-01'
 
-SignalPort = yf.download(tickers=ticker, start=start, end=end, auto_adjust=False, interval='1mo', progress=True, 
-                         multi_level_index=False)['Close']
-# 수정주가보단 일반주가가 포폴비쥬얼라이즈에 더 근사값['Adj Close'] 
+SignalPort = yf.download(tickers=ticker, start=start, end=end, auto_adjust=False, interval='1mo', progress=True, multi_level_index=False)['Close']
+# 수정주가보단 일반주가가 포폴비쥬얼라이즈에 더 근사값['Adj Close']
 time.sleep(0.1)
 
 SignalPort.sort_index(axis=0, ascending=False, inplace=True)
@@ -150,7 +149,6 @@ momentum = momentum.sort_values(by=['rank'], ascending=True, ignore_index=False,
 # 타겟 티커 확정
 Target_ticker = [momentum.iloc[0, 0], momentum.iloc[1, 0]]
 
-
 #기본 MVP모델 Weight 해찾기 riskfolio Portfolio 설정
 Hist = yf.download(tickers=Target_ticker, period='3mo', auto_adjust=True, interval='1d', 
                    progress=False)['Close']
@@ -172,7 +170,6 @@ hist = True
 rf = 0
 l = 0
 
-
 # 유니버스 데이터베이스
 ticker_class = []
 for i in Target_ticker :
@@ -187,7 +184,6 @@ asset_classes = {
     'Class' : [ticker_class[0], ticker_class[1]]}
 
 asset_classes = pd.DataFrame(asset_classes)
-
 
 # 제약조건 설정 데이터베이스
 constraints = {'Disabled' : [False, False],
@@ -212,13 +208,18 @@ port.binequality = B
 
 w = port.optimization(model=model, rm=rm, obj=obj, rf=rf, l=l, hist=hist)
 
-
 # 최종 당월 투자 종목 및 비중 프린트
 print('----------------------------------------------------------------------')
 print(momentum)
 print('----------------------------------------------------------------------')
 
-ax = rp.plot_bar(w=w, title='Portfolio', kind='h', ax=None)
+# # 시각화: 최적화된 포트폴리오 비중 바 차트 출력
+# import matplotlib.pyplot as plt
+
+# fig, ax = plt.subplots(figsize=(6, 4))
+# rp.plot_bar(w=w, title='Portfolio', kind='h', ax=ax)
+# plt.tight_layout()
+# plt.show()
 
 I1 = w.index[0]
 I2 = w.index[1]
