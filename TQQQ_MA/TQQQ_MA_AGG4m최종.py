@@ -6,7 +6,7 @@ import os
 from openpyxl import load_workbook
 
 # 결과 엑셀 파일 초기 생성
-file_path = 'C:/Users/ilpus/PythonProjects/git_folder/TQQQ_MA/TQQQ_Results.xlsx'
+file_path = "C:/Users/ilpus/Desktop/git_folder/TQQQ_MA/TQQQ_MA_AGG4m.xlsx"
 if not os.path.exists(file_path):
     with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
         pd.DataFrame().to_excel(writer, sheet_name='sheet1', index=False)
@@ -111,7 +111,7 @@ for MA in range(5, 256, 5):
     MA_sortino_ratio = (MA_mean_return / neg_MA_std) * np.sqrt(252) if neg_MA_std != 0 else np.nan
 
     Strategy_results.append({
-        'Model': 'TQQQ MA+AGG',
+        'Model': 'TQQQ MA+AGG4m',
         'MA': MA,
         'CAGR': cagr,
         'Taxed CAGR': taxed_cagr,
@@ -131,7 +131,7 @@ for MA in range(5, 256, 5):
     })
 
     BH_results.append({
-        'Model': 'TQQQ BH',
+        'Model': 'TQQQ Buy and Hold',
         'CAGR': buy_and_hold_cagr,
         'MDD': buy_and_hold_mdd,
         'Sharpe': BH_sharpe_ratio,
