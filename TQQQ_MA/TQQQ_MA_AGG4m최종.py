@@ -45,7 +45,7 @@ for MA in range(5, 256, 5):
     df['MA_return'] = df['daily_return'] * df['MAPosition']
     df['strategy_return'] = df['daily_return'] * df['Position']
 
-    fee = 0.0009
+    fee = 0.002 # 0.0009
     df['MA_return'] -= df['MAPosition'].diff().abs().fillna(0) * fee
     df['strategy_return'] -= df['Position'].diff().abs().fillna(0) * fee
 
