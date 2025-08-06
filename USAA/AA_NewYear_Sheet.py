@@ -5,7 +5,7 @@ year = input('year?:')
 model = input('model name?:')
 
 ## Google Spread sheet 작성
-gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
+gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
 # gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
 # gc = gspread.service_account() #account 연결
 

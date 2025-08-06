@@ -1,9 +1,0 @@
-cd C:\Users\ilpus\PythonProjects\git_folder
-ssh -i "zalan.pem" ec2-user@ec2-52-78-249-36.ap-northeast-2.compute.amazonaws.com
-
------------------------------------------------------------------------------------------------------
-
-
-chmod 400 zalan.pem
-접속IP 보안 설정 변경은 게만아 블로그에서 설명
-

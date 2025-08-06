@@ -3,8 +3,8 @@ import pandas as pd
 import openpyxl
 
 # 데이터 기간 설정
-start = '2015-06-01'
-end = '2025-02-28'
+start = '2005-01-01'
+end = '2025-07-31'
 
 def save_dataframe_to_excel(df, filename):
     try:
