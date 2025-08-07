@@ -2,7 +2,8 @@ import pyupbit
 import myUpbit
 
 # Upbit 토큰 불러오기
-with open("C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/upnkr.txt") as f:
+with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f:
+# with open("C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/upnkr.txt") as f:
     access_key, secret_key = [line.strip() for line in f.readlines()]
 
 # 업비트 접속

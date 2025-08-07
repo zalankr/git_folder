@@ -6,8 +6,6 @@ import numpy
 
 import math
 
-from cryptography.fernet import Fernet
-
 '''
 Tick Size 변경 25년 7월말 적용 버전
 주식/코인 자동매매 FAQ
