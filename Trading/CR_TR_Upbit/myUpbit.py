@@ -248,7 +248,6 @@ def GetCoinNowRealMoney(balances,Ticker):
             break
     return CoinMoney
 
-
 #티커에 해당하는 코인이 매수된 상태면 참을 리턴하는함수
 def IsHasCoin(balances,Ticker):
     HasCoin = False
@@ -266,8 +265,6 @@ def GetHasCoinCnt(balances):
         if avg_buy_price != 0: #원화, 드랍받은 코인(평균매입단가가 0이다) 제외!
             CoinCnt += 1
     return CoinCnt
-
-
 
 #티커에 해당하는 코인의 평균 매입단가를 리턴한다.
 def GetAvgBuyPrice(balances, Ticker):
@@ -372,8 +369,6 @@ def IsVolumePung(ohlcv,st):
 
     
     return Result
-
-
 
 #틱사이즈 보정!! 업비트 새로운 호가 단위 규칙 적용 (2025년 변경)
 def get_tick_size(price, method="floor"):
