@@ -1,0 +1,36 @@
+{
+    "TR": {
+        "times": 0,
+        "TR_count": 5
+    },
+    "ETH20": {
+        "position": true,
+        "action": "Hold",
+        "UUID_0": null,
+        "UUID_1": null,
+        "UUID_2": null,
+        "UUID_3": null,
+        "UUID_4": null,
+        "Fin_TR": 0
+    },
+    "ETH40": {
+        "position": true,
+        "action": "Hold",
+        "UUID_0": null,
+        "UUID_1": null,
+        "UUID_2": null,
+        "UUID_3": null,
+        "UUID_4": null,
+        "Fin_TR": 0
+    },
+    "BTC30": {
+        "position": true,
+        "action": "Hold",
+        "UUID_0": null,
+        "UUID_1": null,
+        "UUID_2": null,
+        "UUID_3": null,
+        "UUID_4": null,
+        "Fin_TR": 0
+    }
+}
