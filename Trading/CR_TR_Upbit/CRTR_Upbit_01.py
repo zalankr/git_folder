@@ -25,17 +25,29 @@ def check_signal(position, data, MA):
             return [False, "Cash"]
 
 # 시간확인 조건문 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
-## 현재 시간 불러오기(AWS엔 UTC +0로 산출됨, 그에 맞게 시간 체크)
-now = datetime.now()
-current_time = now.time()
+# 현재 시간 불러오기(AWS엔 UTC +0로 산출됨, 그에 맞게 시간 체크)
+def what_time():
+    # 현재 시간 가져오기
+    now = datetime.now()
+    current_time = now.time()
 
+    # if time(23, 55) <= current_time <= time(23, 59, 59): # 23:55 ~ 24:00 사이인지 확인 
+    if time(0, 55) <= current_time <= time(23, 59, 59): # 23:55 ~ 24:00 사이인지 확인
+        TR_time = ["0855", 0]
+    elif time(0, 5) <= current_time <= time(0, 9, 59):  # 00:05 ~ 00:10 사이인지 확인
+        TR_time = ["0905", 1]
+    elif time(0, 15) <= current_time <= time(0, 19, 59):  # 00:15 ~ 00:20 사이인지 확인
+        TR_time = ["0915", 2]
+    elif time(0, 25) <= current_time <= time(0, 29, 59):  # 00:25 ~ 00:30 사이인지 확인
+        TR_time = ["0925", 3]
+    elif time(0, 30) <= current_time <= time(23, 34, 59):  # 00:30 ~ 00:35 사이인지 확인
+        TR_time = ["0930", 4]
+    
+    return now, current_time, TR_time 
+    
+now, current_time, TR_time = what_time() 
 print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}")
-TR_0855 = time(0, 55) <= current_time <= time(23, 59, 59)  # 23:55 ~ 24:00 사이인지 확인
-# TR_0855 = time(23, 55) <= current_time <= time(23, 59, 59)  # 23:55 ~ 24:00 사이인지 확인
-TR_0905 = time(0, 5) <= current_time <= time(0, 9, 59)  # 00:05 ~ 00:10 사이인지 확인
-TR_0915 = time(0, 15) <= current_time <= time(0, 19, 59)  # 00:15 ~ 00:20 사이인지 확인
-TR_0925 = time(0, 25) <= current_time <= time(0, 29, 59)  # 00:25 ~ 00:30 사이인지 확인
-TR_0930 = time(0, 30) <= current_time <= time(23, 34, 59)  # 00:30 ~ 00:35 사이인지 확인
+print("TR_time:", TR_time)
 
 # Upbit 토큰 불러오기
 with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
@@ -45,7 +57,7 @@ with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
-if TR_0855 == True:
+if TR_time[1] == 0:
     # daily record JSON 파일에서 읽기
     Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json'
     try:
@@ -67,17 +79,17 @@ if TR_0855 == True:
     data, MA = get_data(ticker = "KRW-ETH", interval = "day", period=40)
     ETH40_signal = check_signal(position, data, MA)
 
-    ## BTC 30MA
-    position = Upbit_daily["BTC30"]["position"]
-    data, MA = get_data(ticker = "KRW-BTC", interval = "day", period=30)
-    BTC30_signal = check_signal(position, data, MA)
+    ## BTC 45MA
+    position = Upbit_daily["BTC45"]["position"]
+    data, MA = get_data(ticker = "KRW-BTC", interval = "day", period=45)
+    BTC45_signal = check_signal(position, data, MA)
 
     # Upbit_TR data 만들기
     Upbit_TR = {
         "TR": {"times": 0, "TR_count": 5},
         "ETH20": {"position": ETH20_signal[0], "action": ETH20_signal[1], "UUID_0": None, "UUID_1": None, "UUID_2": None, "UUID_3": None, "UUID_4": None, "Fin_TR": 0},
         "ETH40": {"position": ETH40_signal[0], "action": ETH40_signal[1], "UUID_0": None, "UUID_1": None, "UUID_2": None, "UUID_3": None, "UUID_4": None, "Fin_TR": 0},
-        "BTC30": {"position": BTC30_signal[0], "action": BTC30_signal[1], "UUID_0": None, "UUID_1": None, "UUID_2": None, "UUID_3": None, "UUID_4": None, "Fin_TR": 0},
+        "BTC45": {"position": BTC45_signal[0], "action": BTC45_signal[1], "UUID_0": None, "UUID_1": None, "UUID_2": None, "UUID_3": None, "UUID_4": None, "Fin_TR": 0},
     }
 
     # Upbit_TR JSON 파일 쓰기
@@ -114,7 +126,7 @@ print("BTC_balance:", BTC_balance)
 print("KRW_balance:", KRW_balance)
 
 # Ticker별 Invest 금액 산정
-Invest_Amount = IW.get_Invest(ETH20_signal, ETH40_signal, BTC30_signal, ETH_balance, BTC_balance, KRW_balance)
+Invest_Amount = IW.get_Invest(ETH20_signal, ETH40_signal, BTC45_signal, ETH_balance, BTC_balance, KRW_balance)
 
 print("-" * 30)
 print("ETH_Buying:", Invest_Amount[0])
