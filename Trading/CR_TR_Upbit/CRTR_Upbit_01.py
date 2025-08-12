@@ -46,8 +46,7 @@ def what_time():
     return now, current_time, TR_time 
     
 now, current_time, TR_time = what_time() 
-print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}")
-print("TR_time:", TR_time)
+print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
 # Upbit 토큰 불러오기
 with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
@@ -57,6 +56,7 @@ with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
+# 8:55 TR_daily json읽기, Signal 계산, 투자 금액 산출, TRdata json저장
 if TR_time[1] == 0:
     # daily record JSON 파일에서 읽기
     Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json'
@@ -129,11 +129,11 @@ print("KRW_balance:", KRW_balance)
 Invest_Amount = IW.get_Invest(ETH20_signal, ETH40_signal, BTC45_signal, ETH_balance, BTC_balance, KRW_balance)
 
 print("-" * 30)
-print("ETH_Buying:", Invest_Amount[0])
-print("ETH_Selling:", Invest_Amount[1])
-print("BTC_Buying:", Invest_Amount[2])
-print("BTC_Selling:", Invest_Amount[3])
-print("KRW_balance:", Invest_Amount[4])
+print("ETH_Buying:", Invest_Amount[0]) # KRW Quantity
+print("ETH_Selling:", Invest_Amount[1]) # ETH Quantity
+print("BTC_Buying:", Invest_Amount[2]) # KRW Quantity
+print("BTC_Selling:", Invest_Amount[3]) # BTC Quantity
+print("KRW_balance:", Invest_Amount[4]) # KRW Quantity
 
 ## 체결내역 확인
 # filled_orders = upbit.get_filled_orders()
