@@ -22,68 +22,84 @@ def check_signal(position, data, MA):
             return [True, "Buy"]
         else:
             return [False, "Cash"]
-        
-# Ticker별 투자 Weight 산출 함수
-def get_Invest(ETH20_signal, ETH40_signal, BTC30_signal, ETH_balance, BTC_balance, KRW_balance):
-    ETH_Buying = 0
-    ETH_Selling = 0
-    BTC_Buying = 0
-    BTC_Selling = 0
 
+# Ticker별 매수매도 시그널 만들기
+def create_signals():
+    Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json'
+    try:
+        with open(Upbit_daily_path, 'r', encoding='utf-8') as f:
+            Upbit_daily = json.load(f)
+    except Exception as e:
+        print("Exception File")
+
+    print(Upbit_daily)
+
+    # Ticker별 현재가와 MA 비교 8:55
+    ## ETH 20MA
+    position = Upbit_daily["ETH20"]["position"]
+    data, MA = get_data(ticker = "KRW-ETH", interval = "day", period=20)
+    ETH20_signal = check_signal(position, data, MA)
+
+    ## ETH 40MA
+    position = Upbit_daily["ETH40"]["position"]
+    data, MA = get_data(ticker = "KRW-ETH", interval = "day", period=40)
+    ETH40_signal = check_signal(position, data, MA)
+
+    ## BTC 45MA
+    position = Upbit_daily["BTC45"]["position"]
+    data, MA = get_data(ticker = "KRW-BTC", interval = "day", period=45)
+    BTC45_signal = check_signal(position, data, MA)
+
+    return ETH20_signal, ETH40_signal, BTC45_signal
+
+# Ticker별 투자 Weight 산출 함수
+def get_Invest(ETH20_signal, ETH40_signal, BTC45_signal, ETH_balance, BTC_balance, KRW_balance):
+    ETH_Invest = ["None"]
+    BTC_Invest = ["None"]
     if ETH20_signal[1] == "Buy" :
         if ETH40_signal[1] == "Buy":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.66
-                BTC_Buying = KRW_balance * 0.33
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.66
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Buying = 0
+            if BTC45_signal[1] == "Buy":
+                ETH_Invest = ["Buy", KRW_balance * 0.66] # KRW-ETH
+                BTC_Invest = ["Buy", KRW_balance * 0.33] # KRW-BTC
+            elif BTC45_signal[1] == "Cash":
+                ETH_Invest = ["Buy", KRW_balance * 0.66] # KRW-ETH
+            elif BTC45_signal[1] == "Sell":
+                ETH_Invest = ["Buy", KRW_balance * 0.99] # KRW-ETH
+                BTC_Invest = ["Sell", BTC_balance] # BTC-KRW
+            elif BTC45_signal[1] == "Hold":
+                ETH_Invest = ["Buy", KRW_balance * 0.99] # KRW-ETH
         elif ETH40_signal[1] == "Cash":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.33
-                BTC_Buying = KRW_balance * 0.33
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.33
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = 0
+            if BTC45_signal[1] == "Buy":
+                ETH_Invest = ["Buy", KRW_balance * 0.33] # KRW-ETH
+                BTC_Invest = ["Buy", KRW_balance * 0.33] # KRW-BTC
+            elif BTC45_signal[1] == "Cash":
+                ETH_Invest = ["Buy", KRW_balance * 0.33] # KRW-ETH
+            elif BTC45_signal[1] == "Sell":
+                ETH_Invest = ["Buy", KRW_balance * 0.495] # ETH-KRW
+                BTC_Invest = ["Sell", BTC_balance] # BTC-KRW
+            elif BTC45_signal[1] == "Hold":
+                ETH_Invest = ["Buy", KRW_balance * 0.495] # ETH-KRW
         elif ETH40_signal[1] == "Sell":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = 0
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = 0
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = 0
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = 0
-                BTC_Buying = 0
+            if BTC45_signal[1] == "Buy":
+                BTC_Invest = ["Buy", KRW_balance * 0.495] # KRW-BTC
+            elif BTC45_signal[1] == "Cash":
+                pass
+            elif BTC45_signal[1] == "Sell":
+                BTC_Invest = ["Sell", BTC_balance] # BTC-KRW
+            elif BTC45_signal[1] == "Hold":
+                pass
         elif ETH40_signal[1] == "Hold":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Buying = 0
-
+            if BTC45_signal[1] == "Buy":
+                ETH_Invest = ["Buy", KRW_balance * 0.495] # KRW-ETH
+                BTC_Invest = ["Buy", KRW_balance * 0.495] # KRW-BTC
+            elif BTC45_signal[1] == "Cash":
+                ETH_Invest = ["Buy", KRW_balance * 0.495] # KRW-ETH
+            elif BTC45_signal[1] == "Sell":
+                ETH_Invest = ["Buy", KRW_balance * 0.99] # KRW-ETH
+                BTC_Invest = ["Sell", BTC_balance] # BTC-KRW
+            elif BTC45_signal[1] == "Hold":
+                ETH_Invest = ["Buy", KRW_balance * 0.99] # KRW-ETH
+#######################################################################################
     if ETH20_signal[1] == "Cash" :
         if ETH40_signal[1] == "Buy":
             if BTC30_signal[1] == "Buy":
@@ -246,9 +262,11 @@ def get_Invest(ETH20_signal, ETH40_signal, BTC30_signal, ETH_balance, BTC_balanc
                 ETH_Buying = 0
                 BTC_Buying = 0
 
-    return(ETH_Buying, ETH_Selling, BTC_Buying, BTC_Selling, KRW_balance) # Buy값은 KRW로 sell값은 ETH와 BTC 량으로
+    return(ETH_Invest, BTC_Invest, KRW_balance) # Buy값은 KRW로 sell값은 ETH와 BTC 량으로
 
-# Ticker별 Weight 산출
+# Ticker별 Weight 산출 > json저장
+
+
 ETH20_signal = ["ETH20", "Buy"]
 ETH40_signal = ["ETH40", "Cash"]
 BTC30_signal = ["BTC30", "Buy"]
@@ -265,42 +283,11 @@ list = get_Invest(ETH20_signal, ETH40_signal, BTC30_signal, ETH_balance, BTC_bal
 print("ETH_Buying:", list[0], "ETH_Selling:", list[1], "BTC_Buying:", list[2], "BTC_Selling:", list[3], "KRW_balance:", list[4])
 
 #######################완성 후 삭제할 부분
-# Upbit 토큰 불러오기
-with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
-# with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f:
-    access_key, secret_key = [line.strip() for line in f.readlines()]
-
-# 업비트 접속
-upbit = pyupbit.Upbit(access_key, secret_key)
-########################
 
 # 8:55 TR_daily json읽기, Signal 계산, 투자 금액 산출, TRdata json저장
 if TR_time[1] == 0:
-    # daily record JSON 파일에서 읽기
-    Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json'
-    try:
-        with open(Upbit_daily_path, 'r', encoding='utf-8') as f:
-            Upbit_daily = json.load(f)
-    except Exception as e:
-        print("Exception File")
+    # 
 
-    print(Upbit_daily)
-
-    # Ticker별 현재가와 MA 비교 8:55
-    ## ETH 20MA
-    position = Upbit_daily["ETH20"]["position"]
-    data, MA = get_data(ticker = "KRW-ETH", interval = "day", period=20)
-    ETH20_signal = check_signal(position, data, MA)
-
-    ## ETH 40MA
-    position = Upbit_daily["ETH40"]["position"]
-    data, MA = get_data(ticker = "KRW-ETH", interval = "day", period=40)
-    ETH40_signal = check_signal(position, data, MA)
-
-    ## BTC 45MA
-    position = Upbit_daily["BTC45"]["position"]
-    data, MA = get_data(ticker = "KRW-BTC", interval = "day", period=45)
-    BTC45_signal = check_signal(position, data, MA)
 
     # Upbit_TR data 만들기
     Upbit_TR = {
@@ -358,18 +345,4 @@ print("KRW_balance:", Invest_Amount[4]) # KRW Quantity
 # print("체결내역:", filled_orders)
 
 # Cancel_Orders = []
-
-# 
-
-# # Ticker별 Trading Action 및 투자금 산정
-# ## Ticker별 Balance 확인
-# ETH_Remain = upbit.get_balance("ETH")
-# BTC_Remain = upbit.get_balance("BTC")
-# KRW_Remain = upbit.get_balance("KRW")
-# Total_Balance = myUpbit.GetTotalRealMoney(balances)
-
-# print("ETH_Remain:", ETH_Remain)
-# print("BTC_Remain:", BTC_Remain)
-# print("KRW_Remain:", KRW_Remain)
-# print("Total_Balance:", Total_Balance)
 
