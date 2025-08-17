@@ -1,239 +1,80 @@
-ETH20_signal = ["ETH20", "Buy"]
-ETH40_signal = ["ETH40", "Cash"]
-BTC30_signal = ["BTC30", "Buy"]
+import math
+import pyupbit
 
-ETH_balance = 0
-BTC_balance = 0
-KRW_balance = 100
-ETH_Buying = 0
-ETH_Selling = 0
-BTC_Buying = 0
-BTC_Selling = 0
+# Upbit 토큰 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
+# with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f:
+    access_key, secret_key = [line.strip() for line in f.readlines()]
+
+# 업비트 접속
+upbit = pyupbit.Upbit(access_key, secret_key)
+
+def get_tick_size(price, method="floor"):
+
+    if method == "floor":
+        func = math.floor
+    elif method == "round":
+        func = round 
+    else:
+        func = math.ceil 
+
+    if price >= 2000000:
+        tick_size = func(price / 1000) * 1000
+    elif price >= 1000000:
+        tick_size = func(price / 1000) * 1000
+    elif price >= 500000:
+        tick_size = func(price / 500) * 500
+    elif price >= 100000:
+        tick_size = func(price / 100) * 100
+    elif price >= 50000:
+        tick_size = func(price / 50) * 50
+    elif price >= 10000:
+        tick_size = func(price / 10) * 10
+    elif price >= 5000:
+        tick_size = func(price / 5) * 5
+    elif price >= 1000:
+        tick_size = func(price / 1) * 1
+    elif price >= 100:
+        tick_size = func(price / 1) * 1
+    elif price >= 10:
+        tick_size = func(price / 0.1) / 10
+    elif price >= 1:
+        tick_size = func(price / 0.01) / 100
+    elif price >= 0.1:
+        tick_size = func(price / 0.001) / 1000
+    elif price >= 0.01:
+        tick_size = func(price / 0.0001) / 10000
+    elif price >= 0.001:
+        tick_size = func(price / 0.00001) / 100000
+    elif price >= 0.0001:
+        tick_size = func(price / 0.000001) / 1000000
+    elif price >= 0.00001:
+        tick_size = func(price / 0.0000001) / 10000000
+    else:
+        tick_size = func(price / 0.00000001) / 100000000
 
 
-def get_Invest_balance(ETH20_signal, ETH40_signal, BTC30_signal, ETH_balance, BTC_balance, KRW_balance):
-    ETH_Buying = 0
-    ETH_Selling = 0
-    BTC_Buying = 0
-    BTC_Selling = 0
+    return tick_size
 
-    if ETH20_signal[1] == "Buy" :
-        if ETH40_signal[1] == "Buy":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.66
-                BTC_Buying = KRW_balance * 0.33
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.66
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Cash":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.33
-                BTC_Buying = KRW_balance * 0.33
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.33
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Sell":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = 0
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = 0
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = 0
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = 0
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Hold":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Buying = 0
+amount_per_times = (10000000 / 5)
+current_price = 3500000 # pyupbit.get_current_price("ETH")
+order_gap = [0, 0.001, 0.002, 0.003, 0.004]
+prices = [round(current_price * (i + 1), 0) for i in order_gap]
 
-    if ETH20_signal[1] == "Cash" :
-        if ETH40_signal[1] == "Buy":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.33
-                BTC_Buying = KRW_balance * 0.33
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.33
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Cash":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = 0
-                BTC_Buying = KRW_balance * 0.33
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = 0
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = 0
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = 0
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Sell":
-            if BTC30_signal[1] == "Buy":
-                ETH_Selling = ETH_balance
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Selling = ETH_balance
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Selling = ETH_balance
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Selling = ETH_balance
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Hold":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = 0
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = 0
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = 0
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = 0
-                BTC_Buying = 0
+print("prices:", prices)
 
-    if ETH20_signal[1] == "Sell" :
-        if ETH40_signal[1] == "Buy":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = 0
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = 0
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = 0
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = 0
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Cash":
-            if BTC30_signal[1] == "Buy":
-                ETH_Selling = ETH_balance
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Selling = ETH_balance
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Selling = ETH_balance
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Selling = ETH_balance
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Sell":
-            if BTC30_signal[1] == "Buy":
-                ETH_Selling = ETH_balance
-                BTC_Buying = KRW_balance * 0.99
-            elif BTC30_signal[1] == "Cash":
-                ETH_Selling = ETH_balance
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Selling = ETH_balance
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Selling = ETH_balance
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Hold":
-            if BTC30_signal[1] == "Buy":
-                ETH_Selling = ETH_balance*0.5
-                BTC_Buying = KRW_balance * 0.99
-            elif BTC30_signal[1] == "Cash":
-                ETH_Selling = ETH_balance*0.5
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Selling = ETH_balance*0.5
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Selling = ETH_balance*0.5
-                BTC_Buying = 0
+tick = []
+for j in range(len(prices)):
+    tick.append(get_tick_size(prices[j], method="floor"))
 
-    if ETH20_signal[1] == "Hold" :
-        if ETH40_signal[1] == "Buy":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = KRW_balance * 0.495
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = KRW_balance * 0.99
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Cash":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = 0
-                BTC_Buying = KRW_balance * 0.495
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = 0
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = 0
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = 0
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Sell":
-            if BTC30_signal[1] == "Buy":
-                ETH_Selling = ETH_balance*0.5
-                BTC_Buying = KRW_balance * 0.99
-            elif BTC30_signal[1] == "Cash":
-                ETH_Selling = ETH_balance*0.5
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Selling = ETH_balance*0.5
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Selling = ETH_balance
-                BTC_Buying = 0
-        elif ETH40_signal[1] == "Hold":
-            if BTC30_signal[1] == "Buy":
-                ETH_Buying = 0
-                BTC_Buying = KRW_balance * 0.99
-            elif BTC30_signal[1] == "Cash":
-                ETH_Buying = 0
-                BTC_Buying = 0
-            elif BTC30_signal[1] == "Sell":
-                ETH_Buying = 0
-                BTC_Selling = BTC_balance
-            elif BTC30_signal[1] == "Hold":
-                ETH_Buying = 0
-                BTC_Buying = 0
+print("tick:", tick)
+# 기존 주문 확인, 주문 수 확인, uuid는 주문len > 딕셔너리 키 'uuid'로 값 불러옴
+order0 = upbit.get_order("KRW-ETH")
+print(order0)
+print(len(order0))
+# uuid 확인 후 주문 캔슬
 
-    return(ETH_Buying, ETH_Selling, BTC_Buying, BTC_Selling, KRW_balance)
+uuid = order0[0]['uuid']
 
-list = get_Invest_balance(ETH20_signal, ETH40_signal, BTC30_signal, ETH_balance, BTC_balance, KRW_balance)
-print("ETH_Buying:", list[0], "ETH_Selling:", list[1], "BTC_Buying:", list[2], "BTC_Selling:", list[3], "KRW_balance:", list[4])
+cancel_order = upbit.cancel_order(uuid)
+print(cancel_order)

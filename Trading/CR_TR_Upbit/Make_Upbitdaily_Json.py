@@ -3,26 +3,17 @@ import json
 Upbit_daily = {
   "ETH20": {
     "ticker": "ETH",
-    "position": True,
-    "weight in ticker ": 0.5,
+    "position": "ETH",
     "Quantity": 2.74287979
   },
   "ETH40": {
     "ticker": "ETH",
-    "position": True,
-    "weight in ticker ": 0.5,
+    "position": "ETH",
     "Quantity": 2.74287979
-  },
-  "BTC30": {
-    "ticker": "BTC",
-    "position": True,
-    "weight in ticker ": 1.0,
-    "Quantity": 0.06701798
   },
   "CASH": {
     "ticker": "CASH",
     "position": 0.0,
-    "weight in balances ": 0.0,
     "Quantity": 2.74287979
   }  
 }
