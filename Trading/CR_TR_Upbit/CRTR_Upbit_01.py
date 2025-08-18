@@ -1,39 +1,55 @@
 import pyupbit
-import myUpbit
+import myUpbit # 가능하면 빼기
 from datetime import datetime, time
 import json
+import time
 import UP_signal_weight as SW
 
 # Upbit 토큰 불러오기
-# with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
-with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f: # Company경로 
+with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
+# with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f: # Company경로
     access_key, secret_key = [line.strip() for line in f.readlines()]
 
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
-# 현재시간, TR회차 확인 함수
+# 거래 Ticker
+Ticker = "KRW-ETH"
+
+# 시간확인 조건문 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 now, current_time, TR_time = SW.what_time()
 print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
-# If 8:55 Trading 0회차 To do
-if TR_time[1] == 0:
-    ## ETH, KRW 잔고확인
+# If 8:58 Trading 0회차 시 TR_daily json읽기, Signal계산, 투자 금액 산출 (try로 감싸기) 후 주문 취소, 필요 시 4분할 매매
+if TR_time[1] == None:
     ETH_balance = upbit.get_balance("ETH")
     KRW_balance = upbit.get_balance("KRW")
-    ## ETH20, ETH40 매매 시그널과 매매 목표금액 생성
     ETH20_signal, ETH40_signal = SW.generate_signal()
-    ETH_Invest = SW.get_Invest(ETH20_signal, ETH40_signal, ETH_balance, KRW_balance)
+    ETH_Invest = SW.get_Invest(ETH20_signal, ETH40_signal, ETH_balance, KRW_balance) # 모델별 투자신호, 투자금액 산출
 
-    ## 완성 후 지우는 확인용 코드부
-    print("ETH20_signal:", ETH20_signal, "ETH40_signal:", ETH40_signal)
-    print("ETH_balance:", ETH_balance, "KRW_balance:", KRW_balance)
-    print("ETH_Invest:", ETH_Invest)
+    print("ETH20_signal:", ETH20_signal, "ETH40_signal:", ETH40_signal) # 완성 후 삭제
+    print("ETH_balance:", ETH_balance, "KRW_balance:", KRW_balance) # 완성 후 삭제
+    print("ETH_Invest:", ETH_Invest) # 완성 후 삭제
 
-    ## 기존 주문 확인 후 있으면 일괄 취소 def 변수로 만들고 불러오기
+    time.sleep(1) # 타임 슬립1초   
+    SW.CancelCoinOrder(upbit, Ticker) # 기존 매수매도주문 모두를 취소 함수(모듈)
+
+    time.sleep(1) # 타임 슬립1초
+    # 주문 하기 (모듈로)
+    ##########################################################################################################################33
+    if ETH_Invest[0] == "Buy":
+        amount_per_times = (ETH_Invest[1] / 5)
+        current_price = pyupbit.get_current_price("ETH")
+        prices = [current_price * (i + 1) for i in range(5)]
+        orders = []
+
+    splits = 4 # 분할 매매 횟수
+    print(range(splits))
 
     # TR json저장
 
+# elif 시간 체크 > 기존 주문 확인 (체결 수도 확인) 후 남은 주문취소 > 해당 횟차 주문 분할(min 5000원 if로 상향시킬 것)
+## 투자금액 분할 후 주문 > json기록 
 else:
     pass
 

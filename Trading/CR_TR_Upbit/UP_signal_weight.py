@@ -1,8 +1,10 @@
 import pyupbit
 import pandas as pd
 import numpy
-from datetime import datetime, time
+import datetime
+from datetime import time
 import json
+import time as time_module
 
 #이동평균선 수치, 첫번째: 분봉/일봉 정보, 두번째: 기간, 세번째: 기준 날짜
 def getMA(ohlcv,period,st):
@@ -31,8 +33,8 @@ def remake_position(data, period, position):
 # 매수매도 시그널 생성 함수
 def generate_signal():
     # 어제의 포지션, 밸런스 json값 불러오기
-    # Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json' # Home경로
-    Upbit_daily_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json' # Company경로
+    Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json' # Home경로
+    # Upbit_daily_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json' # Company경로
     try:
         with open(Upbit_daily_path, 'r', encoding='utf-8') as f:
             Upbit_daily = json.load(f)
@@ -98,20 +100,26 @@ def get_Invest(ETH20_signal, ETH40_signal, ETH_balance, KRW_balance):
 # 시간확인 조건문 함수: 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 def what_time():
     # 현재 시간 가져오기
-    now = datetime.now()
+    now = datetime.datetime.now()
     current_time = now.time()
 
-    # if time(23, 55) <= current_time <= time(23, 59, 59): # 23:55 ~ 24:00 사이인지 확인 정식버전으로 바꿀때는 이코드로 
-    if time(0, 55) <= current_time <= time(23, 59, 59): # 23:55 ~ 24:00 사이인지 확인
-        TR_time = ["0855", 0]
-    elif time(0, 5) <= current_time <= time(0, 9, 59):  # 00:05 ~ 00:10 사이인지 확인
+    if time(23, 58) == current_time : # 23:58
+        TR_time = ["0858", 0]
+    elif time(0, 5) == current_time : # 00:05
         TR_time = ["0905", 1]
-    elif time(0, 15) <= current_time <= time(0, 19, 59):  # 00:15 ~ 00:20 사이인지 확인
-        TR_time = ["0915", 2]
-    elif time(0, 25) <= current_time <= time(0, 29, 59):  # 00:25 ~ 00:30 사이인지 확인
-        TR_time = ["0925", 3]
-    elif time(0, 30) <= current_time <= time(23, 34, 59):  # 00:30 ~ 00:35 사이인지 확인
-        TR_time = ["0930", 4]
+    elif time(0, 12) == current_time : # 00:12
+        TR_time = ["0912", 2]
+    elif time(0, 19) == current_time : # 00:19
+        TR_time = ["0919", 3]
+    else:
+        TR_time = [None, None]
     
-    return now, current_time, TR_time 
+    return now, current_time, TR_time
     
+# 해당 코인에 걸어진 매수매도주문 모두를 취소한다.
+def CancelCoinOrder(upbit, Ticker):
+    orders_data = upbit.get_order(Ticker)
+    if len(orders_data) > 0:
+        for order in orders_data:
+            time.sleep(0.1)
+            print(upbit.cancel_order(order['uuid']))

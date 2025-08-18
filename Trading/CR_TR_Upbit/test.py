@@ -1,16 +1,16 @@
 import math
 import pyupbit
+import UP_signal_weight as SW
 
 # Upbit 토큰 불러오기
-with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
-# with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f:
+with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
+# with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f: # Company경로
     access_key, secret_key = [line.strip() for line in f.readlines()]
 
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
 def get_tick_size(price, method="floor"):
-
     if method == "floor":
         func = math.floor
     elif method == "round":
@@ -53,7 +53,6 @@ def get_tick_size(price, method="floor"):
     else:
         tick_size = func(price / 0.00000001) / 100000000
 
-
     return tick_size
 
 amount_per_times = (10000000 / 5)
@@ -69,12 +68,4 @@ for j in range(len(prices)):
 
 print("tick:", tick)
 # 기존 주문 확인, 주문 수 확인, uuid는 주문len > 딕셔너리 키 'uuid'로 값 불러옴
-order0 = upbit.get_order("KRW-ETH")
-print(order0)
-print(len(order0))
-# uuid 확인 후 주문 캔슬
-
-uuid = order0[0]['uuid']
-
-cancel_order = upbit.cancel_order(uuid)
-print(cancel_order)
+SW.CancelCoinOrder(upbit, "KRW-ETH")
