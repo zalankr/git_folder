@@ -1,5 +1,4 @@
 import pyupbit
-
 import pandas as pd
 import numpy
 from datetime import datetime, time
@@ -32,7 +31,8 @@ def remake_position(data, period, position):
 # 매수매도 시그널 생성 함수
 def generate_signal():
     # 어제의 포지션, 밸런스 json값 불러오기
-    Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json'
+    # Upbit_daily_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json' # Home경로
+    Upbit_daily_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_daily.json' # Company경로
     try:
         with open(Upbit_daily_path, 'r', encoding='utf-8') as f:
             Upbit_daily = json.load(f)

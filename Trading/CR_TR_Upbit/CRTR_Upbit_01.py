@@ -5,27 +5,32 @@ import json
 import UP_signal_weight as SW
 
 # Upbit 토큰 불러오기
-with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
-# with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f:
+# with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
+with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f: # Company경로 
     access_key, secret_key = [line.strip() for line in f.readlines()]
 
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
-# 시간확인 조건문 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
+# 현재시간, TR회차 확인 함수
 now, current_time, TR_time = SW.what_time()
 print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
-# If 8:55 Trading 0회차 시 TR_daily json읽기, Signal계산, 투자 금액 산출
+# If 8:55 Trading 0회차 To do
 if TR_time[1] == 0:
+    ## ETH, KRW 잔고확인
     ETH_balance = upbit.get_balance("ETH")
     KRW_balance = upbit.get_balance("KRW")
+    ## ETH20, ETH40 매매 시그널과 매매 목표금액 생성
     ETH20_signal, ETH40_signal = SW.generate_signal()
     ETH_Invest = SW.get_Invest(ETH20_signal, ETH40_signal, ETH_balance, KRW_balance)
 
+    ## 완성 후 지우는 확인용 코드부
     print("ETH20_signal:", ETH20_signal, "ETH40_signal:", ETH40_signal)
     print("ETH_balance:", ETH_balance, "KRW_balance:", KRW_balance)
     print("ETH_Invest:", ETH_Invest)
+
+    ## 기존 주문 확인 후 있으면 일괄 취소 def 변수로 만들고 불러오기
 
     # TR json저장
 
