@@ -107,7 +107,7 @@ def what_time():
     if current_hour == 23 and 58 <=current_minute <= 59:  # 23:58
         TR_time = ["0858", 5] # 시간, 분할 횟수
     elif current_hour == 0 and 5 <= current_minute <= 6:  # 00:05
-        TR_time = ["0905", 34] # 시간, 분할 횟수
+        TR_time = ["0905", 4] # 시간, 분할 횟수
     elif current_hour == 0 and 12 <= current_minute <= 13:  # 00:12
         TR_time = ["0912", 3] # 시간, 분할 횟수
     elif current_hour == 0 and 19 <= current_minute <= 20:  # 00:19

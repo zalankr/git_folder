@@ -37,14 +37,17 @@ if TR_time[1] == None:
     SW.CancelCoinOrder(upbit, Ticker) # 기존 모든 주문 취소 함수(모듈)
 
     time_module.sleep(1) # 타임 슬립1초
-    # 조건별 주문 하기 (모듈로)
 
-    if ETH_Invest[0] == "Buy":
+    # 조건별 주문 하기 (모듈로)
+    if ETH_Invest[0] == "Buy": # 매수 신호
         amount_per_times = (ETH_Invest[1] / TR_time[1]) # 분할 매매 횟수당 KRW Quantity
         current_price = pyupbit.get_current_price("KRW-ETH") # 이더리움 가격
         # TR 분할 매매 가격 계산
-        prices = [current_price * (1 - i) for i in range(4)]
-        orders = []
+        prices = []
+        for i in range(TR_time[1]):
+            prices.append(current_price * (1 - (i * 0.002)))  # 가격을 0.2%씩 낮추는 분할 매매 가격 계산
+        # tick size에 맞춰 가격 조정
+        ## if문으로 TR_time[1]이 3이하이면 현재가 주문이 시장가 주문으로 대체됨
 
 
     # TR json저장
