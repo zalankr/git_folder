@@ -314,8 +314,6 @@ def GetTotalRealMoney(balances):
 
     return total
 
-
-
 #시장가 매수한다. 2초뒤 잔고 데이타 리스트를 리턴한다.
 def BuyCoinMarket(upbit,Ticker,Money):
     time.sleep(0.05)

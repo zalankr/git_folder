@@ -1,9 +1,11 @@
 import pyupbit
-import myUpbit # 가능하면 빼기
-from datetime import datetime, time
 import json
-import time
+import time as time_module  # time 모듈을 별칭으로 import
 import UP_signal_weight as SW
+
+import pandas as pd # 삭제해도 이상 없을 시 삭제
+import myUpbit # 삭제해도 이상 없을 시 삭제
+from datetime import datetime
 
 # Upbit 토큰 불러오기
 with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
@@ -31,20 +33,19 @@ if TR_time[1] == None:
     print("ETH_balance:", ETH_balance, "KRW_balance:", KRW_balance) # 완성 후 삭제
     print("ETH_Invest:", ETH_Invest) # 완성 후 삭제
 
-    time.sleep(1) # 타임 슬립1초   
-    SW.CancelCoinOrder(upbit, Ticker) # 기존 매수매도주문 모두를 취소 함수(모듈)
+    time_module.sleep(1) # 타임 슬립1초   
+    SW.CancelCoinOrder(upbit, Ticker) # 기존 모든 주문 취소 함수(모듈)
 
-    time.sleep(1) # 타임 슬립1초
-    # 주문 하기 (모듈로)
-    ##########################################################################################################################33
+    time_module.sleep(1) # 타임 슬립1초
+    # 조건별 주문 하기 (모듈로)
+
     if ETH_Invest[0] == "Buy":
-        amount_per_times = (ETH_Invest[1] / 5)
-        current_price = pyupbit.get_current_price("ETH")
-        prices = [current_price * (i + 1) for i in range(5)]
+        amount_per_times = (ETH_Invest[1] / TR_time[1]) # 분할 매매 횟수당 KRW Quantity
+        current_price = pyupbit.get_current_price("KRW-ETH") # 이더리움 가격
+        # TR 분할 매매 가격 계산
+        prices = [current_price * (1 - i) for i in range(4)]
         orders = []
 
-    splits = 4 # 분할 매매 횟수
-    print(range(splits))
 
     # TR json저장
 
@@ -58,7 +59,11 @@ else:
 # TR json불러오기
 # 타임에서 시간확인하고 분할 횟수 생성
 ## 분할에 맞춰 투자금액을 분할
+## 공통 변수
+amount_per_times = (ETH_Invest[1] / 5)
+
 if ETH_Invest[0] == "Buy":
+
     amount_per_times = (ETH_Invest[1] / 5)
     current_price = pyupbit.get_current_price("ETH")
     prices = [current_price * (i + 1) for i in range(5)]

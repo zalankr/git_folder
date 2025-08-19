@@ -1,10 +1,7 @@
 import pyupbit
-import pandas as pd
-import numpy
-import datetime
-from datetime import time
+from datetime import datetime
+import time as time_module  # time 모듈을 별칭으로 import
 import json
-import time as time_module
 
 #이동평균선 수치, 첫번째: 분봉/일봉 정보, 두번째: 기간, 세번째: 기준 날짜
 def getMA(ohlcv,period,st):
@@ -100,26 +97,33 @@ def get_Invest(ETH20_signal, ETH40_signal, ETH_balance, KRW_balance):
 # 시간확인 조건문 함수: 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 def what_time():
     # 현재 시간 가져오기
-    now = datetime.datetime.now()
+    now = datetime.now()
     current_time = now.time()
 
-    if time(23, 58) == current_time : # 23:58
-        TR_time = ["0858", 0]
-    elif time(0, 5) == current_time : # 00:05
-        TR_time = ["0905", 1]
-    elif time(0, 12) == current_time : # 00:12
-        TR_time = ["0912", 2]
-    elif time(0, 19) == current_time : # 00:19
-        TR_time = ["0919", 3]
+    current_hour = current_time.hour
+    current_minute = current_time.minute
+
+    # 시간 비교 시 초 단위까지 정확히 매칭하기 어려우므로 시간 범위로 체크
+    if current_hour == 23 and 58 <=current_minute <= 59:  # 23:58
+        TR_time = ["0858", 5] # 시간, 분할 횟수
+    elif current_hour == 0 and 5 <= current_minute <= 6:  # 00:05
+        TR_time = ["0905", 34] # 시간, 분할 횟수
+    elif current_hour == 0 and 12 <= current_minute <= 13:  # 00:12
+        TR_time = ["0912", 3] # 시간, 분할 횟수
+    elif current_hour == 0 and 19 <= current_minute <= 20:  # 00:19
+        TR_time = ["0919", 2] # 시간, 분할 횟수
+    elif current_hour == 0 and 26 <= current_minute <= 27:  # 00:26
+        TR_time = ["0926", 1]
     else:
         TR_time = [None, None]
     
     return now, current_time, TR_time
-    
+
 # 해당 코인에 걸어진 매수매도주문 모두를 취소한다.
 def CancelCoinOrder(upbit, Ticker):
     orders_data = upbit.get_order(Ticker)
     if len(orders_data) > 0:
         for order in orders_data:
-            time.sleep(0.1)
+            time_module.sleep(0.1)
             print(upbit.cancel_order(order['uuid']))
+
