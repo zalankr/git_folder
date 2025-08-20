@@ -2,6 +2,7 @@ import pyupbit
 from datetime import datetime
 import time as time_module  # time 모듈을 별칭으로 import
 import json
+import math
 
 #이동평균선 수치, 첫번째: 분봉/일봉 정보, 두번째: 기간, 세번째: 기준 날짜
 def getMA(ohlcv,period,st):
@@ -118,6 +119,52 @@ def what_time():
         TR_time = [None, None]
     
     return now, current_time, TR_time
+
+# tick size 계산 함수
+def get_tick_size(price, method="floor"):
+    if method == "floor":
+        func = math.floor
+    elif method == "round":
+        func = round 
+    else:
+        func = math.ceil 
+
+    if price >= 2000000:
+        tick_size = func(price / 1000) * 1000
+    elif price >= 1000000:
+        tick_size = func(price / 1000) * 1000
+    elif price >= 500000:
+        tick_size = func(price / 500) * 500
+    elif price >= 100000:
+        tick_size = func(price / 100) * 100
+    elif price >= 50000:
+        tick_size = func(price / 50) * 50
+    elif price >= 10000:
+        tick_size = func(price / 10) * 10
+    elif price >= 5000:
+        tick_size = func(price / 5) * 5
+    elif price >= 1000:
+        tick_size = func(price / 1) * 1
+    elif price >= 100:
+        tick_size = func(price / 1) * 1
+    elif price >= 10:
+        tick_size = func(price / 0.1) / 10
+    elif price >= 1:
+        tick_size = func(price / 0.01) / 100
+    elif price >= 0.1:
+        tick_size = func(price / 0.001) / 1000
+    elif price >= 0.01:
+        tick_size = func(price / 0.0001) / 10000
+    elif price >= 0.001:
+        tick_size = func(price / 0.00001) / 100000
+    elif price >= 0.0001:
+        tick_size = func(price / 0.000001) / 1000000
+    elif price >= 0.00001:
+        tick_size = func(price / 0.0000001) / 10000000
+    else:
+        tick_size = func(price / 0.00000001) / 100000000
+
+    return tick_size
 
 # 해당 코인에 걸어진 매수매도주문 모두를 취소한다.
 def CancelCoinOrder(upbit, Ticker):
