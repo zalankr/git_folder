@@ -1,0 +1,12 @@
+{
+    "time": {
+        "saved_time": "9:26",
+        "loaded_time": "8:58"
+    },
+    "trade": {
+        "signal20": "ETH",
+        "signal40": "ETH",
+        "trade": "hold(ETH>ETH)",
+        "weight": 1.0
+    }
+}
