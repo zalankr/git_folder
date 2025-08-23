@@ -18,6 +18,8 @@ upbit = pyupbit.Upbit(access_key, secret_key)
 now, current_time, TR_time = SW.what_time()
 print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
+
+
 ################### 이 라인부터 다시 코딩 시작 ####################
 # If 8:58 Trading 5분할 (0회차) 시 TR_daily json읽기, Signal계산, 투자 금액 산출 (try로 감싸기) 후 주문 취소, 5분할 매매
 if TR_time[1] == 5:

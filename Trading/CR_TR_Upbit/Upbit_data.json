@@ -1,13 +1,13 @@
 {
-    "time": {
-        "saved_time": "9:26",
-        "loaded_time": "8:58"
+    "date": {
+        "record day": "2025-08-23"
     },
     "trade": {
-        "signal20": "ETH",
-        "signal40": "ETH",
-        "trade": "Hold(ETH>ETH)",
-        "ETH_balance": 0.99,
-        "CASH_balance": 0.01
+        "position": "Hold_Full",
+        "ETH_weight": 0.99,
+        "CASH_weight": 0.01,
+        "Invest_Quantity": 0.0,
+        "ETH_balance": 5.48575958,
+        "KRW_balance": 10536887.0
     }
 }

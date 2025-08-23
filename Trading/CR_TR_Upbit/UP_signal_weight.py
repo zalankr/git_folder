@@ -11,7 +11,7 @@ def getMA(ohlcv,period,st):
     return float(ma.iloc[st])
 
 # 어제 포지션을 오늘 포지션으로 변경 함수
-def make_position(data):
+def make_position(data, ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불러 삽입
     # 어제의 json값 불러오기
     Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Home경로
     # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Company경로
@@ -21,38 +21,38 @@ def make_position(data):
     except Exception as e:
         print("Exception File")
     #json에서 어제의 밸런스 추출
-    ETH_balance = Upbit_data["trade"]["ETH_balance"]
-    KRW_balance = Upbit_data["trade"]["KRW_balance"]
+    ETH_weight = Upbit_data["trade"]["ETH_weight"]
+    ETH_target = Upbit_data["trade"]["ETH_target"]
 
     # ETH 가격자료 불러오기
     data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
+    price = data["close"].iloc[-1]
 
     # 이동평균선 계산
     MA20 = getMA(data, 20, -1)
     MA40 = getMA(data, 40, -1)
-
     # 포지션 산출
-    if ETH_balance == 0.99 :
+    if ETH_weight == 0.99 :
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "Hold_Full"}, {"ETH_target": 0.99}, {"CASH_target": 0.01}, {"Invest_Quantity": 0.0}]
+            position = [{"position": "Hold_Full"}, {"ETH_weight": 0.99}, {"ETH_target": ETH}, {"CASH_weight": 0.01}, {"Invest_Quantity": 0.0}]
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "Sell_Full"}, {"ETH_target": 0.0}, {"CASH_target": 1.0}, {"Invest_Quantity": ETH_balance}]
+            position = [{"position": "Sell_Full"}, {"ETH_weight": 0.0}, {"ETH_target": 0.0}, {"CASH_weight": 1.0}, {"Invest_Quantity": ETH}]
         else:
-            position = [{"position": "Sell_Half"}, {"ETH_target": 0.495}, {"CASH_target": 0.505}, {"Invest_Quantity": ETH_balance * 0.5}]
-    elif ETH_balance == 0.495:
+            position = [{"position": "Sell_Half"}, {"ETH_weight": 0.495}, {"ETH_target": ETH * 0.5}, {"CASH_weight": 0.505}, {"Invest_Quantity": ETH * 0.5}]
+    elif ETH_weight == 0.495:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "Buy_Full"}, {"ETH_target": 0.99}, {"CASH_target": 0.01}, {"Invest_Quantity": KRW_balance * 0.99}]
+            position = [{"position": "Buy_Full"}, {"ETH_weight": 0.99}, {"ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price)}, {"CASH_weight": 0.01}, {"Invest_Quantity": KRW * 0.99}]
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "Sell_Full"}, {"ETH_target": 0.0}, {"CASH_target": 1.0}, {"Invest_Quantity": ETH_balance}]
+            position = [{"position": "Sell_Full"}, {"ETH_weight": 0.0}, {"ETH_target": 0.0}, {"CASH_weight": 1.0}, {"Invest_Quantity": ETH}]
         else:
-            position = [{"position": "Hold_Half"}, {"ETH_target": 0.495}, {"CASH_target": 0.505}, {"Invest_Quantity": 0.0}]   
-    elif ETH_balance == 0.0:
+            position = [{"position": "Hold_Half"}, {"ETH_weight": 0.495}, {"ETH_target": ETH}, {"CASH_weight": 0.505}, {"Invest_Quantity": 0.0}]
+    elif ETH_weight == 0.0:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "Buy_Full"}, {"ETH_target": 0.99}, {"CASH_target": 0.01}, {"Invest_Quantity": KRW_balance * 0.99}]
+            position = [{"position": "Buy_Full"}, {"ETH_weight": 0.99}, {"ETH_target": ((KRW*0.99*0.9995)/price)}, {"CASH_weight": 0.01}, {"Invest_Quantity": KRW * 0.99}]
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "Stay_CASH"}, {"ETH_target": 0.0}, {"CASH_target": 1.0}, {"Invest_Quantity": ETH_balance}]
+            position = [{"position": "Stay_CASH"}, {"ETH_weight": 0.0}, {"ETH_target": 0.0}, {"CASH_weight": 1.0}, {"Invest_Quantity": 0.0}]
         else:
-            position = [{"position": "Buy_Half"}, {"ETH_target": 0.495}, {"CASH_target": 0.505}, {"Invest_Quantity": KRW_balance * 0.495}]
+            position = [{"position": "Buy_Half"}, {"ETH_weight": 0.495}, {"ETH_target": ((KRW*0.495*0.9995)/price) * 0.5}, {"CASH_weight": 0.505}, {"Invest_Quantity": KRW * 0.495}]
 
     return position
 
