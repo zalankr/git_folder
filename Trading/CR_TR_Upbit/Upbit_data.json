@@ -6,7 +6,8 @@
     "trade": {
         "signal20": "ETH",
         "signal40": "ETH",
-        "trade": "hold(ETH>ETH)",
-        "weight": 1.0
+        "trade": "Hold(ETH>ETH)",
+        "ETH_balance": 0.99,
+        "CASH_balance": 0.01
     }
 }

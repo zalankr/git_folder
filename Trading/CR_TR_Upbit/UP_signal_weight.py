@@ -11,8 +11,8 @@ def getMA(ohlcv,period,st):
     return float(ma.iloc[st])
 
 # 어제 포지션을 오늘 포지션으로 변경 함수
-def make_position(data, trading, ETH_balance, KRW_balance):
-    # 어제의 포지션, 밸런스 json값 불러오기
+def make_position(data):
+    # 어제의 json값 불러오기
     Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Home경로
     # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Company경로
     try:
@@ -20,6 +20,9 @@ def make_position(data, trading, ETH_balance, KRW_balance):
             Upbit_data = json.load(f)
     except Exception as e:
         print("Exception File")
+    #json에서 어제의 밸런스 추출
+    ETH_balance = Upbit_data["trade"]["ETH_balance"]
+    KRW_balance = Upbit_data["trade"]["KRW_balance"]
 
     # ETH 가격자료 불러오기
     data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
@@ -29,106 +32,29 @@ def make_position(data, trading, ETH_balance, KRW_balance):
     MA40 = getMA(data, 40, -1)
 
     # 포지션 산출
-    if trading == "hold(ETH>ETH)":
+    if ETH_balance == 0.99 :
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "hold(ETH>ETH)"}, {"ETH": 1.0}, {"CASH": 0.0}, {"ETH_Invest": 0.0}]
+            position = [{"position": "Hold_Full"}, {"ETH_target": 0.99}, {"CASH_target": 0.01}, {"Invest_Quantity": 0.0}]
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "sell(ETH>CASH)"}, {"ETH": 0.0}, {"CASH": 1.0}, {"ETH_Invest": ETH_balance}]
-        elif data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "sell(ETH>CASH)"}, {"ETH": 0.5}, {"CASH": 0.5}, {"ETH_Invest": ETH_balance * 0.5}]
-        elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "sell(ETH>CASH)"}, {"ETH": 0.5}, {"CASH": 0.5}, {"ETH_Invest": ETH_balance * 0.5}]
-
-    ##########################################################################    
-
-
-
-
-
-    if position == "ETH": # ETH or CASH
-        if data["close"].iloc[-1] >= MA:
-            signal = "Hold"
-            return signal
+            position = [{"position": "Sell_Full"}, {"ETH_target": 0.0}, {"CASH_target": 1.0}, {"Invest_Quantity": ETH_balance}]
         else:
-            signal = "Sell"
-            return signal
-    else:
-        if data["close"].iloc[-1] >= MA:
-            signal = "Buy"
-            return signal
+            position = [{"position": "Sell_Half"}, {"ETH_target": 0.495}, {"CASH_target": 0.505}, {"Invest_Quantity": ETH_balance * 0.5}]
+    elif ETH_balance == 0.495:
+        if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
+            position = [{"position": "Buy_Full"}, {"ETH_target": 0.99}, {"CASH_target": 0.01}, {"Invest_Quantity": KRW_balance * 0.99}]
+        elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
+            position = [{"position": "Sell_Full"}, {"ETH_target": 0.0}, {"CASH_target": 1.0}, {"Invest_Quantity": ETH_balance}]
         else:
-            signal = "Cash"
-            return signal
+            position = [{"position": "Hold_Half"}, {"ETH_target": 0.495}, {"CASH_target": 0.505}, {"Invest_Quantity": 0.0}]   
+    elif ETH_balance == 0.0:
+        if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
+            position = [{"position": "Buy_Full"}, {"ETH_target": 0.99}, {"CASH_target": 0.01}, {"Invest_Quantity": KRW_balance * 0.99}]
+        elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
+            position = [{"position": "Stay_CASH"}, {"ETH_target": 0.0}, {"CASH_target": 1.0}, {"Invest_Quantity": ETH_balance}]
+        else:
+            position = [{"position": "Buy_Half"}, {"ETH_target": 0.495}, {"CASH_target": 0.505}, {"Invest_Quantity": KRW_balance * 0.495}]
 
-# 매수매도 시그널 생성 함수
-def generate_signal():
-    # 어제의 포지션, 밸런스 json값 불러오기
-    Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Home경로
-    # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Company경로
-    try:
-        with open(Upbit_data_path, 'r', encoding='utf-8') as f:
-            Upbit_data = json.load(f)
-    except Exception as e:
-        print("Exception File")
-
-    # ETH 가격자료 불러오기
-    data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
-
-    # ## ETH 20MA
-    # signal = Upbit_data["trade"]["signal20"]
-    # ETH20_signal = remake_position(data, 20, signal)
-
-    # ## ETH 40MA
-    # signal = Upbit_data["trade"]["signal40"]
-    # ETH40_signal = remake_position(data, 40, signal)
-
-    ## Trade Signal ##
-    trading = Upbit_data["trade"]["trading"]
-
-    return ETH20_signal, ETH40_signal, trading
-
-# Ticker별 투자 Weight 산출 함수
-def get_Invest(ETH20_signal, ETH40_signal, ETH_balance, KRW_balance):
-    ETH20_signal, ETH40_signal = generate_signal()
-    ETH_Invest = list()
-    if ETH20_signal == "Buy" :
-        if ETH40_signal == "Buy":
-            ETH_Invest = ["Buy", KRW_balance * 0.99, "ETH", "ETH"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Cash":
-            ETH_Invest = ["Buy", KRW_balance * 0.495, "ETH", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Sell":
-            ETH_Invest = ["None", 0, "ETH", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Hold":
-            ETH_Invest = ["Buy", KRW_balance * 0.99, "ETH", "ETH"] #2 ETH20, 3 ETH40
-    if ETH20_signal == "Cash" :
-        if ETH40_signal == "Buy":
-            ETH_Invest = ["Buy", KRW_balance * 0.495, "Cash", "ETH"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Cash":
-            ETH_Invest = ["None", 0, "Cash", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Sell":
-            ETH_Invest = ["Sell", ETH_balance, "Cash", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Hold":
-            ETH_Invest = ["None", 0, "Cash", "ETH"] #2 ETH20, 3 ETH40
-    if ETH20_signal == "Sell" :
-        if ETH40_signal == "Buy":
-            ETH_Invest = ["None", 0, "Cash", "ETH"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Cash":
-            ETH_Invest = ["Sell", ETH_balance, "Cash", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Sell":
-            ETH_Invest = ["Sell", ETH_balance, "Cash", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Hold":
-            ETH_Invest = ["Sell", ETH_balance*0.5, "Cash", "ETH"] #2 ETH20, 3 ETH40
-    if ETH20_signal == "Hold" :
-        if ETH40_signal == "Buy":
-            ETH_Invest = ["Buy", KRW_balance * 0.99, "ETH", "ETH"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Cash":
-            ETH_Invest = ["None", 0, "ETH", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Sell":
-            ETH_Invest = ["Sell", ETH_balance*0.5, "ETH", "Cash"] #2 ETH20, 3 ETH40
-        elif ETH40_signal == "Hold":
-            ETH_Invest = ["None", 0, "ETH", "ETH"] #2 ETH20, 3 ETH40
-
-    return ETH_Invest # Buy값은 KRW로 sell값은 ETH량으로 sample["Buy", KRW_balance * 0.99, "ETH", "ETH"]
+    return position
 
 # 시간확인 조건문 함수: 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 def what_time():
@@ -202,8 +128,8 @@ def get_tick_size(price, method="floor"):
     return tick_size
 
 # 해당 코인에 걸어진 매수매도주문 모두를 취소한다.
-def CancelCoinOrder(upbit, Ticker):
-    orders_data = upbit.get_order(Ticker)
+def CancelCoinOrder(upbit):
+    orders_data = upbit.get_order("KRW-ETH")
     if len(orders_data) > 0:
         for order in orders_data:
             time_module.sleep(0.1)

@@ -8,10 +8,13 @@ Upbit_data = {
   "trade": {
     "signal20": "ETH",
     "signal40": "ETH",
-    "trade": "hold(ETH>ETH)",
-    "weight": 1.0
+    "trade": "Hold(ETH>ETH)",
+    "ETH_balance": 0.99,
+    "CASH_balance": 0.01
   }
 }
+
+# 0.0, 0.01, 0.495, 0.505, 0.99, 1.0
 
 # JSON 파일로 저장
 with open('C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f:
