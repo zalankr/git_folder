@@ -4,9 +4,10 @@ Upbit_data = {
   "date": {
     "record day": "2025-08-23"
   },
-  "trade": {
-    "position": "Hold_Full",
+  "position": {
+    "position": "Hold_full",
     "ETH_weight": 0.99,
+    "ETH_target": 5.48575958,
     "CASH_weight": 0.01,
     "Invest_Quantity": 0.0,
     "ETH_balance": 5.48575958,

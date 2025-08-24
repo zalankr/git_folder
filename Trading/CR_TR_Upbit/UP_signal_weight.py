@@ -11,7 +11,7 @@ def getMA(ohlcv,period,st):
     return float(ma.iloc[st])
 
 # 어제 포지션을 오늘 포지션으로 변경 함수
-def make_position(data, ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불러 삽입
+def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불러 삽입
     # 어제의 json값 불러오기
     Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Home경로
     # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Company경로
@@ -22,7 +22,6 @@ def make_position(data, ETH, KRW): # Upbit모듈로 이더리움과 원화 잔�
         print("Exception File")
     #json에서 어제의 밸런스 추출
     ETH_weight = Upbit_data["trade"]["ETH_weight"]
-    ETH_target = Upbit_data["trade"]["ETH_target"]
 
     # ETH 가격자료 불러오기
     data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
@@ -34,25 +33,25 @@ def make_position(data, ETH, KRW): # Upbit모듈로 이더리움과 원화 잔�
     # 포지션 산출
     if ETH_weight == 0.99 :
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "Hold_Full"}, {"ETH_weight": 0.99}, {"ETH_target": ETH}, {"CASH_weight": 0.01}, {"Invest_Quantity": 0.0}]
+            position = {"position": "Hold state", "ETH_weight": 0.99, "ETH_target": ETH, "CASH_weight": 0.01, "Invest_Quantity": 0.0}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "Sell_Full"}, {"ETH_weight": 0.0}, {"ETH_target": 0.0}, {"CASH_weight": 1.0}, {"Invest_Quantity": ETH}]
+            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_Quantity": ETH}
         else:
-            position = [{"position": "Sell_Half"}, {"ETH_weight": 0.495}, {"ETH_target": ETH * 0.5}, {"CASH_weight": 0.505}, {"Invest_Quantity": ETH * 0.5}]
+            position = {"position": "Sell half", "ETH_weight": 0.495, "ETH_target": ETH * 0.5, "CASH_weight": 0.505, "Invest_Quantity": ETH * 0.5}
     elif ETH_weight == 0.495:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "Buy_Full"}, {"ETH_weight": 0.99}, {"ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price)}, {"CASH_weight": 0.01}, {"Invest_Quantity": KRW * 0.99}]
+            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price), "CASH_weight": 0.01, "Invest_Quantity": KRW * 0.99}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "Sell_Full"}, {"ETH_weight": 0.0}, {"ETH_target": 0.0}, {"CASH_weight": 1.0}, {"Invest_Quantity": ETH}]
+            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_Quantity": ETH}
         else:
-            position = [{"position": "Hold_Half"}, {"ETH_weight": 0.495}, {"ETH_target": ETH}, {"CASH_weight": 0.505}, {"Invest_Quantity": 0.0}]
+            position = {"position": "Hold state", "ETH_weight": 0.495, "ETH_target": ETH, "CASH_weight": 0.505, "Invest_Quantity": 0.0}
     elif ETH_weight == 0.0:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = [{"position": "Buy_Full"}, {"ETH_weight": 0.99}, {"ETH_target": ((KRW*0.99*0.9995)/price)}, {"CASH_weight": 0.01}, {"Invest_Quantity": KRW * 0.99}]
+            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ((KRW*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_Quantity": KRW * 0.99}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = [{"position": "Stay_CASH"}, {"ETH_weight": 0.0}, {"ETH_target": 0.0}, {"CASH_weight": 1.0}, {"Invest_Quantity": 0.0}]
+            position = {"position": "Hold state", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_Quantity": 0.0}
         else:
-            position = [{"position": "Buy_Half"}, {"ETH_weight": 0.495}, {"ETH_target": ((KRW*0.495*0.9995)/price) * 0.5}, {"CASH_weight": 0.505}, {"Invest_Quantity": KRW * 0.495}]
+            position = {"position": "Buy half", "ETH_weight": 0.495, "ETH_target": ((KRW*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_Quantity": KRW * 0.495}
 
     return position
 
@@ -77,7 +76,7 @@ def what_time():
     elif current_hour == 0 and 26 <= current_minute <= 27:  # 00:26
         TR_time = ["0926", 1]
     else:
-        TR_time = [None, None]
+        TR_time = [None, 0]
     
     return now, current_time, TR_time
 
@@ -134,4 +133,22 @@ def CancelCoinOrder(upbit):
         for order in orders_data:
             time_module.sleep(0.1)
             print(upbit.cancel_order(order['uuid']))
+
+# 5000원 미만 주문금액 시 분할 매매 횟수 조정 함수
+def adjust_times(KRW_per_times, TR_time):
+    if 4100 < KRW_per_times <= 5100 : 
+        TR_time[1] = 4
+    elif 3100 < KRW_per_times <= 4100 :
+        TR_time[1] = 3
+    elif 2100 < KRW_per_times <= 3100 :
+        TR_time[1] = 2
+    elif 1100 < KRW_per_times <= 2100 :
+        TR_time[1] = 1
+    elif 1100 < KRW_per_times <= 2100 :
+        TR_time[1] = 1
+    elif KRW_per_times <= 1100 :
+        TR_time[1] = 0
+        print("분할 매매 금액이 너무 적어 매매하지 않습니다. - No Action")
+
+    return TR_time
 
