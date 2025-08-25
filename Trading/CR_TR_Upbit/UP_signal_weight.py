@@ -134,21 +134,45 @@ def CancelCoinOrder(upbit):
             time_module.sleep(0.1)
             print(upbit.cancel_order(order['uuid']))
 
-# 5000원 미만 주문금액 시 분할 매매 횟수 조정 함수
-def adjust_times(KRW_per_times, TR_time):
-    if 4100 < KRW_per_times <= 5100 : 
-        TR_time[1] = 4
-    elif 3100 < KRW_per_times <= 4100 :
-        TR_time[1] = 3
-    elif 2100 < KRW_per_times <= 3100 :
-        TR_time[1] = 2
-    elif 1100 < KRW_per_times <= 2100 :
-        TR_time[1] = 1
-    elif 1100 < KRW_per_times <= 2100 :
-        TR_time[1] = 1
-    elif KRW_per_times <= 1100 :
-        TR_time[1] = 0
-        print("분할 매매 금액이 너무 적어 매매하지 않습니다. - No Action")
+def partial_selling(current_price, amount_per_times, TR_time, upbit):        
+    # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
+    prices = []
+    for i in range(TR_time[1]):
+        price = (current_price * (1+(i*0.002))) # 가격을 0.2%씩 올려 분할 매도 가격 계산
+        prices.append(get_tick_size(price = price,  method="floor"))
 
-    return TR_time
+    # if문으로 TR_time[1]이 3미만이면 현재가 주문을 -2%(유사 시장가) 매도 주문으로 대체
+    if TR_time[1] < 3:
+        prices[0] = [get_tick_size(price = current_price * 0.98,  method="floor")]
+        
+    print("분할 매매 가격:", prices) # 완성 후 삭제
+
+    # 주문 실행
+    for t in range(TR_time[1]):
+        time_module.sleep(0.05) 
+        result = upbit.sell_limit_order("KRW-ETH", prices[t], amount_per_times)
+        print(result) # 프린트
+
+    return result
+
+def partial_buying(current_price, amount_per_times, TR_time, upbit):        
+    # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
+    prices = []
+    for i in range(TR_time[1]):
+        price = (current_price * (1-(i*0.002))) # 가격을 0.2%씩 낮춰 분할 매수 가격 계산
+        prices.append(get_tick_size(price = price,  method="floor"))
+
+    # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +2%(유사 시장가) 매수 주문으로 대체
+    if TR_time[1] < 3:
+        prices[0] = [get_tick_size(price = current_price*1.02,  method="floor")]
+        
+    print("분할 매매 가격:", prices) # 완성 후 삭제
+
+    # 주문 실행
+    for t in range(TR_time[1]):
+        time_module.sleep(0.05)
+        result = upbit.buy_limit_order("KRW-ETH", prices[t], amount_per_times)
+        print(result)
+
+    return result
 
