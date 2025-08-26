@@ -9,9 +9,11 @@ Upbit_data = {
     "ETH_weight": 0.99,
     "ETH_target": 5.48575958,
     "CASH_weight": 0.01,
-    "Invest_Quantity": 0.0,
-    "ETH_balance": 5.48575958,
-    "KRW_balance": 10536887.0
+    "Invest_Quantity": 0.0
+  },
+  "balance": {
+    "ETH": 5.48575958,
+    "KRW": 10536887.0
   }
 }
 

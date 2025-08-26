@@ -41,8 +41,10 @@ try:
                 "ETH_target": position["ETH_target"],
                 "CASH_weight": position["CASH_weight"],
                 "Invest_Quantity": position["Invest_Quantity"],
-                "ETH_balance": ETH,
-                "KRW_balance": KRW
+            },
+            "balance": {
+                "ETH": ETH,
+                "KRW": KRW
             }
         }
 

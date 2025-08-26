@@ -21,7 +21,7 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
     except Exception as e:
         print("Exception File")
     #json에서 어제의 밸런스 추출
-    ETH_weight = Upbit_data["trade"]["ETH_weight"]
+    ETH_weight = Upbit_data["position"]["ETH_weight"]
 
     # ETH 가격자료 불러오기
     data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
