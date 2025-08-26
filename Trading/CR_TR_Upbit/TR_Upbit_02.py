@@ -91,7 +91,28 @@ except Exception as e:
 time_module.sleep(1) # 타임 슬립1초
 
 # 기록 시 체결 주문내역과 수익률 월, 일, 연 기록 try로 감싸기
+# Upbit_data 만들기
 
+
+
+
+Upbit_data = {
+    "date": {
+        "record day": now.strftime('%Y-%m-%d')
+    },
+    "position": {
+        "position": position["position"],
+        "ETH_weight": position["ETH_weight"],
+        "ETH_target": position["ETH_target"],
+        "CASH_weight": position["CASH_weight"],
+        "Invest_Quantity": position["Invest_Quantity"],
+        "ETH_balance": ETH,
+        "KRW_balance": KRW
+    },
+    "return": {
+         
+    }
+}
         
 
 # 마지막에 Upbit_Trading.json파일 생성, 카카오톡 보내기, 스프레드시트 기록하기
