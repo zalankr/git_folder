@@ -7,9 +7,10 @@
         "ETH_weight": 0.99,
         "ETH_target": 5.48575958,
         "CASH_weight": 0.01,
-        "Invest_Quantity": 0.0
+        "Invest_quantity": 0.0
     },
     "balance": {
+        "Total_balance":0,
         "ETH": 5.48575958,
         "KRW": 10536887.0
     }

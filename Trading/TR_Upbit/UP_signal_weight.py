@@ -176,3 +176,9 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
 
     return result
 
+def Total_balance(upbit):
+    KRW = upbit.get_balance_t("KRW")
+    ETH = upbit.get_balance_t("ETH")
+    Total_balance = KRW + (ETH * pyupbit.get_current_price("KRW-ETH"))*0.9995
+
+    return KRW, ETH, Total_balance
