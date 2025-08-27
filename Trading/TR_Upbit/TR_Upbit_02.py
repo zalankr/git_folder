@@ -2,7 +2,6 @@ import pyupbit
 import json
 import time as time_module  # time 모듈을 별칭으로 import
 import UP_signal_weight as SW
-from datetime import datetime
 
 # Upbit 토큰 불러오기
 with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
@@ -54,6 +53,7 @@ try:
 
 except Exception as e:
         print(f"예상치 못한 오류: {e}")
+
 
 # 회차별 매매 주문하기 try로 감싸기
 try:

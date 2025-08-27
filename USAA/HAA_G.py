@@ -488,20 +488,3 @@ worksheet.format("A23:T23", {
     }
 })
 time.sleep(0.1)
-
-
-# 라인알러트 보내기
-# line_alert.SendMessage(str(year) + '-' + str(month) +' HAA')
-
-# if Regime_Signal < 0 :
-#     line_alert.SendMessage('HAA Regime Signal :' + str(Regime_Signal) +'> RISK')
-#     line_alert.SendMessage('Asset :' + Target[0] + '> Weight :' + str(Weight[0]))  
-# else :
-#     try : 
-#         line_alert.SendMessage('HAA Regime Signal :' + str(Regime_Signal) +'> Stable')
-#         line_alert.SendMessage('Asset :' + Target[0] + '> Weight :' + str(Weight[0]))
-#         line_alert.SendMessage('Asset :' + Target[1] + '> Weight :' + str(Weight[1]))
-#         line_alert.SendMessage('Asset :' + Target[2] + '> Weight :' + str(Weight[2]))
-#         line_alert.SendMessage('Asset :' + Target[3] + '> Weight :' + str(Weight[3]))
-#     except : 
-#         line_alert.SendMessage('티커 4개 이하')
