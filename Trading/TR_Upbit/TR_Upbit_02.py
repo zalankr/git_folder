@@ -13,7 +13,7 @@ with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
-# 시간확인 조건문 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
+# 시간확인 조건문
 now, current_time, TR_time = UP.what_time()
 print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
@@ -29,7 +29,7 @@ try:
         KRW = upbit.get_balance("KRW")
 
         # 포지션 확인 및 투자 수량 산출
-        position = UP.make_position(ETH, KRW)
+        position, Total_balance = UP.make_position(ETH, KRW)
 
         # Upbit_data 만들고 저장하기
         Upbit_data = {
@@ -44,9 +44,12 @@ try:
                 "Invest_quantity": position["Invest_quantity"]
             },
             "balance": {
-                "Total_balance": 0,
+                "Total_balance": Total_balance,
                 "ETH": ETH,
                 "KRW": KRW
+            },
+            "Historical_data": {
+                 
             }
         }
 
@@ -66,6 +69,7 @@ try:
         with open('C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json', 'r', encoding='utf-8') as f:
             Upbit_data = json.load(f)
         position = Upbit_data["position"]
+        balance = Upbit_data["balance"]
 
         # 포지션별 주문하기
         if position["position"] == "Hold state":
@@ -99,12 +103,14 @@ time_module.sleep(1) # 타임 슬립1초
 
 # 수익률 계산하기 월, 일, 연 기록 try로 감싸기
 if TR_time[1] == 1:
-    # 일종료 원화환산 토탈 잔고, 일종료 KRW잔고, 일종료 ETH잔고
+    # 어제종료 잔고
+    last_Total_balance = balance["Total_balance"]
+    last_KRW = balance["KRW"]
+    last_ETH = balance["ETH"]
+
+    # 당일종료 원화환산 토탈잔고, KRW잔고, ETH잔고
     KRW, ETH, Total_balance = UP.Total_balance(upbit)
 
-    # 어제종료 원화환산 토탈 잔고
-    # 어제종료 ETH잔고
-    # 어제종료 KRW잔고
     # 전월말 원화환산 토탈 잔고
     # 전년말 원화환산 토탈 잔고
     # 일, 월, 연 수익률
@@ -138,3 +144,4 @@ Upbit_data = {
 
 
 #### 마지막에 crontab에서 5분 후 자동종료 되게 설정
+exit()
