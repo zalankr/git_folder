@@ -15,7 +15,12 @@
         "KRW": 10536887.0
     },
     "Historical_data": {
-        "last_month_Total_balance": 0,
-        "last_year_Total_balance": 0
+        "last_month_Total_balance": 43448578.0,
+        "last_year_Total_balance": 40859674.0
+    },
+    "return": {
+        "daily_return": 0.0,
+        "montly_return": 0.0,
+        "yearly_return": 5.55
     }
 }

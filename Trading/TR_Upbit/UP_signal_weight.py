@@ -129,8 +129,8 @@ def get_tick_size(price, method="floor"):
 
     return tick_size
 
-# 해당 코인에 걸어진 매수매도주문 모두를 취소한다.
-def CancelCoinOrder(upbit):
+# 코해당 인에 걸어진 매수매도주문 모두를 취소한다.
+def Cancel_ETH_Order(upbit):
     orders_data = upbit.get_order("KRW-ETH")
     if len(orders_data) > 0:
         for order in orders_data:
