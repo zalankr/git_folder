@@ -3,7 +3,6 @@ import json
 import time as time_module  # time 모듈을 별칭으로 import
 import UP_signal_weight as UP
 import kakao_alert as KA
-import pandas as PD
 
 # Upbit 토큰 불러오기
 with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
@@ -21,7 +20,7 @@ print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 try:
     if TR_time[1] == 5: # 5분할 매매로 5인 경우만
         # 기존 주문 모두 취소
-        print(UP.CancelCoinOrder(upbit)) # 기존 모든 주문 취소 함수(모듈) 프린트 벗기기
+        print(UP.Cancel_ETH_Order(upbit)) # 기존 모든 주문 취소 함수(모듈) 프린트 벗기기
         time_module.sleep(1) # 타임 슬립 1초
 
         # 잔고 확인
@@ -30,7 +29,6 @@ try:
 
         # 포지션 확인 및 투자 수량 산출
         position, Total_balance, last_month_Total_balance, last_year_Total_balance = UP.make_position(ETH, KRW)
-
 
         # Upbit_data 만들고 저장하기
         Upbit_data = {
@@ -52,6 +50,11 @@ try:
             "Historical_data": {
                 "last_month_Total_balance": last_month_Total_balance,
                 "last_year_Total_balance": last_year_Total_balance
+            },
+            "return": {
+                "daily_return": 0.0,
+                "montly_return": 0.0,
+                "yearly_return": 5.55
             }
         }
 
@@ -100,7 +103,7 @@ except Exception as e:
         print(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
         KA.SendMessage(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
 
-time_module.sleep(1) # 타임 슬립1초
+time_module.sleep(1) # 타임슬립 1초
 
 # 수익률 계산하기 월, 일, 연 기록 try로 감싸기
 if TR_time[1] == 1:
@@ -119,36 +122,54 @@ if TR_time[1] == 1:
     KRW, ETH, Total_balance = UP.Total_balance(upbit)
 
     # 일, 월, 연 수익률
-    daily_return = (position["ETH_balance"] - position["Invest_quantity"]) / position["Invest_quantity"] * 100
-    montly_return = (position["ETH_balance"] - position["Invest_quantity"]) / position["Invest_quantity"] * 100
-    yearly_return = (position["ETH_balance"] - position["Invest_quantity"]) / position["Invest_quantity"] * 100
+    daily_return = (ETH - last_ETH) / last_ETH * 100
+    montly_return = (Total_balance - last_month_Total_balance) / last_month_Total_balance * 100
+    yearly_return = (Total_balance - last_year_Total_balance) / last_year_Total_balance * 100
+
+    time_module.sleep(0.5) # 타임슬립 0.5초
+
+    # Upbit_data 만들기
+    Upbit_data = {
+        "date": {
+            "record day": now.strftime('%Y-%m-%d')
+        },
+        "position": {
+            "position": position["position"],
+            "ETH_weight": position["ETH_weight"],
+            "ETH_target": position["ETH_target"],
+            "CASH_weight": position["CASH_weight"],
+            "Invest_quantity": position["Invest_quantity"]
+        },
+        "balance": {
+            "Total_balance": Total_balance,
+            "ETH": ETH,
+            "KRW": KRW
+        },
+        "Historical_data": {
+            "last_month_Total_balance": last_month_Total_balance,
+            "last_year_Total_balance": last_year_Total_balance
+        },
+        "return": {
+            "daily_return": 0.0,
+            "montly_return": 0.0,
+            "yearly_return": 5.55
+        }
+    }   
+
+    # Upbit_data.json파일 생성
+    with open('C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f:
+        json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
+    time_module.sleep(0.5)
+
+    # KakaoTalk 메시지 보내기
+    KA.SendMessage(f"{now.strftime('%Y-%m-%d')} {TR_time[0]} 당일 트레이딩 완료")
+    KA.SendMessage(f"일간 수익률: {daily_return:.2f}% \n월간 수익률: {montly_return:.2f}% \n연간 수익률: {yearly_return:.2f}%")
+    KA.SendMessage(f"원화환산 잔고: {Total_balance:,}원 \nETH: {ETH:,}원 \nKRW: {KRW:,}원")
+    KA.SendMessage(f"position: {position['position']} \nETH_weight: {position['ETH_weight']} \nETH_target: {position['ETH_target']} \nCASH_weight: {position['CASH_weight']}")
+
+    # Google Spreadsheet에 데이터 추가
 
 
-
-# 기록 시 과 수익률 월, 일, 연 기록 try로 감싸기
-# Upbit_data 만들기
-Upbit_data = {
-    "date": {
-        "record day": now.strftime('%Y-%m-%d')
-    },
-    "position": {
-        "position": position["position"],
-        "ETH_weight": position["ETH_weight"],
-        "ETH_target": position["ETH_target"],
-        "CASH_weight": position["CASH_weight"],
-        "Invest_quantity": position["Invest_quantity"],
-        "Total_balance": 0,
-        "ETH_balance": ETH,
-        "KRW_balance": KRW
-    },
-    "return": {
-         
-    }
-}
-        
-
-# 마지막에 Upbit_Trading.json파일 생성, 카카오톡 보내기, 스프레드시트 기록하기
-
-
+    # GSpread.append_row([now.strftime('%Y-%m-%d'), TR_time[0], daily_return, montly_return, yearly_return, Total_balance, ETH, KRW])
 #### 마지막에 crontab에서 5분 후 자동종료 되게 설정
 exit()

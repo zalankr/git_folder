@@ -13,11 +13,12 @@ def getMA(ohlcv,period,st):
 # 어제 포지션을 오늘 포지션으로 변경 함수
 def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불러 삽입
     # 어제의 json값 불러오기
-    Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Home경로
-    # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/CR_TR_Upbit/Upbit_data.json' # Company경로
+    Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json' # Home경로
+    # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/TR_Upbit/Upbit_data.json' # Company경로
     try:
         with open(Upbit_data_path, 'r', encoding='utf-8') as f:
             Upbit_data = json.load(f)
+
     except Exception as e:
         print("Exception File")
     #json에서 어제의 밸런스 추출
