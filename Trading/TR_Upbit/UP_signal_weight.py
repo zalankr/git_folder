@@ -3,6 +3,7 @@ from datetime import datetime
 import time as time_module  # time 모듈을 별칭으로 import
 import json
 import math
+# 필요한 라이브러리 설치: pip install gspread google-auth
 
 #이동평균선 수치, 첫번째: 분봉/일봉 정보, 두번째: 기간, 세번째: 기준 날짜
 def getMA(ohlcv,period,st):
@@ -21,11 +22,12 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
 
     except Exception as e:
         print("Exception File")
-    #json에서 어제의 밸런스 추출
-    ETH_weight = Upbit_data["position"]["ETH_weight"]
-    Total_balance = Upbit_data["balance"]["Total_balance"]
-    last_month_Total_balance = Upbit_data["Historical_data"]["last_month_Total_balance"]
-    last_year_Total_balance = Upbit_data["Historical_data"]["last_year_Total_balance"]
+
+    # JSON에서 어제의 데이터 추출
+    ETH_weight = Upbit_data["ETH_weight"]
+    Total_balance = Upbit_data["Total_balance"]
+    Last_month_Total_balance = Upbit_data["Last_month_Total"]
+    Last_year_Total_balance = Upbit_data["Last_year_Total"]
 
     # ETH 가격자료 불러오기
     data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
@@ -57,7 +59,7 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
         else:
             position = {"position": "Buy half", "ETH_weight": 0.495, "ETH_target": ((KRW*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_Quantity": KRW * 0.495}
 
-    return position, Total_balance, last_month_Total_balance, last_year_Total_balance
+    return position, Total_balance, Last_month_Total_balance, Last_year_Total_balance
 
 # 시간확인 조건문 함수: 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 def what_time():
