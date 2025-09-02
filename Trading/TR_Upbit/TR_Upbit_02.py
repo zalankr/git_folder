@@ -4,7 +4,6 @@ import time as time_module  # time 모듈을 별칭으로 import
 import UP_signal_weight as UP
 import kakao_alert as KA
 import gspread_updater as GU
-from datetime import datetime
 # 필요한 라이브러리 설치: pip install gspread google-auth
 
 # Upbit 토큰 불러오기

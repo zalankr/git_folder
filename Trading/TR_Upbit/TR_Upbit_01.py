@@ -3,9 +3,6 @@ import json
 import time as time_module  # time 모듈을 별칭으로 import
 import UP_signal_weight as SW
 
-import pandas as pd # 삭제해도 이상 없을 시 삭제
-from datetime import datetime
-
 # Upbit 토큰 불러오기
 with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
 # with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f: # Company경로
