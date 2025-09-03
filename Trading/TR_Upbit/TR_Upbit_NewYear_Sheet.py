@@ -5,9 +5,9 @@ year = input('year?:')
 model = input('model name?:')
 
 ## Google Spread sheet 작성
-gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
+# gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
 # gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
-# gc = gspread.service_account() #account 연결
+gc = gspread.service_account("/var/autobot/gspread/service_account.json") #account 연결
 
 # 기입 연도 스프레드시트 없으면 새로운 스프레드시트 만들기
 filename = f'{year}_{model}'

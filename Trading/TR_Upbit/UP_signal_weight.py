@@ -14,8 +14,7 @@ def getMA(ohlcv,period,st):
 # 어제 포지션을 오늘 포지션으로 변경 함수
 def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불러 삽입
     # 어제의 json값 불러오기
-    Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json' # Home경로
-    # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/TR_Upbit/Upbit_data.json' # Company경로
+    Upbit_data_path = '/var/autobot/TR_Upbit/Upbit_data.json' # Home경로
     try:
         with open(Upbit_data_path, 'r', encoding='utf-8') as f:
             Upbit_data = json.load(f)
@@ -25,13 +24,14 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
 
     # JSON에서 어제의 데이터 추출
     ETH_weight = Upbit_data["ETH_weight"]
-    Total_balance = Upbit_data["Total_balance"]
+    Last_day_Total_balance = Upbit_data["Last_day_Total"]
     Last_month_Total_balance = Upbit_data["Last_month_Total"]
     Last_year_Total_balance = Upbit_data["Last_year_Total"]
 
     # ETH 가격자료 불러오기
     data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
     price = data["close"].iloc[-1]
+
 
     # 이동평균선 계산
     MA20 = getMA(data, 20, -1)
@@ -59,7 +59,7 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
         else:
             position = {"position": "Buy half", "ETH_weight": 0.495, "ETH_target": ((KRW*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_Quantity": KRW * 0.495}
 
-    return position, Total_balance, Last_month_Total_balance, Last_year_Total_balance
+    return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance
 
 # 시간확인 조건문 함수: 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 def what_time():

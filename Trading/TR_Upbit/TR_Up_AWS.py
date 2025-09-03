@@ -14,52 +14,58 @@ with open("/var/autobot/TR_Upbit/upnkr.txt") as f:
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
-print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
+# 시간확인 조건문
+now, current_time, TR_time = UP.what_time()
+print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
-# # 시간확인 조건문
-# now, current_time, TR_time = UP.what_time()
-# print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
+# If 8:58 Trading 5분할 (0회차)때에만 전일 TR_data json읽고 Signal계산, 투자 금액 산출 후 저장
+try:
+    if TR_time[1] == 0: # 5분할 매매로 5인 경우만 - test 완료 후 5를 0으로 바꾸기 ################################################
+        # 기존 주문 모두 취소
+        print(UP.Cancel_ETH_Order(upbit)) # 기존 모든 주문 취소 함수(모듈) 프린트 벗기기
+        time_module.sleep(1) # 타임 슬립 1초
 
-# # If 8:58 Trading 5분할 (0회차)때에만 전일 TR_data json읽고 Signal계산, 투자 금액 산출 후 저장
-# try:
-#     if TR_time[1] == 5: # 5분할 매매로 5인 경우만
-#         # 기존 주문 모두 취소
-#         print(UP.Cancel_ETH_Order(upbit)) # 기존 모든 주문 취소 함수(모듈) 프린트 벗기기
-#         time_module.sleep(1) # 타임 슬립 1초
+        # 잔고 확인
+        ETH = upbit.get_balance("ETH")
+        KRW = upbit.get_balance("KRW")
+        Total_balance = KRW + (ETH * pyupbit.get_current_price("KRW-ETH"))*0.9995
 
-#         # 잔고 확인
-#         ETH = upbit.get_balance("ETH")
-#         KRW = upbit.get_balance("KRW")
+        # 포지션 확인 및 투자 수량 산출
+        position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance = UP.make_position(ETH, KRW)
+        print(f"포지션: {position}")
+        print(f"총 자산: {Total_balance}")
+        print(f"지난 일 총 자산: {Last_day_Total_balance}")
+        print(f"지난 달 총 자산: {Last_month_Total_balance}")
+        print(f"지난 해 총 자산: {Last_year_Total_balance}")
 
-#         # 포지션 확인 및 투자 수량 산출
-#         position, Total_balance, Last_month_Total_balance, Last_year_Total_balance = UP.make_position(ETH, KRW)
+        # # Upbit_data 만들고 저장하기
+        # Upbit_data = {
+        #     "Date": now.strftime('%Y-%m-%d'),
+        #     "Position": position["position"],
+        #     "ETH_weight": position["ETH_weight"],
+        #     "ETH_target": position["ETH_target"],
+        #     "CASH_weight": position["CASH_weight"],
+        #     "Invest_quantity": position["Invest_quantity"],
+        #     "Total_balance": Total_balance,
+        #     "ETH": ETH,
+        #     "KRW": KRW,
+        #     "Last_day_Total_balance": Last_day_Total_balance,
+        #     "Last_month_Total_balance": Last_month_Total_balance,
+        #     "Last_year_Total_balance": Last_year_Total_balance,
+        #     "daily_return": 0.0,
+        #     "montly_return": 0.0,
+        #     "yearly_return": 5.55
+        # }
 
-#         # Upbit_data 만들고 저장하기
-#         Upbit_data = {
-#             "Date": now.strftime('%Y-%m-%d'),
-#             "Position": position["position"],
-#             "ETH_weight": position["ETH_weight"],
-#             "ETH_target": position["ETH_target"],
-#             "CASH_weight": position["CASH_weight"],
-#             "Invest_quantity": position["Invest_quantity"],
-#             "Total_balance": Total_balance,
-#             "ETH": ETH,
-#             "KRW": KRW,
-#             "Last_month_Total_balance": Last_month_Total_balance,
-#             "Last_year_Total_balance": Last_year_Total_balance,
-#             "daily_return": 0.0,
-#             "montly_return": 0.0,
-#             "yearly_return": 5.55
-#         }
+        # with open('/var/autobot/TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f:
+        # # with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f:
+        #     json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
 
-#         with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f:
-#             json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
+        # time_module.sleep(1)
 
-#         time_module.sleep(1)
-
-# except Exception as e:
-#         print(f"8:55 당일 포지션/잔고 생성 시 예외의 오류: {e}")
-#         KA.SendMessage(f"8:55 포지션/잔고 생성 시 예외의 오류: {e}")
+except Exception as e:
+        print(f"8:55 당일 포지션/잔고 생성 시 예외의 오류: {e}")
+        KA.SendMessage(f"8:55 포지션/잔고 생성 시 예외의 오류: {e}")
 
 
 # # 회차별 매매 주문하기 try로 감싸기
