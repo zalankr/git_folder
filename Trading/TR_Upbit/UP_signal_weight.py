@@ -13,8 +13,14 @@ def getMA(ohlcv,period,st):
 
 # 어제 포지션을 오늘 포지션으로 변경 함수
 def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불러 삽입
+<<<<<<< HEAD
     # 어제의 json값 불러오기
     Upbit_data_path = '/var/autobot/TR_Upbit/Upbit_data.json' # Home경로
+=======
+    # 어제의 json값 불러오기 AWS경로로
+    Upbit_data_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json' # Home경로
+    # Upbit_data_path = 'C:/Users/GSR/Desktop/Python_project/git_folder/Trading/TR_Upbit/Upbit_data.json' # Company경로
+>>>>>>> a6e42013e7e3c0ddd599b55b604bdb41e1c0dcd2
     try:
         with open(Upbit_data_path, 'r', encoding='utf-8') as f:
             Upbit_data = json.load(f)
@@ -70,7 +76,7 @@ def what_time():
     current_hour = current_time.hour
     current_minute = current_time.minute
 
-    # 시간 비교 시 초 단위까지 정확히 매칭하기 어려우므로 시간 범위로 체크
+    # 시간 비교 시 초 단위까지 정확히 매칭하기 어려우므로 시간 범위로 체크 AWS에서 시간 맞게 인지 되는 지
     if current_hour == 23 and 58 <=current_minute <= 59:  # 23:58
         TR_time = ["0858", 5] # 시간, 분할 횟수
     elif current_hour == 0 and 5 <= current_minute <= 6:  # 00:05

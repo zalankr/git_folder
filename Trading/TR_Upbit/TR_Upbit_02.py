@@ -4,11 +4,20 @@ import time as time_module  # time 모듈을 별칭으로 import
 import UP_signal_weight as UP
 import kakao_alert as KA
 import gspread_updater as GU
+<<<<<<< HEAD
 
 # 필요한 라이브러리 설치: pip install gspread google-auth
 
 # Upbit 토큰 불러오기
 with open("/var/autobot/TR_Upbit/upnkr.txt") as f:
+=======
+# AWS 필요한 라이브러리 설치: pip install gspread google-auth
+
+# Upbit 토큰 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f: # Home경로
+# with open("C:/Users/GSR/Desktop/Python_project/upnkr.txt") as f: # Company경로
+# with open(실제 AWD 내 경로로 읽기 /var/) as f: 해당 경로로 upnkr.txt저장
+>>>>>>> a6e42013e7e3c0ddd599b55b604bdb41e1c0dcd2
     access_key, secret_key = [line.strip() for line in f.readlines()]
 
 # 업비트 접속
@@ -34,6 +43,7 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
 #         # 포지션 확인 및 투자 수량 산출
 #         position, Total_balance, Last_month_Total_balance, Last_year_Total_balance = UP.make_position(ETH, KRW)
 
+<<<<<<< HEAD
 #         # Upbit_data 만들고 저장하기
 #         Upbit_data = {
 #             "Date": now.strftime('%Y-%m-%d'),
@@ -51,6 +61,11 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
 #             "montly_return": 0.0,
 #             "yearly_return": 5.55
 #         }
+=======
+        with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f:
+        # 해당 경로 AWS내로 변경 JSON파일 내용도 최근 내용으로 수정
+            json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
+>>>>>>> a6e42013e7e3c0ddd599b55b604bdb41e1c0dcd2
 
 #         with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f:
 #             json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
@@ -62,12 +77,21 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
 #         KA.SendMessage(f"8:55 포지션/잔고 생성 시 예외의 오류: {e}")
 
 
+<<<<<<< HEAD
 # # 회차별 매매 주문하기 try로 감싸기
 # try:
 #     if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할 매매로 5,4,3,2,1인 경우만
 #         # 당일의 Upbit_data.json 파일 불러오고 position 추출
 #         with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'r', encoding='utf-8') as f:
 #             Upbit_data = json.load(f)
+=======
+# 회차별 매매 주문하기 (시간 조정 crontab테스트 주문은 print로)
+try:
+    if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할 매매로 5,4,3,2,1인 경우만
+        # 당일의 Upbit_data.json 파일 불러오고 position 추출 경로는 AWS로
+        with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'r', encoding='utf-8') as f:
+            Upbit_data = json.load(f)
+>>>>>>> a6e42013e7e3c0ddd599b55b604bdb41e1c0dcd2
 
 #         Position = Upbit_data["Position"]
 #         Invest_quantity = Upbit_data["Invest_quantity"]
@@ -76,6 +100,7 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
 #         if Position == "Hold state":
 #             pass
 
+<<<<<<< HEAD
 #         elif Position == "Sell full" and Position == "Sell half":
 #             current_price = pyupbit.get_current_price("KRW-ETH")
 #             amount_per_times = round(Invest_quantity / TR_time[1], 8) # 분할 매매 횟수당 ETH Quantity
@@ -95,6 +120,27 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
     
 #     else:
 #          pass
+=======
+        elif Position == "Sell full" and Position == "Sell half":
+            current_price = pyupbit.get_current_price("KRW-ETH")
+            amount_per_times = round(Invest_quantity / TR_time[1], 8) # 분할 매매 횟수당 ETH Quantity
+            if amount_per_times * current_price < 5100: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 5100원 미만일 때 pass
+                pass
+            else: # 분할 매매당 금액이 5100원 이상일 때만 매도 주문 실행
+                UP.partial_selling(current_price, amount_per_times, TR_time, upbit) # 프린트로 바꾸기 & 해당 주문만 별도 서버에서 테스트
+
+
+        elif Position == "Buy full" and Position == "Buy half":
+            current_price = pyupbit.get_current_price("KRW-ETH")
+            amount_per_times = round(Invest_quantity / TR_time[1]) # 분할 매매 횟수당 ETH Quantity
+            if amount_per_times < 5100: # KRW로 분할 매매당 금액이 5100원 미만일 때 pass
+                pass
+            else: # 분할 매매당 금액이 5100원 이상일 때만 매수 주문 실행
+                UP.partial_buying(current_price, amount_per_times, TR_time, upbit) # 프린트로 바꾸기 & 해당 주문만 별도 서버에서 테스트
+
+    else:
+         pass
+>>>>>>> a6e42013e7e3c0ddd599b55b604bdb41e1c0dcd2
 
 # except Exception as e:
 #         print(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
@@ -109,10 +155,19 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
 #         with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'r', encoding='utf-8') as f:
 #             Upbit_data = json.load(f)
 
+<<<<<<< HEAD
 #         # 전일 ETH/KRW/원화환산 잔고, 전월말, 전년말 원화환산 잔고
 #         Last_Total_balance = Upbit_data["Total_balance"]
 #         Last_month_Total_balance = Upbit_data["Last_month_Total_balance"]
 #         Last_year_Total_balance = Upbit_data["Last_year_Total_balance"]
+=======
+# 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
+try:
+    if TR_time[1] == 1:
+        # 당일의 Upbit_data.json 파일 불러오고 position, 어제종료 원화환산 토탈잔고, KRW잔고, ETH잔고 추출
+        with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'r', encoding='utf-8') as f: # AWS경로로
+            Upbit_data = json.load(f)
+>>>>>>> a6e42013e7e3c0ddd599b55b604bdb41e1c0dcd2
 
 #         # 당일종료 원화환산 토탈잔고, KRW잔고, ETH잔고
 #         KRW, ETH, Total_balance = UP.Total_balance(upbit)
@@ -160,6 +215,7 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
 #             json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
 #         time_module.sleep(0.5)
 
+<<<<<<< HEAD
 #         # KakaoTalk 메시지 보내기
 #         KA.SendMessage(f"{now.strftime('%Y-%m-%d')} {TR_time[0]} 당일 트레이딩 완료")
 #         KA.SendMessage(f"일간 수익률: {Daily_return:.2f}% \n월간 수익률: {Monthly_return:.2f}% \n연간 수익률: {Yearly_return:.2f}%")
@@ -171,6 +227,23 @@ print(upbit.get_balance("KRW"))  # 원화 잔고 조회 test
 #         # 설정값 (실제 값으로 변경 필요)
 #         credentials_file = "C:/Users/ilpus/Desktop/NKL_invest/service_account.json"  # 구글 서비스 계정 JSON 파일 경로
 #         spreadsheet_name = "2025_TR_Upbit"  # 스프레드시트 이름
+=======
+        # Upbit_data.json파일 생성
+        with open('C:/Users/ilpus/Desktop/git_folder/Trading/CR_TR_Upbit/Upbit_data.json', 'w', encoding='utf-8') as f: # AWS경로로
+            json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
+        time_module.sleep(0.5)
+
+        # KakaoTalk 메시지 보내기 AWS에서 보내기만 테스트 후 전체 코드 테스트
+        KA.SendMessage(f"{now.strftime('%Y-%m-%d')} {TR_time[0]} 당일 트레이딩 완료") 
+        KA.SendMessage(f"일간 수익률: {Daily_return:.2f}% \n월간 수익률: {Monthly_return:.2f}% \n연간 수익률: {Yearly_return:.2f}%")
+        KA.SendMessage(f"원화환산 잔고: {Total_balance:,}원 \nETH: {ETH:,} \nKRW: {KRW:,}원")
+        KA.SendMessage(f"Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")
+
+        # Google Spreadsheet에 데이터 추가
+        # 설정값 (실제 값으로 변경 필요)
+        credentials_file = "C:/Users/ilpus/Desktop/NKL_invest/service_account.json"  # 구글 서비스 계정 JSON 파일 경로 AWS경로로 + 파일도 해당경로로 저장
+        spreadsheet_name = "2025_TR_Upbit"  # 스프레드시트 이름
+>>>>>>> a6e42013e7e3c0ddd599b55b604bdb41e1c0dcd2
         
 #         # 구글 스프레드시트 연결
 #         spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
