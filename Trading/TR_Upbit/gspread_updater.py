@@ -1,7 +1,7 @@
 import gspread
 from google.oauth2.service_account import Credentials
-# from datetime import datetime
-# import json
+from datetime import datetime
+import json
 
 # 사용법:
 # 필요한 라이브러리 설치:
@@ -24,15 +24,15 @@ def connect_google_sheets(credentials_file, spreadsheet_name):
     return spreadsheet
 
 # JSON 데이터를 플랫하게 변환(다단계 딕셔너리 구조일때 )
-def flatten_data(data):
-    flattened = {}
-    for key, value in data.items():
-        if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
-                flattened[f"{key}_{sub_key}"] = sub_value
-        else:
-            flattened[key] = value
-    return flattened
+# def flatten_data(data):
+#     flattened = {}
+#     for key, value in data.items():
+#         if isinstance(value, dict):
+#             for sub_key, sub_value in value.items():
+#                 flattened[f"{key}_{sub_key}"] = sub_value
+#         else:
+#             flattened[key] = value
+#     return flattened
 
 # 데이터를 구글 스프레드시트에 저장
 def save_to_sheets(spreadsheet, data, month):
