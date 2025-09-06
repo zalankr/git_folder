@@ -3,6 +3,8 @@ from datetime import datetime
 import time as time_module  # time 모듈을 별칭으로 import
 import json
 import math
+import kakao_alert as KA
+
 # 필요한 라이브러리 설치: pip install gspread google-auth
 
 #이동평균선 수치, 첫번째: 분봉/일봉 정보, 두번째: 기간, 세번째: 기준 날짜
@@ -74,15 +76,15 @@ def what_time():
     current_minute = current_time.minute
 
     # 시간 비교 시 초 단위까지 정확히 매칭하기 어려우므로 시간 범위로 체크
-    if current_hour == 23 and 58 <=current_minute <= 59:  # 23:58
+    if current_hour == 23 and 57 < current_minute <= 59:  # 23:58
         TR_time = ["0858", 5] # 시간, 분할 횟수
-    elif current_hour == 0 and 5 <= current_minute <= 6:  # 00:05
+    elif current_hour == 0 and 4 < current_minute <= 6:  # 00:05
         TR_time = ["0905", 4] # 시간, 분할 횟수
-    elif current_hour == 0 and 12 <= current_minute <= 13:  # 00:12
+    elif current_hour == 0 and 11 < current_minute <= 13:  # 00:12
         TR_time = ["0912", 3] # 시간, 분할 횟수
-    elif current_hour == 0 and 19 <= current_minute <= 20:  # 00:19
+    elif current_hour == 0 and 18 < current_minute <= 20:  # 00:19
         TR_time = ["0919", 2] # 시간, 분할 횟수
-    elif current_hour == 0 and 26 <= current_minute <= 30:  # 00:26
+    elif current_hour == 0 and 25 < current_minute <= 30:  # 00:26
         TR_time = ["0926", 1]
     else:
         TR_time = [None, 0]
@@ -135,19 +137,21 @@ def get_tick_size(price, method="floor"):
 
     return tick_size
 
-# 코해당 인에 걸어진 매수매도주문 모두를 취소한다.
+# 매수매도주문 모두 취소
 def Cancel_ETH_Order(upbit):
     orders_data = upbit.get_order("KRW-ETH")
+    result = []
     if len(orders_data) > 0:
         for order in orders_data:
             time_module.sleep(0.1)
-            print(upbit.cancel_order(order['uuid']))
+            result.append(upbit.cancel_order(order['uuid']))
+    return result
 
 def partial_selling(current_price, amount_per_times, TR_time, upbit):        
     # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
     prices = []
     for i in range(TR_time[1]):
-        price = (current_price * (1+(i*0.002))) # 가격을 0.2%씩 올려 분할 매도 가격 계산
+        price = (current_price * (1+(i*0.0025))) # 가격을 0.25%씩 올려 분할 매도 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 -2%(유사 시장가) 매도 주문으로 대체
@@ -159,9 +163,10 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
     # 주문 실행
     for t in range(TR_time[1]):
         time_module.sleep(0.05)
-        volume = (round(amount_per_times*0.9995 / prices[t], 8))
+        volume = (round(amount_per_times, 8))
         result = upbit.sell_limit_order("KRW-ETH", prices[t], volume)
         print(result) # 프린트
+        KA.SendMessage(f"{TR_time[0]} 매도주문: {result['price']}, {result['uuid']}")
 
     return result
 
@@ -169,7 +174,7 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
     # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
     prices = []
     for i in range(TR_time[1]):
-        price = (current_price * (1-(i*0.002))) # 가격을 0.2%씩 낮춰 분할 매수 가격 계산
+        price = (current_price * (1-(i*0.0025))) # 가격을 0.25%씩 낮춰 분할 매수 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +2%(유사 시장가) 매수 주문으로 대체
@@ -179,9 +184,10 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
     # 주문 실행
     for t in range(TR_time[1]):
         time_module.sleep(0.05)
-        volume = (round(amount_per_times*0.9995 / prices[t], 8))
+        volume = (round(amount_per_times / prices[t], 8))
         result = upbit.buy_limit_order("KRW-ETH", prices[t], volume)
         print(result)
+        KA.SendMessage(f"{TR_time[0]} 매수주문: {result['price']}, {result['uuid']}")
 
     return result
 

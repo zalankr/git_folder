@@ -167,7 +167,7 @@ except Exception as e:
 #         time_module.sleep(0.5)
 
 #         # KakaoTalk 메시지 보내기
-#         KA.SendMessage(f"{now.strftime('%Y-%m-%d')} {TR_time[0]} 당일 트레이딩 완료")
+#         KA.SendMessage(f"{now.strftime('%Y-%m-%d')} {str(TR_time)[0]} 당일 트레이딩 완료")
 #         KA.SendMessage(f"일간 수익률: {Daily_return:.2f}% \n월간 수익률: {Monthly_return:.2f}% \n연간 수익률: {Yearly_return:.2f}%")
 #         KA.SendMessage(f"원화환산 잔고: {Total_balance:,}원 \nETH: {ETH:,} \nKRW: {KRW:,}원")
 #         KA.SendMessage(f"Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")
