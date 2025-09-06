@@ -14,26 +14,29 @@ with open("/var/autobot/TR_Upbit/upnkr.txt") as f:
 # 업비트 접속
 upbit = pyupbit.Upbit(access_key, secret_key)
 
-# 업비트 데이터 경로
-Upbit_data_path = '/var/autobot/TR_Upbit/Upbit_data.json'
-
 # 시간확인 조건문
 now, current_time, TR_time = UP.what_time()
 print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
 # If 8:58 Trading 5분할 (첫 번째)에만 전일 TR_data json읽고 Signal계산, 투자 금액 산출 후 저장
 try:
-    if TR_time[1] == 0: ######## test 0 >>> 완료 후 5로 변경 ########
+    if TR_time[1] == 0: # 5분할 매매로 5인 경우만 - test 0으로 5로 바꾸기 ################################################
         # 기존 주문 모두 취소
         print(UP.Cancel_ETH_Order(upbit)) # 기존 모든 주문 취소 함수(모듈) 프린트 벗기기
         time_module.sleep(1) # 타임 슬립 1초
 
         # 잔고 확인
-        KRW, ETH, Total_balance = UP.Total_balance(upbit)
-        print(f"ETH: {ETH}, KRW: {KRW}, Total_balance: {Total_balance}") #test용 프린트
+        ETH = upbit.get_balance("ETH")
+        KRW = upbit.get_balance("KRW")
+        Total_balance = KRW + (ETH * pyupbit.get_current_price("KRW-ETH"))*0.9995
 
         # 포지션 확인 및 투자 수량 산출
         position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return = UP.make_position(ETH, KRW)
+        print(f"포지션: {position}")
+        print(f"총 자산: {Total_balance}")
+        print(f"지난 일 총 자산: {Last_day_Total_balance}")
+        print(f"지난 달 총 자산: {Last_month_Total_balance}")
+        print(f"지난 해 총 자산: {Last_year_Total_balance}")
 
         # Upbit_data 만들고 저장하기
         Upbit_data = {
@@ -49,77 +52,67 @@ try:
             "Last_day_Total_balance": Last_day_Total_balance,
             "Last_month_Total_balance": Last_month_Total_balance,
             "Last_year_Total_balance": Last_year_Total_balance,
-            "Daily_return": Daily_return,
-            "Monthly_return": Monthly_return,
-            "Yearly_return": Yearly_return
+            "daily_return": Daily_return,
+            "monthly_return": Monthly_return,
+            "yearly_return": Yearly_return
         }
-        # Upbit_data.json파일 생성
+
+        Upbit_data_path = '/var/autobot/TR_Upbit/Upbit_data.json'
         with open(Upbit_data_path, 'w', encoding='utf-8') as f:
             json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
+        
+        time_module.sleep(1)
         
 except Exception as e:
         print(f"8:55 당일 포지션/잔고 생성 시 예외의 오류: {e}")
         KA.SendMessage(f"8:55 포지션/잔고 생성 시 예외의 오류: {e}")
 
-time_module.sleep(1) # 타임슬립 1초
 
-# 회차별 매매 주문하기 try로 감싸기 ################################################ test 시 주문은 프린트로만 표기
-TR_time = ["0858", 5] # test용
-try:
-    if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할 매매로 5,4,3,2,1인 경우만 주문 실행
-        # 당일의 Upbit_data.json 파일 불러오고 position 추출
-        with open(Upbit_data_path, 'r', encoding='utf-8') as f:
-            Upbit_data = json.load(f)
+# # 회차별 매매 주문하기 try로 감싸기
+# try:
+#     if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할 매매로 5,4,3,2,1인 경우만
+#         # 당일의 Upbit_data.json 파일 불러오고 position 추출
+#         with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'r', encoding='utf-8') as f:
+#             Upbit_data = json.load(f)
 
-        Position = "Buy full" # test용
-        # Position = Upbit_data["Position"]
-        Invest_quantity = 200000  # test용
-        # Invest_quantity = Upbit_data["Invest_quantity"]
-        print(f"Position: {Position}, Invest_quantity: {Invest_quantity}") # test용 프린트
+#         Position = Upbit_data["Position"]
+#         Invest_quantity = Upbit_data["Invest_quantity"]
 
-        # 포지션별 주문하기
-        if Position == "Hold state":
-            pass
+#         # 포지션별 주문하기
+#         if Position == "Hold state":
+#             pass
 
-        elif Position == "Sell full" or Position == "Sell half":
-            current_price = pyupbit.get_current_price("KRW-ETH")
-            amount_per_times = round(Invest_quantity / TR_time[1]) # 분할 매매 횟수당 ETH Quantity
-            if amount_per_times * current_price < 1000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 1000원 미만일 때 pass
-                pass
-            else: # 분할 매매당 금액이 1000원 이상일 때만 매도 주문 실행
-                UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
+#         elif Position == "Sell full" and Position == "Sell half":
+#             current_price = pyupbit.get_current_price("KRW-ETH")
+#             amount_per_times = round(Invest_quantity / TR_time[1], 8) # 분할 매매 횟수당 ETH Quantity
+#             if amount_per_times * current_price < 5100: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 5100원 미만일 때 pass
+#                 pass
+#             else: # 분할 매매당 금액이 5100원 이상일 때만 매도 주문 실행
+#                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
 
-        # elif Position == "Buy full" or Position == "Buy half":
-        #     current_price = pyupbit.get_current_price("KRW-ETH")
-        #     amount_per_times = round(Invest_quantity / TR_time[1]) # 분할 매매 횟수당 ETH Quantity
-        #     if amount_per_times < 1000: # KRW로 분할 매매당 금액이 1000원 미만일 때 pass
-        #         pass
-        #     else: # 분할 매매당 금액이 1000원 이상일 때만 매수 주문 실행
-        #         UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
 
-        elif Position == "Buy full" or Position == "Buy half":
-            current_price = pyupbit.get_current_price("KRW-ETH")
-            amount_per_times = round(Invest_quantity / TR_time[1]) # 분할 매매 횟수당 ETH Quantity
-            print(f"current_price: {current_price}, amount_per_times: {amount_per_times}, TR_time: {TR_time}") # test용 프린트
-            if amount_per_times < 1000: # KRW로 분할 매매당 금액이 1000원 미만일 때 pass
-                pass
-            else: # 분할 매매당 금액이 1000원 이상일 때만 매수 주문 실행
-                UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
+#         elif Position == "Buy full" and Position == "Buy half":
+#             current_price = pyupbit.get_current_price("KRW-ETH")
+#             amount_per_times = round(Invest_quantity / TR_time[1]) # 분할 매매 횟수당 ETH Quantity
+#             if amount_per_times < 5100: # KRW로 분할 매매당 금액이 5100원 미만일 때 pass
+#                 pass
+#             else: # 분할 매매당 금액이 5100원 이상일 때만 매수 주문 실행
+#                 UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
     
-    else:
-         pass
+#     else:
+#          pass
 
-except Exception as e:
-        print(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
-        KA.SendMessage(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
+# except Exception as e:
+#         print(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
+#         KA.SendMessage(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
 
-time_module.sleep(1) # 타임슬립 1초
+# time_module.sleep(1) # 타임슬립 1초
 
 # # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
 # try:
 #     if TR_time[1] == 1:
 #         # 당일의 Upbit_data.json 파일 불러오고 position, 어제종료 원화환산 토탈잔고, KRW잔고, ETH잔고 추출
-#         with open(Upbit_data_path, 'r', encoding='utf-8') as f:
+#         with open('C:/Users/ilpus/Desktop/git_folder/Trading/TR_Upbit/Upbit_data.json', 'r', encoding='utf-8') as f:
 #             Upbit_data = json.load(f)
 
 #         # 전일 ETH/KRW/원화환산 잔고, 전월말, 전년말 원화환산 잔고
@@ -161,12 +154,11 @@ time_module.sleep(1) # 타임슬립 1초
 #             "Total_balance": Total_balance,
 #             "ETH": ETH,
 #             "KRW": KRW,
-#             "Last_day_Total_balance": Last_day_Total_balance,
 #             "Last_month_Total_balance": Last_month_Total_balance,
 #             "Last_year_Total_balance": Last_year_Total_balance,
-#             "Daily_return": Daily_return,
-#             "Monthly_return": Monthly_return,
-#             "Yearly_return": Yearly_return
+#             "daily_return": Daily_return,
+#             "montly_return": Monthly_return,
+#             "yearly_return": Yearly_return
 #         }
 
 #         # Upbit_data.json파일 생성

@@ -14,7 +14,7 @@ def getMA(ohlcv,period,st):
 # 어제 포지션을 오늘 포지션으로 변경 함수
 def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불러 삽입
     # 어제의 json값 불러오기
-    Upbit_data_path = '/var/autobot/TR_Upbit/Upbit_data.json' # Home경로
+    Upbit_data_path = '/var/autobot/TR_Upbit/Upbit_data.json'
     try:
         with open(Upbit_data_path, 'r', encoding='utf-8') as f:
             Upbit_data = json.load(f)
@@ -24,9 +24,12 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
 
     # JSON에서 어제의 데이터 추출
     ETH_weight = Upbit_data["ETH_weight"]
-    Last_day_Total_balance = Upbit_data["Last_day_Total"]
-    Last_month_Total_balance = Upbit_data["Last_month_Total"]
-    Last_year_Total_balance = Upbit_data["Last_year_Total"]
+    Last_day_Total_balance = Upbit_data["Total_balance"]
+    Last_month_Total_balance = Upbit_data["Last_month_Total_balance"]
+    Last_year_Total_balance = Upbit_data["Last_year_Total_balance"]
+    Daily_return = Upbit_data["Daily_return"]
+    Monthly_return = Upbit_data["Monthly_return"]
+    Yearly_return = Upbit_data["Yearly_return"]
 
     # ETH 가격자료 불러오기
     data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
@@ -39,27 +42,27 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
     # 포지션 산출
     if ETH_weight == 0.99 :
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Hold state", "ETH_weight": 0.99, "ETH_target": ETH, "CASH_weight": 0.01, "Invest_Quantity": 0.0}
+            position = {"position": "Hold state", "ETH_weight": 0.99, "ETH_target": ETH, "CASH_weight": 0.01, "Invest_quantity": 0.0}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_Quantity": ETH}
+            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
         else:
-            position = {"position": "Sell half", "ETH_weight": 0.495, "ETH_target": ETH * 0.5, "CASH_weight": 0.505, "Invest_Quantity": ETH * 0.5}
+            position = {"position": "Sell half", "ETH_weight": 0.495, "ETH_target": ETH * 0.5, "CASH_weight": 0.505, "Invest_quantity": ETH * 0.5}
     elif ETH_weight == 0.495:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price), "CASH_weight": 0.01, "Invest_Quantity": KRW * 0.99}
+            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_Quantity": ETH}
+            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
         else:
-            position = {"position": "Hold state", "ETH_weight": 0.495, "ETH_target": ETH, "CASH_weight": 0.505, "Invest_Quantity": 0.0}
+            position = {"position": "Hold state", "ETH_weight": 0.495, "ETH_target": ETH, "CASH_weight": 0.505, "Invest_quantity": 0.0}
     elif ETH_weight == 0.0:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ((KRW*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_Quantity": KRW * 0.99}
+            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ((KRW*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = {"position": "Hold state", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_Quantity": 0.0}
+            position = {"position": "Hold state", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0}
         else:
-            position = {"position": "Buy half", "ETH_weight": 0.495, "ETH_target": ((KRW*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_Quantity": KRW * 0.495}
+            position = {"position": "Buy half", "ETH_weight": 0.495, "ETH_target": ((KRW*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_quantity": KRW * 0.495}
 
-    return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance
+    return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return
 
 # 시간확인 조건문 함수: 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 def what_time():
@@ -79,7 +82,7 @@ def what_time():
         TR_time = ["0912", 3] # 시간, 분할 횟수
     elif current_hour == 0 and 19 <= current_minute <= 20:  # 00:19
         TR_time = ["0919", 2] # 시간, 분할 횟수
-    elif current_hour == 0 and 26 <= current_minute <= 27:  # 00:26
+    elif current_hour == 0 and 26 <= current_minute <= 30:  # 00:26
         TR_time = ["0926", 1]
     else:
         TR_time = [None, 0]
@@ -155,8 +158,9 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
 
     # 주문 실행
     for t in range(TR_time[1]):
-        time_module.sleep(0.05) 
-        result = upbit.sell_limit_order("KRW-ETH", prices[t], amount_per_times)
+        time_module.sleep(0.05)
+        volume = (round(amount_per_times*0.9995 / prices[t], 8))
+        result = upbit.sell_limit_order("KRW-ETH", prices[t], volume)
         print(result) # 프린트
 
     return result
@@ -171,13 +175,12 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +2%(유사 시장가) 매수 주문으로 대체
     if TR_time[1] < 3:
         prices[0] = [get_tick_size(price = current_price*1.02,  method="floor")]
-        
-    print("분할 매매 가격:", prices) # 완성 후 삭제
 
     # 주문 실행
     for t in range(TR_time[1]):
         time_module.sleep(0.05)
-        result = upbit.buy_limit_order("KRW-ETH", prices[t], amount_per_times)
+        volume = (round(amount_per_times*0.9995 / prices[t], 8))
+        result = upbit.buy_limit_order("KRW-ETH", prices[t], volume)
         print(result)
 
     return result
