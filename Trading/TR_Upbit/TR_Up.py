@@ -26,7 +26,12 @@ try:
     if TR_time[1] == 5: # 8:58 5분할 매매시에만 실행
         # 기존 주문 모두 취소
         result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
-        KA.SendMessage(f"Upbit_ETH_Trading: {now.strftime('%Y-%m-%d %H:%M:%S')} \n주문 취소: {result['uuid']}")
+        if result:  # 리스트가 비어있지 않으면 True
+            uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
+            KA.SendMessage(f"8:58 당일 트레이딩 시작, 주문 취소 목록:\n{uuids}")
+        else:
+            KA.SendMessage("8:58 당일 트레이딩 시작, 취소할 주문이 없습니다.")
+
         time_module.sleep(1) # 타임 슬립 1초
 
         # 잔고 확인
@@ -53,31 +58,34 @@ try:
             "Monthly_return": Monthly_return,
             "Yearly_return": Yearly_return
         }
-        # Upbit_data.json파일 생성
+        
+        # Upbit_data.json파일 생성 후 알림
         with open(Upbit_data_path, 'w', encoding='utf-8') as f:
             json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
-        
+        KA.SendMessage(f"{TR_time[0]} Position: {position['position']} \nETH_target: {position['ETH_target']} \nInvest_quantity: {position['Invest_quantity']}")
+
 except Exception as e:
-        print(f"8:55 당일 포지션/잔고 생성 시 예외의 오류: {e}")
-        KA.SendMessage(f"8:55 포지션/잔고 생성 시 예외의 오류: {e}")
+        print(f"{TR_time[0]} 당일 포지션/잔고 생성 시 예외의 오류: {e}")
+        KA.SendMessage(f"{TR_time[0]} 당일 포지션/잔고 생성 시 예외의 오류: {e}")
 time_module.sleep(1) # 타임슬립 1초
 
-# 회차별 매매 주문하기
+# 회차별매매 주문하기
 try:
-    if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할 매매로 5,4,3,2,1인 경우만 주문 실행
+    if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할매매 시에만 주문 실행(0은 제외)
         # 기존 주문 모두 취소
         result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
-        KA.SendMessage(f"Upbit_ETH_Trading: {now.strftime('%Y-%m-%d %H:%M:%S')} \n주문 취소: {result['uuid']}")
+        if result:  # 리스트가 비어있지 않으면 True
+            uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
+            KA.SendMessage(f"{TR_time[0]}, {TR_time[1]}회 분할매매, 주문 취소 목록:\n{uuids}")
+        else:
+            KA.SendMessage(f"{TR_time[0]}, {TR_time[1]}회 분할매매, 취소할 주문이 없습니다.")
         time_module.sleep(1) # 타임 슬립 1초
 
         Position = Upbit_data["Position"]
         Invest_quantity = Upbit_data["Invest_quantity"]
 
         # 포지션별 주문하기
-        if Position == "Hold state":
-            pass
-
-        elif Position == "Sell full" or Position == "Sell half":
+        if Position == "Sell full" or Position == "Sell half":
             current_price = pyupbit.get_current_price("KRW-ETH")
             amount_per_times = Invest_quantity / TR_time[1] # 분할 매매 횟수당 ETH Quantity
             if amount_per_times * current_price < 1000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 1000원 미만일 때 pass
@@ -161,16 +169,16 @@ try:
         time_module.sleep(0.5)
 
         # KakaoTalk 메시지 보내기
-        KA.SendMessage(f"{now.strftime('%Y-%m-%d')} {str(TR_time)[0]} 당일 트레이딩 완료")
+        KA.SendMessage(f"{now.strftime('%Y-%m-%d %H:%M:%S')}, 당일 트레이딩 완료")
         KA.SendMessage(f"일간 수익률: {Daily_return:.2f}% \n월간 수익률: {Monthly_return:.2f}% \n연간 수익률: {Yearly_return:.2f}%")
-        KA.SendMessage(f"원화환산 잔고: {Total_balance:,}원 \nETH: {ETH:,} \nKRW: {KRW:,}원")
+        KA.SendMessage(f"원화환산 잔고: {round(Total_balance):,}원 \nETH: {ETH:,} \nKRW: {(round(KRW)):,}원")
         KA.SendMessage(f"Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")
 
         # Google Spreadsheet에 데이터 추가
         
         # 설정값 (실제 값으로 변경 필요)
-        credentials_file = "/var/autobot/gspread/service_account.json"  # 구글 서비스 계정 JSON 파일 경로
-        spreadsheet_name = "2025_TR_Upbit"  # 스프레드시트 이름
+        credentials_file = "/var/autobot/gspread/service_account.json" # 구글 서비스 계정 JSON 파일 경로
+        spreadsheet_name = "2025_TR_Upbit" # 스프레드시트 이름
         
         # 구글 스프레드시트 연결
         spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
