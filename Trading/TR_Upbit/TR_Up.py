@@ -19,7 +19,6 @@ Upbit_data_path = '/var/autobot/TR_Upbit/Upbit_data.json'
 
 # 시간확인 조건문
 now, current_time, TR_time = UP.what_time()
-print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, TR_time: {TR_time}")
 
 # If 8:58 Trading 5분할(첫 번째)에만 전일 Upbit_data json읽고 Signal계산, 투자 금액 산출 후 다시 저장
 try:
@@ -28,9 +27,9 @@ try:
         result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
         if result:  # 리스트가 비어있지 않으면 True
             uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
-            KA.SendMessage(f"8:58 당일 트레이딩 시작, 주문 취소 목록:\n{uuids}")
+            KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n트레이딩 시작 \n주문 취소 목록: {uuids}")
         else:
-            KA.SendMessage("8:58 당일 트레이딩 시작, 취소할 주문이 없습니다.")
+            KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n트레이딩 시작 \n취소할 주문이 없습니다.")
 
         time_module.sleep(1) # 타임 슬립 1초
 
@@ -62,11 +61,11 @@ try:
         # Upbit_data.json파일 생성 후 알림
         with open(Upbit_data_path, 'w', encoding='utf-8') as f:
             json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
-        KA.SendMessage(f"{TR_time[0]} Position: {position['position']} \nETH_target: {position['ETH_target']} \nInvest_quantity: {position['Invest_quantity']}")
+        KA.SendMessage(f"Upbit Trading, {TR_time[0]} \nPosition: {position['position']} \nETH_target: {position['ETH_target']} \nInvest_quantity: {position['Invest_quantity']}")
 
 except Exception as e:
-        print(f"{TR_time[0]} 당일 포지션/잔고 생성 시 예외의 오류: {e}")
-        KA.SendMessage(f"{TR_time[0]} 당일 포지션/잔고 생성 시 예외의 오류: {e}")
+        print(f"Upbit {TR_time[0]} \n포지션 생성 시 예외 오류: {e}")
+        KA.SendMessage(f"Upbit {TR_time[0]} \n포지션 생성 시 예외 오류: {e}")
 time_module.sleep(1) # 타임슬립 1초
 
 # 회차별매매 주문하기
@@ -76,10 +75,14 @@ try:
         result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
         if result:  # 리스트가 비어있지 않으면 True
             uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
-            KA.SendMessage(f"{TR_time[0]}, {TR_time[1]}회 분할매매, 주문 취소 목록:\n{uuids}")
+            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n주문 취소 목록:\n{uuids}")
         else:
-            KA.SendMessage(f"{TR_time[0]}, {TR_time[1]}회 분할매매, 취소할 주문이 없습니다.")
+            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n취소할 주문이 없습니다.")
         time_module.sleep(1) # 타임 슬립 1초
+
+        # 당일의 Upbit_data.json 파일 불러오고 position 추출
+        with open(Upbit_data_path, 'r', encoding='utf-8') as f:
+            Upbit_data = json.load(f)
 
         Position = Upbit_data["Position"]
         Invest_quantity = Upbit_data["Invest_quantity"]
@@ -105,8 +108,8 @@ try:
          pass
 
 except Exception as e:
-        print(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
-        KA.SendMessage(f"{TR_time[0]} 주문하기 중 예외의 오류: {e}")
+        print(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
+        KA.SendMessage(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
 time_module.sleep(1) # 타임슬립 1초
 
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
@@ -169,10 +172,9 @@ try:
         time_module.sleep(0.5)
 
         # KakaoTalk 메시지 보내기
-        KA.SendMessage(f"{now.strftime('%Y-%m-%d %H:%M:%S')}, 당일 트레이딩 완료")
-        KA.SendMessage(f"일간 수익률: {Daily_return:.2f}% \n월간 수익률: {Monthly_return:.2f}% \n연간 수익률: {Yearly_return:.2f}%")
-        KA.SendMessage(f"원화환산 잔고: {round(Total_balance):,}원 \nETH: {ETH:,} \nKRW: {(round(KRW)):,}원")
-        KA.SendMessage(f"Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")
+        KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
+        KA.SendMessage(f"Upbit 일수익률: {Daily_return:.2f}% \n월수익률: {Monthly_return:.2f}% \n연수익률: {Yearly_return:.2f}% \n환산잔고: {round(Total_balance):,}원 \nETH: {ETH:,} \nKRW: {(round(KRW)):,}원")
+        KA.SendMessage(f"Upbit Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")
 
         # Google Spreadsheet에 데이터 추가
         
@@ -192,12 +194,12 @@ try:
         pass
 
 except Exception as e:
-    print(f"{TR_time[0]} 당일주문 data 기록 중 예외의 오류: {e}")
-    KA.SendMessage(f"{TR_time[0]} 당일주문 data 기록 중 예외의 오류: {e}")
+    print(f"Upbit {TR_time[0]} 당일 data 기록 중 예외 오류: {e}")
+    KA.SendMessage(f"Upbit {TR_time[0]} 당일 data 기록 중 예외 오류: {e}")
 
 #### 검증 > 마지막에 crontab에서 5분 후 자동종료 되게 설정
 if TR_time[1] == 0:
-    print(f"현재 시간: {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
-    KA.SendMessage(f"현재 시간: {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
+    print(f"Upbit {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
+    KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
 
 exit()

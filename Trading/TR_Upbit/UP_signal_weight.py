@@ -166,7 +166,7 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
         volume = (round(amount_per_times, 8))
         result = upbit.sell_limit_order("KRW-ETH", prices[t], volume)
         print(result) # 프린트
-        KA.SendMessage(f"{TR_time[0]} 매도주문: {result['price']}, {result['uuid']}")
+        KA.SendMessage(f"Upbit {TR_time[0]} 매도주문: {result['price']}")
 
     return result
 
@@ -188,7 +188,7 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
         volume = (round(amount_per_times / prices[t], 8))
         result = upbit.buy_limit_order("KRW-ETH", prices[t], volume)
         print(result)
-        KA.SendMessage(f"{TR_time[0]} 매수주문: {result['price']}, {result['uuid']}")
+        KA.SendMessage(f"Upbit {TR_time[0]} 매수주문: {result['price']}")
 
     return result
 
