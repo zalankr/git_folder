@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import pprint
        
-import myBinance
+import Trading.TR_Binance.myBinance as myBinance
 import ende_key  #암복호화키
 import my_key    #업비트 시크릿 액세스키
 

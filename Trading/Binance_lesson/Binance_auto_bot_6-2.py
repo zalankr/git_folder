@@ -4,7 +4,7 @@
 import time
 import pandas as pd
 import pprint
-import myBinance #우리가 만든 함수들이 들어있는 모듈
+import Trading.TR_Binance.myBinance as myBinance #우리가 만든 함수들이 들어있는 모듈
 
 # Binance 토큰 불러오기
 with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:

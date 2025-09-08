@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import pprint
        
-import myBinance
+import Trading.TR_Binance.myBinance as myBinance
 import line_alert #라인 메세지를 보내기 위함!
 
 # Binance 토큰 불러오기
