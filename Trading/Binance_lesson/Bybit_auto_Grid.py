@@ -10,23 +10,33 @@ import my_key    #업비트 시크릿 액세스키
 
 import line_alert #라인 메세지를 보내기 위함!
 
-#암복호화 클래스 객체를 미리 생성한 키를 받아 생성한다.
-simpleEnDecrypt = myBybit.SimpleEnDecrypt(ende_key.ende_key)
+# Binance 토큰 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
+    access, secret = [line.strip() for line in f.readlines()]
 
+# binance 객체 생성
 
-#암호화된 액세스키와 시크릿키를 읽어 복호화 한다.
-Bybit_AccessKey = simpleEnDecrypt.decrypt(my_key.bybit_access)
-Bybit_ScretKey = simpleEnDecrypt.decrypt(my_key.bybit_secret)
-
-# bybit 객체 생성
-bybitX = ccxt.bybit(config={
-    'apiKey': Bybit_AccessKey, 
-    'secret': Bybit_ScretKey,
+# 선물거래용 코드
+binanceX = myBinance.ccxt.binance(config={
+    'apiKey': access, 
+    'secret': secret,
     'enableRateLimit': True,
     'options': {
         'defaultType': 'future'
     }
 })
+
+"""
+# 현물거래용 코드
+binanceX = myBinance.ccxt.binance(config={
+    'apiKey': access, 
+    'secret': secret,
+    'enableRateLimit': True,
+    'options': {
+        'defaultType': 'spot'  # 또는 생략 가능
+    }
+})
+"""
 
 '''
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

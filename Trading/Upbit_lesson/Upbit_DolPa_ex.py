@@ -27,11 +27,11 @@ def SendMessage(msg):
 매일 9시에 파일의 리스트에 쓰여있는 코인을 지워줄 필요가 있다!
 크론탭에 1분마다 혹은 5분마다 등록하셔도 무관합니다.
 '''
-upbit_access = "CvRZ8L3uWWx7SxeixwwX5mQVFXpJUaN7lxxT9gTe"
-upbit_secret = "3iOZ7kGlSUP2v1yIUc7Y6zfOn50mXp2dMqHUqJR1"
-
-#업비트 객체를 만든다
-upbit = pyupbit.Upbit(upbit_access, upbit_secret)
+# Upbit 토큰 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
+    access_key, secret_key = [line.strip() for line in f.readlines()]
+#업비트 접속
+upbit = pyupbit.Upbit(access_key, secret_key)
 
 
 #내가 매수할 총 코인 개수

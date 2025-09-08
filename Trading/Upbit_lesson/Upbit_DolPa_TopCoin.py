@@ -75,15 +75,11 @@ https://blog.naver.com/zacra/223086628069
 #############################################################
 
 
-#암복호화 클래스 객체를 미리 생성한 키를 받아 생성한다.
-simpleEnDecrypt = myUpbit.SimpleEnDecrypt(ende_key.ende_key)
-
-#암호화된 액세스키와 시크릿키를 읽어 복호화 한다.
-Upbit_AccessKey = simpleEnDecrypt.decrypt(my_key.upbit_access)
-Upbit_ScretKey = simpleEnDecrypt.decrypt(my_key.upbit_secret)
-
-#업비트 객체를 만든다
-upbit = pyupbit.Upbit(Upbit_AccessKey, Upbit_ScretKey)
+# Upbit 토큰 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
+    access_key, secret_key = [line.strip() for line in f.readlines()]
+#업비트 접속
+upbit = pyupbit.Upbit(access_key, secret_key)
 
 
 #내가 매수할 총 코인 개수

@@ -6,10 +6,13 @@ import pandas as pd
 import pprint
 import myBinance #우리가 만든 함수들이 들어있는 모듈
 
-access = "Yzgeud8QXdfK5zoxQzoVdGRT0NVIyZamN9d6m3vFqn87P9zG5Iopdy91tP0d2bkZ"
-secret = "bUvUeovdSKcceGBHuqksw7wdUC66tc5RCHbiF8WARN9rBWK4KR4DO2OLylZhmebG"         # 본인 값으로 변경
+# Binance 토큰 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
+    access, secret = [line.strip() for line in f.readlines()]
 
 # binance 객체 생성
+"""
+선물거래용 코드
 binanceX = myBinance.ccxt.binance(config={
     'apiKey': access, 
     'secret': secret,
@@ -18,9 +21,9 @@ binanceX = myBinance.ccxt.binance(config={
         'defaultType': 'future'
     }
 })
-
 """
-현물거래용 코드
+
+# 현물거래용 코드
 binanceX = myBinance.ccxt.binance(config={
     'apiKey': access, 
     'secret': secret,
@@ -29,7 +32,7 @@ binanceX = myBinance.ccxt.binance(config={
         'defaultType': 'spot'  # 또는 생략 가능
     }
 })
-"""
+
 binanceX.load_markets()
 server_time = binanceX.fetch_time()
 local_time = int(time.time() * 1000)

@@ -6,10 +6,11 @@ import kakao_alert
 import datetime
 import myUpbit
 
-upbit_access = "CvRZ8L3uWWx7SxeixwwX5mQVFXpJUaN7lxxT9gTe"
-upbit_secret = "3iOZ7kGlSUP2v1yIUc7Y6zfOn50mXp2dMqHUqJR1"
-
-upbit = pyupbit.Upbit(upbit_access, upbit_secret)
+# Upbit 토큰 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/upnkr.txt") as f:
+    access_key, secret_key = [line.strip() for line in f.readlines()]
+#업비트 접속
+upbit = pyupbit.Upbit(access_key, secret_key)
 
 # 카카오톡 메세지 보내는 함수
 def SendMessage(msg):
