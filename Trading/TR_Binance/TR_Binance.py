@@ -8,6 +8,8 @@ import time as time_module  # time 모듈을 별칭으로 import
 from tendo import singleton
 me = singleton.SingleInstance()
 
+# 23:50-00:10 (UTC) 시간대는 인출 불가함으로 23:30 시그널 확인 후 Redeem > 15분 경과 후인 23:45 접속해서 Account 이체 > 23:55부터 트레이딩 시작
+# 23:55 > 00:02 > 00:09 > 00:16 > 00:23 5번 매매 이후 남은 USDT 다시 saving () 
 
 KEY_FILE = "C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt"
 
