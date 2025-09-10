@@ -396,9 +396,118 @@ class BinanceUSDTManager:
             
         except Exception as e:
             return {'error': f"Error getting USDT summary: {str(e)}"}
+        
+# 사용 예시 함수들
+def main_example_trading():
+    """사용 예시"""
+    # API 키 설정
+    API_KEY = "your_api_key_here"
+    SECRET_KEY = "your_secret_key_here"
+    
+    # 매니저 인스턴스 생성
+    manager = BinanceUSDTManager(API_KEY, SECRET_KEY)
+    
+    print("=== Binance USDT Manager ===\n")
+    
+    # 1. 전체 USDT 현황 조회
+    print("1. USDT 종합 현황:")
+    summary = manager.get_usdt_summary()
+    if 'error' not in summary:
+        print(f"   SPOT: {summary['spot']['total']:.2f} USDT")
+        print(f"   FUNDING: {summary['funding']['total']:.2f} USDT")
+        print(f"   EARN: {summary['earn']['total']:.2f} USDT (연 {summary['earn']['annual_rate']:.2f}%)")
+        print(f"   총합: {summary['grand_total']:.2f} USDT\n")
+    else:
+        print(f"   에러: {summary['error']}\n")
+    
+    # 2. BTC/USDT 현재가 조회
+    print("2. BTC/USDT 현재가:")
+    btc_price = manager.get_btc_usdt_current_price()
+    if 'error' not in btc_price:
+        print(f"   현재가: ${btc_price['price']:,.2f}\n")
+    else:
+        print(f"   에러: {btc_price['error']}\n")
+    
+    # 3. BTC/USDT 미체결 주문 조회
+    print("3. BTC/USDT 미체결 주문:")
+    open_orders = manager.get_btc_usdt_open_orders()
+    if 'error' not in open_orders:
+        print(f"   미체결 주문 수: {open_orders['count']}개\n")
+    else:
+        print(f"   에러: {open_orders['error']}\n")
+    
+    # 4. 예시 작업들 (실제 실행시 주의!)
+    print("4. 사용 가능한 작업들:")
+    print("   === 계정 관리 ===")
+    print("   - manager.redeem_usdt_flexible('all')  # 전체 인출")
+    print("   - manager.subscribe_usdt_from_funding('all')  # Funding 전체를 Earn으로")
+    print("   - manager.transfer_accounts('USDT', 100, 'SPOT', 'FUNDING')  # SPOT → FUNDING")
+    print("   ")
+    print("   === BTC/USDT 거래 ===")
+    print("   - manager.cancel_all_btc_usdt_orders()  # 모든 미체결 주문 취소")
+    print("   - manager.split_buy_btc_usdt(5, 1000)  # 1000 USDT를 5회 분할 매수")
+    print("   - manager.split_sell_btc_usdt(3, 0.1)  # 0.1 BTC를 3회 분할 매도")
+    print("   ")
+    print("   === 분할 매매 가격 예시 ===")
+    if 'error' not in btc_price:
+        current = btc_price['price']
+        print(f"   현재가: ${current:,.2f}")
+        print("   분할 매수 가격 (5회):")
+        for i in range(5):
+            discount = 0.05 + (i * 0.05)
+            buy_price = current * (1 - discount / 100)
+            print(f"     {i+1}차: ${buy_price:,.2f} (-{discount:.2f}%)")
+        print("   ")
+        print("   분할 매도 가격 (3회):")
+        for i in range(3):
+            markup = 0.05 + (i * 0.05)
+            sell_price = current * (1 + markup / 100)
+            print(f"     {i+1}차: ${sell_price:,.2f} (+{markup:.2f}%)")
+
+def trading_example():
+    """거래 예시 (주의: 실제 거래 실행됨!)"""
+    API_KEY = "your_api_key_here"
+    SECRET_KEY = "your_secret_key_here"
+    
+    manager = BinanceUSDTManager(API_KEY, SECRET_KEY)
+    
+    print("=== BTC/USDT 거래 예시 ===\n")
+    
+    # 1. 모든 미체결 주문 취소
+    print("1. 모든 미체결 주문 취소:")
+    cancel_result = manager.cancel_all_btc_usdt_orders()
+    print(f"   결과: {cancel_result}\n")
+    
+    # 2. 분할 매수 예시 (1000 USDT를 5회 분할)
+    print("2. 분할 매수 (1000 USDT, 5회 분할):")
+    buy_result = manager.split_buy_btc_usdt(5, 1000)
+    if 'error' not in buy_result:
+        print(f"   성공 주문: {buy_result['successful_orders']}개")
+        print(f"   실패 주문: {buy_result['failed_orders']}개")
+        print(f"   회당 금액: {buy_result['usdt_per_order']:.2f} USDT")
+    else:
+        print(f"   에러: {buy_result['error']}")
+    print()
+    
+    # 3. 분할 매도 예시 (0.1 BTC를 3회 분할)  
+    print("3. 분할 매도 (0.1 BTC, 3회 분할):")
+    sell_result = manager.split_sell_btc_usdt(3, 0.1)
+    if 'error' not in sell_result:
+        print(f"   성공 주문: {sell_result['successful_orders']}개")
+        print(f"   실패 주문: {sell_result['failed_orders']}개")
+        print(f"   회당 수량: {sell_result['btc_per_order']:.8f} BTC")
+    else:
+        print(f"   에러: {sell_result['error']}")
+
+if __name__ == "__main__":
+    # 기본 예시 (거래 실행 안됨)
+    main_example_trading()
+    
+    # 거래 예시 (실제 거래 실행됨 - 주석 해제시 주의!)
+    # trading_example()
 
 # 사용 예시 함수들
-def main_example():
+def main_example_saving():
     """사용 예시"""
     # API 키 설정
     API_KEY = "your_api_key_here"
@@ -437,4 +546,4 @@ def main_example():
     print("   - manager.transfer_accounts('USDT', 100, 'SPOT', 'FUNDING')  # SPOT → FUNDING")
 
 if __name__ == "__main__":
-    main_example()
+    main_example_saving()
