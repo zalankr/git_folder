@@ -1,6 +1,0 @@
-from kiwoom_rest_api.koreanstock import stockinfo
-import kiwoom_rest_api as kr
-dir(stockinfo.StockInfo)
-help(stockinfo.StockInfo)
-
-print(kr)
