@@ -173,7 +173,7 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
             volume = round(amount_per_times / price, 8)
 
             # 주문량이 너무 작으면 건너뜀
-            if volume * price < 1000:
+            if volume * price < 6000:
                 print(f"주문 {t+1}회차: 주문량이 너무 작아서 건너뜀 (금액: {volume * price}원)")
                 continue
 
@@ -219,7 +219,7 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             volume = round(amount_per_times / price, 8)
             
             # 주문량이 너무 작으면 건너뜀
-            if volume * price < 1000:
+            if volume * price < 6000:
                 print(f"주문 {t+1}회차: 주문량이 너무 작아서 건너뜀 (금액: {volume * price}원)")
                 continue
                 
