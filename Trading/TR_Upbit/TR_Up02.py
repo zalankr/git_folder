@@ -85,7 +85,7 @@ try:
             Upbit_data = json.load(f)
 
         Position = Upbit_data["Position"]
-        Invest_quantity = Upbit_data["Invest_quantity"]
+        Invest_quantity = Upbit_data["Invest_quantity"] # KRW, ETH로 대체가 나은 지????
 
         # 현재가 조회 (재시도 로직 추가)
         current_price = None
@@ -107,16 +107,16 @@ try:
         # 포지션별 주문하기
         if Position == "Sell full" or Position == "Sell half":
             amount_per_times = Invest_quantity / TR_time[1] # 분할 매매 횟수당 ETH Quantity
-            if amount_per_times * current_price < 1000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 1000원 미만일 때 pass
-                print(f"분할 매매당 금액이 1000원 미만이므로 매도 주문을 건너뜁니다: {amount_per_times * current_price}원")
-            else: # 분할 매매당 금액이 1000원 이상일 때만 매도 주문
+            if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 1000원 미만일 때 pass
+                print(f"분할 매매당 금액이 6000원 미만이므로 매도 주문을 건너뜁니다: {amount_per_times * current_price}원")
+            else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
 
         elif Position == "Buy full" or Position == "Buy half":
             amount_per_times = Invest_quantity / TR_time[1] # 분할 매매 횟수당 KRW Quantity
-            if amount_per_times < 1000: # KRW로 분할 매매당 금액이 1000원 미만일 때 pass
-                print(f"분할 매매당 금액이 1000원 미만이므로 매수 주문을 건너뜁니다: {amount_per_times}원")
-            else: # 분할 매매당 금액이 1000원 이상일 때만 매수 주문
+            if amount_per_times < 6000: # KRW로 분할 매매당 금액이 1000원 미만일 때 pass
+                print(f"분할 매매당 금액이 6000원 미만이므로 매수 주문을 건너뜁니다: {amount_per_times}원")
+            else: # 분할 매매당 금액이 6000원 이상일 때만 매수 주문
                 UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
     
     else:

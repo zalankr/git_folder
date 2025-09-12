@@ -156,7 +156,7 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 -2%(유사 시장가) 매도 주문으로 대체
     if TR_time[1] < 3:
-        prices[0] = [get_tick_size(price = current_price * 0.98,  method="floor")]
+        prices[0] = get_tick_size(price = current_price * 0.98,  method="floor")
         
     print("분할 매매 가격:", prices) # 완성 후 삭제
 
@@ -180,7 +180,7 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +2%(유사 시장가) 매수 주문으로 대체
     if TR_time[1] < 3:
-        prices[0] = [get_tick_size(price = current_price*1.02,  method="floor")]
+        prices[0] = get_tick_size(price = current_price*1.02,  method="floor")
 
     # 주문 실행
     for t in range(TR_time[1]):

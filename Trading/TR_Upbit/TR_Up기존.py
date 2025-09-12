@@ -1,7 +1,7 @@
 import pyupbit
 import json
 import time as time_module  # time 모듈을 별칭으로 import
-import UP_signal_weight as UP
+import UP_signal_weight기존 as UP
 import kakao_alert as KA
 import gspread_updater as GU
 from tendo import singleton
@@ -91,17 +91,17 @@ try:
         if Position == "Sell full" or Position == "Sell half":
             current_price = pyupbit.get_current_price("KRW-ETH")
             amount_per_times = Invest_quantity / TR_time[1] # 분할 매매 횟수당 ETH Quantity
-            if amount_per_times * current_price < 1000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 1000원 미만일 때 pass
+            if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 6000원 미만일 때 pass
                 pass
-            else: # 분할 매매당 금액이 1000원 이상일 때만 매도 주문
+            else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
 
         elif Position == "Buy full" or Position == "Buy half":
             current_price = pyupbit.get_current_price("KRW-ETH")
             amount_per_times = Invest_quantity / TR_time[1] # 분할 매매 횟수당 KRW Quantity
-            if amount_per_times < 1000: # KRW로 분할 매매당 금액이 1000원 미만일 때 pass
+            if amount_per_times < 1000: # KRW로 분할 매매당 금액이 6000원 미만일 때 pass
                 pass
-            else: # 분할 매매당 금액이 1000원 이상일 때만 매수 주문
+            else: # 분할 매매당 금액이 6000원 이상일 때만 매수 주문
                 UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
     
     else:
