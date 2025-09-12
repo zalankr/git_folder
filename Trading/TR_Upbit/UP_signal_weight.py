@@ -151,8 +151,8 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
     # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
     prices = []
     for i in range(TR_time[1]):
-        i += 1
-        price = current_price * (1+(i*0.0005)) # 가격을 0.05%씩 올려 분할 매도 가격 계산
+        order_num = i + 1
+        price = current_price * (1+(order_num*0.0005)) # 가격을 0.05%씩 올려 분할 매도 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
     
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 -2%(유사 시장가) 매도 주문으로 대체
@@ -197,8 +197,8 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
     # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
     prices = []
     for i in range(TR_time[1]):
-        i += 1
-        price = (current_price * (1-(i*0.0005))) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
+        order_num = i + 1
+        price = (current_price * (1-(order_num*0.0005))) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +2%(유사 시장가) 매수 주문으로 대체

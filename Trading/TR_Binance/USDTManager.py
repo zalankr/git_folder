@@ -5,7 +5,7 @@ import hashlib
 from urllib.parse import urlencode
 from typing import Dict, List, Optional, Union
 
-class BinanceUSDTManager:
+class USDTManager:
     def __init__(self, api_key: str, secret_key: str):
         self.api_key = api_key
         self.secret_key = secret_key
@@ -409,7 +409,7 @@ class BinanceUSDTManager:
         except Exception as e:
             return {'error': f"Error transferring between accounts: {str(e)}"}
 
-    # 6. SPOT Account USDT 잔액 확인
+    # 6. SPOT Account ticker별 잔액 확인
     def get_spot_balance(self, asset: str) -> Dict:
         """SPOT 계정 특정 자산 잔액 조회"""
         try:
@@ -472,41 +472,41 @@ with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
     API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
 
 # 매니저 인스턴스 생성
-USDTmanager = BinanceUSDTManager(API_KEY, API_SECRET)
+USDTmanager = USDTManager(API_KEY, API_SECRET)
 
-# 1. 전체 USDT 현황 조회
-print("1. USDT 종합 현황:")
-summary = USDTmanager.get_usdt_summary()
-if 'error' not in summary:
-    print(f"   SPOT: {summary['spot']['total']:.2f} USDT")
-    print(f"   FUNDING: {summary['funding']['total']:.2f} USDT")
-    print(f"   EARN: {summary['earn']['total']:.2f} USDT (연 {summary['earn']['annual_rate']:.2f}%)")
-    print(f"   총합: {summary['grand_total']:.2f} USDT\n")
-else:
-    print(f"   에러: {summary['error']}\n")
+# # 1. 전체 USDT 현황 조회
+# print("1. USDT 종합 현황:")
+# summary = USDTmanager.get_usdt_summary()
+# if 'error' not in summary:
+#     print(f"   SPOT: {summary['spot']['total']:.2f} USDT")
+#     print(f"   FUNDING: {summary['funding']['total']:.2f} USDT")
+#     print(f"   EARN: {summary['earn']['total']:.2f} USDT (연 {summary['earn']['annual_rate']:.2f}%)")
+#     print(f"   총합: {summary['grand_total']:.2f} USDT\n")
+# else:
+#     print(f"   에러: {summary['error']}\n")
 
-# 2. USDT Flexible 잔액 조회
-print("2. USDT Flexible 잔액:")
-earn_balance = USDTmanager.get_usdt_flexible_balance()
-if 'error' not in earn_balance: 
-    print(f"   잔액: {earn_balance['balance']:.2f} USDT")
-    print(f"   연 이율: {earn_balance['annual_rate']:.2f}%")
-    print(f"   자유 사용 가능: {earn_balance['free_amount']:.2f} USDT")
-    print(f"   잠긴 금액: {earn_balance['locked_amount']:.2f} USDT\n")
-else:
-    print(f"   에러: {earn_balance['error']}\n")
+# # 2. USDT Flexible 잔액 조회
+# print("2. USDT Flexible 잔액:")
+# earn_balance = USDTmanager.get_usdt_flexible_balance()
+# if 'error' not in earn_balance: 
+#     print(f"   잔액: {earn_balance['balance']:.2f} USDT")
+#     print(f"   연 이율: {earn_balance['annual_rate']:.2f}%")
+#     print(f"   자유 사용 가능: {earn_balance['free_amount']:.2f} USDT")
+#     print(f"   잠긴 금액: {earn_balance['locked_amount']:.2f} USDT\n")
+# else:
+#     print(f"   에러: {earn_balance['error']}\n")
 
-# 3. flexible Product ID 조회 (USDT)
-print("3. flexible Product ID 조회:")
-earn_balance = USDTmanager.get_usdt_flexible_balance()
-if earn_balance:
-    print(f"   USDT Flexible Product ID: {earn_balance['product_id']}\n")
-else:   
-    print("   에러: USDT Flexible Product not found\n")
+# # 3. flexible Product ID 조회 (USDT)
+# print("3. flexible Product ID 조회:")
+# earn_balance = USDTmanager.get_usdt_flexible_balance()
+# if earn_balance:
+#     print(f"   USDT Flexible Product ID: {earn_balance['product_id']}\n")
+# else:   
+#     print("   에러: USDT Flexible Product not found\n")
 
-# 4. USDT Flexible Products Redeem (Fast)
+# # 4. USDT Flexible Products Redeem (Fast)
 # print("4. USDT Flexible Products Redeem (Fast):")
-# result = USDTmanager.redeem_usdt_flexible(amount=1.0, dest_account='SPOT')
+# result = USDTmanager.redeem_usdt_flexible(amount='all', dest_account='SPOT')
 # if 'error' not in result:
 #     print(f"   성공적으로 인출되었습니다: {result['redeemed_amount']:.2f} USDT")
 #     print(f"   Redeem ID: {result.get('redeem_id')}")
@@ -525,30 +525,15 @@ else:
 # else:
 #     print(f"   에러: {result['error']}\n")
 
-# 6. Funding Account USDT를 Flexible Savings에 Subscribe
-print("6. Funding Account USDT를 Flexible Savings에 Subscribe:")    
-result = USDTmanager.subscribe_usdt_from_funding(amount='all')    
-if 'error' not in result:   
-    print(f"   성공적으로 예치되었습니다: {result['subscribed_amount']:.2f} USDT")
-    print(f"   Product ID: {result['product_id']}")
-    print(f"   Purchase ID: {result.get('purchase_id')}")
-    print(f"   남은 Funding 잔액: {result['remaining_funding_balance']:.2f} USDT\n")
-else:
-    print(f"   에러: {result['error']}\n")
-
-# 특정 수량만 예치하는 경우
-# result = USDTmanager.subscribe_usdt_from_funding(amount=10.0)
-
-
-
-
-
-#     # 4. 예시 작업들 (실제 실행시 주의!)
-#     print("4. 사용 가능한 작업들:")
-#     print("   === 계정 관리 ===")
-#     print("   - manager.redeem_usdt_flexible('all')  # 전체 인출")
-#     print("   - manager.subscribe_usdt_from_funding('all')  # Funding 전체를 Earn으로")
-#     print("   - manager.transfer_accounts('USDT', 100, 'SPOT', 'FUNDING')  # SPOT → FUNDING")
-
-
-
+# # 6. Funding Account USDT를 Flexible Savings에 Subscribe
+# print("6. Funding Account USDT를 Flexible Savings에 Subscribe:")    
+# result = USDTmanager.subscribe_usdt_from_funding(amount='all')    
+# if 'error' not in result:   
+#     print(f"   성공적으로 예치되었습니다: {result['subscribed_amount']:.2f} USDT")
+#     print(f"   Product ID: {result['product_id']}")
+#     print(f"   Purchase ID: {result.get('purchase_id')}")
+#     print(f"   남은 Funding 잔액: {result['remaining_funding_balance']:.2f} USDT\n")
+# else:
+#     print(f"   에러: {result['error']}\n")
+#     # 특정 수량만 예치하는 경우
+#     # result = USDTmanager.subscribe_usdt_from_funding(amount=10.0)
