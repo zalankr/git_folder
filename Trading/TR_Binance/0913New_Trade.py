@@ -1,9 +1,15 @@
 import ccxt
 import time
 import logging
+import pandas as pd
+import numpy as np
+import json
+import asyncio
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal, ROUND_DOWN
-import asyncio
+from datetime import timedelta
+from datetime import datetime
+
 
 # 로컬에서는 시간 지금 동기화 필요
 
@@ -12,7 +18,8 @@ class BinanceTrader:
     바이낸스 BTC/USDT 자동매매 클래스
     CCXT 라이브러리를 사용한 spot market 거래
     """
-    
+
+    # 클래스 인스턴스 생성
     def __init__(self, api_key: str, api_secret: str, sandbox: bool = False):
         """
         초기화
@@ -40,6 +47,7 @@ class BinanceTrader:
         # 심볼 정보 로드
         self._load_market_info()
 
+    # 마켓 정보 로드
     def _load_market_info(self):
         """마켓 정보 로드 (tick size, 최소 주문량 등)"""
             # 방법 1: 공개 API를 사용한 마켓 정보 로드 (권장)
@@ -64,7 +72,8 @@ class BinanceTrader:
             
         except Exception as public_api_error:
             self.logger.warning(f"Public API failed, trying direct API call: {public_api_error}")
-    
+
+    # 잔고 조회    
     def get_balance(self, account_type: str = 'total') -> Dict:
         """
         잔고 조회
@@ -104,7 +113,8 @@ class BinanceTrader:
         except Exception as e:
             self.logger.error(f"Failed to get balance: {e}")
             return {}
-    
+
+    # 주문 확인   
     def get_open_orders(self) -> List[Dict]:
         """
         주문 확인 (미체결 주문 조회)
@@ -120,7 +130,8 @@ class BinanceTrader:
         except Exception as e:
             self.logger.error(f"Failed to get open orders: {e}")
             return []
-    
+
+    # 주문 취소 
     def cancel_all_orders(self) -> bool:
         """
         주문 확인된 전체 주문의 취소 주문
@@ -153,6 +164,7 @@ class BinanceTrader:
             self.logger.error(f"Failed to cancel all orders: {e}")
             return False
     
+    # 가격을 tick size에 맞게 반올림
     def _round_to_tick_size(self, price: float) -> float:
         """가격을 tick size에 맞게 반올림"""
         decimal_price = Decimal(str(price))
@@ -160,10 +172,12 @@ class BinanceTrader:
         rounded = (decimal_price / decimal_tick).quantize(Decimal('1'), rounding=ROUND_DOWN) * decimal_tick
         return float(rounded)
     
+    # 수량을 정밀도에 맞게 반올림
     def _round_amount(self, amount: float) -> float:
         """수량을 정밀도에 맞게 반올림"""
         return round(amount, self.amount_precision)
     
+    # 현재 시장 가격 조회
     def get_current_price(self) -> float:
         """현재 시장 가격 조회"""
         try:
@@ -173,6 +187,7 @@ class BinanceTrader:
             self.logger.error(f"Failed to get current price: {e}")
             return 0.0
     
+    # 분할매수 주문
     def split_buy(self, splits: int, usdt_amount: float) -> List[Dict]:
         """
         분할매수 주문
@@ -254,7 +269,8 @@ class BinanceTrader:
         except Exception as e:
             self.logger.error(f"Split buy failed: {e}")
             return []
-    
+      
+    # 분할매도 주문
     def split_sell(self, splits: int, btc_amount: float) -> List[Dict]:
         """
         분할매도 주문
@@ -335,15 +351,192 @@ class BinanceTrader:
         except Exception as e:
             self.logger.error(f"Split sell failed: {e}")
             return []
+
+    # 일봉 close 가격 데이터 
+    def get_daily_ohlcv(self, days: int = 365) -> pd.DataFrame:
+        """
+        일봉 OHLCV 데이터 조회
         
+        Args:
+            days: 조회할 일수 (기본값: 365일)
+            
+        Returns:
+            OHLCV 데이터프레임 (datetime index)
+        """
+        try:
+            # 시작 날짜 계산 (현재 시간 - days)
+            since = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+            
+            # 일봉 데이터 조회 (timeframe: '1d')
+            ohlcv = self.exchange.fetch_ohlcv(
+                symbol=self.symbol,
+                timeframe='1d',
+                since=since,
+                limit=days
+            )
+            
+            # 데이터프레임으로 변환
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            
+            # timestamp를 datetime으로 변환하고 인덱스로 설정
+            df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.set_index('datetime', inplace=True)
+            df.drop('timestamp', axis=1, inplace=True)
+            
+            # 데이터 타입을 float으로 변환
+            df = df.astype(float)
+            
+            self.logger.info(f"Fetched {len(df)} days of OHLCV data")
+            return df
+            
+        except Exception as e:
+            self.logger.error(f"Failed to fetch daily OHLCV data: {e}")
+            return pd.DataFrame()
 
-# # API 키 불러오기
-# with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
-#     API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+    # 이동평균선 계산        
+    def moving_average(self, period: int, reference_day: int = -1, data_days: int = 365) -> Dict:
+        """
+        일봉 기준 이동평균선 계산 및 특정 날짜의 이동평균 반환
+        
+        Args:
+            period: 이동평균 기간 (예: 5, 20, 50, 200)
+            reference_day: 기준일 (음수: 최근일부터 역산, -1=최근일, -2=하루전)
+            data_days: 전체 데이터 기간 (기본값: 365일)
+            
+        Returns:
+            이동평균 정보 딕셔너리
+        """
+        try:
+            # 일봉 데이터 조회
+            df = self.get_daily_ohlcv(data_days)
+            
+            # 종가 기준 이동평균 계산
+            df[f'MA_{period}'] = df['close'].rolling(window=period).mean()
+            
+            # 기준일의 데이터 선택
+            if abs(reference_day) > len(df):
+                self.logger.error(f"Reference day {reference_day} exceeds available data length {len(df)}")
+                return {}
+            
+            reference_data = df.iloc[reference_day]
+            
+            # 이동평균이 계산되었는지 확인 (NaN 체크)
+            ma_value = reference_data[f'MA_{period}']
+            if pd.isna(ma_value):
+                self.logger.error(f"Not enough data to calculate {period}-day MA at reference day {reference_day}")
+                return {}
+            
+            # 현재가와 이동평균 비교
+            current_price = reference_data['close']
+            price_diff = current_price - ma_value
+            
+            # 추세 판단
+            signal = "Buy" if price_diff >= 0 else "Sell"
+            
+            result = {
+                'period': period,
+                'close_price': float(round(current_price, 2)),
+                'moving_average': float(round(ma_value, 2)),
+                'price_difference': float(round(price_diff, 2)),
+                'signal': signal
+            }
+            
+            self.logger.info(f"{period}일 이동평균 계산 완료")
+            self.logger.info(f"차이: {price_diff:.2f} USDT, 신호: {signal}")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Failed to calculate moving average: {e}")
+            return {}
 
-# # 매니저 인스턴스 생성
-# BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
-# # shift+tab 내어쓰기
+    # 어제 포지션을 불러서 오늘 포지션으로 변경 함수
+    def make_position(self): # 어제 저장된 binance_data.json 파일을 불러서 오늘 포지션으로 변경하는 함수
+        # 어제의 json값 불러오기
+        # data_path = '/var/autobot/TR_Binance/binance_data.json'
+        data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_Binance/binance_data.json"
+        try:
+            with open(data_path, 'r', encoding='utf-8') as f:
+                binance_data = json.load(f)
+        except Exception as e:
+            print("Exception File")
+
+        # JSON에서 어제의 데이터 추출
+        BTC_weight = binance_data["BTC_weight"]
+        Last_day_Total_balance = binance_data["Total_balance"]
+        Last_month_Total_balance = binance_data["Last_month_Total_balance"]
+        Last_year_Total_balance = binance_data["Last_year_Total_balance"]
+        Daily_return = binance_data["Daily_return"]
+        Monthly_return = binance_data["Monthly_return"]
+        Yearly_return = binance_data["Yearly_return"]
+        #######################################################################################
+
+        # # ETH 가격자료 불러오기
+        # data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
+        # price = data["close"].iloc[-1]
+
+        # # 이동평균선 계산
+        # MA20 = getMA(data, 20, -1)
+        # MA40 = getMA(data, 40, -1)
+        # # 포지션 산출
+        # if ETH_weight == 0.99 :
+        #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
+        #         position = {"position": "Hold state", "ETH_weight": 0.99, "ETH_target": ETH, "CASH_weight": 0.01, "Invest_quantity": 0.0}
+        #     elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
+        #         position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
+        #     else:
+        #         position = {"position": "Sell half", "ETH_weight": 0.495, "ETH_target": ETH * 0.5, "CASH_weight": 0.505, "Invest_quantity": ETH * 0.5}
+        # elif ETH_weight == 0.495:
+        #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
+        #         position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
+        #     elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
+        #         position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
+        #     else:
+        #         position = {"position": "Hold state", "ETH_weight": 0.495, "ETH_target": ETH, "CASH_weight": 0.505, "Invest_quantity": 0.0}
+        # elif ETH_weight == 0.0:
+        #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
+        #         position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ((KRW*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
+        #     elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
+        #         position = {"position": "Hold state", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0}
+        #     else:
+        #         position = {"position": "Buy half", "ETH_weight": 0.495, "ETH_target": ((KRW*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_quantity": KRW * 0.495}
+
+        # return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return
+
+# 시간확인 조건문 함수: 8:38 Redeem, 8:48 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 8:55/9:02/9:09/9:16 트레이딩 후 TR기록
+def what_time():
+    # 현재 시간 가져오기
+    now = datetime.now()
+    current_time = now.time()
+
+    current_hour = current_time.hour
+    current_minute = current_time.minute
+
+    # 시간 비교 시 초 단위까지 정확히 매칭하기 어려우므로 시간 범위로 체크
+    if current_hour == 23 and 37 < current_minute <= 39:  # 23:38
+        TR_time = ["0838", 0, "Redeem"] # 시간, 분할 횟수
+    elif current_hour == 23 and 47 < current_minute <= 49:  # 23:48
+        TR_time = ["0848", 5, "Trading_1"] # 시간, 분할 횟수
+    elif current_hour == 23 and 54 < current_minute <= 56:  # 23:55
+        TR_time = ["0855", 4, "Trading_2"] # 시간, 분할 횟수
+    elif current_hour == 0 and 1 < current_minute <= 3:  # 00:02
+        TR_time = ["0902", 3, "Trading_3"] # 시간, 분할 횟수
+    elif current_hour == 0 and 8 < current_minute <= 10:  # 00:09
+        TR_time = ["0909", 2, "Trading_4"] # 시간, 분할 횟수
+    elif current_hour == 0 and 15 < current_minute <= 20:  # 00:16
+        TR_time = ["0916", 1, "Trading_5"]
+    else:
+        TR_time = ["Not_yet", None, "Nothing"]
+    
+    return now, TR_time
+
+# API 키 불러오기
+with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
+    API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+
+# 매니저 인스턴스 생성
+BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
+# shift+tab 내어쓰기
 
 # 1. 잔고 조회
 # print("=== 전체 잔고 조회 ===")
@@ -379,3 +572,16 @@ class BinanceTrader:
 # print("\n=== 분할 매도 주문 ===")
 # sell_results = BinanceTrader.split_sell(splits=5, btc_amount=0.0016)
 # print(sell_results)
+
+# # 7. 현재시간, TR타임
+# print(what_time())
+
+# df = BinanceTrader.get_daily_ohlcv()
+# print(df.tail(30))
+
+# #이동평균선 수치, 첫번째: 분봉/일봉 정보, 두번째: 기간, 세번째: 기준 날짜
+# result1 = BinanceTrader.moving_average(period=45, reference_day = -1, data_days = 365)
+# result2 = BinanceTrader.moving_average(period=120, reference_day = -1, data_days = 365)
+# print(result1)
+# print(result2)
+
