@@ -5,6 +5,8 @@ from typing import Dict, List, Optional, Tuple
 from decimal import Decimal, ROUND_DOWN
 import asyncio
 
+# 로컬에서는 시간 지금 동기화 필요
+
 class BinanceTrader:
     """
     바이낸스 BTC/USDT 자동매매 클래스
@@ -335,41 +337,45 @@ class BinanceTrader:
             return []
         
 
-# API 키 불러오기
-with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
-    API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+# # API 키 불러오기
+# with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
+#     API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
 
-# 매니저 인스턴스 생성
-BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
-# shift+tab 내어쓰기
+# # 매니저 인스턴스 생성
+# BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
+# # shift+tab 내어쓰기
 
-# # 1. 잔고 조회
+# 1. 잔고 조회
 # print("=== 전체 잔고 조회 ===")
 # total_balance = BinanceTrader.get_balance('total')
 # print(f"BTC: {total_balance.get('BTC', {})}")
 # print(f"USDT: {total_balance.get('USDT', {})}")
 
-print("\n=== Spot 잔고 조회 ===") # 트레이딩 시 기본으로 Spot잔고를 쓰는게 단순함
-spot_balance = BinanceTrader.get_balance('spot')
-print(f"BTC Free: {spot_balance.get('BTC_free', 0)}")
-print(f"USDT Free: {spot_balance.get('USDT_free', 0)}")
+# print("\n=== Spot 잔고 조회 ===") # 트레이딩 시 기본으로 Spot잔고를 쓰는게 단순함
+# spot_balance = BinanceTrader.get_balance('spot')
+# print(f"BTC Free: {spot_balance.get('BTC_free', 0)}")
+# print(f"USDT Free: {spot_balance.get('USDT_free', 0)}")
 
-# 2. 현재 가격 조회
-current_price = BinanceTrader.get_current_price()
-print(f"\n현재 BTC 가격: ${current_price}")
+# # 2. 현재 가격 조회
+# current_price = BinanceTrader.get_current_price()
+# print(f"\n현재 BTC 가격: ${current_price}")
 
 # # 3. 미체결 주문 조회
 # print("\n=== 미체결 주문 조회 ===")
 # open_orders = BinanceTrader.get_open_orders()
 # print(f"미체결 주문 수: {len(open_orders)}")
 
-# # 6. 모든 주문 취소
+# # 64. 모든 주문 취소
 # print("\n=== 모든 주문 취소 ===")
 # cancel_result = BinanceTrader.cancel_all_orders()
 # print(f"주문 취소 결과: {cancel_result}")
 
-# # 5. 분할 매도 주문 예시 (0.01 BTC를 3번에 나누어 매도)
+# # 5. 분할매수: 5회 분할로 100 USDT 매수
 # print("\n=== 분할 매도 주문 ===")
-# sell_orders = BinanceTrader.split_sell_orders(split_count=3, total_btc_amount=0.0005)
-# for i, order in enumerate(sell_orders):
-#     print(f"매도 주문 {i+1}: {order}")
+# buy_results = BinanceTrader.split_buy(splits=1, usdt_amount=13)
+# print(buy_results)
+
+# # 6. 분할매도: 3회 분할로 0.01 BTC 매도
+# print("\n=== 분할 매도 주문 ===")
+# sell_results = BinanceTrader.split_sell(splits=5, btc_amount=0.0016)
+# print(sell_results)
