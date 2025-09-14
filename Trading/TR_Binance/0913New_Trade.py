@@ -471,13 +471,9 @@ class BinanceTrader:
         Yearly_return = binance_data["Yearly_return"]
         #######################################################################################
 
-        # # ETH 가격자료 불러오기
-        # data = pyupbit.get_ohlcv(ticker="KRW-ETH", interval="day")
-        # price = data["close"].iloc[-1]
-
         # # 이동평균선 계산
-        # MA20 = getMA(data, 20, -1)
-        # MA40 = getMA(data, 40, -1)
+        # MA120 = getMA(data, 20, -1)
+        # MA45 = getMA(data, 40, -1) # 현재가도 여기에서 구하기
         # # 포지션 산출
         # if ETH_weight == 0.99 :
         #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
