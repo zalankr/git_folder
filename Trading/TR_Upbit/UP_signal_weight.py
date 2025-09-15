@@ -50,7 +50,7 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
             position = {"position": "Sell half", "ETH_weight": 0.495, "ETH_target": ETH * 0.5, "CASH_weight": 0.505, "Invest_quantity": ETH * 0.5}
     elif ETH_weight == 0.495:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
+            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW*0.98*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.98}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
             position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
         else:

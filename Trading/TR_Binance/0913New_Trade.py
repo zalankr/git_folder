@@ -106,8 +106,10 @@ class BinanceTrader:
                 return {
                     'BTC_free': balance['BTC']['free'],
                     'BTC_locked': balance['BTC']['used'],
+                    'BTC' : balance['BTC']['total'],
                     'USDT_free': balance['USDT']['free'],
-                    'USDT_locked': balance['USDT']['used']
+                    'USDT_locked': balance['USDT']['used'],
+                    'USDT': balance['USDT']['total']    
                 }
                 
         except Exception as e:
@@ -435,14 +437,10 @@ class BinanceTrader:
             
             result = {
                 'period': period,
-                'close_price': float(round(current_price, 2)),
-                'moving_average': float(round(ma_value, 2)),
-                'price_difference': float(round(price_diff, 2)),
                 'signal': signal
             }
             
-            self.logger.info(f"{period}일 이동평균 계산 완료")
-            self.logger.info(f"차이: {price_diff:.2f} USDT, 신호: {signal}")
+            self.logger.info(f"{period}일 이동평균 계산 완료. 신호: {signal}")
             
             return result
             
@@ -472,36 +470,38 @@ class BinanceTrader:
 
         # 이동평균선 계산
         MA120 = self.moving_average(period = 120, reference_day = -1, data_days = 365)
-        MA120Signal = MA120["signal"]
+        MA120signal = MA120["signal"]
         MA45 = self.moving_average(period = 45, reference_day = -1, data_days = 365)
-        MA45Signal = MA45["signal"]
+        MA45signal = MA45["signal"]
         price = self.get_current_price()
+        balance = BinanceTrader.get_balance('spot')
+        BTC = balance.get('BTC', {})
+        USDT = balance.get('USDT', {})
 
-        ###############################################################################################################################
-        # # 포지션 산출
-        # if ETH_weight == 0.99 :
-        #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-        #         position = {"position": "Hold state", "ETH_weight": 0.99, "ETH_target": ETH, "CASH_weight": 0.01, "Invest_quantity": 0.0}
-        #     elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-        #         position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
-        #     else:
-        #         position = {"position": "Sell half", "ETH_weight": 0.495, "ETH_target": ETH * 0.5, "CASH_weight": 0.505, "Invest_quantity": ETH * 0.5}
-        # elif ETH_weight == 0.495:
-        #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-        #         position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
-        #     elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-        #         position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
-        #     else:
-        #         position = {"position": "Hold state", "ETH_weight": 0.495, "ETH_target": ETH, "CASH_weight": 0.505, "Invest_quantity": 0.0}
-        # elif ETH_weight == 0.0:
-        #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-        #         position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ((KRW*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
-        #     elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-        #         position = {"position": "Hold state", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0}
-        #     else:
-        #         position = {"position": "Buy half", "ETH_weight": 0.495, "ETH_target": ((KRW*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_quantity": KRW * 0.495}
+        # 포지션 산출
+        if BTC_weight == 0.99 :
+            if MA45signal == "Buy" and MA120signal == "Buy":
+                position = {"position": "Hold state", "BTC_weight": 0.99, "BTC_target": BTC, "CASH_weight": 0.01, "Invest_quantity": 0.0}
+            elif MA45signal == "Sell" and MA120signal == "Sell":
+                position = {"position": "Sell full", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": BTC}
+            else:
+                position = {"position": "Sell half", "BTC_weight": 0.495, "BTC_target": BTC * 0.5, "CASH_weight": 0.505, "Invest_quantity": BTC * 0.5}            
+        elif BTC_weight == 0.495:
+            if MA45signal == "Buy" and MA120signal == "Buy":
+                position = {"position": "Buy full", "BTC_weight": 0.99, "BTC_target": BTC + ((USDT * 0.98 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": USDT * 0.98}
+            elif MA45signal == "Sell" and MA120signal == "Sell":
+                position = {"position": "Sell full", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": BTC}
+            else:
+                position = {"position": "Hold state", "BTC_weight": 0.495, "BTC_target": BTC, "CASH_weight": 0.505, "Invest_quantity": 0.0}
+        elif BTC_weight == 0.0:
+            if MA45signal == "Buy" and MA120signal == "Buy":
+                position = {"position": "Buy full", "BTC_weight": 0.99, "BTC_target": ((USDT*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": USDT * 0.99}
+            elif MA45signal == "Sell" and MA120signal == "Sell":
+                position = {"position": "Hold state", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0}
+            else:
+                position = {"position": "Buy half", "BTC_weight": 0.495, "BTC_target": ((USDT*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_quantity": USDT * 0.495}
 
-        # return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return
+        return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return
 
 # 시간확인 조건문 함수: 8:38 Redeem, 8:48 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 8:55/9:02/9:09/9:16 트레이딩 후 TR기록
 def what_time():
@@ -548,6 +548,10 @@ BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
 # spot_balance = BinanceTrader.get_balance('spot')
 # print(f"BTC Free: {spot_balance.get('BTC_free', 0)}")
 # print(f"USDT Free: {spot_balance.get('USDT_free', 0)}")
+# print(f"BTC locked: {spot_balance.get('BTC_locked', 0)}")
+# print(f"USDT locked: {spot_balance.get('USDT_locked', 0)}")
+# print(f"BTC: {spot_balance.get('BTC', 0)}")
+# print(f"USDT: {spot_balance.get('USDT', 0)}")
 
 # # 2. 현재 가격 조회
 # current_price = BinanceTrader.get_current_price()
@@ -584,4 +588,8 @@ BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
 # result2 = BinanceTrader.moving_average(period=120, reference_day = -1, data_days = 365)
 # print(result1)
 # print(result2)
+
+# # 8. 포지션 산출
+result = BinanceTrader.make_position()
+print(result)
 

@@ -1,17 +1,17 @@
 {
-    "Date": "2025-09-12",
-    "Position": "Buy full",
+    "Date": "2025-09-15",
+    "Position": "Hold state",
     "ETH_weight": 0.99,
     "ETH_target": 7.14663446,
     "CASH_weight": 0.01,
-    "Invest_quantity": 21452086.170412086,
-    "Total_balance": 44995210.0,
+    "Invest_quantity": 0.0,
+    "Total_balance": 45831367.5281229,
     "ETH": 7.14663446,
-    "KRW": 0,
-    "Last_day_Total_balance": 43811902.88400176,
+    "KRW": 0.7361429,
+    "Last_day_Total_balance": 46381658.3815429,
     "Last_month_Total_balance": 43448578.0,
     "Last_year_Total_balance": 40859674.0,
-    "Daily_return": 1.4110616931862703,
-    "Monthly_return": 2.2590793711450843,
-    "Yearly_return": 8.738302372784181
+    "Daily_return": -1.1864406591355934,
+    "Monthly_return": 5.484159983608444,
+    "Yearly_return": 12.167726859795557
 }
