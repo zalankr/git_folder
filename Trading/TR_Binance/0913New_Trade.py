@@ -352,7 +352,7 @@ class BinanceTrader:
             self.logger.error(f"Split sell failed: {e}")
             return []
 
-    # 일봉 close 가격 데이터 
+    # 일봉 가격 데이터 
     def get_daily_ohlcv(self, days: int = 365) -> pd.DataFrame:
         """
         일봉 OHLCV 데이터 조회
@@ -469,11 +469,15 @@ class BinanceTrader:
         Daily_return = binance_data["Daily_return"]
         Monthly_return = binance_data["Monthly_return"]
         Yearly_return = binance_data["Yearly_return"]
-        #######################################################################################
 
-        # # 이동평균선 계산
-        # MA120 = getMA(data, 20, -1)
-        # MA45 = getMA(data, 40, -1) # 현재가도 여기에서 구하기
+        # 이동평균선 계산
+        MA120 = self.moving_average(period = 120, reference_day = -1, data_days = 365)
+        MA120Signal = MA120["signal"]
+        MA45 = self.moving_average(period = 45, reference_day = -1, data_days = 365)
+        MA45Signal = MA45["signal"]
+        price = self.get_current_price()
+
+        ###############################################################################################################################
         # # 포지션 산출
         # if ETH_weight == 0.99 :
         #     if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
