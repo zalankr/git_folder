@@ -3,6 +3,7 @@ import time
 import logging
 import pandas as pd
 import numpy as np
+import kakao_alert as KA
 import json
 import asyncio
 from typing import Dict, List, Optional, Tuple
@@ -13,7 +14,7 @@ from datetime import datetime
 
 # 로컬에서는 시간 지금 동기화 필요
 
-class BinanceTrader:
+class BinanceT:
     """
     바이낸스 BTC/USDT 자동매매 클래스
     CCXT 라이브러리를 사용한 spot market 거래
@@ -146,7 +147,8 @@ class BinanceTrader:
             
             if not open_orders:
                 self.logger.info("No open orders to cancel")
-                return True
+                message = "취소할 주문이 없습니다."
+                return message
             
             # 모든 주문 취소
             cancelled_count = 0
@@ -160,11 +162,13 @@ class BinanceTrader:
                     self.logger.error(f"Failed to cancel order {order['id']}: {e}")
             
             self.logger.info(f"Cancelled {cancelled_count}/{len(open_orders)} orders")
-            return cancelled_count > 0
+            message = f"취소주문 {cancelled_count}/{len(open_orders)}건 실행"
+            return message
             
         except Exception as e:
             self.logger.error(f"Failed to cancel all orders: {e}")
-            return False
+            message = f"Failed to cancel all orders: {e}"
+            return message
     
     # 가격을 tick size에 맞게 반올림
     def _round_to_tick_size(self, price: float) -> float:
@@ -530,12 +534,12 @@ def what_time():
     
     return now, TR_time
 
-# API 키 불러오기
-with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
-    API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+# # API 키 불러오기
+# with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
+#     API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
 
-# 매니저 인스턴스 생성
-BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
+# # 매니저 인스턴스 생성
+# BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
 # shift+tab 내어쓰기
 
 # 1. 잔고 조회

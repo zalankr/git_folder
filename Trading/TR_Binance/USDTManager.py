@@ -5,7 +5,7 @@ import hashlib
 from urllib.parse import urlencode
 from typing import Dict, List, Optional, Union
 
-class USDTManager:
+class USDTM:
     def __init__(self, api_key: str, secret_key: str):
         self.api_key = api_key
         self.secret_key = secret_key
@@ -468,11 +468,11 @@ class USDTManager:
             return {'error': f"Error getting USDT summary: {str(e)}"}
 
 # API 키 불러오기
-with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
-    API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+# with open("C:/Users/ilpus/Desktop/NKL_invest/bnnkr.txt") as f:
+#     API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
 
 # 매니저 인스턴스 생성
-USDTmanager = USDTManager(API_KEY, API_SECRET)
+# USDTmanager = USDTManager(API_KEY, API_SECRET)
 
 # # 1. 전체 USDT 현황 조회
 # print("1. USDT 종합 현황:")
