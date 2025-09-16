@@ -590,6 +590,6 @@ BinanceTrader = BinanceTrader(API_KEY, API_SECRET)
 # print(result2)
 
 # # 8. 포지션 산출
-result = BinanceTrader.make_position()
-print(result)
+# result = BinanceTrader.make_position()
+# print(result)
 
