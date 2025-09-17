@@ -41,10 +41,13 @@ try:
         
         # signal 확인
         position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return = BinanceT.make_position()
-        if position["position"] in ["Buy full", "Buy half"]:
-             
+        print(position)
+        # if position["position"] in ["Buy full", "Buy half"]:
+             # flexible 잔고 조회
 
-        
+
+
+             
         # 잔고 확인
         print("=== 전체 잔고 조회 ===")
         total_balance = BinanceT.get_balance('total')

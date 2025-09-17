@@ -105,20 +105,18 @@ class USDTM:
         """
         try:
             # 현재 잔액 확인
-            balance_info = self.get_usdt_flexible_balance() # message로 수정 #########################################
-            if 'error' in balance_info: # message로 수정 #############################################################
-                return balance_info # message로 수정 #################################################################
+            balance_info = self.get_usdt_flexible_balance()
+            if 'error' in balance_info:
+                return balance_info
             
             current_balance = balance_info['balance']
             product_id = balance_info['product_id']
             
             if current_balance <= 0:
-                message = 'No USDT balance in flexible products'
-                return message
+                return {'error': 'No USDT balance in flexible products'}
             
             if not product_id:
-                message = 'USDT flexible product ID not found'
-                return message
+                return {'error': 'USDT flexible product ID not found'}
             
             # 새로운 Simple Earn API 엔드포인트
             endpoint = "/sapi/v1/simple-earn/flexible/redeem"
@@ -136,13 +134,11 @@ class USDTM:
                 # 특정 수량 리딤
                 redeem_amount = float(amount)
                 if redeem_amount > current_balance:
-                    message = f'error : Insufficient balance. Available: {current_balance}, Requested: {redeem_amount}'
-                    return message
+                    return {'error': f'Insufficient balance. Available: {current_balance}, Requested: {redeem_amount}'}
                 
                 # 최소 금액 체크 (0.1 USDT)
                 if redeem_amount < 0.1:
-                    message = f'error : Minimum redemption amount is 0.1 USDT. Requested: {redeem_amount}'
-                    return message
+                    return {'error': f'Minimum redemption amount is 0.1 USDT. Requested: {redeem_amount}'}
                 
                 params = {
                     'productId': product_id,
@@ -152,24 +148,26 @@ class USDTM:
                 }
             
             # 리딤 실행
-            result = self._make_request('POST', endpoint, params) # 찾아서 메세지 수정 ##########################################
+            result = self._make_request('POST', endpoint, params)
             
             if 'error' in result:
-                message = result
-                return message
+                return result
             
             # 성공 응답 처리
             if result.get('success'):
-                message = f'{dest_account}계좌로 {redeem_amount}USDT Redeem 성공 \nredeemed_amount {redeem_amount}'
-                return message
-
+                return {
+                    'success': True,
+                    'redeem_id': result.get('redeemId'),
+                    'redeemed_amount': redeem_amount,
+                    'dest_account': dest_account,
+                    'remaining_balance': current_balance - redeem_amount if amount != 'all' else 0,
+                    'result': result
+                }
             else:
-                message = f'error : Redemption failed: {result}'
-                return message
+                return {'error': f'Redemption failed: {result}'}
             
         except Exception as e:
-            message = f"Error redeeming USDT flexible: {str(e)}"
-            return message
+            return {'error': f"Error redeeming USDT flexible: {str(e)}"}
     
     # 3. Funding Account USDT 잔액 확인
     def get_funding_usdt_balance(self) -> Dict:
