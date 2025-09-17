@@ -455,8 +455,8 @@ class BinanceT:
     # 어제 포지션을 불러서 오늘 포지션으로 변경 함수
     def make_position(self): # 어제 저장된 binance_data.json 파일을 불러서 오늘 포지션으로 변경하는 함수
         # 어제의 json값 불러오기
-        # data_path = '/var/autobot/TR_Binance/binance_data.json'
-        data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_Binance/binance_data.json"
+        data_path = '/var/autobot/TR_Binance/binance_data.json'
+        # data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_Binance/binance_data.json"
         try:
             with open(data_path, 'r', encoding='utf-8') as f:
                 binance_data = json.load(f)
@@ -478,7 +478,7 @@ class BinanceT:
         MA45 = self.moving_average(period = 45, reference_day = -1, data_days = 365)
         MA45signal = MA45["signal"]
         price = self.get_current_price()
-        balance = BinanceTrader.get_balance('spot')
+        balance = self.get_balance('spot')
         BTC = balance.get('BTC', {})
         USDT = balance.get('USDT', {})
 

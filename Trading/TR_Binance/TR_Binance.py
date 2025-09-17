@@ -36,12 +36,13 @@ try:
 
         time_module.sleep(1) # 타임 슬립 1초
 
-        # 먼저 Signal확인 후 USDT SPOT / 플렉셔블 잔고 확인 후 USDT Redeeem처리
-        # 38분이면 300초 쉬었다가 SPOT / 플렉셔블 잔고 확인 SPOT 계좌로 잘 이체되었는 지 확인 성공여부 메세지
-        # 48분이면 플렉셔블 없을 시 트레이딩 / 레딤 시엔 60초 쉬었다가 SPOT / 플렉셔블 잔고 확인 SPOT 계좌로 잘 이체되었는 지 확인 성공여부 메세지
+        # 38분 먼저 Signal확인 후 USDT SPOT / 플렉셔블 잔고 확인 후 USDT Redeeem처리 
+        # 48분이면 위를 실행 후 플렉셔블 없을 시 트레이딩 / 레딤 시엔 60초 쉬었다가 SPOT / 플렉셔블 잔고 확인 SPOT 계좌로 잘 이체되었는 지 확인 성공여부 메세지
         
         # signal 확인
-        
+        position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return = BinanceT.make_position()
+        if position["position"] in ["Buy full", "Buy half"]:
+             
 
         
         # 잔고 확인
