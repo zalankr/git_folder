@@ -38,7 +38,7 @@ def Redeem():
         message = f" Not Buy position, Redeem 불필요"
     return message
 
-# If 8:41 Signal확인 후 Redeem 3회
+# If 8:42 Signal확인 후 Redeem 3회
 try:
     if TR_time[1] == 0: # 8:42 Redeem 2분간격 3회
         for num in range(3):
@@ -268,9 +268,3 @@ if TR_time[1] == None:
 
 exit()
 #### 검증 > 마지막에 crontab에서 5분 후 자동종료 되게 설정
-
-
-
-
-
-
