@@ -259,7 +259,7 @@ class BinanceT:
                     })
                     
                     self.logger.info(f"Split {i+1} buy order placed: {btc_amount:.8f} BTC at {order_price:.2f} USDT (Cost: {order_cost:.2f} USDT)")
-                    time.sleep(0.1)  # Rate limit 방지
+                    time.sleep(0.2)  # Rate limit 방지
                     
                 except Exception as e:
                     self.logger.error(f"Failed to place split {i+1} buy order: {e}")
@@ -341,7 +341,7 @@ class BinanceT:
                     })
                     
                     self.logger.info(f"Split {i+1} sell order placed: {sell_amount:.8f} BTC at {order_price:.2f} USDT (Cost: {order_cost:.2f} USDT)")
-                    time.sleep(0.1)  # Rate limit 방지
+                    time.sleep(0.2)  # Rate limit 방지
                     
                 except Exception as e:
                     self.logger.error(f"Failed to place split {i+1} sell order: {e}")
@@ -352,6 +352,7 @@ class BinanceT:
                     })
             
             self.logger.info(f"Split sell completed: {len([o for o in orders if o.get('status') == 'success'])}/{splits} orders placed")
+            KA.SendMessage(f"Split sell completed: {len([o for o in orders if o.get('status') == 'success'])}/{splits} orders placed")
             return orders
             
         except Exception as e:
@@ -505,9 +506,9 @@ class BinanceT:
             else:
                 position = {"position": "Buy half", "BTC_weight": 0.495, "BTC_target": ((USDT*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_quantity": USDT * 0.495}
 
-        return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return
+        return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return, BTC, USDT
 
-# 시간확인 조건문 함수: 8:38 Redeem, 8:48 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 8:55/9:02/9:09/9:16 트레이딩 후 TR기록
+# 시간확인 조건문 함수
 def what_time():
     # 현재 시간 가져오기
     now = datetime.now()
@@ -517,18 +518,18 @@ def what_time():
     current_minute = current_time.minute
 
     # 시간 비교 시 초 단위까지 정확히 매칭하기 어려우므로 시간 범위로 체크
-    if current_hour == 23 and 37 < current_minute <= 39:  # 23:38
-        TR_time = ["0838", 0, "Redeem"] # 시간, 분할 횟수
-    elif current_hour == 23 and 47 < current_minute <= 49:  # 23:48
-        TR_time = ["0848", 5, "Trading_1"] # 시간, 분할 횟수
-    elif current_hour == 23 and 54 < current_minute <= 56:  # 23:55
-        TR_time = ["0855", 4, "Trading_2"] # 시간, 분할 횟수
-    elif current_hour == 0 and 1 < current_minute <= 3:  # 00:02
-        TR_time = ["0902", 3, "Trading_3"] # 시간, 분할 횟수
-    elif current_hour == 0 and 8 < current_minute <= 10:  # 00:09
-        TR_time = ["0909", 2, "Trading_4"] # 시간, 분할 횟수
-    elif current_hour == 0 and 15 < current_minute <= 20:  # 00:16
-        TR_time = ["0916", 1, "Trading_5"]
+    if current_hour == 23 and 41 <= current_minute <= 48:
+        TR_time = ["0842", 0, "Redeem"]
+    elif current_hour == 23 and 48 <= current_minute <= 50:
+        TR_time = ["0849", 5, "Trading_1"]
+    elif current_hour == 23 and 55 <= current_minute <= 57:
+        TR_time = ["0856", 4, "Trading_2"]
+    elif current_hour == 0 and 2 <= current_minute <= 4:
+        TR_time = ["0903", 3, "Trading_3"]
+    elif current_hour == 0 and 9 <= current_minute <= 11:
+        TR_time = ["0910", 2, "Trading_4"] 
+    elif current_hour == 0 and 16 <= current_minute <= 19 :
+        TR_time = ["0917", 1, "Trading_5"]
     else:
         TR_time = ["Not_yet", None, "Nothing"]
     

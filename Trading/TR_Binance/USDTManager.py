@@ -65,7 +65,7 @@ class USDTM:
             positions = self._make_request('GET', endpoint)
             
             if 'error' in positions:
-                return positions
+                return positions 
             
             # positions가 dict이고 'rows' 키를 가지고 있는지 확인
             if isinstance(positions, dict) and 'rows' in positions:
@@ -106,8 +106,8 @@ class USDTM:
         try:
             # 현재 잔액 확인
             balance_info = self.get_usdt_flexible_balance() # message로 수정 #########################################
-            if 'error' in balance_info: # message로 수정 #############################################################
-                return balance_info # message로 수정 #################################################################
+            if 'error' in balance_info:
+                return balance_info
             
             current_balance = balance_info['balance']
             product_id = balance_info['product_id']
@@ -152,7 +152,7 @@ class USDTM:
                 }
             
             # 리딤 실행
-            result = self._make_request('POST', endpoint, params) # 찾아서 메세지 수정 ##########################################
+            result = self._make_request('POST', endpoint, params)
             
             if 'error' in result:
                 message = result

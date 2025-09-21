@@ -172,6 +172,7 @@ try:
         time_module.sleep(0.5)
 
         # KakaoTalk 메시지 보내기
+        print(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
         KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
         KA.SendMessage(f"Upbit 일수익률: {Daily_return:.2f}% \n월수익률: {Monthly_return:.2f}% \n연수익률: {Yearly_return:.2f}% \n환산잔고: {round(Total_balance):,}원 \nETH: {ETH:,} \nKRW: {(round(KRW)):,}원")
         KA.SendMessage(f"Upbit Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")
