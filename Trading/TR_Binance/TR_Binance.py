@@ -1,5 +1,3 @@
-# import ccxt
-# import myBinance
 import time as time_module  # time 모듈을 별칭으로 import
 import BinanceTrader
 import USDTManager
@@ -104,13 +102,9 @@ try:
         Position = binance_data["Position"] 
         Invest_quantity = binance_data["Invest_quantity"]
 
-        # Position = "Sell full" #test
-        # Invest_quantity = 0.0005 #test
-
         # 포지션별 주문하기
         if Position == "Sell full" or Position == "Sell half":
             splits = TR_time[1]
-            # splits = 4 #test
             btc_amount = Invest_quantity
             
             orders = BinanceT.split_sell(splits=splits, btc_amount=btc_amount)
