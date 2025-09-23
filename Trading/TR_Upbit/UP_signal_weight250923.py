@@ -50,7 +50,7 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
             position = {"position": "Sell half", "ETH_weight": 0.495, "ETH_target": ETH * 0.5, "CASH_weight": 0.505, "Invest_quantity": ETH * 0.5}
     elif ETH_weight == 0.495:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW * 0.99 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.99}
+            position = {"position": "Buy full", "ETH_weight": 0.99, "ETH_target": ETH + ((KRW*0.98*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": KRW * 0.98}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
             position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
         else:
@@ -146,14 +146,15 @@ def Cancel_ETH_Order(upbit):
             result.append(upbit.cancel_order(order['uuid']))
     return result
 
+# 매도주문
 def partial_selling(current_price, amount_per_times, TR_time, upbit):        
     # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
     prices = []
     for i in range(TR_time[1]):
-        i += 1
-        price = (current_price * (1+(i*0.0005))) # 가격을 0.05%씩 올려 분할 매도 가격 계산
+        order_num = i + 1
+        price = current_price * (1+(order_num*0.0005)) # 가격을 0.05%씩 올려 분할 매도 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
-
+    
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 -2%(유사 시장가) 매도 주문으로 대체
     if TR_time[1] < 3:
         prices[0] = get_tick_size(price = current_price * 0.98,  method="floor")
@@ -170,7 +171,7 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
             
-            volume = round(amount_per_times / price, 8)
+            volume = round(amount_per_times, 8)
 
             # 주문량이 너무 작으면 건너뜀
             if volume * price < 6000:
@@ -187,21 +188,21 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
 
         except Exception as order_error:
             print(f"주문 {t+1}회차 오류: {order_error}")
-            KA.SendMessage(f"Upbit {TR_time[0]} 매도주문 {t+1}회차 오류: {order_error}")           
+            KA.SendMessage(f"Upbit {TR_time[0]} 매도주문 {t+1}회차 오류: {order_error}")   
 
     return result
 
+# 매수준문
 def partial_buying(current_price, amount_per_times, TR_time, upbit):        
     # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
     prices = []
     for i in range(TR_time[1]):
-        i += 1
-        price = (current_price * (1-(i*0.0005))) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
+        order_num = i + 1
+        price = (current_price * (1-(order_num*0.0005))) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +2%(유사 시장가) 매수 주문으로 대체
     if TR_time[1] < 3:
-        # 리스트가 아닌 값으로 할당 (문제 해결)
         prices[0] = get_tick_size(price = current_price*1.02,  method="floor")
 
     # 주문 실행
@@ -219,8 +220,8 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             volume = round(amount_per_times / price, 8)
             
             # 주문량이 너무 작으면 건너뜀
-            if volume * price < 6000:
-                print(f"주문 {t+1}회차: 주문량이 너무 작아서 건너뜀 (금액: {volume * price}원)")
+            if amount_per_times < 6000:
+                print(f"주문 {t+1}회차: 주문량이 너무 작아서 건너뜀 (금액: {amount_per_times}원)")
                 continue
                 
             result = upbit.buy_limit_order("KRW-ETH", price, volume)
@@ -237,58 +238,10 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
 
     return result
 
+# 종합 잔고조회
 def Total_balance(upbit):
-
-    # 현재가 조회 (재시도 로직 추가)
-    current_price = None
-    for retry in range(3):  # 최대 3번 재시도
-        try:
-            current_price = pyupbit.get_current_price("KRW-ETH")
-            if current_price is not None:
-                break
-            else:
-                print(f"현재가 조회 실패, 재시도 {retry + 1}/3")
-                time_module.sleep(1)
-        except Exception as price_error:                
-            print(f"현재가 조회 오류 (재시도 {retry + 1}/3): {price_error}")
-            time_module.sleep(1)
-        
-        if current_price is None:
-            raise ValueError("현재가를 조회할 수 없습니다.")
-
-    # KRW 잔고조회 (재시도 로직 추가)
-    KRW = None
-    for retry in range(3):  # 최대 3번 재시도
-        try:
-            KRW = upbit.get_balance_t("KRW")
-            if KRW is not None:
-                break
-            else:
-                print(f"KRW 조회 실패, 재시도 {retry + 1}/3")
-                time_module.sleep(1)
-        except Exception as price_error:                
-            print(f"KRW 조회 오류 (재시도 {retry + 1}/3): {price_error}")
-            time_module.sleep(1)
-        
-        if current_price is None:
-            raise ValueError("KRW를 조회할 수 없습니다.")
-    # ETH 잔고조회 (재시도 로직 추가)
-    ETH = None
-    for retry in range(3):  # 최대 3번 재시도
-        try:
-            ETH = upbit.get_balance_t("ETH")
-            if ETH is not None:
-                break
-            else:
-                print(f"ETH 조회 실패, 재시도 {retry + 1}/3")
-                time_module.sleep(1)
-        except Exception as price_error:                
-            print(f"ETH 조회 오류 (재시도 {retry + 1}/3): {price_error}")
-            time_module.sleep(1)
-        
-        if current_price is None:
-            raise ValueError("ETH를 조회할 수 없습니다.")    
-
-    Total_balance = KRW + (ETH * current_price)*0.9995
+    KRW = upbit.get_balance_t("KRW")
+    ETH = upbit.get_balance_t("ETH")
+    Total_balance = KRW + (ETH * pyupbit.get_current_price("KRW-ETH"))
 
     return KRW, ETH, Total_balance

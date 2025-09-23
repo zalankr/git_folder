@@ -85,37 +85,32 @@ try:
             Upbit_data = json.load(f)
 
         Position = Upbit_data["Position"]
-        Invest_quantity = Upbit_data["Invest_quantity"] # KRW, ETH로 대체가 나은 지????
-
-        # 현재가 조회 (재시도 로직 추가)
-        current_price = None
-        for retry in range(3):  # 최대 3번 재시도
-            try:
-                current_price = pyupbit.get_current_price("KRW-ETH")
-                if current_price is not None:
-                    break
-                else:
-                    print(f"현재가 조회 실패, 재시도 {retry + 1}/3")
-                    time_module.sleep(1)
-            except Exception as price_error:
-                print(f"현재가 조회 오류 (재시도 {retry + 1}/3): {price_error}")
-                time_module.sleep(1)
+        Invest_quantity = Upbit_data["Invest_quantity"]
         
-        if current_price is None:
-            raise ValueError("현재가를 조회할 수 없습니다.")
-
         # 포지션별 주문하기
         if Position == "Sell full" or Position == "Sell half":
-            amount_per_times = Invest_quantity / TR_time[1] # 분할 매매 횟수당 ETH Quantity
-            if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 1000원 미만일 때 pass
-                print(f"분할 매매당 금액이 6000원 미만이므로 매도 주문을 건너뜁니다: {amount_per_times * current_price}원")
+            current_price = pyupbit.get_current_price("KRW-ETH")
+                        
+            ETH = upbit.get_balance_t("ETH")
+            Remain_ETH = ETH - Invest_quantity
+
+            amount_per_times = (ETH-Remain_ETH) / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+            
+            if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 6000원 미만일 때 pass
+                pass
             else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
 
         elif Position == "Buy full" or Position == "Buy half":
-            amount_per_times = Invest_quantity / TR_time[1] # 분할 매매 횟수당 KRW Quantity
-            if amount_per_times < 6000: # KRW로 분할 매매당 금액이 1000원 미만일 때 pass
-                print(f"분할 매매당 금액이 6000원 미만이므로 매수 주문을 건너뜁니다: {amount_per_times}원")
+            current_price = pyupbit.get_current_price("KRW-ETH")
+
+            KRW = upbit.get_balance_t("KRW")
+            Remain_KRW = KRW - Invest_quantity
+
+            amount_per_times = (KRW-Remain_KRW) / TR_time[1] # 분할 매매 횟수당 KRW Quantity
+
+            if amount_per_times < 6000: # KRW로 분할 매매당 금액이 6000원 미만일 때 pass
+                pass
             else: # 분할 매매당 금액이 6000원 이상일 때만 매수 주문
                 UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
     
@@ -125,7 +120,6 @@ try:
 except Exception as e:
         print(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
         KA.SendMessage(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
-
 time_module.sleep(1) # 타임슬립 1초
 
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
@@ -188,6 +182,7 @@ try:
         time_module.sleep(0.5)
 
         # KakaoTalk 메시지 보내기
+        print(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
         KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
         KA.SendMessage(f"Upbit 일수익률: {Daily_return:.2f}% \n월수익률: {Monthly_return:.2f}% \n연수익률: {Yearly_return:.2f}% \n환산잔고: {round(Total_balance):,}원 \nETH: {ETH:,} \nKRW: {(round(KRW)):,}원")
         KA.SendMessage(f"Upbit Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")

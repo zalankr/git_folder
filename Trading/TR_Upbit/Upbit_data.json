@@ -1,9 +1,9 @@
 {
     "Date": "2025-09-15",
     "Position": "Hold state",
-    "ETH_weight": 0.99,
+    "ETH_weight": 1.0,
     "ETH_target": 7.14663446,
-    "CASH_weight": 0.01,
+    "CASH_weight": 0.0,
     "Invest_quantity": 0.0,
     "Total_balance": 45831367.5281229,
     "ETH": 7.14663446,

@@ -88,26 +88,43 @@ try:
         Invest_quantity = Upbit_data["Invest_quantity"]
         
         # 포지션별 주문하기
-        if Position == "Sell full" or Position == "Sell half":
+        if Position == "Sell full":
             current_price = pyupbit.get_current_price("KRW-ETH")
-                        
+            ETH = upbit.get_balance_t("ETH")
+            amount_per_times = ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+            
+            if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 6000원 미만일 때 pass
+                pass
+            else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
+                UP.partial_selling(current_price, amount_per_times, TR_time, upbit) 
+
+        elif Position == "Sell half":
+            current_price = pyupbit.get_current_price("KRW-ETH")    
             ETH = upbit.get_balance_t("ETH")
             Remain_ETH = ETH - Invest_quantity
-
-            amount_per_times = (ETH-Remain_ETH) / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+            amount_per_times = Remain_ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
             
             if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 6000원 미만일 때 pass
                 pass
             else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
-
-        elif Position == "Buy full" or Position == "Buy half":
+        
+        elif Position == "Buy full":
             current_price = pyupbit.get_current_price("KRW-ETH")
+            KRW = upbit.get_balance_t("KRW")
+            amount_per_times = KRW / TR_time[1] # 분할 매매 횟수당 KRW Quantity
 
+            if amount_per_times < 6000: # KRW로 분할 매매당 금액이 6000원 미만일 때 pass
+                pass
+            else: # 분할 매매당 금액이 6000원 이상일 때만 매수 주문
+                UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
+
+        elif Position == "Buy half":
+            current_price = pyupbit.get_current_price("KRW-ETH")
             KRW = upbit.get_balance_t("KRW")
             Remain_KRW = KRW - Invest_quantity
 
-            amount_per_times = (KRW-Remain_KRW) / TR_time[1] # 분할 매매 횟수당 KRW Quantity
+            amount_per_times = Remain_KRW / TR_time[1] # 분할 매매 횟수당 KRW Quantity
 
             if amount_per_times < 6000: # KRW로 분할 매매당 금액이 6000원 미만일 때 pass
                 pass
@@ -182,7 +199,6 @@ try:
         time_module.sleep(0.5)
 
         # KakaoTalk 메시지 보내기
-        print(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
         KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
         KA.SendMessage(f"Upbit 일수익률: {Daily_return:.2f}% \n월수익률: {Monthly_return:.2f}% \n연수익률: {Yearly_return:.2f}% \n환산잔고: {round(Total_balance):,}원 \nETH: {ETH:,} \nKRW: {(round(KRW)):,}원")
         KA.SendMessage(f"Upbit Position: {Upbit_data['Position']} \nETH_weight: {Upbit_data['ETH_weight']} \nETH_target: {Upbit_data['ETH_target']} \nCASH_weight: {Upbit_data['CASH_weight']}")
