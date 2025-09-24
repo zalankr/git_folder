@@ -130,65 +130,62 @@ class ETFMomentumStrategy:
             """최소분산 포트폴리오 가중치 계산"""
             try:
                 # 최근 3개월 일일 수익률 데이터
-                hist_data = yf.download(top_tickers, period='3mo', interval='1d', 
-                                    progress=False, auto_adjust=True)
+                Hist = yf.download(tickers=top_tickers, period='3mo', auto_adjust=True, interval='1d', 
+                                        progress=False)['Close']
+                Hist.sort_index(axis=0, ascending=False, inplace=True)
                 
-                # multi-level index 처리
-                if isinstance(hist_data.columns, pd.MultiIndex):
-                    hist_data = hist_data['Close']
-                else:
-                    hist_data = hist_data['Close']
-                
-                # 단일 ticker인 경우 DataFrame으로 변환
-                if len(top_tickers) == 1:
-                    hist_data = hist_data.to_frame()
-                    hist_data.columns = top_tickers
-                
-                if len(hist_data) < 30:
-                    print("경고: 포트폴리오 최적화를 위한 데이터가 충분하지 않습니다.")
-                    return {ticker: 1.0/len(top_tickers) for ticker in top_tickers}
-                
-                # 결측값 처리
-                hist_data = hist_data.dropna()
-                returns = hist_data.pct_change().dropna()
-                
-                if returns.empty or len(returns) < 20:
-                    print("경고: 수익률 데이터가 충분하지 않습니다.")
-                    return {ticker: 1.0/len(top_tickers) for ticker in top_tickers}
-                
-                # 단일 자산인 경우
-                if len(top_tickers) == 1:
-                    return {top_tickers[0]: 0.99}
-                
-                # Riskfolio 포트폴리오 최적화
-                port = rp.Portfolio(returns=returns)
-                port.assets_stats(method_mu='hist', method_cov='hist')
-                
-                # 간단한 제약조건 설정 - riskfolio 방식 사용
-                constraints = pd.DataFrame({
-                    'Disabled': [False, False],
-                    'Type': ['All Assets', 'All Assets'],
-                    'Set': ['', ''],
-                    'Position': ['', ''],
-                    'Sign': ['>=', '<='],
-                    'Weight': [0.2, 0.8],
-                    'Type Relative': ['', ''],
-                    'Relative Set': ['', ''],
-                    'Relative': ['', ''],
-                    'Factor': ['', '']
-                })
-                
-                asset_classes = pd.DataFrame({
-                    'Asset': top_tickers,
-                    'Class': ['equity'] * len(top_tickers)
-                })
-                
+                Hist = Hist.iloc[: 45]
+                Ret = Hist.pct_change(-1).dropna()
+                Ret = Ret.round(4)
+
+                port = rp.Portfolio(returns=Ret)
+                method_mu = 'hist'
+                method_cov = 'hist'
+                port.assets_stats(method_mu=method_mu, method_cov=method_cov)
+
+                model = 'Classic'
+                rm = 'MV'
+                obj = 'MinRisk'
+                hist = True
+                rf = 0
+                l = 0
+
+                # 유니버스 데이터베이스
+                ticker_class = []
+                for i in top_tickers :
+                    if i == 'UPRO' or i == 'TQQQ' or i == 'EDC' :
+                        ticker_class.append('stock')
+                    else : 
+                        ticker_class.append('bond')
+
+                asset_classes = {
+                    'Asset' : [top_tickers[0], top_tickers[1]],
+                    'Class' : [ticker_class[0], ticker_class[1]]}
+
+                asset_classes = pd.DataFrame(asset_classes)
+
+                # 제약조건 설정 데이터베이스
+                constraints = {'Disabled' : [False, False],
+                            'Type' : ['All Assets', 'All Assets'],
+                            'Set' : ['', ''],
+                            'Position' : ['', ''],
+                            'Sign' : ['>=', '<='],
+                            'Weight' : [0.2, 0.8],
+                            'Type Relative' : ['', ''],
+                            'Relative Set' : ['', ''],
+                            'Relative' : ['', ''],
+                            'Factor' : ['', '']}
+
+                constraints = pd.DataFrame(constraints)
+
+
+                # 제약조건 적용 MVP모델 Weight 해찾기
                 A, B = rp.assets_constraints(constraints, asset_classes)
+
                 port.ainequality = A
                 port.binequality = B
-                
-                weights = port.optimization(model='Classic', rm='MV', obj='MinRisk', 
-                                        rf=0, l=0, hist=True)
+
+                weights = port.optimization(model=model, rm=rm, obj=obj, rf=rf, l=l, hist=hist)
                 
                 if weights is None or weights.empty:
                     print("최적화 실패: 동일가중으로 설정")
@@ -285,5 +282,5 @@ if __name__ == "__main__":
     # result = strategy.run_strategy()
     
     # 또는 특정 월 지정 실행
-    result = strategy.run_strategy(target_month=8, target_year=2025)
+    result = strategy.run_strategy(target_month=1, target_year=2025)
     print(result)
