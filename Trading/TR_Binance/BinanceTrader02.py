@@ -209,7 +209,7 @@ class BinanceT:
             current_price = self.get_current_price()
             
             # 분할당 USDT 금액 (소수점 오차 방지)
-            usdt_per_split = usdt_amount / splits
+            usdt_per_split = usdt_amount / splits  # usdt_amount / splits
             orders = []
             total_used = 0.0  # 실제 사용된 금액 추적
             
@@ -219,7 +219,7 @@ class BinanceT:
                 try:
                     # 마지막 주문에서는 남은 금액 모두 사용
                     if i == splits - 1:
-                        usdt_for_order = usdt_amount - total_used
+                        usdt_for_order = (usdt_amount*0.999) - total_used
                     else:
                         usdt_for_order = usdt_per_split
                     
@@ -358,7 +358,7 @@ class BinanceT:
                 try:
                     # 마지막 주문에서는 남은 수량 모두 사용
                     if i == splits - 1:
-                        sell_amount = btc_amount - total_used
+                        sell_amount = (btc_amount*0.9999) - total_used
                     else:
                         sell_amount = btc_per_split
                     

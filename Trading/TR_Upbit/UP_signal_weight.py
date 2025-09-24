@@ -171,7 +171,10 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
             
-            volume = round(amount_per_times, 8)
+            volume = round(amount_per_times, 6)
+
+            if t == TR_time[1] - 1 :
+                volume = round(amount_per_times - 0.000005, 6)
 
             # 주문량이 너무 작으면 건너뜀
             if volume * price < 6000:
@@ -217,7 +220,12 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
             
-            volume = round(amount_per_times*0.999 / price, 8)
+            volume = round(amount_per_times / price, 6)
+
+            if t == TR_time[1] - 1 < :
+                KRW = upbit.get_balance_t("KRW")
+                if (volume * price)*1.0005 < KRW:
+                    volume = round((KRW/price)-0.000005 , 6)
             
             # 주문량이 너무 작으면 건너뜀
             if amount_per_times < 6000:
