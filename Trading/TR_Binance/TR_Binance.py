@@ -101,11 +101,11 @@ try:
 
         Position = binance_data["Position"] 
         Invest_quantity = binance_data["Invest_quantity"]
-
+        splits = TR_time[1]
+        
         # 포지션별 주문하기
         if Position == "Sell full":
-            splits = TR_time[1]
-            BTC = USDTM.get_spot_balance("BTC")['free']
+            BTC = USDTM.get_spot_balance('BTC')['free']
             
             orders = BinanceT.split_sell(splits=splits, btc_amount=BTC)
             for i in range(len(orders)):
@@ -114,12 +114,13 @@ try:
                 price = orders[i]['price']
                 amount = orders[i]['amount']
                 status = orders[i]['status']
-                KA.SendMessage(f"Binance Sell Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")
+                KA.SendMessage(f"Binance Sell Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")        
 
         elif Position == "Sell half":
-            splits = TR_time[1]
-            BTC = USDTM.get_spot_balance("BTC")['free']
-            Remain_BTC = BTC - Invest_quantity
+            BTC = USDTM.get_spot_balance('BTC')['free']
+            Remain_BTC = BTC-Invest_quantity
+            if Remain_BTC < 0:
+                Remain_BTC = 0
             
             orders = BinanceT.split_sell(splits=splits, btc_amount=Remain_BTC)
             for i in range(len(orders)):
@@ -129,10 +130,9 @@ try:
                 amount = orders[i]['amount']
                 status = orders[i]['status']
                 KA.SendMessage(f"Binance Sell Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")
-
-        elif Position == "Buy full":
-            splits = TR_time[1]
-            USDT = USDTM.get_spot_balance("USDT")['free']
+        
+        elif Position == "Buy full":        
+            USDT = USDTM.get_spot_balance('USDT')['free']
 
             orders = BinanceT.split_buy(splits=splits, usdt_amount=USDT)
             for i in range(len(orders)):
@@ -142,12 +142,13 @@ try:
                 amount = orders[i]['amount']
                 status = orders[i]['status']
                 KA.SendMessage(f"Binance Buy Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")
-
+                
         elif Position == "Buy half":
-            splits = TR_time[1]
-            USDT = USDTM.get_spot_balance("USDT")['free']
-            Remain_USDT = USDT - Invest_quantity
-
+            USDT = USDTM.get_spot_balance('USDT')['free']
+            Remain_USDT = USDT-Invest_quantity
+            if Remain_USDT < 0:
+                Remain_USDT= 0
+            
             orders = BinanceT.split_buy(splits=splits, usdt_amount=Remain_USDT)
             for i in range(len(orders)):
                 split = orders[i]['split']
@@ -155,7 +156,7 @@ try:
                 price = orders[i]['price']
                 amount = orders[i]['amount']
                 status = orders[i]['status']
-                KA.SendMessage(f"Binance Buy Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")
+                KA.SendMessage(f"Binance Buy Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")     
 
     else:
          pass

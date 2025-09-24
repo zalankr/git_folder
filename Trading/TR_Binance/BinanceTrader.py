@@ -207,19 +207,22 @@ class BinanceT:
         """
         try:
             current_price = self.get_current_price()
-            if current_price <= 0:
-                self.logger.error("Failed to get current price for split buy")
-                return []
             
-            # 분할당 USDT 금액
-            usdt_per_split = (usdt_amount*0.999) / splits
+            # 분할당 USDT 금액 (소수점 오차 방지)
+            usdt_per_split = usdt_amount / splits  # usdt_amount / splits
             orders = []
+            total_used = 0.0  # 실제 사용된 금액 추적
             
-            self.logger.info(f"Starting split buy: {splits} splits, {usdt_amount} USDT total")
-            self.logger.info(f"Current BTC price: {current_price} USDT")
+            self.logger.info(f"Starting split buy: {splits} splits, {usdt_amount:.2f} USDT total")
             
             for i in range(splits):
                 try:
+                    # 마지막 주문에서는 남은 금액 모두 사용
+                    if i == splits - 1:
+                        usdt_for_order = (usdt_amount*0.999) - total_used
+                    else:
+                        usdt_for_order = usdt_per_split
+                    
                     # 가격 계산
                     if splits <= 2 and i == 0:
                         # 분할 횟수가 2회 이하면 첫 번째 주문만 현재가보다 1% 높게
@@ -233,47 +236,100 @@ class BinanceT:
                     order_price = self._round_to_tick_size(order_price)
                     
                     # BTC 매수 수량 계산
-                    btc_amount = usdt_per_split / order_price
+                    btc_amount = usdt_for_order / order_price
                     btc_amount = self._round_amount(btc_amount)
                     
+                    # 실제 주문 비용 재계산
+                    actual_order_cost = btc_amount * order_price
+                    
                     # 최소 주문 금액 확인
-                    order_cost = btc_amount * order_price
-                    if order_cost < self.min_cost or btc_amount < self.min_amount:
-                        self.logger.warning(f"Split {i+1}: Order too small (Cost: {order_cost:.2f} USDT, Amount: {btc_amount:.8f} BTC) - Skipping")
+                    if actual_order_cost < self.min_cost or btc_amount < self.min_amount:
+                        KA.SendMessage(f"Split {i+1}: Order too small (Cost: {actual_order_cost:.2f} USDT, Amount: {btc_amount:.8f} BTC) - Skipping")
+                        self.logger.warning(f"Split {i+1}: Order too small (Cost: {actual_order_cost:.2f} USDT, Amount: {btc_amount:.8f} BTC) - Skipping")
                         continue
                     
-                    # 매수 주문 실행
-                    order = self.exchange.create_limit_buy_order(
-                        symbol=self.symbol,
-                        amount=btc_amount,
-                        price=order_price
-                    )
+                    # 남은 잔고 재확인 (마지막 주문 전)
+                    if i == splits - 1:
+                        try:
+                            balance = self.exchange.fetch_balance()
+                            available_usdt = balance['USDT']['free']
+                            if actual_order_cost > available_usdt:
+                                # 사용 가능한 USDT로 재계산
+                                usdt_for_order = available_usdt * 0.99
+                                btc_amount = usdt_for_order / order_price
+                                btc_amount = self._round_amount(btc_amount)
+                                actual_order_cost = btc_amount * order_price
+                                self.logger.info(f"Final order amount adjusted to: {btc_amount:.8f} BTC (Cost: {actual_order_cost:.2f} USDT)")
+                        except Exception as e:
+                            self.logger.warning(f"Could not recheck balance for final order: {e}")
                     
-                    orders.append({
-                        'split': i + 1,
-                        'order_id': order['id'],
-                        'price': order_price,
-                        'amount': btc_amount,
-                        'cost': order_cost,
-                        'status': 'success'
-                    })
+                    # 재시도 로직을 포함한 매수 주문 실행
+                    max_retries = 3
+                    retry_count = 0
+                    order_success = False
                     
-                    self.logger.info(f"Split {i+1} buy order placed: {btc_amount:.8f} BTC at {order_price:.2f} USDT (Cost: {order_cost:.2f} USDT)")
-                    time.sleep(0.2)  # Rate limit 방지
+                    while retry_count < max_retries and not order_success:
+                        try:
+                            # 고유한 client order id 생성 (선택사항)
+                            client_order_id = f"buy_split_{int(time.time() * 1000)}_{i+1}"
+                            
+                            order = self.exchange.create_limit_buy_order(
+                                symbol=self.symbol,
+                                amount=btc_amount,
+                                price=order_price,
+                                params={'newClientOrderId': client_order_id}  # 고유 ID 지정
+                            )
+                            
+                            orders.append({
+                                'split': i + 1,
+                                'order_id': order['id'],
+                                'client_order_id': client_order_id,
+                                'price': order_price,
+                                'amount': btc_amount,
+                                'cost': actual_order_cost,
+                                'status': 'success'
+                            })
+                            
+                            total_used += actual_order_cost
+                            order_success = True
+                            
+                            self.logger.info(f"Split {i+1} buy order placed: {btc_amount:.8f} BTC at {order_price:.2f} USDT (Cost: {actual_order_cost:.2f} USDT)")
+                            
+                        except Exception as e:
+                            retry_count += 1
+                            self.logger.warning(f"Split {i+1} order attempt {retry_count} failed: {e}")
+                            
+                            if retry_count < max_retries:
+                                time.sleep(0.5)  # 재시도 전 대기 0.5초
+                            else:
+                                # 최대 재시도 후에도 실패
+                                orders.append({
+                                    'split': i + 1,
+                                    'error': str(e),
+                                    'status': 'failed'
+                                })
+                                self.logger.error(f"Split {i+1} order failed after {max_retries} attempts: {e}")
+                    
+                    # 주문 간 대기 시간 증가 (Rate Limit 방지)
+                    if i < splits - 1:  # 마지막 주문이 아닌 경우만
+                        time.sleep(0.5)  # 0.5초
                     
                 except Exception as e:
-                    self.logger.error(f"Failed to place split {i+1} buy order: {e}")
+                    self.logger.error(f"Unexpected error in split {i+1}: {e}")
                     orders.append({
                         'split': i + 1,
                         'error': str(e),
                         'status': 'failed'
                     })
             
-            self.logger.info(f"Split buy completed: {len([o for o in orders if o.get('status') == 'success'])}/{splits} orders placed")
+            successful_orders = len([o for o in orders if o.get('status') == 'success'])
+            self.logger.info(f"Split buy completed: {successful_orders}/{splits} orders placed")
+            KA.SendMessage(f"Split buy completed: {successful_orders}/{splits} orders placed")
             return orders
             
         except Exception as e:
             self.logger.error(f"Split buy failed: {e}")
+            KA.SendMessage(f"Split buy failed: {e}")
             return []
       
     # 분할매도 주문
@@ -290,19 +346,25 @@ class BinanceT:
         """
         try:
             current_price = self.get_current_price()
-            if current_price <= 0:
-                self.logger.error("Failed to get current price for split sell")
-                return []
             
-            # 분할당 BTC 수량
+            # 분할당 BTC 수량 (소수점 오차 방지)
             btc_per_split = btc_amount / splits
             orders = []
+            total_used = 0.0  # 실제 사용된 수량 추적
             
             self.logger.info(f"Starting split sell: {splits} splits, {btc_amount:.8f} BTC total")
-            self.logger.info(f"Current BTC price: {current_price} USDT")
             
             for i in range(splits):
                 try:
+                    # 마지막 주문에서는 남은 수량 모두 사용
+                    if i == splits - 1:
+                        sell_amount = (btc_amount*0.9999) - total_used
+                    else:
+                        sell_amount = btc_per_split
+                    
+                    # BTC 매도 수량 조정
+                    sell_amount = self._round_amount(sell_amount)
+                    
                     # 가격 계산
                     if splits <= 2 and i == 0:
                         # 분할 횟수가 2회 이하면 첫 번째 주문만 현재가보다 1% 낮게
@@ -315,48 +377,91 @@ class BinanceT:
                     # tick size에 맞게 가격 조정
                     order_price = self._round_to_tick_size(order_price)
                     
-                    # BTC 매도 수량 조정
-                    sell_amount = self._round_amount(btc_per_split)
-                    
                     # 최소 주문 금액 확인
                     order_cost = sell_amount * order_price
                     if order_cost < self.min_cost or sell_amount < self.min_amount:
+                        KA.SendMessage(f"Split {i+1}: Order too small (Cost: {order_cost:.2f} USDT, Amount: {sell_amount:.8f} BTC) - Skipping")
                         self.logger.warning(f"Split {i+1}: Order too small (Cost: {order_cost:.2f} USDT, Amount: {sell_amount:.8f} BTC) - Skipping")
                         continue
                     
-                    # 매도 주문 실행
-                    order = self.exchange.create_limit_sell_order(
-                        symbol=self.symbol,
-                        amount=sell_amount,
-                        price=order_price
-                    )
+                    # 남은 잔고 재확인 (마지막 주문 전)
+                    if i == splits - 1:
+                        try:
+                            balance = self.exchange.fetch_balance()
+                            available_btc = balance['BTC']['free']
+                            if sell_amount > available_btc:
+                                sell_amount = self._round_amount(available_btc * 0.99)
+                                self.logger.info(f"Final order amount adjusted to: {sell_amount:.8f} BTC")
+                        except Exception as e:
+                            self.logger.warning(f"Could not recheck balance for final order: {e}")
                     
-                    orders.append({
-                        'split': i + 1,
-                        'order_id': order['id'],
-                        'price': order_price,
-                        'amount': sell_amount,
-                        'cost': order_cost,
-                        'status': 'success'
-                    })
+                    # 재시도 로직을 포함한 매도 주문 실행
+                    max_retries = 3
+                    retry_count = 0
+                    order_success = False
                     
-                    self.logger.info(f"Split {i+1} sell order placed: {sell_amount:.8f} BTC at {order_price:.2f} USDT (Cost: {order_cost:.2f} USDT)")
-                    time.sleep(0.2)  # Rate limit 방지
+                    while retry_count < max_retries and not order_success:
+                        try:
+                            # 고유한 client order id 생성 (선택사항)
+                            client_order_id = f"sell_split_{int(time.time() * 1000)}_{i+1}"
+                            
+                            order = self.exchange.create_limit_sell_order(
+                                symbol=self.symbol,
+                                amount=sell_amount,
+                                price=order_price,
+                                params={'newClientOrderId': client_order_id}  # 고유 ID 지정
+                            )
+                            
+                            orders.append({
+                                'split': i + 1,
+                                'order_id': order['id'],
+                                'client_order_id': client_order_id,
+                                'price': order_price,
+                                'amount': sell_amount,
+                                'cost': order_cost,
+                                'status': 'success'
+                            })
+                            
+                            total_used += sell_amount
+                            order_success = True
+                            
+                            self.logger.info(f"Split {i+1} sell order placed: {sell_amount:.8f} BTC at {order_price:.2f} USDT (Cost: {order_cost:.2f} USDT)")
+                            
+                        except Exception as e:
+                            retry_count += 1
+                            self.logger.warning(f"Split {i+1} order attempt {retry_count} failed: {e}")
+                            
+                            if retry_count < max_retries:
+                                time.sleep(0.5)  # 재시도 전 대기
+                            else:
+                                # 최대 재시도 후에도 실패
+                                orders.append({
+                                    'split': i + 1,
+                                    'error': str(e),
+                                    'status': 'failed'
+                                })
+                                self.logger.error(f"Split {i+1} order failed after {max_retries} attempts: {e}")
+                    
+                    # 주문 간 대기 시간 증가 (Rate Limit 방지)
+                    if i < splits - 1:  # 마지막 주문이 아닌 경우만
+                        time.sleep(0.5)  # 0.2초 → 0.5초로 증가
                     
                 except Exception as e:
-                    self.logger.error(f"Failed to place split {i+1} sell order: {e}")
+                    self.logger.error(f"Unexpected error in split {i+1}: {e}")
                     orders.append({
                         'split': i + 1,
                         'error': str(e),
                         'status': 'failed'
                     })
             
-            self.logger.info(f"Split sell completed: {len([o for o in orders if o.get('status') == 'success'])}/{splits} orders placed")
-            KA.SendMessage(f"Split sell completed: {len([o for o in orders if o.get('status') == 'success'])}/{splits} orders placed")
+            successful_orders = len([o for o in orders if o.get('status') == 'success'])
+            self.logger.info(f"Split sell completed: {successful_orders}/{splits} orders placed")
+            KA.SendMessage(f"Split sell completed: {successful_orders}/{splits} orders placed")
             return orders
             
         except Exception as e:
             self.logger.error(f"Split sell failed: {e}")
+            KA.SendMessage(f"Split sell failed: {e}")
             return []
 
     # 일봉 가격 데이터 
@@ -484,27 +589,27 @@ class BinanceT:
         USDT = balance.get('USDT', {})
 
         # 포지션 산출
-        if BTC_weight == 1.0:
+        if BTC_weight == 0.99 :
             if MA45signal == "Buy" and MA120signal == "Buy":
-                position = {"position": "Hold state", "BTC_weight": 1.0, "BTC_target": BTC, "CASH_weight": 0.0, "Invest_quantity": 0.0}
+                position = {"position": "Hold state", "BTC_weight": 0.99, "BTC_target": BTC, "CASH_weight": 0.01, "Invest_quantity": 0.0}
             elif MA45signal == "Sell" and MA120signal == "Sell":
                 position = {"position": "Sell full", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": BTC}
             else:
-                position = {"position": "Sell half", "BTC_weight": 0.5, "BTC_target": BTC * 0.5, "CASH_weight": 0.5, "Invest_quantity": BTC * 0.5}            
-        elif BTC_weight == 0.5:
+                position = {"position": "Sell half", "BTC_weight": 0.495, "BTC_target": BTC * 0.5, "CASH_weight": 0.505, "Invest_quantity": BTC * 0.5}            
+        elif BTC_weight == 0.495:
             if MA45signal == "Buy" and MA120signal == "Buy":
-                position = {"position": "Buy full", "BTC_weight": 1.0, "BTC_target": BTC + ((USDT * 0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": USDT}
+                position = {"position": "Buy full", "BTC_weight": 0.99, "BTC_target": BTC + ((USDT * 0.98 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": USDT * 0.98}
             elif MA45signal == "Sell" and MA120signal == "Sell":
                 position = {"position": "Sell full", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": BTC}
             else:
-                position = {"position": "Hold state", "BTC_weight": 0.5, "BTC_target": BTC, "CASH_weight": 0.5, "Invest_quantity": 0.0}
+                position = {"position": "Hold state", "BTC_weight": 0.495, "BTC_target": BTC, "CASH_weight": 0.505, "Invest_quantity": 0.0}
         elif BTC_weight == 0.0:
             if MA45signal == "Buy" and MA120signal == "Buy":
-                position = {"position": "Buy full", "BTC_weight": 1.0, "BTC_target": ((USDT*0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": USDT}
+                position = {"position": "Buy full", "BTC_weight": 0.99, "BTC_target": ((USDT*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": USDT * 0.99}
             elif MA45signal == "Sell" and MA120signal == "Sell":
                 position = {"position": "Hold state", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0}
             else:
-                position = {"position": "Buy half", "BTC_weight": 0.5, "BTC_target": ((USDT*0.9995)/price) * 0.5, "CASH_weight": 0.5, "Invest_quantity": USDT * 0.5}
+                position = {"position": "Buy half", "BTC_weight": 0.495, "BTC_target": ((USDT*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_quantity": USDT * 0.495}
 
         return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return, BTC, USDT
 
