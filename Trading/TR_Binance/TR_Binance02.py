@@ -103,12 +103,9 @@ try:
         Invest_quantity = binance_data["Invest_quantity"]
         splits = TR_time[1]
         
-        # btc_amount = USDTM.get_spot_balance('BTC')['free']
-        # usdt_amount = USDTM.get_spot_balance('USDT')['free']
-        
         # 포지션별 주문하기
         if Position == "Sell full":
-            btc_amount = USDTM.get_spot_balance('BTC')['free'] * 0.995 # 여유를 위해 99.5%만 사용
+            btc_amount = USDTM.get_spot_balance('BTC')['free']
             
             orders = BinanceT.split_sell(splits=splits, btc_amount=btc_amount)
             for i in range(len(orders)):
@@ -121,7 +118,7 @@ try:
 
         elif Position == "Sell half":
             btc = USDTM.get_spot_balance('BTC')['free']
-            btc_amount = (btc-Invest_quantity) * 0.995
+            btc_amount = (btc-Invest_quantity)
             if btc_amount < 0:
                 btc_amount = 0
             
@@ -148,7 +145,7 @@ try:
                 
         elif Position == "Buy half":
             usdt = USDTM.get_spot_balance('USDT')['free']
-            usdt_amount = (usdt-Invest_quantity) * 0.995
+            usdt_amount = (usdt-Invest_quantity)
             if usdt_amount < 0:
                 usdt_amount = 0
             
