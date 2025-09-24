@@ -212,7 +212,7 @@ class BinanceT:
                 return []
             
             # 분할당 USDT 금액
-            usdt_per_split = usdt_amount / splits
+            usdt_per_split = (usdt_amount*0.999) / splits
             orders = []
             
             self.logger.info(f"Starting split buy: {splits} splits, {usdt_amount} USDT total")
@@ -484,27 +484,27 @@ class BinanceT:
         USDT = balance.get('USDT', {})
 
         # 포지션 산출
-        if BTC_weight == 0.99 :
+        if BTC_weight == 1.0:
             if MA45signal == "Buy" and MA120signal == "Buy":
-                position = {"position": "Hold state", "BTC_weight": 0.99, "BTC_target": BTC, "CASH_weight": 0.01, "Invest_quantity": 0.0}
+                position = {"position": "Hold state", "BTC_weight": 1.0, "BTC_target": BTC, "CASH_weight": 0.0, "Invest_quantity": 0.0}
             elif MA45signal == "Sell" and MA120signal == "Sell":
                 position = {"position": "Sell full", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": BTC}
             else:
-                position = {"position": "Sell half", "BTC_weight": 0.495, "BTC_target": BTC * 0.5, "CASH_weight": 0.505, "Invest_quantity": BTC * 0.5}            
-        elif BTC_weight == 0.495:
+                position = {"position": "Sell half", "BTC_weight": 0.5, "BTC_target": BTC * 0.5, "CASH_weight": 0.5, "Invest_quantity": BTC * 0.5}            
+        elif BTC_weight == 0.5:
             if MA45signal == "Buy" and MA120signal == "Buy":
-                position = {"position": "Buy full", "BTC_weight": 0.99, "BTC_target": BTC + ((USDT * 0.98 * 0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": USDT * 0.98}
+                position = {"position": "Buy full", "BTC_weight": 1.0, "BTC_target": BTC + ((USDT * 0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": USDT}
             elif MA45signal == "Sell" and MA120signal == "Sell":
                 position = {"position": "Sell full", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": BTC}
             else:
-                position = {"position": "Hold state", "BTC_weight": 0.495, "BTC_target": BTC, "CASH_weight": 0.505, "Invest_quantity": 0.0}
+                position = {"position": "Hold state", "BTC_weight": 0.5, "BTC_target": BTC, "CASH_weight": 0.5, "Invest_quantity": 0.0}
         elif BTC_weight == 0.0:
             if MA45signal == "Buy" and MA120signal == "Buy":
-                position = {"position": "Buy full", "BTC_weight": 0.99, "BTC_target": ((USDT*0.99*0.9995)/price), "CASH_weight": 0.01, "Invest_quantity": USDT * 0.99}
+                position = {"position": "Buy full", "BTC_weight": 1.0, "BTC_target": ((USDT*0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": USDT}
             elif MA45signal == "Sell" and MA120signal == "Sell":
                 position = {"position": "Hold state", "BTC_weight": 0.0, "BTC_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0}
             else:
-                position = {"position": "Buy half", "BTC_weight": 0.495, "BTC_target": ((USDT*0.495*0.9995)/price) * 0.5, "CASH_weight": 0.505, "Invest_quantity": USDT * 0.495}
+                position = {"position": "Buy half", "BTC_weight": 0.5, "BTC_target": ((USDT*0.9995)/price) * 0.5, "CASH_weight": 0.5, "Invest_quantity": USDT * 0.5}
 
         return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return, BTC, USDT
 
