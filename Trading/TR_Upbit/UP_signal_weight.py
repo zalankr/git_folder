@@ -43,25 +43,25 @@ def make_position(ETH, KRW): # Upbit모듈로 이더리움과 원화 잔고 불�
     # 포지션 산출
     if ETH_weight == 1.0 :
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Hold state", "ETH_weight": 1.0, "ETH_target": ETH, "CASH_weight": 0.0, "Invest_quantity": 0.0}
+            position = {"position": "Hold state", "ETH_weight": 1.0, "ETH_target": ETH, "CASH_weight": 0.0, "Invest_quantity": 0.0, "Invest_asset": "Hold state"}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
+            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH, "Invest_asset": "ETH"}
         else:
-            position = {"position": "Sell half", "ETH_weight": 0.5, "ETH_target": ETH * 0.5, "CASH_weight": 0.5, "Invest_quantity": ETH * 0.5}
+            position = {"position": "Sell half", "ETH_weight": 0.5, "ETH_target": ETH * 0.5, "CASH_weight": 0.5, "Invest_quantity": ETH * 0.5, "Invest_asset": "ETH"}
     elif ETH_weight == 0.5:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Buy full", "ETH_weight": 1.0, "ETH_target": ETH + ((KRW*0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": KRW}
+            position = {"position": "Buy full", "ETH_weight": 1.0, "ETH_target": ETH + ((KRW*0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": KRW, "Invest_asset": "KRW"}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH}
+            position = {"position": "Sell full", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": ETH, "Invest_asset": "ETH"}
         else:
-            position = {"position": "Hold state", "ETH_weight": 0.5, "ETH_target": ETH, "CASH_weight": 0.5, "Invest_quantity": 0.0}
+            position = {"position": "Hold state", "ETH_weight": 0.5, "ETH_target": ETH, "CASH_weight": 0.5, "Invest_quantity": 0.0, "Invest_asset": "Hold state"}
     elif ETH_weight == 0.0:
         if data["close"].iloc[-1] >= MA20 and data["close"].iloc[-1] >= MA40:
-            position = {"position": "Buy full", "ETH_weight": 1.0, "ETH_target": ((KRW*0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": KRW}
+            position = {"position": "Buy full", "ETH_weight": 1.0, "ETH_target": ((KRW*0.9995)/price), "CASH_weight": 0.0, "Invest_quantity": KRW, "Invest_asset": "KRW"}
         elif data["close"].iloc[-1] < MA20 and data["close"].iloc[-1] < MA40:
-            position = {"position": "Hold state", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0}
+            position = {"position": "Hold state", "ETH_weight": 0.0, "ETH_target": 0.0, "CASH_weight": 1.0, "Invest_quantity": 0.0, "Invest_asset": "Hold state"}
         else:
-            position = {"position": "Buy half", "ETH_weight": 0.5, "ETH_target": ((KRW*0.9995)/price) * 0.5, "CASH_weight": 0.5, "Invest_quantity": KRW * 0.5}
+            position = {"position": "Buy half", "ETH_weight": 0.5, "ETH_target": ((KRW*0.9995)/price) * 0.5, "CASH_weight": 0.5, "Invest_quantity": KRW * 0.5, "Invest_asset": "KRW"}
 
     return position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return
 
@@ -171,10 +171,10 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
             
-            volume = round(amount_per_times, 6)
+            volume = round(amount_per_times, 8)
 
             if t == TR_time[1] - 1 :
-                volume = round(amount_per_times - 0.000005, 6)
+                volume = round(amount_per_times -0.0000005, 8)
 
             # 주문량이 너무 작으면 건너뜀
             if volume * price < 6000:
@@ -201,7 +201,7 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
     prices = []
     for i in range(TR_time[1]):
         order_num = i + 1
-        price = (current_price * (1-(order_num*0.0005))) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
+        price = current_price * (1-(order_num*0.0005)) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +1%(유사 시장가) 매수 주문으로 대체
@@ -220,12 +220,12 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
             
-            volume = round(amount_per_times / price, 6)
+            volume = round(amount_per_times / price, 8)
 
-            if t == TR_time[1] - 1 < :
+            if t == TR_time[1] - 1 : # 오류수정
                 KRW = upbit.get_balance_t("KRW")
                 if (volume * price)*1.0005 < KRW:
-                    volume = round((KRW/price)-0.000005 , 6)
+                    volume = round((KRW/price)*0.9995 , 8)
             
             # 주문량이 너무 작으면 건너뜀
             if amount_per_times < 6000:
