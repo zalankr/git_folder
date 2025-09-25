@@ -173,6 +173,9 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
             
             volume = round(amount_per_times, 8)
 
+            if t == TR_time[1] - 1 :
+                volume = round(amount_per_times -0.0000005, 8)
+
             # 주문량이 너무 작으면 건너뜀
             if volume * price < 6000:
                 print(f"주문 {t+1}회차: 주문량이 너무 작아서 건너뜀 (금액: {volume * price}원)")
@@ -198,7 +201,7 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
     prices = []
     for i in range(TR_time[1]):
         order_num = i + 1
-        price = (current_price * (1-(order_num*0.0005))) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
+        price = current_price * (1-(order_num*0.0005)) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
 
     # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +1%(유사 시장가) 매수 주문으로 대체
@@ -217,7 +220,12 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
             
-            volume = round(amount_per_times*0.999 / price, 8)
+            volume = round(amount_per_times / price, 8)
+
+            if t == TR_time[1] - 1 : # 오류수정
+                KRW = upbit.get_balance_t("KRW")
+                if (volume * price)*1.0005 < KRW:
+                    volume = round((KRW/price)*0.9995 , 8)
             
             # 주문량이 너무 작으면 건너뜀
             if amount_per_times < 6000:

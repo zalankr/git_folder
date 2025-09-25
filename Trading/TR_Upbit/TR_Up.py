@@ -71,21 +71,27 @@ time_module.sleep(1) # 타임슬립 1초
 # 회차별매매 주문하기
 try:
     if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할매매 시에만 주문 실행(0은 제외)
-        # 기존 주문 모두 취소
-        result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
-        if result:  # 리스트가 비어있지 않으면 True
-            uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
-            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n주문 취소 목록:\n{uuids}")
-        else:
-            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n취소할 주문이 없습니다.")
-        time_module.sleep(1) # 타임 슬립 1초
+        # 기존 주문 모두 취소(5분할 시에는 제외)
+        if TR_time[1] in [4,3,2,1]:
+            result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
+            if result:  # 리스트가 비어있지 않으면 True
+                uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
+                KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n주문 취소 목록:\n{uuids}")
+            else:
+                KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n취소할 주문이 없습니다.")
+            time_module.sleep(1) # 타임 슬립 1초
 
-        # 당일의 Upbit_data.json 파일 불러오고 position 추출
-        with open(Upbit_data_path, 'r', encoding='utf-8') as f:
-            Upbit_data = json.load(f)
-
-        Position = Upbit_data["Position"]
-        Invest_quantity = Upbit_data["Invest_quantity"]
+        # 당일의 Upbit_data.json 파일 불러오고 position 추출       
+        try:
+            with open(Upbit_data_path, 'r', encoding='utf-8') as f:
+                Upbit_data = json.load(f)
+            Position = Upbit_data["Position"]
+            Invest_quantity = Upbit_data["Invest_quantity"]
+            
+        except Exception as e:
+            print(f"JSON 파일 오류: {e}")
+            KA.SendMessage(f"Upbit {TR_time[0]} JSON 파일 오류: {e}")
+            exit()
         
         # 포지션별 주문하기
         if Position == "Sell full":
