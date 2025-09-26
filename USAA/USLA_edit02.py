@@ -279,8 +279,8 @@ if __name__ == "__main__":
     strategy = ETFMomentumStrategy()
     
     # 현재 월 기준 실행
-    # result = strategy.run_strategy()
+    result = strategy.run_strategy()
     
     # 또는 특정 월 지정 실행
-    result = strategy.run_strategy(target_month=1, target_year=2025)
-    print(result)
+    # result = strategy.run_strategy(target_month=1, target_year=2025)
+    # print(result)
