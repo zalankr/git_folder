@@ -244,6 +244,7 @@ try:
             "BTC_target": binance_data["BTC_target"],
             "CASH_weight": binance_data["CASH_weight"],
             "Invest_quantity": binance_data["Invest_quantity"],
+            "Invest_asset": binance_data["Invest_asset"], # asset추가
             "Total_balance": Total_balance,
             "BTC": BTC,
             "USDT": USDT,
