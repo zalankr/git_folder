@@ -50,7 +50,7 @@ except Exception as e:
 
 # If 8:49 Signal확인 후 json파일로 만들기
 try:
-    if TR_time[1] == 5:
+    if TR_time[1] == 1:
         result = BinanceT.cancel_all_orders() # 기존 모든 주문 취소 함수(모듈)
         KA.SendMessage(f"Binance {now.strftime('%Y-%m-%d %H:%M:%S')} \n1회차 Posion확인 \n주문 취소 목록: {result}")
         time_module.sleep(1) # 타임 슬립 1초
@@ -89,11 +89,12 @@ time_module.sleep(1) # 타임슬립 1초
 
 # 회차별매매 주문하기
 try:
-    if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1 분할매매 주문 실행
+    if TR_time[1] in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]: #분할매매 주문 실행
         # 기존 주문 취소
-        result = BinanceT.cancel_all_orders() # 기존 모든 주문 취소 함수(모듈)
-        KA.SendMessage(f"Binance {now.strftime('%Y-%m-%d %H:%M:%S')} \nTR_time[{TR_time[1]}]분할매매 \n주문 취소 목록: {result}")
-        time_module.sleep(1) # 타임 슬립 1초
+        if TR_time[1] != 1:
+            result = BinanceT.cancel_all_orders() # 기존 모든 주문 취소 함수(모듈)
+            KA.SendMessage(f"Binance {now.strftime('%Y-%m-%d %H:%M:%S')} \nTR_time[{TR_time[1]}]분할매매 \n주문 취소 목록: {result}")
+            time_module.sleep(1) # 타임 슬립 1초
 
         # 당일의 Upbit_data.json 파일 불러오고 position 추출
         with open(data_path, 'r', encoding='utf-8') as f:
@@ -101,62 +102,44 @@ try:
 
         Position = binance_data["Position"] 
         Invest_quantity = binance_data["Invest_quantity"]
-        splits = TR_time[1]
+        splits = 10
         
         # 포지션별 주문하기
         if Position == "Sell full":
             BTC = USDTM.get_spot_balance('BTC')['free']
-            
-            orders = BinanceT.split_sell(splits=splits, btc_amount=BTC)
-            for i in range(len(orders)):
-                split = orders[i]['split']
-                order_id = orders[i]['order_id']
-                price = orders[i]['price']
-                amount = orders[i]['amount']
-                status = orders[i]['status']
-                KA.SendMessage(f"Binance Sell Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")        
+            btc_amount = BTC / splits
+            try:
+                order = BinanceT.market_sell(btc_amount = btc_amount)
+                KA.SendMessage(f"Market Sell Order : {TR_time[1]}/10 회차 분할 매도")
+            except Exception as e:
+                KA.SendMessage(f"Binance {TR_time[0]} \n매도 예외 오류: {e}")   
 
         elif Position == "Sell half":
             BTC = USDTM.get_spot_balance('BTC')['free']
-            Remain_BTC = BTC-Invest_quantity
-            if Remain_BTC < 0:
-                Remain_BTC = 0
+            btc_amount = Invest_quantity / splits
+            try:
+                order = BinanceT.market_sell(btc_amount = btc_amount)
+                KA.SendMessage(f"Market Sell Order : {TR_time[1]}/10 회차 분할 매도")
+            except Exception as e:
+                KA.SendMessage(f"Binance {TR_time[0]} \n매도 예외 오류: {e}")
             
-            orders = BinanceT.split_sell(splits=splits, btc_amount=Remain_BTC)
-            for i in range(len(orders)):
-                split = orders[i]['split']
-                order_id = orders[i]['order_id']
-                price = orders[i]['price']
-                amount = orders[i]['amount']
-                status = orders[i]['status']
-                KA.SendMessage(f"Binance Sell Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")
-        
         elif Position == "Buy full":        
             USDT = USDTM.get_spot_balance('USDT')['free']
+            usdt_amount = USDT / splits
+            try:
+                order = BinanceT.market_buy(usdt_amount = usdt_amount)
+                KA.SendMessage(f"Market Buy Order : {TR_time[1]}/10 회차 분할 매매")
+            except Exception as e:
+                KA.SendMessage(f"Binance {TR_time[0]} \n매수 예외 오류: {e}")
 
-            orders = BinanceT.split_buy(splits=splits, usdt_amount=USDT)
-            for i in range(len(orders)):
-                split = orders[i]['split']
-                order_id = orders[i]['order_id']
-                price = orders[i]['price']
-                amount = orders[i]['amount']
-                status = orders[i]['status']
-                KA.SendMessage(f"Binance Buy Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")
-                
         elif Position == "Buy half":
             USDT = USDTM.get_spot_balance('USDT')['free']
-            Remain_USDT = USDT-Invest_quantity
-            if Remain_USDT < 0:
-                Remain_USDT= 0
-            
-            orders = BinanceT.split_buy(splits=splits, usdt_amount=Remain_USDT)
-            for i in range(len(orders)):
-                split = orders[i]['split']
-                order_id = orders[i]['order_id']
-                price = orders[i]['price']
-                amount = orders[i]['amount']
-                status = orders[i]['status']
-                KA.SendMessage(f"Binance Buy Split: {split} \nOrder ID: {order_id} \nPrice: {price} \nAmount: {amount} \nStatus: {status}")     
+            usdt_amount = Invest_quantity / splits
+            try:
+                order = BinanceT.market_buy(usdt_amount = usdt_amount)
+                KA.SendMessage(f"Market Buy Order : {TR_time[1]}/10 회차 분할 매매")
+            except Exception as e:
+                KA.SendMessage(f"Binance {TR_time[0]} \n매수 예외 오류: {e}")
 
     else:
          pass
@@ -169,8 +152,8 @@ time_module.sleep(1) # 타임슬립 1초
 
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
 try:
-    if TR_time[1] == 1: #######test 후 1로
-        time_module.sleep(10) # 거래완료 까지 시간 두기 타임슬립 10초
+    if TR_time[1] == 10:
+        time_module.sleep(5) # 거래완료 까지 시간 두기 타임슬립 10초
 
         # 혹시 남은 기존 주문 취소
         result = BinanceT.cancel_all_orders() # 기존 모든 주문 취소 함수(모듈)
@@ -287,7 +270,7 @@ except Exception as e:
     KA.SendMessage(f"Binance {TR_time[0]} 당일 data 기록 중 예외 오류: {e}")
 
 if TR_time[1] == None:
-    KA.SendMessage(f"Binance {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
+    KA.SendMessage(f"Binance {now.strftime('%Y-%m-%d %H:%M:%S')} \n 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
 
 exit()
 #### 검증 > 마지막에 crontab에서 5분 후 자동종료 되게 설정

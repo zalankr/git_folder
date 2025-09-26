@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 from decimal import Decimal, ROUND_DOWN
 from datetime import timedelta
 from datetime import datetime
+import math
 
 
 # 로컬에서는 시간 지금 동기화 필요
@@ -193,6 +194,193 @@ class BinanceT:
             self.logger.error(f"Failed to get current price: {e}")
             return 0.0
     
+    # 시장가 매수 주문
+    def market_buy(self, usdt_amount: float) -> Optional[Dict]:
+        """
+        시장가 매수 주문
+        
+        Args:
+            usdt_amount: 매수할 USDT 금액
+            
+        Returns:
+            주문 결과 딕셔너리 또는 None
+        """
+        try:
+            # 현재 가격 확인
+            current_price = self.get_current_price()
+            if current_price <= 0:
+                self.logger.error("Failed to get current price for market buy")
+                return None
+            
+            # USDT 잔고 확인
+            try:
+                balance = self.exchange.fetch_balance()
+                available_usdt = balance['USDT']['free']
+                self.logger.info(f"Available USDT balance: {available_usdt:.2f}")
+                
+                if usdt_amount > available_usdt:
+                    self.logger.error(f"Insufficient USDT balance. Requested: {usdt_amount:.2f}, Available: {available_usdt:.2f}")
+                    return None
+                    
+            except Exception as e:
+                self.logger.error(f"Failed to fetch USDT balance: {e}")
+                return None
+            
+            # USDT 금액을 최소 주문 금액에 맞게 조정 (내림 처리)
+            # 바이낸스 BTC/USDT 최소 주문 금액은 보통 10 USDT
+            if usdt_amount < self.min_cost:
+                self.logger.error(f"Order amount too small. Minimum: {self.min_cost} USDT, Requested: {usdt_amount:.2f} USDT")
+                return None
+            
+            # USDT 금액을 소수점 2자리로 내림 처리
+            adjusted_usdt = math.floor(usdt_amount * 100) / 100
+            
+            # 예상 BTC 수량 계산 (로깅용)
+            estimated_btc = adjusted_usdt / current_price
+            
+            self.logger.info(f"Market buy order: {adjusted_usdt:.2f} USDT (estimated {estimated_btc:.8f} BTC at ~{current_price:.2f})")
+            
+            # 시장가 매수 주문 실행
+            try:
+                client_order_id = f"market_buy_{int(time.time() * 1000)}"
+                
+                order = self.exchange.create_market_buy_order(
+                    symbol=self.symbol,
+                    amount=None,  # amount는 None으로
+                    quoteOrderQty=adjusted_usdt,  # USDT 금액으로 주문
+                    params={'newClientOrderId': client_order_id}
+                )
+                
+                # 실제 체결 정보
+                filled_btc = order.get('filled', 0)
+                avg_price = order.get('average', current_price)
+                actual_cost = order.get('cost', adjusted_usdt)
+                
+                result = {
+                    'order_id': order['id'],
+                    'client_order_id': client_order_id,
+                    'symbol': self.symbol,
+                    'side': 'buy',
+                    'type': 'market',
+                    'amount': filled_btc,
+                    'price': avg_price,
+                    'cost': actual_cost,
+                    'filled': filled_btc,
+                    'status': order.get('status', 'filled'),
+                    'timestamp': order.get('timestamp'),
+                    'datetime': order.get('datetime')
+                }
+                
+                self.logger.info(f"Market buy completed: {filled_btc:.8f} BTC at {avg_price:.2f} USDT (Total: {actual_cost:.2f} USDT)")
+                KA.SendMessage(f"Market Buy Order Completed\nBTC: {filled_btc:.8f}\nPrice: {avg_price:.2f} USDT\nTotal Cost: {actual_cost:.2f} USDT")
+                
+                return result
+                
+            except Exception as e:
+                self.logger.error(f"Market buy order failed: {e}")
+                KA.SendMessage(f"Market Buy Order Failed: {e}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Market buy function failed: {e}")
+            return None
+
+    # 시장가 매도 주문
+    def market_sell(self, btc_amount: float) -> Optional[Dict]:
+        """
+        시장가 매도 주문
+        
+        Args:
+            btc_amount: 매도할 BTC 수량
+            
+        Returns:
+            주문 결과 딕셔너리 또는 None
+        """
+        try:
+            # 현재 가격 확인
+            current_price = self.get_current_price()
+            if current_price <= 0:
+                self.logger.error("Failed to get current price for market sell")
+                return None
+            
+            # BTC 잔고 확인
+            try:
+                balance = self.exchange.fetch_balance()
+                available_btc = balance['BTC']['free']
+                self.logger.info(f"Available BTC balance: {available_btc:.8f}")
+                
+                if btc_amount > available_btc:
+                    self.logger.error(f"Insufficient BTC balance. Requested: {btc_amount:.8f}, Available: {available_btc:.8f}")
+                    return None
+                    
+            except Exception as e:
+                self.logger.error(f"Failed to fetch BTC balance: {e}")
+                return None
+            
+            # BTC 수량을 최소 주문 수량에 맞게 조정 (내림 처리)
+            if btc_amount < self.min_amount:
+                self.logger.error(f"Order amount too small. Minimum: {self.min_amount} BTC, Requested: {btc_amount:.8f} BTC")
+                return None
+            
+            # BTC 수량을 tick size에 맞게 내림 처리
+            # 바이낸스 BTC/USDT의 stepSize는 보통 0.00001 (5자리)
+            tick_size = 0.00001  # stepSize, 실제로는 self.step_size 사용
+            adjusted_btc = math.floor(btc_amount / tick_size) * tick_size
+            adjusted_btc = round(adjusted_btc, 8)  # 부동소수점 오차 제거
+            
+            # 최소 주문 금액 재확인
+            estimated_cost = adjusted_btc * current_price
+            if estimated_cost < self.min_cost:
+                self.logger.error(f"Order cost too small after adjustment. Minimum: {self.min_cost} USDT, Estimated: {estimated_cost:.2f} USDT")
+                return None
+            
+            self.logger.info(f"Market sell order: {adjusted_btc:.8f} BTC (estimated {estimated_cost:.2f} USDT at ~{current_price:.2f})")
+            
+            # 시장가 매도 주문 실행
+            try:
+                client_order_id = f"market_sell_{int(time.time() * 1000)}"
+                
+                order = self.exchange.create_market_sell_order(
+                    symbol=self.symbol,
+                    amount=adjusted_btc,
+                    params={'newClientOrderId': client_order_id}
+                )
+                
+                # 실제 체결 정보
+                filled_btc = order.get('filled', adjusted_btc)
+                avg_price = order.get('average', current_price)
+                actual_proceeds = order.get('cost', estimated_cost)
+                
+                result = {
+                    'order_id': order['id'],
+                    'client_order_id': client_order_id,
+                    'symbol': self.symbol,
+                    'side': 'sell',
+                    'type': 'market',
+                    'amount': filled_btc,
+                    'price': avg_price,
+                    'cost': actual_proceeds,
+                    'filled': filled_btc,
+                    'status': order.get('status', 'filled'),
+                    'timestamp': order.get('timestamp'),
+                    'datetime': order.get('datetime')
+                    
+                }
+                
+                self.logger.info(f"Market sell completed: {filled_btc:.8f} BTC at {avg_price:.2f} USDT (Total: {actual_proceeds:.2f} USDT)")
+                KA.SendMessage(f"Market Sell Order Completed\nBTC: {filled_btc:.8f}\nPrice: {avg_price:.2f} USDT\nTotal Proceeds: {actual_proceeds:.2f} USDT")
+                
+                return result
+                
+            except Exception as e:
+                self.logger.error(f"Market sell order failed: {e}")
+                KA.SendMessage(f"Market Sell Order Failed: {e}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Market sell function failed: {e}")
+            return None
+
     # 분할매수 주문
     def split_buy(self, splits: int, usdt_amount: float) -> List[Dict]:
         """
@@ -626,15 +814,25 @@ def what_time():
     if current_hour == 23 and 41 <= current_minute <= 48:
         TR_time = ["0842", 0, "Redeem"]
     elif current_hour == 23 and 48 <= current_minute <= 50:
-        TR_time = ["0849", 5, "Trading_1"]
-    elif current_hour == 23 and 55 <= current_minute <= 57:
-        TR_time = ["0856", 4, "Trading_2"]
-    elif current_hour == 0 and 2 <= current_minute <= 4:
-        TR_time = ["0903", 3, "Trading_3"]
-    elif current_hour == 0 and 9 <= current_minute <= 11:
-        TR_time = ["0910", 2, "Trading_4"] 
-    elif current_hour == 0 and 16 <= current_minute <= 19 :
-        TR_time = ["0917", 1, "Trading_5"]
+        TR_time = ["0849", 1, "Trading_1"]
+    elif current_hour == 23 and 51 <= current_minute <= 53:
+        TR_time = ["0852", 2, "Trading_2"]
+    elif current_hour == 23 and 54 <= current_minute <= 56:
+        TR_time = ["0855", 3, "Trading_3"]
+    elif current_hour == 23 and 57 <= current_minute <= 59:
+        TR_time = ["0858", 4, "Trading_4"] 
+    elif current_hour == 0 and 0 <= current_minute <= 2 :
+        TR_time = ["0901", 5, "Trading_5"]
+    elif current_hour == 0 and 3 <= current_minute <= 5 :
+        TR_time = ["0904", 6, "Trading_6"]
+    elif current_hour == 0 and 6 <= current_minute <= 8 :
+        TR_time = ["0907", 7, "Trading_7"]
+    elif current_hour == 0 and 9 <= current_minute <= 11 :
+        TR_time = ["0910", 8, "Trading_8"]
+    elif current_hour == 0 and 12 <= current_minute <= 14 :
+        TR_time = ["0913", 9, "Trading_9"]
+    elif current_hour == 0 and 15 <= current_minute <= 17 :
+        TR_time = ["0916", 10, "Trading_10"]
     else:
         TR_time = ["Not_yet", None, "Nothing"]
     
