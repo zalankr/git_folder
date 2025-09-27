@@ -1,7 +1,7 @@
 import time as time_module  # time 모듈을 별칭으로 import
 from datetime import timedelta
 from datetime import datetime
-import BinanceTrader
+import BinanceTrader_1time # test 후수정 ##############################################################
 import USDTManager
 import json
 import kakao_alert as KA
@@ -14,9 +14,9 @@ with open("/var/autobot/TR_Binance/bnnkr.txt") as f:
     API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
 
 # 매니저 인스턴스 생성, JSON data 경로 설정
-BinanceT = BinanceTrader.BinanceT(API_KEY, API_SECRET)
+BinanceT = BinanceTrader_1time.BinanceT(API_KEY, API_SECRET) # test 후수정 ##############################################################
 USDTM = USDTManager.USDTM(API_KEY, API_SECRET)
-data_path = '/var/autobot/TR_Binance/binance_data.json'
+data_path = '/var/autobot/TR_Binance/binance_data_1time.json' # test 후수정 ##############################################################
 
 # Reddem실행 함수
 def Redeem():
@@ -54,23 +54,27 @@ if position["position"] in ["Buy full", "Buy half"]:
             message = Redeem()
             now = datetime.now() # 현재시간 확인
             KA.SendMessage(f"Binance Redeem: {now.strftime('%Y-%m-%d %H:%M:%S')} \n{message}")
-            time_module.sleep(119) # 타임 슬립 119초
+            time_module.sleep(1) # 타임 슬립 119초 # test 후수정 ##############################################################
 
     except Exception as e:
         now = datetime.now() # 현재시간 확인
         KA.SendMessage(f"Binance Redeem: {now.strftime('%Y-%m-%d %H:%M:%S')} \nRedeem 예외 오류: {e}")
 else:
-    time_module.sleep(357) # 타임 슬립 357초
+    time_module.sleep(1) # 타임 슬립 357초 # test 후수정 ##############################################################
 
-time_module.sleep(87) # 타임 슬립 87초
+time_module.sleep(1) # 타임 슬립 87초 # test 후수정 ##############################################################
 
 # 회당 투자량 계산
 now = datetime.now() # 현재시간 확인
+### test용 ###
+position["position"] = "Sell full" # test 후수정 ##############################################################
+Invest_quantity = float(0.00097719) # test 후수정 ##############################################################
+### test용 ###
 
 if position["position"] == "Buy full":
     try:
         USDT = USDTM.get_spot_balance('USDT')['free']
-        USDT_per_splits = (float(USDT) * 0.99) / 10
+        USDT_per_splits = (USDT * 0.99) / 10
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
     except Exception as e:
         USDT_per_splits = float(Invest_quantity)
@@ -79,7 +83,7 @@ if position["position"] == "Buy full":
 elif position["position"] == "Buy half":
     try:
         USDT = USDTM.get_spot_balance('USDT')['free']
-        USDT_per_splits = (float(USDT) * 0.5 * 0.99) / 10
+        USDT_per_splits = (USDT * 0.5 * 0.99) / 10
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
     except Exception as e:
         USDT_per_splits = float(Invest_quantity)
@@ -88,7 +92,7 @@ elif position["position"] == "Buy half":
 elif position["position"] == "Sell full":
     try:
         BTC = USDTM.get_spot_balance('BTC')['free']
-        BTC_per_splits = (float(BTC) * 0.99) / 10
+        BTC_per_splits = (BTC * 0.99) / 10
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
     except Exception as e:
         BTC_per_splits = float(Invest_quantity)
@@ -97,7 +101,7 @@ elif position["position"] == "Sell full":
 elif position["position"] == "Sell half":
     try:
         BTC = USDTM.get_spot_balance('BTC')['free']
-        BTC_per_splits = (float(BTC) * 0.5 * 0.99) / 10
+        BTC_per_splits = (BTC * 0.5 * 0.99) / 10
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
     except Exception as e:
         BTC_per_splits = float(Invest_quantity)
@@ -143,7 +147,7 @@ try:
         else:
             pass
 
-        time_module.sleep(210) # 타임 슬립 210초
+        time_module.sleep(10) # 타임 슬립 210초 # test 후수정 ##############################################################
 
 except Exception as e:
     now = datetime.now() # 현재시간 확인
@@ -191,7 +195,7 @@ try:
     Monthly_return = (Total_balance - Last_month_Total_balance) / Last_month_Total_balance * 100
     Yearly_return = (Total_balance - Last_year_Total_balance) / Last_year_Total_balance * 100
 
-    time_module.sleep(0.5) # 타임슬립 0.5초
+    time_module.sleep(0.2) # 타임슬립 0.5초
 
     # 월초, 연초 전월말, 전년말 잔고 업데이트
     if now.day == 1: # 월초 전월 잔고 데이터 변경
@@ -217,8 +221,8 @@ try:
         "CASH_weight": position["CASH_weight"],
         "Invest_quantity": position["Invest_quantity"],
         "Total_balance": Total_balance,
-        "BTC": float(BTC),
-        "USDT": float(USDT),
+        "BTC": BTC,
+        "USDT": USDT,
         "Last_day_Total_balance": Last_day_Total_balance,
         "Last_month_Total_balance": Last_month_Total_balance,
         "Last_year_Total_balance": Last_year_Total_balance,
