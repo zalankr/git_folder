@@ -1,5 +1,5 @@
 {
-    "Date": "2025-09-25",
+    "Date": "2025-09-27",
     "Position": "Hold state",
     "ETH_weight": 0.0,
     "ETH_target": 0.0,
@@ -8,10 +8,10 @@
     "Total_balance": 42823694.04208175,
     "ETH": 0,
     "KRW": 42823694.04208175,
-    "Last_day_Total_balance": 42817414.04208175,
+    "Last_day_Total_balance": 42823694.04208175,
     "Last_month_Total_balance": 43448578.0,
     "Last_year_Total_balance": 40859674.0,
-    "Daily_return": 9.8281860108029e-08,
-    "Monthly_return": -1.452668848951165,
-    "Yearly_return": 4.791374600986173
+    "Daily_return": 0.0,
+    "Monthly_return": -1.438214981208934,
+    "Yearly_return": 4.806744278189178
 }

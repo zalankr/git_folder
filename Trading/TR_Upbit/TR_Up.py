@@ -72,7 +72,7 @@ time_module.sleep(1) # 타임슬립 1초
 try:
     if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할매매 시에만 주문 실행(0은 제외)
         # 기존 주문 모두 취소(5분할 시에는 제외)
-        if TR_time[1] in [4,3,2,1]:
+        if TR_time[1] in [5,4,3,2,1]:
             result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
             if result:  # 리스트가 비어있지 않으면 True
                 uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
