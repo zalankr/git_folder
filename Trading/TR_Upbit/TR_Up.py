@@ -87,7 +87,6 @@ try:
                 Upbit_data = json.load(f)
             Position = Upbit_data["Position"]
             Invest_quantity = Upbit_data["Invest_quantity"]
-            Invest_asset = Upbit_data["Invest_asset"]
             
         except Exception as e:
             print(f"JSON 파일 오류: {e}")
@@ -95,7 +94,7 @@ try:
             exit()
         
         # 포지션별 주문하기
-        if Position == "Sell full" and Invest_asset == "ETH":
+        if Position == "Sell full":
             current_price = pyupbit.get_current_price("KRW-ETH")
             ETH = upbit.get_balance_t("ETH")
             amount_per_times = ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
@@ -105,7 +104,7 @@ try:
             else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit) 
 
-        elif Position == "Sell half" and Invest_asset == "ETH":
+        elif Position == "Sell half":
             current_price = pyupbit.get_current_price("KRW-ETH")    
             ETH = upbit.get_balance_t("ETH")
             Remain_ETH = ETH - Invest_quantity
@@ -116,7 +115,7 @@ try:
             else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
         
-        elif Position == "Buy full" and Invest_asset == "KRW":
+        elif Position == "Buy full":
             current_price = pyupbit.get_current_price("KRW-ETH")
             KRW = upbit.get_balance_t("KRW")
             amount_per_times = KRW / TR_time[1] # 분할 매매 횟수당 KRW Quantity
@@ -126,7 +125,7 @@ try:
             else: # 분할 매매당 금액이 6000원 이상일 때만 매수 주문
                 UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
 
-        elif Position == "Buy half" and Invest_asset == "KRW":
+        elif Position == "Buy half":
             current_price = pyupbit.get_current_price("KRW-ETH")
             KRW = upbit.get_balance_t("KRW")
             Remain_KRW = KRW - Invest_quantity
