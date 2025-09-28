@@ -23,30 +23,20 @@ now, current_time, TR_time = UP.what_time()
 # If 8:58 Trading 5분할(첫 번째)에만 전일 Upbit_data json읽고 Signal계산, 투자 금액 산출 후 다시 저장
 try:
     if TR_time[1] == 5: # 8:58 5분할 매매시에만 실행
-        # 기존 주문 모두 취소
-        result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
-        if result:  # 리스트가 비어있지 않으면 True
-            uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
-            KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n트레이딩 시작 \n주문 취소 목록: {uuids}")
-        else:
-            KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n트레이딩 시작 \n취소할 주문이 없습니다.")
-
-        time_module.sleep(1) # 타임 슬립 1초
-
         # 잔고 확인
         KRW, ETH, Total_balance = UP.Total_balance(upbit)
 
         # 포지션 확인 및 투자 수량 산출
-        position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return = UP.make_position(ETH, KRW)
+        Position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return = UP.make_position(ETH, KRW)
 
         # Upbit_data 만들고 저장하기
         Upbit_data = {
             "Date": now.strftime('%Y-%m-%d'),
-            "Position": position["position"],
-            "ETH_weight": position["ETH_weight"],
-            "ETH_target": position["ETH_target"],
-            "CASH_weight": position["CASH_weight"],
-            "Invest_quantity": position["Invest_quantity"],
+            "Position": Position["Position"],
+            "ETH_weight": Position["ETH_weight"],
+            "ETH_target": Position["ETH_target"],
+            "CASH_weight": Position["CASH_weight"],
+            "Invest_quantity": Position["Invest_quantity"],
             "Total_balance": Total_balance,
             "ETH": ETH,
             "KRW": KRW,
@@ -61,7 +51,7 @@ try:
         # Upbit_data.json파일 생성 후 알림
         with open(Upbit_data_path, 'w', encoding='utf-8') as f:
             json.dump(Upbit_data, f, ensure_ascii=False, indent=4)
-        KA.SendMessage(f"Upbit Trading, {TR_time[0]} \nPosition: {position['position']} \nETH_target: {position['ETH_target']} \nInvest_quantity: {position['Invest_quantity']}")
+        KA.SendMessage(f"Upbit Trading, {TR_time[0]} \nPosition: {Position['Position']} \nETH_target: {Position['ETH_target']} \nInvest_quantity: {Position['Invest_quantity']}")
 
 except Exception as e:
         print(f"Upbit {TR_time[0]} \n포지션 생성 시 예외 오류: {e}")
@@ -71,15 +61,14 @@ time_module.sleep(1) # 타임슬립 1초
 # 회차별매매 주문하기
 try:
     if TR_time[1] in [5, 4, 3, 2, 1]: # 5,4,3,2,1분할매매 시에만 주문 실행(0은 제외)
-        # 기존 주문 모두 취소(5분할 시에는 제외)
-        if TR_time[1] in [5,4,3,2,1]:
-            result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
-            if result:  # 리스트가 비어있지 않으면 True
-                uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
-                KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n주문 취소 목록:\n{uuids}")
-            else:
-                KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n취소할 주문이 없습니다.")
-            time_module.sleep(1) # 타임 슬립 1초
+        # 기존 주문 모두 취소
+        result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
+        if result:  # 리스트가 비어있지 않으면 True
+            uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
+            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n주문 취소 목록:\n{uuids}")
+        else:
+            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]}회 분할매매, \n취소할 주문이 없습니다.")
+        time_module.sleep(1) # 타임 슬립 1초
 
         # 당일의 Upbit_data.json 파일 불러오고 position 추출       
         try:
@@ -148,6 +137,14 @@ time_module.sleep(1) # 타임슬립 1초
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
 try:
     if TR_time[1] == 1:
+        result = UP.Cancel_ETH_Order(upbit) # 기존 모든 주문 취소 함수(모듈)
+        if result:  # 리스트가 비어있지 않으면 True
+            uuids = "\n".join([r.get("uuid", "uuid 없음") for r in result])
+            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]} 트레이딩 종료 취소주문, \n주문 취소 목록:\n{uuids}")
+        else:
+            KA.SendMessage(f"Upbit {TR_time[0]}, \n{TR_time[1]} 트레이딩 종료 취소주문, \n취소할 주문이 없습니다.")
+        time_module.sleep(1) # 타임 슬립 1초
+
         # 당일의 Upbit_data.json 파일 불러오고 position, 어제종료 원화환산 토탈잔고, KRW잔고, ETH잔고 추출
         with open(Upbit_data_path, 'r', encoding='utf-8') as f:
             Upbit_data = json.load(f)
