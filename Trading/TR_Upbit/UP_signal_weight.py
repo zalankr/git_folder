@@ -76,15 +76,21 @@ def what_time():
 
     # 시간 비교 시 초 단위까지 정확히 매칭하기 어려우므로 시간 범위로 체크
     if current_hour == 23 and 57 < current_minute <= 59:  # 23:58
-        TR_time = ["0858", 5] # 시간, 분할 횟수
+        TR_time = ["0858", 8] # 시간, 분할 횟수
     elif current_hour == 0 and 4 < current_minute <= 6:  # 00:05
-        TR_time = ["0905", 4] # 시간, 분할 횟수
+        TR_time = ["0905", 7] # 시간, 분할 횟수
     elif current_hour == 0 and 11 < current_minute <= 13:  # 00:12
-        TR_time = ["0912", 3] # 시간, 분할 횟수
+        TR_time = ["0912", 6] # 시간, 분할 횟수
     elif current_hour == 0 and 18 < current_minute <= 20:  # 00:19
-        TR_time = ["0919", 2] # 시간, 분할 횟수
+        TR_time = ["0919", 5] # 시간, 분할 횟수
     elif current_hour == 0 and 25 < current_minute <= 30:  # 00:26
-        TR_time = ["0926", 1]
+        TR_time = ["0926", 4]       
+    elif current_hour == 0 and 32 < current_minute <= 34:  # 00:33
+        TR_time = ["0933", 3] # 시간, 분할 횟수
+    elif current_hour == 0 and 39 < current_minute <= 41:  # 00:40
+        TR_time = ["0940", 2] # 시간, 분할 횟수
+    elif current_hour == 0 and 46 < current_minute <= 50:  # 00:47
+        TR_time = ["0947", 1]
     else:
         TR_time = [None, 0]
     
@@ -154,9 +160,9 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
         order_num = i + 1
         price = current_price * (1+(order_num*0.0005)) # 가격을 0.05%씩 올려 분할 매도 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
-    
-    # if문으로 TR_time[1]이 3미만이면 현재가 주문을 -1%(유사 시장가) 매도 주문으로 대체
-    if TR_time[1] < 3:
+
+    # if문으로 TR_time[1]이 5미만이면 0번 현재가 주문을 -1%(유사 시장가) 매도 주문으로 대체
+    if TR_time[1] < 5:
         prices[0] = get_tick_size(price = current_price * 0.99,  method="floor")
 
     # 주문 실행
@@ -173,8 +179,8 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
             
             volume = round(amount_per_times, 8)
 
-            if t == TR_time[1] - 1 :
-                volume = round(amount_per_times -0.0000005, 8)
+            if t == TR_time[1] - 1:
+                volume = round(amount_per_times - 0.0000005, 8)
 
             # 주문량이 너무 작으면 건너뜀
             if volume * price < 6000:
@@ -182,20 +188,20 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
                 continue
 
             result = upbit.sell_limit_order("KRW-ETH", price, volume)
-            print(f"주문 {t+1}회차 결과:", result)
+            print(f"{TR_time[0]}차 {t+1}/{TR_time[1]}분할 매도:", result)
 
             if result and 'price' in result:
-                KA.SendMessage(f"Upbit {TR_time[0]} 매도주문 {t+1}회차: {result['price']}원")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}분할 매도가: {result['price']}원")
             else:
-                print(f"주문 {t+1}회차 실패:", result)
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} 주문 실패:", result)
 
         except Exception as order_error:
             print(f"주문 {t+1}회차 오류: {order_error}")
-            KA.SendMessage(f"Upbit {TR_time[0]} 매도주문 {t+1}회차 오류: {order_error}")   
+            KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}분할 매도 오류: {order_error}")
 
     return result
 
-# 매수준문
+# 매수주문
 def partial_buying(current_price, amount_per_times, TR_time, upbit):        
     # TR 분할 매매 가격 계산 & tick size에 맞춰 가격 조정
     prices = []
@@ -204,8 +210,8 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
         price = current_price * (1-(order_num*0.0005)) # 가격을 0.05%씩 낮춰 분할 매수 가격 계산
         prices.append(get_tick_size(price = price,  method="floor"))
 
-    # if문으로 TR_time[1]이 3미만이면 현재가 주문을 +1%(유사 시장가) 매수 주문으로 대체
-    if TR_time[1] < 3:
+    # if문으로 TR_time[1]이 5미만이면 현재가 주문을 +1%(유사 시장가) 매수 주문으로 대체
+    if TR_time[1] < 5:
         prices[0] = get_tick_size(price = current_price*1.01,  method="floor")
 
     # 주문 실행
@@ -222,7 +228,7 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             
             volume = round(amount_per_times / price, 8)
 
-            if t == TR_time[1] - 1 : # 오류수정
+            if t == TR_time[1] - 1:  # 오류수정
                 KRW = upbit.get_balance_t("KRW")
                 if (volume * price)*1.0005 < KRW:
                     volume = round((KRW/price)*0.9995 , 8)
@@ -233,16 +239,16 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
                 continue
                 
             result = upbit.buy_limit_order("KRW-ETH", price, volume)
-            print(f"주문 {t+1}회차 결과:", result)
+            print(f"{TR_time[0]}차 {t+1}/{TR_time[1]}분할 매수", result)
             
             if result and 'price' in result:
-                KA.SendMessage(f"Upbit {TR_time[0]} 매수주문 {t+1}회차: {result['price']}원")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}분할 매수가: {result['price']}원")
             else:
-                print(f"주문 {t+1}회차 실패:", result)
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}분할 매수 오류:", result)
                 
         except Exception as order_error:
             print(f"주문 {t+1}회차 오류: {order_error}")
-            KA.SendMessage(f"Upbit {TR_time[0]} 매수주문 {t+1}회차 오류: {order_error}")
+            KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}분할 매수 오류: {order_error}")
 
     return result
 

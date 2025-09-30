@@ -105,9 +105,10 @@ elif position["position"] == "Sell half":
 
 time_module.sleep(0.5) # 타임슬립
 
-# 시분할 10회 주문하기
+# 시분할 10회 주문하기 > 18회로 증회
 try:
-    for num in range(10):
+    no = 18 # 10회로 변경 가능
+    for num in range(no):
         num = num + 1
         now = datetime.now() # 현재시간 확인
 
@@ -115,30 +116,30 @@ try:
         if position["position"] == "Buy full":
             try:
                 order = BinanceT.market_buy(usdt_amount = USDT_per_splits)
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 분할 매매")
+                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 매매 예외 오류: {e}")
+                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         elif position["position"] == "Buy half":
             try:
                 order = BinanceT.market_buy(usdt_amount = USDT_per_splits)
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 분할 매매")
+                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:    
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 매매 예외 오류: {e}")
+                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         elif position["position"] == "Sell full":
             try:
                 order = BinanceT.market_sell(btc_amount = BTC_per_splits)
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 분할 매매")
+                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 매매 예외 오류: {e}")
+                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         elif position["position"] == "Sell half":
             try:
                 order = BinanceT.market_sell(btc_amount = BTC_per_splits)
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 분할 매매")
+                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/10 회차 매매 예외 오류: {e}")
+                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         else:
             pass
