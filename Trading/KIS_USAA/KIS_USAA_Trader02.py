@@ -7,13 +7,13 @@ import pandas as pd
 import numpy as np
 
 # key 불러오기(이슈 있으면 외부 keyring 실행)
-app_key = keyring.get_password('kis63692011_key', 'nkr')
-app_secret = keyring.get_password('kis63692011_secret', 'nkr')
+# app_key = keyring.get_password('kis63692011_key', 'nkr')
+# app_secret = keyring.get_password('kis63692011_secret', 'nkr')
 
 # API 키 불러오기
 with open("C:/Users/GSR/Desktop/Code/kis63692011nkr.txt") as f:
 # with open("C:/Users/ilpus/Desktop/git_folder/Trading/kis63692011nkr.txt") as f: #폴더 NKL_invest로 이동 후 경로바꾸기 
-    API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+    app_key, app_secret = [line.strip() for line in f.readlines()]
 
 # 토큰 저장 파일 경로
 # TOKEN_FILE = "C:/Users/ilpus/Desktop/git_folder/Trading/KIS_USAA/kis63692011_token.json"
