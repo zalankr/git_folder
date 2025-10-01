@@ -34,7 +34,7 @@ B12year = str(int(B1year)-1)
 
 
 # Google spread account 연결 및 오픈 ###
-gc = gspread.service_account("C:/Users/GSR/Documents/NKL/service_account.json")
+gc = gspread.service_account("C:/Users/GSR/Desktop/Code/service_account.json")
 # gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
 url = 'https://docs.google.com/spreadsheets/d/16IAqsD_1MEP7tGumz66y4c9hXZ_uAVJEmMQJKYZudck/edit?gid=1303568032#gid=1303568032'
 # 기 작성 URL기입

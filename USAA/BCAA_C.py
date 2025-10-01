@@ -35,7 +35,7 @@ zero = [0,0,0,0,0,0,0,0,0,0]
 
 
 # Google spread account 연결 및 오픈
-gc = gspread.service_account("C:/Users/GSR/Documents/NKL/service_account.json")
+gc = gspread.service_account("C:/Users/GSR/Desktop/Code/service_account.json")
 # gc = gspread.service_account("C:/Users/ilpus/PythonProjects/US_Asset_Allocation/service_account.json")
 url = 'https://docs.google.com/spreadsheets/d/1CMz92IRC_7Kih4B48mz8O8PmIs_K4J-8RMlTTOmz5gI/edit?gid=833095653#gid=833095653'
 # 기 작성 URL기입
@@ -274,10 +274,8 @@ elif int(month) % 2 == 0 :
 
     # 비중 열 삽입 하기
     weight2 = worksheet0.get("I2:I11")
-    weight3 = []
-    
-    for j in weight2 :
-        weight3.append(float(j[0]))   
+    # 리스트 컴프리헨션으로 간결하게 변환
+    weight3 = [float(j[0]) for j in weight2]
 
     TR.insert(loc=8, column='투입비중', value=weight3)
     
