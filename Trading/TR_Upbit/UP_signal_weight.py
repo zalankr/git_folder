@@ -176,11 +176,13 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
                 price = prices[t][0]  # 리스트면 첫 번째 요소 사용
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
-            
-            volume = round(amount_per_times, 8)
-
+                
+            # 마지막 주문에서는 잔고 전량 매도
             if t == TR_time[1] - 1:
-                volume = round(amount_per_times - 0.0000005, 8)
+                remaining_balance = upbit.get_balance_t("ETH")  # 실제 잔고 확인
+                volume = round(remaining_balance * 0.9995, 7)  # 안전마진 적용
+            else:
+                volume = round(amount_per_times, 7)
 
             # 주문량이 너무 작으면 건너뜀
             if volume * price < 6000:
@@ -226,12 +228,13 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]  # 이미 값이면 그대로 사용
             
-            volume = round(amount_per_times / price, 8)
-
-            if t == TR_time[1] - 1:  # 오류수정
+            # 마지막 주문은 실제 잔고로 계산
+            if t == TR_time[1] - 1:
                 KRW = upbit.get_balance_t("KRW")
-                if (volume * price)*1.0005 < KRW:
-                    volume = round((KRW/price)*0.9995 , 8)
+                # 수수료(0.05%) 고려하여 계산
+                volume = round((KRW / price) * 0.9995, 5)
+            else:
+                volume = round(amount_per_times / price, 5)
             
             # 주문량이 너무 작으면 건너뜀
             if amount_per_times < 6000:
