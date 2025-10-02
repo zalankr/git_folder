@@ -600,11 +600,12 @@ if exchange:
 # print("매도 주문 결과:", result.json())
 
 # 1. 종목만 보기
-stocks = get_US_stock_balance()
-print(stocks)
+# stocks = get_US_stock_balance()
+# print(stocks)
 # 2. USD만 보기
-usd = get_US_dollar_balance()
-print(usd)
+# usd = get_US_dollar_balance()
+# print(usd)
 # 3. 전체 계좌 보기 (예쁘게 출력)
 balance = get_total_balance()
-print(balance)
+print(balance['stock_count'])
+print(balance['usd_deposit'])
