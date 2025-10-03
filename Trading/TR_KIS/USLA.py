@@ -18,7 +18,7 @@ class USLAS:
         last_day = calendar.monthrange(year, month)[1]
         return f'{year}-{month:02d}-{last_day}'
     
-    def calculate_regime_signal(self, target_month, target_year):
+    def calculate_regime(self, target_month, target_year):
         """AGG ETF 기반 Regime Signal 계산"""
         try:
             # 4개월 전 시작일 계산
@@ -47,15 +47,15 @@ class USLAS:
             current_price = agg_data.iloc[-1]  # 최신 가격
             avg_price = agg_data.mean()  # 4개월 평균
             
-            regime_signal = current_price - avg_price
+            regime = current_price - avg_price
             
-            return regime_signal
+            return regime
             
         except Exception as e:
-            print(f"Regime Signal 계산 오류: {e}")
+            print(f"Regime 계산 오류: {e}")
             return 0
     
-    def calculate_momentum_scores(self, target_month, target_year):
+    def calculate_momentum(self, target_month, target_year):
         """모멘텀 점수 계산"""
         try:
             # 13개월 데이터 필요 (현재 + 12개월)
@@ -219,13 +219,13 @@ class USLAS:
             target_month = today.month
             target_year = today.year
             
-        print(f"\n=== {target_year}년 {target_month}월 USLA 모멘텀 시그널 ===")
+        print(f"\n=== {target_year}년 {target_month}월 USLA 모멘텀 시그널 ===") # Kakao
         
         # 1. Regime Signal 계산
-        regime_signal = self.calculate_regime_signal(target_month, target_year)
+        regime = self.calculate_regime(target_month, target_year)
         
         # 2. 모멘텀 점수 계산
-        momentum_df = self.calculate_momentum_scores(target_month, target_year)
+        momentum_df = self.calculate_momentum(target_month, target_year)
         
         if momentum_df.empty:
             print("모멘텀 데이터를 계산할 수 없습니다.")
@@ -235,13 +235,15 @@ class USLAS:
         print(momentum_df[['ticker', 'momentum', 'rank']].round(4))
         
         # 3. 투자 전략 결정
-        if regime_signal < 0:
-            print(f"\nRegime Signal: {regime_signal:.2f} < 0 → RISK 모드")
-            print("투자 결정: 100% CASH")
+        if regime < 0: # < 0으로 변경, 테스트 후엔
+            print(f"\nRegime Signal: {regime:.2f} < 0 → RISK 모드")
+            print("투자 결정: 99% BIL, 1% CASH")
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
-            allocation['CASH'] = 1.0
+            allocation['CASH'] = 0.01
+            allocation['BIL'] = 0.99
+
         else:
-            print(f"\nRegime Signal: {regime_signal:.2f} ≥ 0 → 투자 모드")
+            print(f"\nRegime Signal: {regime:.2f} ≥ 0 → 투자 모드")
             
             # 상위 2개 ETF 선택
             top_2_tickers = momentum_df.head(2)['ticker'].tolist()
@@ -263,8 +265,8 @@ class USLAS:
                 print(f"{ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
         
         return {
-            'regime_signal': regime_signal,
-            'momentum_scores': momentum_df,
+            'regime': regime,
+            'momentum': momentum_df,
             'allocation': allocation,
             'current_prices': current_prices
         }
@@ -275,6 +277,7 @@ if __name__ == "__main__":
     
     # 현재 월 기준 실행
     result = strategy.run_strategy()
+    print(result)
     
     # 또는 특정 월 지정 실행
     # result = strategy.run_strategy(target_month=1, target_year=2025)

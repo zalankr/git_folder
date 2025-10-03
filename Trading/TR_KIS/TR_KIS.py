@@ -16,33 +16,35 @@ usla = USLA.USLAS()
 
 # 현재 일자와 시간 구하기
 now = datetime.now()
-year = now.year
-month = now.month
 
-# Model balance data 불러오기    
+# Model data 불러오기    
 try:
     with open(USLA_data_path, 'r', encoding='utf-8') as f:
         USLA_data = json.load(f)
-    holding_weight = {"usd_quntity": USLA_data['usd_quntity'], "hold1_quantity": USLA_data['ticker1_quntity'], "hold2_quantity": USLA_data['ticker2_quntity'], 
-                    "hold1": USLA_data['ticker1'], "hold2": USLA_data['ticker2']}
+        holding_weight = {"usd_quntity": USLA_data['usd_quntity'], "hold1_quantity": USLA_data['ticker1_quntity'], 
+                          "hold2_quantity": USLA_data['ticker2_quntity'], "hold1": USLA_data['ticker1'], "hold2": USLA_data['ticker2']}
     
 except Exception as e:
     print(f"JSON 파일 오류: {e}")
     # KA.SendMessage(f"{} JSON 파일 오류: {e}")
     exit()
 
-# Regime 시그널 계산
-regime_signal = usla.calculate_regime_signal(month, year)
+# USLA 실행, target ticker와 weight 구하기
+invest = usla.run_strategy()
 
-if regime_signal > 0: # regime_signal < 0
-    print(f"Regime Signal: {regime_signal:.2f} < 0 → Hedging 모드") #Kakao로 변경
-    target_weight = {"usd_weight": 0.01, "target1_weight": 0.99, "target2_weight": 0.00, "target1": "BIL", "target2": None}
-
-    
-
+target_weight = {
+    ticker: weight 
+    for ticker, weight in invest['allocation'].items() 
+    if weight > 0
+}
 
 print(target_weight)
-print(holding_weight)
+
+##테스트를 위해서 2000으로 TMF 0.7와 UPRO 0.29 CASH 0.01로 맞추고 테스트
+# 최초 수량 뽑기 비교 > 먼저 홀딩된 자산을 수량에 현재가를 곱해서 USD로 모두 환산(tax_rate = 0.0009 계산)하고 타겟비중으로 환산금액을 곱하고 현재가로 나누기
+
+# print(target_weight)
+# print(holding_weight)
 
 
 
