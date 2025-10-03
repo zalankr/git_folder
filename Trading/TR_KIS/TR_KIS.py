@@ -21,9 +21,7 @@ now = datetime.now()
 try:
     with open(USLA_data_path, 'r', encoding='utf-8') as f:
         USLA_data = json.load(f)
-        holding_weight = {"usd_quntity": USLA_data['usd_quntity'], "hold1_quantity": USLA_data['ticker1_quntity'], 
-                          "hold2_quantity": USLA_data['ticker2_quntity'], "hold1": USLA_data['ticker1'], "hold2": USLA_data['ticker2']}
-    
+
 except Exception as e:
     print(f"JSON 파일 오류: {e}")
     # KA.SendMessage(f"{} JSON 파일 오류: {e}")
@@ -40,8 +38,17 @@ target_weight = {
 
 print(target_weight)
 
+holding_quantity = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
+
+for ticker, quantity in holding_quantity.items():
+    print(f"{ticker}: {quantity}")
+
+
+
+### 제일먼저 Json data를 dictionary로 
 ##테스트를 위해서 2000으로 TMF 0.7와 UPRO 0.29 CASH 0.01로 맞추고 테스트
 # 최초 수량 뽑기 비교 > 먼저 홀딩된 자산을 수량에 현재가를 곱해서 USD로 모두 환산(tax_rate = 0.0009 계산)하고 타겟비중으로 환산금액을 곱하고 현재가로 나누기
+
 
 # print(target_weight)
 # print(holding_weight)
