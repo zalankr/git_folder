@@ -666,7 +666,7 @@ class KIS_API:
         except:
             return None
         
-    def check_order_execution(self, order_number, ticker, wait_seconds=60):
+    def check_order_execution(self, order_number, ticker, wait_seconds=60, order_type="00"):
         """
         주문 체결 확인 함수
         
@@ -674,6 +674,7 @@ class KIS_API:
         order_number (str): 주문번호 (ODNO)
         ticker (str): 종목코드
         wait_seconds (int): 대기 시간 (초)
+        order_type (str): 주문 유형 ("00": 전체, "01": 매도, "02": 매수)
         
         Returns:
         dict: 체결 정보 또는 None
@@ -683,9 +684,10 @@ class KIS_API:
             - price (str): 체결단가
             - amount (str): 체결금액
             - status (str): 처리상태
+            - order_type (str): 주문유형 (매도/매수)
         """
         # 대기
-        print(f"\n{wait_seconds}초 대기 중...")
+        print(f"\n⏰ {wait_seconds}초 대기 중...")
         time.sleep(wait_seconds)
         
         # 오늘 날짜
@@ -694,11 +696,11 @@ class KIS_API:
         # 거래소 확인
         exchange = self.get_US_exchange(ticker)
         if not exchange:
-            print(f"{ticker}의 거래소를 찾을 수 없습니다.")
+            print(f"✗ {ticker}의 거래소를 찾을 수 없습니다.")
             return None
         
         # 체결 내역 조회
-        print(f"\n주문번호 {order_number} 체결 내역 확인 중...")
+        print(f"\n🔍 주문번호 {order_number} 체결 내역 확인 중...")
         
         path = "/uapi/overseas-stock/v1/trading/inquire-ccnl"
         url = f"{self.url_base}{path}"
@@ -717,8 +719,8 @@ class KIS_API:
             "PDNO": ticker,
             "ORD_STRT_DT": today,
             "ORD_END_DT": today,
-            "SLL_BUY_DVSN": "01",      # 매도
-            "CCLD_NCCS_DVSN": "01",    # 체결만
+            "SLL_BUY_DVSN": order_type,   # "00": 전체, "01": 매도, "02": 매수
+            "CCLD_NCCS_DVSN": "01",       # 체결만
             "OVRS_EXCG_CD": exchange,
             "SORT_SQN": "DS",
             "ORD_DT": "",
@@ -746,7 +748,8 @@ class KIS_API:
                             'qty': order.get('ft_ccld_qty'),
                             'price': order.get('ft_ccld_unpr3'),
                             'amount': order.get('ft_ccld_amt3'),
-                            'status': order.get('prcs_stat_name')
+                            'status': order.get('prcs_stat_name'),
+                            'order_type': order.get('sll_buy_dvsn_cd_name', '알 수 없음')
                         }
                 
                 print(f"주문번호 {order_number}를 찾을 수 없습니다.")
@@ -757,7 +760,7 @@ class KIS_API:
                 
         except Exception as e:
             print(f"체결 확인 중 오류: {e}")
-            return None    
+            return None   
 
 
 # 사용 예시
