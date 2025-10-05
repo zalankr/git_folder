@@ -666,7 +666,7 @@ class KIS_API:
         except:
             return None
         
-    def check_order_execution(self, order_number, ticker, wait_seconds=60, order_type="00"):
+    def check_order_execution(self, order_number, ticker, wait_seconds=10, order_type="00"):
         """
         주문 체결 확인 함수
         
