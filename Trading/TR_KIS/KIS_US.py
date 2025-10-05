@@ -2,53 +2,52 @@ import requests
 import json
 from datetime import datetime, timedelta
 import os
-import pandas as pd
-import numpy as np
-from typing import Union
+from typing import Union, Optional, Dict, List
 
 class KIS_API:
-    """한국투자증권 API 클래스"""
-    def __init__(self, key_file_path, token_file_path, cano, acnt_prdt_cd):
-        """
-        Parameters:
-        key_file_path (str): API 키 파일 경로
-        token_file_path (str): 토큰 저장 파일 경로
-        cano (str): 종합계좌번호 (8자리)
-        acnt_prdt_cd (str): 계좌상품코드 (2자리)
-        """
+    """한국투자증권 API 클래스 (최종 정제 버전)"""
+    
+    EXCHANGE_MAP = {
+        # 나스닥
+        "AAPL": "NAS", "MSFT": "NAS", "GOOGL": "NAS", "GOOG": "NAS",
+        "AMZN": "NAS", "TSLA": "NAS", "META": "NAS", "NVDA": "NAS",
+        "NFLX": "NAS", "AMD": "NAS", "INTC": "NAS", "CSCO": "NAS",
+        "ADBE": "NAS", "PYPL": "NAS", "QCOM": "NAS", "AVGO": "NAS",
+        "TQQQ": "NAS", "UPRO": "NAS", "TMF": "NAS", "TMV": "NAS",
+        "EDC": "NAS", "BIL": "NYS",
+        
+        # 뉴욕증권거래소
+        "BRK.B": "NYS", "JPM": "NYS", "JNJ": "NYS", "V": "NYS",
+        "WMT": "NYS", "PG": "NYS", "MA": "NYS", "DIS": "NYS",
+        "BAC": "NYS", "XOM": "NYS", "KO": "NYS", "PFE": "NYS",
+        "T": "NYS", "VZ": "NYS", "CVX": "NYS", "NKE": "NYS",
+    }
+    
+    def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
         self.key_file_path = key_file_path
         self.token_file_path = token_file_path
         self.cano = cano
         self.acnt_prdt_cd = acnt_prdt_cd
         self.url_base = "https://openapi.koreainvestment.com:9443"
         
-        # API 키 로드
         self._load_api_keys()
-        
-        # 토큰 발급/로드
         self.access_token = self.get_access_token()
     
     def _load_api_keys(self):
-        """API 키 불러오기"""
         with open(self.key_file_path) as f:
             self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
     
-    def load_token(self):
-        """저장된 토큰 파일 불러오기"""
+    def load_token(self) -> Optional[Dict]:
         try:
             if os.path.exists(self.token_file_path):
                 with open(self.token_file_path, 'r') as f:
-                    token_data = json.load(f)
-                    return token_data
-            else:
-                print("✗ 저장된 토큰 파일이 없습니다.")
-                return None
+                    return json.load(f)
+            return None
         except Exception as e:
-            print(f"✗ 토큰 파일 로드 중 오류: {e}")
+            print(f"토큰 로드 오류: {e}")
             return None
     
-    def save_token(self, access_token, expires_in=86400):
-        """토큰을 JSON 파일로 저장 (기본 유효시간: 24시간 = 86400초)"""
+    def save_token(self, access_token: str, expires_in: int = 86400) -> bool:
         try:
             token_data = {
                 "access_token": access_token,
@@ -57,50 +56,27 @@ class KIS_API:
             }
             with open(self.token_file_path, 'w') as f:
                 json.dump(token_data, f, indent=2)
-            print("✓ 토큰이 파일로 저장되었습니다.")
             return True
         except Exception as e:
-            print(f"✗ 토큰 저장 중 오류: {e}")
+            print(f"토큰 저장 오류: {e}")
             return False
     
-    def is_token_valid(self, token_data):
-        """토큰 유효성 확인 (스케줄 실행 고려하여 800분 안전 마진 적용)"""
+    def is_token_valid(self, token_data: Dict) -> bool:
         if not token_data or 'access_token' not in token_data:
             return False
         
         try:
             issued_at = datetime.fromisoformat(token_data['issued_at'])
             expires_in = token_data.get('expires_in', 86400)
-            
             now = datetime.now()
             expiry_time = issued_at + timedelta(seconds=expires_in)
             safe_expiry_time = expiry_time - timedelta(minutes=800)
             
-            is_valid = now < safe_expiry_time
-            
-            if is_valid:
-                remaining = safe_expiry_time - now
-                total_seconds = int(remaining.total_seconds())
-                
-                if total_seconds < 0:
-                    print("✗ 토큰이 만료되었습니다.")
-                    return False
-                    
-                hours = total_seconds // 3600
-                minutes = (total_seconds % 3600) // 60
-                print(f"✓ 토큰이 유효합니다. (남은 시간: {hours}시간 {minutes}분)")
-            else:
-                print("✗ 토큰이 만료되었습니다.")
-            
-            return is_valid
-        except Exception as e:
-            print(f"✗ 토큰 유효성 확인 중 오류: {e}")
+            return now < safe_expiry_time
+        except:
             return False
     
-    def get_new_token(self):
-        """새로운 토큰 발급받기"""
-        print("→ 새로운 토큰을 발급받는 중...")
-        
+    def get_new_token(self) -> Optional[str]:
         headers = {"content-type": "application/json"}
         path = "oauth2/tokenP"
         body = {
@@ -119,36 +95,21 @@ class KIS_API:
             access_token = token_response['access_token']
             expires_in = token_response.get('expires_in', 86400)
             
-            print("✓ 새로운 토큰 발급 완료!")
             self.save_token(access_token, expires_in)
-            
             return access_token
         except Exception as e:
-            print(f"✗ 토큰 발급 실패: {e}")
+            print(f"토큰 발급 실패: {e}")
             return None
     
-    def get_access_token(self):
-        """
-        토큰 가져오기 (자동으로 저장/로드/갱신 처리)
-        1. 저장된 토큰 확인
-        2. 유효성 검사
-        3. 필요시 새로 발급
-        """
-        print("\n=== 토큰 확인 중 ===")
-        
+    def get_access_token(self) -> Optional[str]:
         token_data = self.load_token()
         
         if token_data and self.is_token_valid(token_data):
-            print("✓ 기존 토큰을 사용합니다.\n")
             return token_data['access_token']
         
-        print("→ 토큰을 새로 발급받습니다.")
-        access_token = self.get_new_token()
-        print()
-        return access_token
+        return self.get_new_token()
     
-    def hashkey(self, datas):
-        """주문 등에 쓰이는 hashkey 생성"""
+    def hashkey(self, datas: Dict) -> str:
         path = "uapi/hashkey"
         url = f"{self.url_base}/{path}"
         headers = {
@@ -157,22 +118,89 @@ class KIS_API:
             'appSecret': self.app_secret,
         }
         res = requests.post(url, headers=headers, data=json.dumps(datas))
-        hashkey = res.json()["HASH"]
-        return hashkey
+        return res.json()["HASH"]
     
-    def current_price_US(self, ticker, exchange="NAS"):
-        """
-        미국 주식 현재가 조회 (장 마감시 전일 종가 반환)
-        """
-        path = "uapi/overseas-price/v1/quotations/price"
-        url = f"{self.url_base}/{path}"
+    def get_US_exchange(self, ticker: str) -> Optional[str]:
+        if not ticker:
+            return None
+        
+        ticker = ticker.upper()
+        
+        if ticker in self.EXCHANGE_MAP:
+            return self.EXCHANGE_MAP[ticker]
+        
+        exchanges = ["NAS", "NYS", "AMS"]
+        path = "/uapi/overseas-price/v1/quotations/price"
+        url = f"{self.url_base}{path}"
         
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
             "appKey": self.app_key,
             "appSecret": self.app_secret,
-            "tr_id": "HHDFS76200200"
+            "tr_id": "HHDFS00000300"
+        }
+        
+        for exchange in exchanges:
+            params = {
+                "AUTH": "",
+                "EXCD": exchange,
+                "SYMB": ticker
+            }
+            
+            try:
+                response = requests.get(url, headers=headers, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('rt_cd') == '0':
+                        output = data.get('output', {})
+                        if any(output.get(field, '').strip() for field in ['rsym', 'base', 'last']):
+                            return exchange
+            except:
+                continue
+        
+        return None
+    
+    def get_US_current_price(self, ticker: str, exchange: Optional[str] = None) -> Union[float, str]:
+        """
+        미국 주식 현재가 조회 (KIS API → yfinance 백업)
+        
+        Parameters:
+        ticker (str): 주식 티커 심볼
+        exchange (str): 거래소 코드 (None이면 자동 검색)
+        
+        Returns:
+        float: 현재가
+        str: 에러 메시지
+        """
+        if not ticker:
+            return "티커를 입력해주세요."
+        
+        ticker = ticker.upper()
+        
+        if exchange is None:
+            exchange = self.get_US_exchange(ticker)
+            if exchange is None:
+                return self._get_price_from_yfinance(ticker)
+        
+        # KIS API 조회 시도
+        price = self._get_price_from_kis(ticker, exchange)
+        if isinstance(price, float):
+            return price
+        
+        # yfinance 백업
+        return self._get_price_from_yfinance(ticker)
+    
+    def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
+        """KIS API로 현재가 조회 (3단계)"""
+        
+        # 1단계: 현재체결가 API
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "HHDFS00000300"
         }
         
         params = {
@@ -181,109 +209,109 @@ class KIS_API:
             "SYMB": ticker
         }
         
-        response = requests.get(url, headers=headers, params=params)
-        data = response.json()
-        
-        output = data.get('output', {})
-        
-        # 현재가 확인
-        last_price = output.get('last', '').strip()
-        if last_price:
-            return float(last_price)
-        
-        # 현재가가 없으면 전일 종가 반환
-        base_price = output.get('base', '').strip()
-        if base_price:
-            print(f"거래시간 아님 - 전일 종가 반환: ${base_price}")
-            return float(base_price)
-        
-        print(f"가격 정보를 찾을 수 없습니다. 응답: {data}")
-        return None
-    
-    def get_US_exchange(self, ticker):
-        """
-        미국 주식 종목코드로 거래소 코드를 자동으로 찾아주는 함수
-        
-        Parameters:
-        ticker (str): 종목코드 (예: AAPL, TSLA)
-        
-        Returns:
-        str: 거래소 코드 (NASD, NYSE, AMEX) 또는 None
-        """
-        exchanges = ["NYSE", "NASD", "AMEX"]
-        
-        for exchange in exchanges:
-            try:
-                path = "uapi/overseas-price/v1/quotations/price"
-                url = f"{self.url_base}/{path}"
-
-                headers = {
-                    "Content-Type": "application/json",
-                    "authorization": f"Bearer {self.access_token}",
-                    "appKey": self.app_key,
-                    "appSecret": self.app_secret,
-                    "tr_id": "HHDFS00000300"
-                }
-
-                params = {
-                    "AUTH": "",
-                    "EXCD": exchange,
-                    "SYMB": ticker
-                }
-
-                response = requests.get(url, headers=headers, params=params)
+        try:
+            # 1단계: 현재체결가
+            response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price", 
+                                   headers=headers, params=params)
+            if response.status_code == 200:
                 data = response.json()
-                
-                # 디버깅: 각 거래소별 응답 출력
-                print(f"\n[{exchange}] 응답:")
-                print(f"rt_cd: {data.get('rt_cd')}")
-                print(f"msg1: {data.get('msg1')}")
-                print(f"output: {data.get('output')}")
-                
-                if response.status_code == 200 and data.get('rt_cd') == '0':
+                if data.get('rt_cd') == '0':
                     output = data.get('output', {})
-                    
-                    # 모든 필드 값 확인
-                    has_data = any(
-                        output.get(field, '').strip() 
-                        for field in ['rsym', 'base', 'last', 'zdiv', 'pvol']
-                    )
-                    
-                    if has_data:
-                        print(f"✓ {ticker}는 {exchange}에서 거래됩니다.")
-                        return exchange
-                        
-            except Exception as e:
-                print(f"[{exchange}] 에러: {e}")
-                continue
+                    for field in ['last', 'base', 'open', 'high', 'low']:
+                        value = output.get(field, '').strip()
+                        if value and value != '0':
+                            try:
+                                price = float(value)
+                                if price > 0:
+                                    return price
+                            except:
+                                continue
+            
+            # 2단계: 현재가상세
+            headers['tr_id'] = "HHDFS76200200"
+            response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price-detail",
+                                   headers=headers, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('rt_cd') == '0':
+                    output = data.get('output', {})
+                    for field in ['last', 'open', 'high', 'low', 'base', 't_xprc', 'p_xprc']:
+                        value = output.get(field, '').strip()
+                        if value and value != '0':
+                            try:
+                                price = float(value)
+                                if price > 0:
+                                    return price
+                            except:
+                                continue
+            
+            # 3단계: 기간별시세
+            headers['tr_id'] = "HHDFS76240000"
+            params_daily = {
+                "AUTH": "",
+                "EXCD": exchange,
+                "SYMB": ticker,
+                "GUBN": "0",
+                "BYMD": "",
+                "MODP": "0"
+            }
+            response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/dailyprice",
+                                   headers=headers, params=params_daily)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('rt_cd') == '0':
+                    output = data.get('output2', [])
+                    if output and len(output) > 0:
+                        clos = output[0].get('clos', '').strip()
+                        if clos and clos != '0':
+                            try:
+                                price = float(clos)
+                                if price > 0:
+                                    return price
+                            except:
+                                pass
+        except:
+            pass
         
-        print(f"\n✗ {ticker}의 거래소를 찾을 수 없습니다.")
-        return None
+        return "KIS API 조회 실패"
     
-    def order_buy_US(self, ticker, quantity, price, exchange=None, ord_dvsn="00"):
-        """
-        미국 주식 지정가 매수 주문
-        
-        Parameters:
-        ticker (str): 종목코드 (예: AAPL, TSLA)
-        quantity (int): 주문수량
-        price (float): 주문단가 (달러)
-        exchange (str): 거래소 코드 (None이면 자동 검색)
-        ord_dvsn (str): 주문구분
-            - 00: 지정가
-            - 32: LOO(장개시지정가)
-            - 34: LOC(장마감지정가)
-            - 35: TWAP (시간가중평균)
-            - 36: VWAP (거래량가중평균)
-        
-        Returns:
-        requests.Response: API 응답 객체
-        """
+    def _get_price_from_yfinance(self, ticker: str) -> Union[float, str]:
+        """yfinance로 현재가 조회 (백업)"""
+        try:
+            import yfinance as yf
+            
+            stock = yf.Ticker(ticker)
+            info = stock.info
+            
+            # 현재가 조회
+            for field in ['currentPrice', 'regularMarketPrice', 'previousClose']:
+                if field in info and info[field]:
+                    price = info[field]
+                    if price > 0:
+                        return float(price)
+            
+            # 종가 조회
+            hist = stock.history(period='1d')
+            if not hist.empty and 'Close' in hist.columns:
+                price = float(hist['Close'].iloc[-1])
+                if price > 0:
+                    return price
+            
+            return "yfinance 조회 실패"
+            
+        except ImportError:
+            return "yfinance 미설치 (pip install yfinance)"
+        except Exception as e:
+            return f"yfinance 오류: {str(e)}"
+    
+    def order_buy_US(self, ticker: str, quantity: int, price: float, 
+                     exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
+        """미국 주식 매수 주문"""
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
         
         if exchange is None:
-            print(f"{ticker}의 거래소를 찾을 수 없어 주문을 실행할 수 없습니다.")
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         path = "uapi/overseas-stock/v1/trading/order"
@@ -297,6 +325,9 @@ class KIS_API:
             "ORD_DVSN": ord_dvsn,
             "ORD_QTY": str(quantity),
             "OVRS_ORD_UNPR": str(price),
+            "CTAC_TLNO": "",
+            "MGCO_APTM_ODNO": "",
+            "SLL_TYPE": "",
             "ORD_SVR_DVSN_CD": "0"
         }
 
@@ -310,35 +341,16 @@ class KIS_API:
             "hashkey": self.hashkey(data)
         }
 
-        res = requests.post(url, headers=headers, data=json.dumps(data))
-        return res
+        return requests.post(url, headers=headers, data=json.dumps(data))
     
-    def order_sell_US(self, ticker, quantity, price, exchange=None, ord_dvsn="00"):
-        """
-        미국 주식 지정가 매도 주문
-        
-        Parameters:
-        ticker (str): 종목코드 (예: AAPL, TSLA)
-        quantity (int): 주문수량
-        price (float): 주문단가 (달러)
-        exchange (str): 거래소 코드 (None이면 자동 검색)
-        ord_dvsn (str): 주문구분
-            - 00: 지정가
-            - 31: MOO(장개시시장가)
-            - 32: LOO(장개시지정가)
-            - 33: MOC(장마감시장가)
-            - 34: LOC(장마감지정가)
-            - 35: TWAP (시간가중평균)
-            - 36: VWAP (거래량가중평균)
-        
-        Returns:
-        requests.Response: API 응답 객체
-        """
+    def order_sell_US(self, ticker: str, quantity: int, price: float,
+                      exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
+        """미국 주식 매도 주문"""
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
         
         if exchange is None:
-            print(f"{ticker}의 거래소를 찾을 수 없어 주문을 실행할 수 없습니다.")
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         path = "uapi/overseas-stock/v1/trading/order"
@@ -352,6 +364,9 @@ class KIS_API:
             "ORD_DVSN": ord_dvsn,
             "ORD_QTY": str(quantity),
             "OVRS_ORD_UNPR": str(price),
+            "CTAC_TLNO": "",
+            "MGCO_APTM_ODNO": "",
+            "SLL_TYPE": "00",
             "ORD_SVR_DVSN_CD": "0"
         }
 
@@ -365,16 +380,10 @@ class KIS_API:
             "hashkey": self.hashkey(data)
         }
 
-        res = requests.post(url, headers=headers, data=json.dumps(data))
-        return res
+        return requests.post(url, headers=headers, data=json.dumps(data))
     
-    def get_US_stock_balance(self):
-        """
-        미국 주식 종목별 잔고만 조회
-        
-        Returns:
-        list: 종목별 보유 내역 리스트
-        """
+    def get_US_stock_balance(self) -> Optional[List[Dict]]:
+        """미국 주식 종목별 잔고"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
         
@@ -401,7 +410,6 @@ class KIS_API:
             data = response.json()
             
             if data.get('rt_cd') != '0':
-                print(f"✗ 종목 잔고 조회 실패: {data.get('msg1', '알 수 없는 오류')}")
                 return None
             
             output1 = data.get('output1', [])
@@ -422,18 +430,11 @@ class KIS_API:
                 stocks.append(stock_info)
             
             return stocks
-            
-        except Exception as e:
-            print(f"✗ 종목 잔고 조회 중 오류: {e}")
+        except:
             return None
     
-    def get_US_dollar_balance(self):
-        """
-        미국 달러 예수금만 조회
-        
-        Returns:
-        dict: USD 잔고 정보
-        """
+    def get_US_dollar_balance(self) -> Optional[Dict]:
+        """미국 달러 예수금"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
         
@@ -460,38 +461,26 @@ class KIS_API:
             data = response.json()
             
             if data.get('rt_cd') != '0':
-                print(f"✗ USD 잔고 조회 실패: {data.get('msg1', '알 수 없는 오류')}")
                 return None
             
             output2 = data.get('output2', [])
             if not output2:
-                print("✗ USD 정보를 찾을 수 없습니다.")
                 return None
             
             usd_info = output2[0]
             
-            result = {
+            return {
                 'currency': usd_info.get('crcy_cd', 'USD'),
                 'deposit': float(usd_info.get('frcr_dncl_amt_2', 0)),
                 'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)),
                 'exchange_rate': float(usd_info.get('frst_bltn_exrt', 0)),
                 'krw_value': float(usd_info.get('frcr_evlu_amt2', 0))
             }
-            
-            return result
-            
-        except Exception as e:
-            print(f"✗ USD 잔고 조회 중 오류: {e}")
+        except:
             return None
     
-    def get_total_balance(self):
-        """
-        전체 계좌 잔고 조회 (주식 + USD 예수금)
-        달러 표시와 원화 환산 모두 제공
-        
-        Returns:
-        dict: 전체 계좌 정보
-        """
+    def get_total_balance(self) -> Optional[Dict]:
+        """전체 계좌 잔고"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
         
@@ -518,10 +507,8 @@ class KIS_API:
             data = response.json()
             
             if data.get('rt_cd') != '0':
-                print(f"✗ 전체 잔고 조회 실패: {data.get('msg1', '알 수 없는 오류')}")
                 return None
             
-            # 종목 정보 (output1)
             output1 = data.get('output1', [])
             stocks = []
             for stock in output1:
@@ -538,7 +525,6 @@ class KIS_API:
                 }
                 stocks.append(stock_info)
             
-            # USD 정보 (output2)
             output2 = data.get('output2', [])
             usd_deposit = 0
             exchange_rate = 0
@@ -547,20 +533,16 @@ class KIS_API:
                 usd_deposit = float(usd_info.get('frcr_dncl_amt_2', 0))
                 exchange_rate = float(usd_info.get('frst_bltn_exrt', 0))
             
-            # 계좌 전체 정보 (output3)
             output3 = data.get('output3', {})
-            
             stock_eval_usd = float(output3.get('evlu_amt_smtl', 0))
             stock_eval_krw = float(output3.get('evlu_amt_smtl_amt', 0))
-            
             total_usd = stock_eval_usd + usd_deposit
             total_krw = float(output3.get('tot_asst_amt', 0))
-            
             total_profit_loss_usd = float(output3.get('evlu_pfls_amt_smtl', 0))
             total_profit_loss_krw = float(output3.get('tot_evlu_pfls_amt', 0))
             profit_rate = float(output3.get('evlu_erng_rt1', 0))
             
-            result = {
+            return {
                 'stocks': stocks,
                 'stock_count': len(stocks),
                 'stock_eval_usd': stock_eval_usd,
@@ -574,9 +556,5 @@ class KIS_API:
                 'profit_rate': profit_rate,
                 'exchange_rate': exchange_rate
             }
-            
-            return result
-            
-        except Exception as e:
-            print(f"✗ 전체 잔고 조회 중 오류: {e}")
+        except:
             return None

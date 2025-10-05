@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-import USLA
 import KIS_US
 
 # Account연결 data
@@ -12,7 +11,6 @@ acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 
 # Instance 생성
 kis = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
-usla = USLA.USLAS()
 
 # USLA data 불러오기    
 try:
@@ -24,23 +22,16 @@ except Exception as e:
     # KA.SendMessage(f"{} JSON 파일 오류: {e}")
     exit()
 
-# USLA 모델 실행, target ticker와 weight 구하기
-invest = usla.run_strategy()
-
-target_weight = {
-    ticker: weight 
-    for ticker, weight in invest['allocation'].items() 
-    if weight > 0
-}
-
 # Json데이터에서 holding ticker와 quantity 구하기
 holding_quantity = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
 holding_ticker = list(holding_quantity.keys())
 
-if 'BIL' in holding_ticker:
+if 'BIL' in holding_ticker: # 매월 마지막거래일 'BIL' 시가 매도
+    price = kis.get_US_current_price(ticker='BIL')
+    result = kis.order_sell_US(ticker ='BIL', quantity = int(holding_quantity['BIL']), price = price, exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
     BIL_value = kis.get_US_current_price(ticker='BIL') * holding_quantity['BIL'] * (1 - usla.tax_rate)
     adjust_CASH = BIL_value + holding_quantity['CASH']
-    print(f"BIL {holding_quantity['BIL']}개를 투자 중 USD CASH로 {BIL_value:,.2f}매도 계산 \nUSD CASH 총액: {adjust_CASH} ")
+    print(f"BIL {holding_quantity['BIL']}개를 투자 중 USD CASH {BIL_value:,.2f}로 매도 계산 \nUSD CASH 총합산액: {adjust_CASH} ")
 
 
 # "ticker": ["UPRO", "TMF", "CASH"],
