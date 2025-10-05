@@ -1,7 +1,9 @@
 import json
-from datetime import datetime
+import datetime
+import time
 import KIS_US
 
+# 매월 마지막거래일 crontab 설정시간 19시에 예약 실행
 # Account연결 data
 key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
 token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
@@ -11,6 +13,26 @@ acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 
 # Instance 생성
 kis = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
+
+# 현재 시간에서 목표시간까지의 시간차 계산
+def calculate_remaining_time(target_hour, target_minute):
+    """목표 시간까지 남은 시간을 계산"""
+    now = datetime.datetime.now()
+    target_time = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+    
+    # 목표 시간이 이미 지났다면 다음 날로 설정
+    if target_time <= now:
+        target_time += datetime.timedelta(days=1)
+    
+    remaining = target_time - now
+    hours, remainder = divmod(remaining.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    
+    print(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"목표 시간: {target_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"남은 시간: {hours}시간 {minutes}분 {seconds}초")
+    
+    return remaining
 
 # USLA data 불러오기    
 try:
@@ -23,115 +45,42 @@ except Exception as e:
     exit()
 
 # Json데이터에서 holding ticker와 quantity 구하기
-holding_quantity = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
-holding_ticker = list(holding_quantity.keys())
+holding = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
+tickers = list(holding.keys())
 
-if 'BIL' in holding_ticker: # 매월 마지막거래일 'BIL' 시가 매도
-    price = kis.get_US_current_price(ticker='BIL')
-    result = kis.order_sell_US(ticker ='BIL', quantity = int(holding_quantity['BIL']), price = price, exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
-    BIL_value = kis.get_US_current_price(ticker='BIL') * holding_quantity['BIL'] * (1 - usla.tax_rate)
-    adjust_CASH = BIL_value + holding_quantity['CASH']
-    print(f"BIL {holding_quantity['BIL']}개를 투자 중 USD CASH {BIL_value:,.2f}로 매도 계산 \nUSD CASH 총합산액: {adjust_CASH} ")
-
-
-# "ticker": ["UPRO", "TMF", "CASH"],
-# "quantity": [10, 21, 20.49],
-# price = kis.get_US_current_price(ticker='BIL')
-# print(price)
-
-# if 'BIL' in holding_quantity['BIL']:
-#     kis.current_price_US('BIL')[1]
-
-
-
-
-
-
-# 현재가 조회
-tickers = ["AAPL", "TSLA", "BIL", "TQQQ", "UPRO"]
-print("\n=== 현재가 조회 ===")
-for ticker in tickers:
-    price = kis.get_US_current_price(ticker)
-    if isinstance(price, float):
-        print(f"{ticker}: ${price:,.2f}")
+# 'BIL'종목 보유 확인 후 시가 매도
+if 'BIL' in tickers:
+    response = kis.order_sell_US(ticker ='BIL', quantity = int(holding['BIL']), price = 0, exchange = None, ord_dvsn = "33")
+    # 응답 처리
+    if response.status_code == 200:
+        result = response.json()        
+        if result.get('rt_cd') == '0':  # 성공
+            ORNO = result['output']['ODNO']
+            print(f"주문번호: {ORNO}")
+            print(f"주문시각: {result['output']['ORD_TMD']}")
+        else:  # API 호출 성공했지만 주문 실패
+            print(f"주문 실패: {result.get('msg1')}")
     else:
-        print(f"{ticker}: {price}")
+        print(f"API 호출 실패: {response.status_code}")
 
+# 현재 시간에서 목표시간까지의 시간차 계산
+target_time = datetime.datetime.now().replace(hour=21, minute=10, second=0, microsecond=0)
+if target_time < datetime.datetime.now():
+    target_time += datetime.timedelta(days=1)
 
-### 제일먼저 Json data를 dictionary로 
-##테스트를 위해서 2000으로 TMF 0.7와 UPRO 0.29 CASH 0.01로 맞추고 테스트
-# 최초 수량 뽑기 비교 > 먼저 홀딩된 자산을 수량에 현재가를 곱해서 USD로 모두 환산(tax_rate = 0.0009 계산)하고 타겟비중으로 환산금액을 곱하고 현재가로 나누기
+print(f"{target_time.strftime('%Y-%m-%d %H:%M:%S')}까지 대기 중...")
 
+while datetime.datetime.now() < target_time:
+    time.sleep(240)  # 4분 = 300초 간격으로 체크
+print(f"{target_time.strftime('%Y-%m-%d %H:%M:%S')} 코드 실행을 시작합니다.")
 
-# print(target_weight)
-# print(holding_weight)
-
-
-
-
-# 미국주식 주문단위 가격은 0.01, 주문금액 최소 1$이상으로
-
-
-
-# else:
-#     print(f"Regime Signal: {regime_signal:.2f} ≥ 0 → 투자 모드")
-#     signal = USLA.run_strategy(target_month=None, target_year=None)
-
-# print("="*30)
-# print(signal['allocation']['ticker'])
+# 체결확인
 
 
 
 
 
 
-# regime_signal = signal['regime_signal']
-# momentum_scores = signal['momentum_scores']
-# allocation = signal['allocation']
-# current_prices = signal['current_prices']
-
-# print("\n=== 투자 전략 시그널 ===")
-# print(f"Regime Signal: {regime_signal:.2f}")  # Regime Signal 출력 (regime_signal)
-# print("\n모멘텀 점수:")
-# print(momentum_scores.round(4))  # 모멘텀 점수 출력 (momentum_scores)
-# print("\n투자 전략:")
-# print(allocation)  # 투자 전략 출력 (allocation)
-# print("\n현재 가격:")
-# print(current_prices)  # 현재 가격 출력 (current_prices)
 
 
-
-# 사용 예시
-# price = KIS.current_price_US("TQQQ")[1]
-# print(price)
-
-# print("\n=== 거래소 찾기 테스트 ===")
-# aapl_exchange = KIS.get_US_exchange("AAPL")
-# print(f"AAPL 거래소: {aapl_exchange}\n")
-
-# 주문 시 자동으로 거래소 찾아서 사용
-# ticker = "TQQQ"
-# exchange = KIS.get_US_exchange(ticker)
-# if exchange:
-#     # result = order_buy_US(ticker, 1, 150.50, exchange)
-#     print(f"{ticker} 매수 주문 준비 완료 (거래소: {exchange})")
-
-# 매수 주문 예시 (실제 주문 시 주석 해제)
-# result = KIS.order_buy_US("AAPL", 1, 150.50, "NASD")
-# print("매수 주문 결과:", result.json())
-
-# 매도 주문 예시 (실제 주문 시 주석 해제)
-# result = KIS.order_sell_US("AAPL", 1, 160.00, "NASD")
-# print("매도 주문 결과:", result.json())
-
-# 1. 종목만 보기
-# stocks = KIS.get_US_stock_balance()
-# print(stocks)
-# 2. USD만 보기
-# usd = KIS.get_US_dollar_balance()
-# print(usd)
-# 3. 전체 계좌 보기 (예쁘게 출력)
-# balance = KIS.get_total_balance()
-# print(balance['stock_count'])
-# print(balance['usd_deposit'])
-# print(KIS.get_total_balance())
+# BIL이 0으로 CASH가 +A 적용한 걸로 json 파일에 업데이트 저장

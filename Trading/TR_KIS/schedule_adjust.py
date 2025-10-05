@@ -33,23 +33,35 @@ def main_task():
     print("======================\n")
 
 # 목표 시간 설정 (22:30)
-TARGET_HOUR = 22
-TARGET_MINUTE = 30
+# TARGET_HOUR = 22
+# TARGET_MINUTE = 30
 
-# 현재 시간과 남은 시간 계산
-calculate_remaining_time(TARGET_HOUR, TARGET_MINUTE)
+# # 현재 시간과 남은 시간 계산
+# calculate_remaining_time(TARGET_HOUR, TARGET_MINUTE)
 
-# 매일 22:30에 실행되도록 스케줄 설정
-schedule.every().day.at(f"{TARGET_HOUR:02d}:{TARGET_MINUTE:02d}").do(main_task)
+# # 매일 22:30에 실행되도록 스케줄 설정
+# schedule.every().day.at(f"{TARGET_HOUR:02d}:{TARGET_MINUTE:02d}").do(main_task)
 
-print(f"\n스케줄러가 시작되었습니다. 매일 {TARGET_HOUR:02d}:{TARGET_MINUTE:02d}에 작업이 실행됩니다.")
-print("프로그램을 종료하려면 Ctrl+C를 누르세요.\n")
+# print(f"\n스케줄러가 시작되었습니다. 매일 {TARGET_HOUR:02d}:{TARGET_MINUTE:02d}에 작업이 실행됩니다.")
+# print("프로그램을 종료하려면 Ctrl+C를 누르세요.\n")
 
-# 스케줄러 실행
-try:
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-except KeyboardInterrupt:
-    print("\n프로그램이 종료되었습니다.")
+# # 스케줄러 실행
+# try:
+#     while True:
+#         schedule.run_pending()
+#         time.sleep(1)
+# except KeyboardInterrupt:
+#     print("\n프로그램이 종료되었습니다.")
 
+# 예: 매분마다 실행
+# schedule.every(1).minutes.do(my_task)
+
+# end_time = datetime.datetime.now() + datetime.timedelta(minutes=10)  # 10분 후 종료
+# while True:
+#     schedule.run_pending()
+#     time.sleep(1)
+#     if datetime.datetime.now() > end_time:
+#         print("⏹ 실행 시간 종료. 후속 코드 실행 중...")
+#         # 후속 코드
+#         print("데이터 정리 및 종료 완료.")
+#         break

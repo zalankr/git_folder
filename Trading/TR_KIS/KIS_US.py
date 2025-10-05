@@ -191,6 +191,112 @@ class KIS_API:
         # yfinance 백업
         return self._get_price_from_yfinance(ticker)
     
+    def get_US_open_price(self, ticker: str, exchange: Optional[str] = None) -> Union[float, str]:
+        """
+        미국 주식 시가 조회 (KIS API → yfinance 백업)
+        
+        Parameters:
+        ticker (str): 주식 티커 심볼
+        exchange (str): 거래소 코드 (None이면 자동 검색)
+        
+        Returns:
+        float: 시가
+        str: 에러 메시지
+        """
+        if not ticker:
+            return "티커를 입력해주세요."
+        
+        ticker = ticker.upper()
+        
+        if exchange is None:
+            exchange = self.get_US_exchange(ticker)
+            if exchange is None:
+                return self._get_open_price_from_yfinance(ticker)
+        
+        # KIS API 조회 시도
+        open_price = self._get_open_price_from_kis(ticker, exchange)
+        if isinstance(open_price, float):
+            return open_price
+        
+        # yfinance 백업
+        return self._get_open_price_from_yfinance(ticker)
+    
+    def _get_open_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
+        """KIS API로 시가 조회 (기간별시세 API 사용)"""
+        path = "/uapi/overseas-price/v1/quotations/dailyprice"
+        url = f"{self.url_base}{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "HHDFS76240000"
+        }
+        
+        params = {
+            "AUTH": "",
+            "EXCD": exchange,
+            "SYMB": ticker,
+            "GUBN": "0",  # 일봉
+            "BYMD": "",   # 오늘 날짜
+            "MODP": "0"   # 수정주가 미반영
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get('rt_cd') == '0':
+                output2 = data.get('output2', [])
+                
+                if output2 and len(output2) > 0:
+                    latest = output2[0]
+                    
+                    # 시가(open) 확인
+                    open_price = latest.get('open', '').strip()
+                    if open_price and open_price != '0':
+                        try:
+                            price = float(open_price)
+                            if price > 0:
+                                return price
+                        except (ValueError, TypeError):
+                            pass
+        except:
+            pass
+        
+        return "KIS API 시가 조회 실패"
+    
+    def _get_open_price_from_yfinance(self, ticker: str) -> Union[float, str]:
+        """yfinance로 시가 조회"""
+        try:
+            import yfinance as yf
+            
+            stock = yf.Ticker(ticker)
+            
+            # 최근 1일 데이터 조회
+            hist = stock.history(period='1d')
+            
+            if not hist.empty and 'Open' in hist.columns:
+                open_price = float(hist['Open'].iloc[-1])
+                if open_price > 0:
+                    return open_price
+            
+            # 실패시 2일 데이터로 재시도
+            hist = stock.history(period='2d')
+            if not hist.empty and 'Open' in hist.columns:
+                open_price = float(hist['Open'].iloc[-1])
+                if open_price > 0:
+                    return open_price
+            
+            return "yfinance 시가 조회 실패"
+        
+        except ImportError:
+            return "yfinance 미설치 (pip install yfinance)"
+        except Exception as e:
+            return f"yfinance 오류: {str(e)}"
+    
     def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
         """KIS API로 현재가 조회 (3단계)"""
         
@@ -345,7 +451,7 @@ class KIS_API:
     
     def order_sell_US(self, ticker: str, quantity: int, price: float,
                       exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
-        """미국 주식 매도 주문"""
+        """미국 주식 매도 주문 ord_dvsn "00"은 지정가 """
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
         
@@ -558,3 +664,62 @@ class KIS_API:
             }
         except:
             return None
+
+
+# 사용 예시
+if __name__ == "__main__":
+    api = KIS_API(
+        key_file_path="C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt",
+        token_file_path="C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json",
+        cano="63721147",
+        acnt_prdt_cd="01"
+    )
+    
+    # 현재가 조회
+    print("\n=== 현재가 조회 ===")
+    tickers = ["AAPL", "TSLA", "BIL", "TQQQ", "UPRO"]
+    for ticker in tickers:
+        price = api.get_US_current_price(ticker)
+        if isinstance(price, float):
+            print(f"{ticker}: ${price:,.2f}")
+        else:
+            print(f"{ticker}: {price}")
+    
+    # 시가 조회
+    print("\n=== 시가 조회 ===")
+    for ticker in tickers:
+        open_price = api.get_US_open_price(ticker)
+        if isinstance(open_price, float):
+            print(f"{ticker} 시가: ${open_price:,.2f}")
+        else:
+            print(f"{ticker} 시가: {open_price}")
+
+
+"""
+[Header tr_id TTTT1002U(미국 매수 주문)]
+00 : 지정가
+32 : LOO(장개시지정가)
+34 : LOC(장마감지정가)
+35 : TWAP (시간가중평균)
+36 : VWAP (거래량가중평균)
+* TWAP, VWAP 주문은 분할시간 주문 입력 필수
+
+[Header tr_id TTTT1006U(미국 매도 주문)]
+00 : 지정가
+31 : MOO(장개시시장가)
+32 : LOO(장개시지정가)
+33 : MOC(장마감시장가)
+34 : LOC(장마감지정가)
+35 : TWAP (시간가중평균)
+36 : VWAP (거래량가중평균)
+* TWAP, VWAP 주문은 분할시간 주문 입력 필수
+
+[Header tr_id TTTS1001U(홍콩 매도 주문)]
+00 : 지정가
+50 : 단주지정가
+
+[그외 tr_id]
+제거
+
+※ TWAP, VWAP 주문은 정정 불가
+"""
