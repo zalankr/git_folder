@@ -665,7 +665,8 @@ class KIS_API:
             }
         except:
             return None
-        
+
+    # 체결내역 확인        
     def check_order_execution(self, order_number, ticker, wait_seconds=10, order_type="00"):
         """
         주문 체결 확인 함수
@@ -790,6 +791,7 @@ if __name__ == "__main__":
             print(f"{ticker} 시가: ${open_price:,.2f}")
         else:
             print(f"{ticker} 시가: {open_price}")
+
 
 
 """

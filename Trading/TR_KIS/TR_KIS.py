@@ -6,7 +6,6 @@ import KIS_US
 # Account연결 data
 key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
 token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
-USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"
 cano = "63721147" # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 
@@ -14,60 +13,82 @@ acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 kis = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 usla = USLA.USLAS()
 
-# USLA data 불러오기    
-try:
-    with open(USLA_data_path, 'r', encoding='utf-8') as f:
-        USLA_data = json.load(f)
+# USLA data 불러오기
+def get_USLA_data():
+    USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"    
+    try:
+        with open(USLA_data_path, 'r', encoding='utf-8') as f:
+            USLA_data = json.load(f)
+        return USLA_data
 
-except Exception as e:
-    print(f"JSON 파일 오류: {e}")
-    # KA.SendMessage(f"{} JSON 파일 오류: {e}")
-    exit()
+    except Exception as e:
+        print(f"JSON 파일 오류: {e}")
+        # KA.SendMessage(f"{} JSON 파일 오류: {e}")
+        exit()
+
+# USD로 환산 잔고 계산
+def calculate_USD_value(holding):
+    holding_USD_value = 0
+    for t in holding.keys():
+        if t == "CASH":
+            holding_USD_value += holding[t]
+        else:
+            price = kis.get_US_current_price(t)
+            value = price * holding[t] * (1 - usla.tax_rate)
+            holding_USD_value += value
+
+    return holding_USD_value
 
 # USLA 모델 실행, target ticker와 weight 구하기
-invest = usla.run_strategy()
+def invest_target():
+    invest = usla.run_strategy()
+    target = {
+        ticker: weight 
+        for ticker, weight in invest['allocation'].items() 
+        if weight > 0
+    }
 
-target_weight = {
-    ticker: weight 
-    for ticker, weight in invest['allocation'].items() 
-    if weight > 0
-}
+    return target
 
-# Json데이터에서 holding ticker와 quantity 구하기
-holding_quantity = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
-holding_ticker = list(holding_quantity.keys())
+# target비중에 맞춰 환산금액을 곱하고 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
+def calculate_target_quantity(target,target_usd_value):
+    target_quantity = {}
+    target_stock_value = 0
+    for ticker in target.keys():
+        if ticker != "CASH":
+            try:
+                price = kis.get_US_current_price(ticker)
+                if price and price > 0:
+                    target_quantity[ticker] = int(target_usd_value[ticker] / price)
+                    target_stock_value += target_quantity[ticker] * price * (1 + usla.tax_rate)
+                else:
+                    print(f"{ticker}: 가격 정보 없음")
+                    target_quantity[ticker] = 0
+            except Exception as e:
+                print(f"{ticker}: 수량 계산 오류 - {e}")
+                target_quantity[ticker] = 0
 
-if 'BIL' in holding_ticker:
-    BIL_value = kis.get_US_current_price(ticker='BIL') * holding_quantity['BIL'] * (1 - usla.tax_rate)
-    adjust_CASH = BIL_value + holding_quantity['CASH']
-    print(f"BIL {holding_quantity['BIL']}개를 투자 중 USD CASH로 {BIL_value:,.2f}매도 계산 \nUSD CASH 총액: {adjust_CASH} ")
+    target_quantity["CASH"] = sum(target_usd_value.values()) - target_stock_value
 
+    return target_quantity, target_stock_value
 
-# "ticker": ["UPRO", "TMF", "CASH"],
-# "quantity": [10, 21, 20.49],
-# price = kis.get_US_current_price(ticker='BIL')
-# print(price)
+# target비중 계산, Json데이터에서 holding ticker와 quantity 구하기
+target = invest_target()
+USLA_data = get_USLA_data()
+holding = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
+holding_ticker = list(holding.keys())
+holding_USD_value = calculate_USD_value(holding)
 
-# if 'BIL' in holding_quantity['BIL']:
-#     kis.current_price_US('BIL')[1]
+# 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
+target_usd_value = {ticker: target[ticker] * holding_USD_value for ticker in target.keys()}
 
+# target비중에 맞춰 환산금액을 곱하고 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
+target_quantity, target_stock_value = calculate_target_quantity(target,target_usd_value)
+print(target_quantity)
+print(target_quantity["CASH"]+target_stock_value)
 
+# 비교 하기
 
-
-
-
-# 현재가 조회
-tickers = ["AAPL", "TSLA", "BIL", "TQQQ", "UPRO"]
-print("\n=== 현재가 조회 ===")
-for ticker in tickers:
-    price = kis.get_US_current_price(ticker)
-    if isinstance(price, float):
-        print(f"{ticker}: ${price:,.2f}")
-    else:
-        print(f"{ticker}: {price}")
-
-
-### 제일먼저 Json data를 dictionary로 
 ##테스트를 위해서 2000으로 TMF 0.7와 UPRO 0.29 CASH 0.01로 맞추고 테스트
 # 최초 수량 뽑기 비교 > 먼저 홀딩된 자산을 수량에 현재가를 곱해서 USD로 모두 환산(tax_rate = 0.0009 계산)하고 타겟비중으로 환산금액을 곱하고 현재가로 나누기
 
