@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta
 import os
 from typing import Union, Optional, Dict, List
+import time
 
 class KIS_API:
     """한국투자증권 API 클래스 (최종 정제 버전)"""
@@ -22,7 +23,7 @@ class KIS_API:
         "BAC": "NYS", "XOM": "NYS", "KO": "NYS", "PFE": "NYS",
         "T": "NYS", "VZ": "NYS", "CVX": "NYS", "NKE": "NYS",
     }
-    
+
     def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
         self.key_file_path = key_file_path
         self.token_file_path = token_file_path
@@ -664,6 +665,99 @@ class KIS_API:
             }
         except:
             return None
+        
+    def check_order_execution(self, order_number, ticker, wait_seconds=60):
+        """
+        주문 체결 확인 함수
+        
+        Parameters:
+        order_number (str): 주문번호 (ODNO)
+        ticker (str): 종목코드
+        wait_seconds (int): 대기 시간 (초)
+        
+        Returns:
+        dict: 체결 정보 또는 None
+            - success (bool): 체결 성공 여부
+            - name (str): 종목명
+            - qty (str): 체결수량
+            - price (str): 체결단가
+            - amount (str): 체결금액
+            - status (str): 처리상태
+        """
+        # 대기
+        print(f"\n{wait_seconds}초 대기 중...")
+        time.sleep(wait_seconds)
+        
+        # 오늘 날짜
+        today = datetime.now().strftime('%Y%m%d')
+        
+        # 거래소 확인
+        exchange = self.get_US_exchange(ticker)
+        if not exchange:
+            print(f"{ticker}의 거래소를 찾을 수 없습니다.")
+            return None
+        
+        # 체결 내역 조회
+        print(f"\n주문번호 {order_number} 체결 내역 확인 중...")
+        
+        path = "/uapi/overseas-stock/v1/trading/inquire-ccnl"
+        url = f"{self.url_base}{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTS3035R"
+        }
+        
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "PDNO": ticker,
+            "ORD_STRT_DT": today,
+            "ORD_END_DT": today,
+            "SLL_BUY_DVSN": "01",      # 매도
+            "CCLD_NCCS_DVSN": "01",    # 체결만
+            "OVRS_EXCG_CD": exchange,
+            "SORT_SQN": "DS",
+            "ORD_DT": "",
+            "ORD_GNO_BRNO": "",
+            "ODNO": "",
+            "CTX_AREA_NK200": "",
+            "CTX_AREA_FK200": ""
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                orders = result.get('output', [])
+                
+                # 해당 주문 찾기
+                for order in orders:
+                    if order.get('odno') == order_number:
+                        return {
+                            'success': True,
+                            'name': order.get('prdt_name'),
+                            'qty': order.get('ft_ccld_qty'),
+                            'price': order.get('ft_ccld_unpr3'),
+                            'amount': order.get('ft_ccld_amt3'),
+                            'status': order.get('prcs_stat_name')
+                        }
+                
+                print(f"주문번호 {order_number}를 찾을 수 없습니다.")
+                return None
+            else:
+                print(f"조회 실패: {result.get('msg1')}")
+                return None
+                
+        except Exception as e:
+            print(f"체결 확인 중 오류: {e}")
+            return None    
 
 
 # 사용 예시

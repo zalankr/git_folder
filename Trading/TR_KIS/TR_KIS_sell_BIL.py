@@ -64,6 +64,11 @@ if 'BIL' in tickers:
         print(f"API 호출 실패: {response.status_code}")
 
 # 현재 시간에서 목표시간까지의 시간차 계산
+#######################################################################################
+kis.check_order_execution(self, order_number, ticker, wait_seconds=60)
+
+
+
 target_time = datetime.datetime.now().replace(hour=21, minute=10, second=0, microsecond=0)
 if target_time < datetime.datetime.now():
     target_time += datetime.timedelta(days=1)
