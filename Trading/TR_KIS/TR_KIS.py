@@ -14,9 +14,6 @@ acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 kis = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 usla = USLA.USLAS()
 
-# 현재 일자와 시간 구하기
-now = datetime.now()
-
 # Model data 불러오기    
 try:
     with open(USLA_data_path, 'r', encoding='utf-8') as f:
@@ -27,7 +24,7 @@ except Exception as e:
     # KA.SendMessage(f"{} JSON 파일 오류: {e}")
     exit()
 
-# USLA 실행, target ticker와 weight 구하기
+# USLA 모델 실행, target ticker와 weight 구하기
 invest = usla.run_strategy()
 
 target_weight = {
@@ -36,12 +33,26 @@ target_weight = {
     if weight > 0
 }
 
-print(target_weight)
-
+# Json데이터에서 holding ticker와 quantity 구하기
 holding_quantity = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
+###############################################################################
+exchange = kis.get_US_exchange("KO")
+exchange = kis.get_US_exchange("KO")
+exchange = kis.get_US_exchange("AAPL")
+exchange = kis.get_US_exchange("TSLA")
+exchange = kis.get_US_exchange("BIL")
 
-for ticker, quantity in holding_quantity.items():
-    print(f"{ticker}: {quantity}")
+
+
+
+price = kis.current_price_US(ticker='BIL', exchange='NYSE')
+
+print(price)
+
+# if 'BIL' in holding_quantity['BIL']:
+#     kis.current_price_US('BIL')[1]
+
+
 
 
 

@@ -8,6 +8,22 @@ from typing import Union
 
 class KIS_API:
     """한국투자증권 API 클래스"""
+    
+    # 주요 종목별 거래소 매핑
+    EXCHANGE_MAP = {
+        # 나스닥
+        "AAPL": "NAS", "MSFT": "NAS", "GOOGL": "NAS", "GOOG": "NAS",
+        "AMZN": "NAS", "TSLA": "NAS", "META": "NAS", "NVDA": "NAS",
+        "NFLX": "NAS", "AMD": "NAS", "INTC": "NAS", "CSCO": "NAS",
+        "ADBE": "NAS", "PYPL": "NAS", "QCOM": "NAS", "AVGO": "NAS",
+        
+        # 뉴욕증권거래소
+        "BRK.B": "NYS", "JPM": "NYS", "JNJ": "NYS", "V": "NYS",
+        "WMT": "NYS", "PG": "NYS", "MA": "NYS", "DIS": "NYS",
+        "BAC": "NYS", "XOM": "NYS", "KO": "NYS", "PFE": "NYS",
+        "T": "NYS", "VZ": "NYS", "CVX": "NYS", "NKE": "NYS",
+    }
+    
     def __init__(self, key_file_path, token_file_path, cano, acnt_prdt_cd):
         """
         Parameters:
@@ -160,19 +176,117 @@ class KIS_API:
         hashkey = res.json()["HASH"]
         return hashkey
     
-    def current_price_US(self, ticker, exchange="NAS"):
+    def get_US_exchange(self, ticker: str) -> Union[str, None]:
         """
-        미국 주식 현재가 조회 (장 마감시 전일 종가 반환)
+        미국 주식 티커의 거래소 코드를 자동으로 찾습니다.
+        
+        Parameters:
+        ticker (str): 주식 티커 심볼 (예: AAPL, TSLA)
+        
+        Returns:
+        str: 거래소 코드 ("NAS", "NYS", "AMS") 또는 None
+        
+        Example:
+        >>> exchange = api.get_US_exchange("AAPL")
+        >>> print(exchange)  # "NAS"
         """
-        path = "uapi/overseas-price/v1/quotations/price"
-        url = f"{self.url_base}/{path}"
+        if not ticker:
+            return None
+        
+        ticker = ticker.upper()
+        
+        # 1. 사전에 매핑된 종목인지 확인
+        if ticker in self.EXCHANGE_MAP:
+            return self.EXCHANGE_MAP[ticker]
+        
+        # 2. 나스닥에서 시도
+        path = "/uapi/overseas-price/v1/quotations/price"
+        url = f"{self.url_base}{path}"
         
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
             "appKey": self.app_key,
             "appSecret": self.app_secret,
-            "tr_id": "HHDFS76200200"
+            "tr_id": "HHDFS00000300"
+        }
+        
+        params = {
+            "AUTH": "",
+            "EXCD": "NAS",
+            "SYMB": ticker
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('rt_cd') == '0':
+                    return "NAS"
+        except:
+            pass
+        
+        # 3. 뉴욕증권거래소에서 시도
+        params["EXCD"] = "NYS"
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('rt_cd') == '0':
+                    return "NYS"
+        except:
+            pass
+        
+        # 4. 아멕스에서 시도
+        params["EXCD"] = "AMS"
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('rt_cd') == '0':
+                    return "AMS"
+        except:
+            pass
+        
+        return None
+    
+    def get_US_current_price(self, ticker: str) -> Union[float, str]:
+        """
+        미국 주식의 현재가를 조회합니다.
+        
+        Parameters:
+        ticker (str): 주식 티커 심볼 (예: AAPL, TSLA)
+        
+        Returns:
+        float: 현재가 (성공 시)
+        str: 에러 메시지 (실패 시)
+        
+        Example:
+        >>> price = api.get_US_current_price("AAPL")
+        >>> if isinstance(price, float):
+        >>>     print(f"현재가: ${price}")
+        >>> else:
+        >>>     print(f"오류: {price}")
+        """
+        if not ticker:
+            return "티커를 입력해주세요."
+        
+        ticker = ticker.upper()
+        
+        # 거래소 자동 검색
+        exchange = self.get_US_exchange(ticker)
+        if exchange is None:
+            return f"{ticker}의 거래소를 찾을 수 없습니다."
+        
+        path = "/uapi/overseas-price/v1/quotations/price"
+        url = f"{self.url_base}{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "HHDFS00000300"
         }
         
         params = {
@@ -181,84 +295,23 @@ class KIS_API:
             "SYMB": ticker
         }
         
-        response = requests.get(url, headers=headers, params=params)
-        data = response.json()
-        
-        output = data.get('output', {})
-        
-        # 현재가 확인
-        last_price = output.get('last', '').strip()
-        if last_price:
-            return float(last_price)
-        
-        # 현재가가 없으면 전일 종가 반환
-        base_price = output.get('base', '').strip()
-        if base_price:
-            print(f"거래시간 아님 - 전일 종가 반환: ${base_price}")
-            return float(base_price)
-        
-        print(f"가격 정보를 찾을 수 없습니다. 응답: {data}")
-        return None
-    
-    def get_US_exchange(self, ticker):
-        """
-        미국 주식 종목코드로 거래소 코드를 자동으로 찾아주는 함수
-        
-        Parameters:
-        ticker (str): 종목코드 (예: AAPL, TSLA)
-        
-        Returns:
-        str: 거래소 코드 (NASD, NYSE, AMEX) 또는 None
-        """
-        exchanges = ["NYSE", "NASD", "AMEX"]
-        
-        for exchange in exchanges:
-            try:
-                path = "uapi/overseas-price/v1/quotations/price"
-                url = f"{self.url_base}/{path}"
-
-                headers = {
-                    "Content-Type": "application/json",
-                    "authorization": f"Bearer {self.access_token}",
-                    "appKey": self.app_key,
-                    "appSecret": self.app_secret,
-                    "tr_id": "HHDFS00000300"
-                }
-
-                params = {
-                    "AUTH": "",
-                    "EXCD": exchange,
-                    "SYMB": ticker
-                }
-
-                response = requests.get(url, headers=headers, params=params)
-                data = response.json()
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if data.get('rt_cd') != '0':
+                return f"조회 실패: {data.get('msg1', '알 수 없는 오류')}"
+            
+            output = data.get('output')
+            if output and 'last' in output:
+                return float(output['last'])
+            else:
+                return "현재가 데이터가 없습니다."
                 
-                # 디버깅: 각 거래소별 응답 출력
-                print(f"\n[{exchange}] 응답:")
-                print(f"rt_cd: {data.get('rt_cd')}")
-                print(f"msg1: {data.get('msg1')}")
-                print(f"output: {data.get('output')}")
-                
-                if response.status_code == 200 and data.get('rt_cd') == '0':
-                    output = data.get('output', {})
-                    
-                    # 모든 필드 값 확인
-                    has_data = any(
-                        output.get(field, '').strip() 
-                        for field in ['rsym', 'base', 'last', 'zdiv', 'pvol']
-                    )
-                    
-                    if has_data:
-                        print(f"✓ {ticker}는 {exchange}에서 거래됩니다.")
-                        return exchange
-                        
-            except Exception as e:
-                print(f"[{exchange}] 에러: {e}")
-                continue
-        
-        print(f"\n✗ {ticker}의 거래소를 찾을 수 없습니다.")
-        return None
+        except Exception as e:
+            return f"오류 발생: {str(e)}"
     
     def order_buy_US(self, ticker, quantity, price, exchange=None, ord_dvsn="00"):
         """
@@ -580,3 +633,30 @@ class KIS_API:
         except Exception as e:
             print(f"✗ 전체 잔고 조회 중 오류: {e}")
             return None
+
+
+# 사용 예시
+if __name__ == "__main__":
+    # API 인스턴스 생성
+    api = KIS_API(
+        key_file_path="C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt",
+        token_file_path="C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json",
+        cano="63721147",
+        acnt_prdt_cd="01"
+    )
+    
+    # 1. 거래소 조회 테스트
+    print("\n=== 거래소 조회 테스트 ===")
+    tickers = ["AAPL", "TSLA", "JPM", "NVDA", "KO"]
+    for ticker in tickers:
+        exchange = api.get_US_exchange(ticker)
+        print(f"{ticker}: {exchange}")
+    
+    # 2. 현재가 조회 테스트
+    print("\n=== 현재가 조회 테스트 ===")
+    for ticker in tickers:
+        price = api.get_US_current_price(ticker)
+        if isinstance(price, float):
+            print(f"{ticker}: ${price:,.2f}")
+        else:
+            print(f"{ticker}: {price}")
