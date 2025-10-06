@@ -84,7 +84,7 @@ while True:
     sleep_time = min(60 if remaining <= 300 else 300, remaining)
     time.sleep(sleep_time)
 
-print("⏰ 대기 완료. 체결 확인 시작...")
+print("대기 완료. 체결 확인 시작...")
 
 # 체결 확인  
 execution = kis.check_order_execution(
@@ -118,15 +118,15 @@ if execution and execution['success']:
     # 날짜 업데이트
     USLA_data["date"] = now.strftime('%Y-%m-%d')
     
-    # BIL과 CASH 인덱스 찾기
+    # BIL과 USLA_CASH 인덱스 찾기
     try:
         idxBIL = USLA_data["ticker"].index("BIL")
-        idxCASH = USLA_data["ticker"].index("CASH")
+        idxCASH = USLA_data["ticker"].index("USLA_CASH")
     except ValueError as e:
         print(f"종목 인덱스 찾기 실패: {e}")
         exit()
     
-    # CASH 잔액 계산 (타입 안전)
+    # USLA_CASH 잔액 계산 (타입 안전)
     try:
         current_cash = float(USLA_data["quantity"][idxCASH])
         balance = amount + current_cash
@@ -138,13 +138,13 @@ if execution and execution['success']:
     USLA_data["ticker"].pop(idxBIL)
     USLA_data["quantity"].pop(idxBIL)
     
-    # CASH 업데이트 (idxCASH가 BIL보다 뒤에 있으면 인덱스 조정)
+    # USLA_CASH 업데이트 (idxCASH가 BIL보다 뒤에 있으면 인덱스 조정)
     if idxCASH > idxBIL:
         idxCASH -= 1  # BIL 삭제로 인덱스가 하나 앞당겨짐
     
     USLA_data["quantity"][idxCASH] = balance
     
-    print(f"\nCASH 업데이트: ${current_cash:.2f} → ${balance:.2f}")
+    print(f"\nUSLA_CASH 업데이트: ${current_cash:.2f} → ${balance:.2f}")
     
     # JSON 파일 저장
     try:

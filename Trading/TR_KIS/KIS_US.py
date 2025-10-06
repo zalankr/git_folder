@@ -34,10 +34,12 @@ class KIS_API:
         self._load_api_keys()
         self.access_token = self.get_access_token()
     
+    # API-Key 로드
     def _load_api_keys(self):
         with open(self.key_file_path) as f:
             self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
     
+    # 토큰 로드
     def load_token(self) -> Optional[Dict]:
         try:
             if os.path.exists(self.token_file_path):
@@ -48,6 +50,7 @@ class KIS_API:
             print(f"토큰 로드 오류: {e}")
             return None
     
+    # 토큰 저장
     def save_token(self, access_token: str, expires_in: int = 86400) -> bool:
         try:
             token_data = {
@@ -62,6 +65,7 @@ class KIS_API:
             print(f"토큰 저장 오류: {e}")
             return False
     
+    # 토큰 유효성 확인
     def is_token_valid(self, token_data: Dict) -> bool:
         if not token_data or 'access_token' not in token_data:
             return False
@@ -77,6 +81,7 @@ class KIS_API:
         except:
             return False
     
+    # 토큰 발급
     def get_new_token(self) -> Optional[str]:
         headers = {"content-type": "application/json"}
         path = "oauth2/tokenP"
@@ -101,7 +106,8 @@ class KIS_API:
         except Exception as e:
             print(f"토큰 발급 실패: {e}")
             return None
-    
+
+    # 토큰 접속
     def get_access_token(self) -> Optional[str]:
         token_data = self.load_token()
         
@@ -110,6 +116,7 @@ class KIS_API:
         
         return self.get_new_token()
     
+    # Hash-Key 생성
     def hashkey(self, datas: Dict) -> str:
         path = "uapi/hashkey"
         url = f"{self.url_base}/{path}"
@@ -121,6 +128,7 @@ class KIS_API:
         res = requests.post(url, headers=headers, data=json.dumps(datas))
         return res.json()["HASH"]
     
+    # 티커별 거래소 찾기
     def get_US_exchange(self, ticker: str) -> Optional[str]:
         if not ticker:
             return None
@@ -162,6 +170,7 @@ class KIS_API:
         
         return None
     
+    # 주식 현재가 조회
     def get_US_current_price(self, ticker: str, exchange: Optional[str] = None) -> Union[float, str]:
         """
         미국 주식 현재가 조회 (KIS API → yfinance 백업)
@@ -192,6 +201,7 @@ class KIS_API:
         # yfinance 백업
         return self._get_price_from_yfinance(ticker)
     
+    # 주식 시가 조회
     def get_US_open_price(self, ticker: str, exchange: Optional[str] = None) -> Union[float, str]:
         """
         미국 주식 시가 조회 (KIS API → yfinance 백업)
@@ -222,6 +232,7 @@ class KIS_API:
         # yfinance 백업
         return self._get_open_price_from_yfinance(ticker)
     
+    # KIS API로 시가 조회
     def _get_open_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
         """KIS API로 시가 조회 (기간별시세 API 사용)"""
         path = "/uapi/overseas-price/v1/quotations/dailyprice"
@@ -269,6 +280,7 @@ class KIS_API:
         
         return "KIS API 시가 조회 실패"
     
+    # yfinance로 시가 조회
     def _get_open_price_from_yfinance(self, ticker: str) -> Union[float, str]:
         """yfinance로 시가 조회"""
         try:
@@ -298,6 +310,7 @@ class KIS_API:
         except Exception as e:
             return f"yfinance 오류: {str(e)}"
     
+    # KIS API로 현재가 조회
     def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
         """KIS API로 현재가 조회 (3단계)"""
         
@@ -382,6 +395,7 @@ class KIS_API:
         
         return "KIS API 조회 실패"
     
+    # yfinance로 현재가 조회
     def _get_price_from_yfinance(self, ticker: str) -> Union[float, str]:
         """yfinance로 현재가 조회 (백업)"""
         try:
@@ -411,6 +425,7 @@ class KIS_API:
         except Exception as e:
             return f"yfinance 오류: {str(e)}"
     
+    # 미국 주식 매수 주문
     def order_buy_US(self, ticker: str, quantity: int, price: float, 
                      exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
         """미국 주식 매수 주문"""
@@ -450,6 +465,7 @@ class KIS_API:
 
         return requests.post(url, headers=headers, data=json.dumps(data))
     
+    # 미국 주식 매도 주문
     def order_sell_US(self, ticker: str, quantity: int, price: float,
                       exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
         """미국 주식 매도 주문 ord_dvsn "00"은 지정가 """
@@ -489,6 +505,7 @@ class KIS_API:
 
         return requests.post(url, headers=headers, data=json.dumps(data))
     
+    # 미국 주식 종목별 잔고
     def get_US_stock_balance(self) -> Optional[List[Dict]]:
         """미국 주식 종목별 잔고"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
@@ -540,6 +557,7 @@ class KIS_API:
         except:
             return None
     
+    # 미국 달러 예수금
     def get_US_dollar_balance(self) -> Optional[Dict]:
         """미국 달러 예수금"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
@@ -586,6 +604,7 @@ class KIS_API:
         except:
             return None
     
+    # 전체 계좌 잔고
     def get_total_balance(self) -> Optional[Dict]:
         """전체 계좌 잔고"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
@@ -763,6 +782,40 @@ class KIS_API:
             print(f"체결 확인 중 오류: {e}")
             return None   
 
+    # 서머타임(DST) 확인
+    def is_us_dst(self):
+        """
+        미국 동부 시간 기준 현재 서머타임(DST) 여부 확인
+        
+        미국 서머타임 규칙:
+        - 시작: 3월 두 번째 일요일 02:00
+        - 종료: 11월 첫 번째 일요일 02:00
+        
+        Returns:
+        bool: 서머타임이면 True, 아니면 False
+        """
+        # 현재 UTC 시간 가져오기 (timezone-naive)
+        utc_now = datetime.utcnow()
+        
+        # 미국 동부 시간 계산 (일단 EST 기준 UTC-5로 계산)
+        us_eastern_time = utc_now - timedelta(hours=5)
+        year = us_eastern_time.year
+        
+        # 3월 두 번째 일요일 찾기
+        march_first = datetime(year, 3, 1)
+        days_to_sunday = (6 - march_first.weekday()) % 7
+        first_sunday_march = march_first + timedelta(days=days_to_sunday)
+        second_sunday_march = first_sunday_march + timedelta(days=7)
+        dst_start = second_sunday_march.replace(hour=2, minute=0, second=0, microsecond=0)
+        
+        # 11월 첫 번째 일요일 찾기
+        november_first = datetime(year, 11, 1)
+        days_to_sunday = (6 - november_first.weekday()) % 7
+        first_sunday_november = november_first + timedelta(days=days_to_sunday)
+        dst_end = first_sunday_november.replace(hour=2, minute=0, second=0, microsecond=0)
+        
+        # 서머타임 기간 확인
+        return dst_start <= us_eastern_time < dst_end
 
 # 사용 예시
 if __name__ == "__main__":
@@ -791,6 +844,13 @@ if __name__ == "__main__":
             print(f"{ticker} 시가: ${open_price:,.2f}")
         else:
             print(f"{ticker} 시가: {open_price}")
+
+    # 서머타임(DST) 확인
+    is_dst = api.is_us_dst()
+    print("="*60)
+    print(is_dst)
+    print(f"현재 UTC 시간: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"서머타임(DST): {True if is_dst else False}")
 
 
 

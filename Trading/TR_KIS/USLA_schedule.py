@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+# 서머타임(DST) 확인
 def is_us_dst():
     """
     미국 동부 시간 기준 현재 서머타임(DST) 여부 확인
@@ -35,10 +36,10 @@ def is_us_dst():
     return dst_start <= us_eastern_time < dst_end
 
 
-# 사용 예시
-if __name__ == "__main__":
-    is_dst = is_us_dst()
-    print("="*60)
-    print(is_dst)
-    print(f"현재 UTC 시간: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"서머타임(DST): {True if is_dst else False}")
+
+# 서머타임(DST) 확인
+is_dst = is_us_dst()
+print("="*60)
+print(is_dst)
+print(f"현재 UTC 시간: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"서머타임(DST): {True if is_dst else False}")

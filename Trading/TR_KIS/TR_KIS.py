@@ -3,10 +3,11 @@ from datetime import datetime
 import USLA
 import KIS_US
 
+# 매월 첫거래일 crontab 설정시간에 예약 실행
 # Account연결 data
 key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
 token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
-cano = "63721147" # 종합계좌번호 (8자리)
+cano = "63721147"  # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 
 # Instance 생성
@@ -23,14 +24,13 @@ def get_USLA_data():
 
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
-        # KA.SendMessage(f"{} JSON 파일 오류: {e}")
         exit()
 
-# USD로 환산 잔고 계산
+# USD 환산 잔고 계산
 def calculate_USD_value(holding):
     holding_USD_value = 0
     for t in holding.keys():
-        if t == "CASH":
+        if t == "USLA_CASH":
             holding_USD_value += holding[t]
         else:
             price = kis.get_US_current_price(t)
@@ -50,12 +50,12 @@ def invest_target():
 
     return target
 
-# target비중에 맞춰 환산금액을 곱하고 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
-def calculate_target_quantity(target,target_usd_value):
+# target비중에 맞춰 보유 $환산금액을 곱해서 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
+def calculate_target_quantity(target, target_usd_value):
     target_quantity = {}
     target_stock_value = 0
     for ticker in target.keys():
-        if ticker != "CASH":
+        if ticker != "USLA_CASH":
             try:
                 price = kis.get_US_current_price(ticker)
                 if price and price > 0:
@@ -68,100 +68,184 @@ def calculate_target_quantity(target,target_usd_value):
                 print(f"{ticker}: 수량 계산 오류 - {e}")
                 target_quantity[ticker] = 0
 
-    target_quantity["CASH"] = sum(target_usd_value.values()) - target_stock_value
+    target_quantity["USLA_CASH"] = sum(target_usd_value.values()) - target_stock_value
 
     return target_quantity, target_stock_value
 
-# target비중 계산, Json데이터에서 holding ticker와 quantity 구하기
-target = invest_target()
-USLA_data = get_USLA_data()
-holding = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
-holding_ticker = list(holding.keys())
-holding_USD_value = calculate_USD_value(holding)
+# trading할 ticker별 매수매도량 구하기
+def trading_ticker(holding_ticker, holding, target_ticker, target_quantity):
+    sell_ticker = {}
+    buy_ticker = {}
+    keep_ticker = {}
 
-# 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
-target_usd_value = {ticker: target[ticker] * holding_USD_value for ticker in target.keys()}
+    for hold in holding_ticker:
+        if hold not in target_ticker:
+            sell_ticker[hold] = holding[hold]
+        else:
+            edited_quantity = target_quantity[hold] - holding[hold]
+            if edited_quantity > 0:
+                buy_ticker[hold] = edited_quantity
+            elif edited_quantity < 0:
+                sell_ticker[hold] = -edited_quantity
+            elif edited_quantity == 0:
+                keep_ticker[hold] = holding[hold]
 
-# target비중에 맞춰 환산금액을 곱하고 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
-target_quantity, target_stock_value = calculate_target_quantity(target,target_usd_value)
-print(target_quantity)
-print(target_quantity["CASH"]+target_stock_value)
+    for target in target_ticker:
+        if target not in holding_ticker:
+            buy_ticker[target] = target_quantity[target]
 
-# 비교 하기
+    return sell_ticker, buy_ticker, keep_ticker
 
-##테스트를 위해서 2000으로 TMF 0.7와 UPRO 0.29 CASH 0.01로 맞추고 테스트
-# 최초 수량 뽑기 비교 > 먼저 홀딩된 자산을 수량에 현재가를 곱해서 USD로 모두 환산(tax_rate = 0.0009 계산)하고 타겟비중으로 환산금액을 곱하고 현재가로 나누기
+# Kis_TR_data JSON 생성 및 저장
+def create_kis_tr_data(holding, target_quantity, sell_ticker, buy_ticker):
+    """
+    거래 데이터를 JSON 형식으로 생성
+    
+    Parameters:
+    holding: 현재 보유 수량
+    target_quantity: 목표 수량
+    sell_ticker: 매도할 티커와 수량
+    buy_ticker: 매수할 티커와 수량
+    """
+    kis_tr_data = []
+    
+    # 모든 관련 티커 수집 (CASH 제외)
+    all_tickers = set(holding.keys()) | set(target_quantity.keys())
+    all_tickers.discard("USLA_CASH")
+    
+    for ticker in sorted(all_tickers):
+        # 포지션 결정
+        if ticker in buy_ticker:
+            position = "Buy"
+        elif ticker in sell_ticker:
+            position = "Sell"
+        else:
+            position = "Hold"
+        
+        # 수량 정보
+        hold_amount = holding.get(ticker, 0)
+        target_amount = target_quantity.get(ticker, 0)
+        tr_quantity = target_amount - hold_amount
+        
+        ticker_data = {
+            "ticker": ticker,
+            "position": position,
+            "target_amount": target_amount,
+            "hold_amount": hold_amount,
+            "TR_quantity": tr_quantity,
+            "order_quantity": 0,
+            "filled_quantity": 0,
+            "unfilled_quantity": 0,
+            "pending_order": 0
+        }
+        
+        kis_tr_data.append(ticker_data)
+    
+    # CASH 정보 추가
+    USLA_cash_data = {
+        "ticker": "USLA_CASH",
+        "position": "USLA_Cash",
+        "target_amount": round(target_quantity.get("USLA_CASH", 0), 2),
+        "hold_amount": round(holding.get("USLA_CASH", 0), 2),
+        "TR_quantity": "",
+        "order_quantity": "",
+        "filled_quantity": "",
+        "unfilled_quantity": "",
+        "pending_order": ""
+    }
+    kis_tr_data.append(USLA_cash_data)
+    
+    return kis_tr_data
+
+# Kis_TR_data JSON 파일로 저장
+def save_kis_tr_json(kis_tr_data):
+    """Kis_TR_data를 JSON 파일로 저장"""
+    file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/Kis_TR_data.json"
+    
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(kis_tr_data, f, ensure_ascii=False, indent=4)
+        print(f"\n✓ Kis_TR_data.json 파일 저장 완료: {file_path}")
+        return True
+    except Exception as e:
+        print(f"\n✗ JSON 파일 저장 오류: {e}")
+        return False
+
+# Kis_TR_data를 표 형식으로 출력
+def print_tr_table(kis_tr_data):
+    """거래 데이터를 표 형식으로 출력"""
+    print("\n" + "="*120)
+    print("Kis Trading Data Table")
+    print("="*120)
+    
+    # 헤더
+    header = f"{'ticker':<8} {'position':<10} {'target':<8} {'hold':<8} {'TR qty':<8} {'order':<8} {'filled':<8} {'unfilled':<8} {'pending':<8}"
+    print(header)
+    print("-"*120)
+    
+    # 데이터
+    for data in kis_tr_data:
+        row = (f"{data['ticker']:<8} "
+               f"{data['position']:<10} "
+               f"{str(data['target_amount']):<8} "
+               f"{str(data['hold_amount']):<8} "
+               f"{str(data['TR_quantity']):<8} "
+               f"{str(data['order_quantity']):<8} "
+               f"{str(data['filled_quantity']):<8} "
+               f"{str(data['unfilled_quantity']):<8} "
+               f"{str(data['pending_order']):<8}")
+        print(row)
+    
+    print("="*120)
 
 
-# print(target_weight)
-# print(holding_weight)
+# 메인 실행
+if __name__ == "__main__":
+    print("\n" + "="*60)
+    print("USLA 리밸런싱")
+    print(f"실행 시각: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*60)
+    
+    # 최초 1회만 target비중 계산, Json데이터에서 holding ticker와 quantity 구하기 
+    target = invest_target()
+    target_ticker = list(target.keys())
 
+    USLA_data = get_USLA_data()
+    holding = dict(zip(USLA_data['ticker'], USLA_data['quantity']))
+    holding_ticker = list(holding.keys())
 
+    # USD 환산 잔고금액 계산
+    holding_USD_value = calculate_USD_value(holding)
 
+    # 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
+    target_usd_value = {ticker: target[ticker] * holding_USD_value for ticker in target.keys()}
 
-# 미국주식 주문단위 가격은 0.01, 주문금액 최소 1$이상으로
+    # target비중에 맞춰 환산금액을 곱하고 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
+    target_quantity, target_stock_value = calculate_target_quantity(target, target_usd_value)
+    sell_ticker, buy_ticker, keep_ticker = trading_ticker(holding_ticker, holding, target_ticker, target_quantity)
 
+    print("\n[매도 종목]")
+    print(sell_ticker)
+    print("\n[매수 종목]")
+    print(buy_ticker)
+    print("\n[유지 종목]")
+    print(keep_ticker)
 
+    # Kis_TR_data 생성
+    print("\n" + "="*60)
+    print("거래 데이터 생성 중...")
+    print("="*60)
+    
+    kis_tr_data = create_kis_tr_data(holding, target_quantity, sell_ticker, buy_ticker)
+    
+    # 표 형식으로 출력
+    print_tr_table(kis_tr_data)
+    
+    # JSON 파일로 저장
+    save_kis_tr_json(kis_tr_data)
+#######################################################################################
+    # 서머타임(DST) 확인
+    is_dst = kis.is_us_dst()
+    print(f"서머타임(DST): {"써머타임" if is_dst else "윈터타임"}")
 
-# else:
-#     print(f"Regime Signal: {regime_signal:.2f} ≥ 0 → 투자 모드")
-#     signal = USLA.run_strategy(target_month=None, target_year=None)
-
-# print("="*30)
-# print(signal['allocation']['ticker'])
-
-
-
-
-
-
-# regime_signal = signal['regime_signal']
-# momentum_scores = signal['momentum_scores']
-# allocation = signal['allocation']
-# current_prices = signal['current_prices']
-
-# print("\n=== 투자 전략 시그널 ===")
-# print(f"Regime Signal: {regime_signal:.2f}")  # Regime Signal 출력 (regime_signal)
-# print("\n모멘텀 점수:")
-# print(momentum_scores.round(4))  # 모멘텀 점수 출력 (momentum_scores)
-# print("\n투자 전략:")
-# print(allocation)  # 투자 전략 출력 (allocation)
-# print("\n현재 가격:")
-# print(current_prices)  # 현재 가격 출력 (current_prices)
-
-
-
-# 사용 예시
-# price = KIS.current_price_US("TQQQ")[1]
-# print(price)
-
-# print("\n=== 거래소 찾기 테스트 ===")
-# aapl_exchange = KIS.get_US_exchange("AAPL")
-# print(f"AAPL 거래소: {aapl_exchange}\n")
-
-# 주문 시 자동으로 거래소 찾아서 사용
-# ticker = "TQQQ"
-# exchange = KIS.get_US_exchange(ticker)
-# if exchange:
-#     # result = order_buy_US(ticker, 1, 150.50, exchange)
-#     print(f"{ticker} 매수 주문 준비 완료 (거래소: {exchange})")
-
-# 매수 주문 예시 (실제 주문 시 주석 해제)
-# result = KIS.order_buy_US("AAPL", 1, 150.50, "NASD")
-# print("매수 주문 결과:", result.json())
-
-# 매도 주문 예시 (실제 주문 시 주석 해제)
-# result = KIS.order_sell_US("AAPL", 1, 160.00, "NASD")
-# print("매도 주문 결과:", result.json())
-
-# 1. 종목만 보기
-# stocks = KIS.get_US_stock_balance()
-# print(stocks)
-# 2. USD만 보기
-# usd = KIS.get_US_dollar_balance()
-# print(usd)
-# 3. 전체 계좌 보기 (예쁘게 출력)
-# balance = KIS.get_total_balance()
-# print(balance['stock_count'])
-# print(balance['usd_deposit'])
-# print(KIS.get_total_balance())
+    # 장전 거래 시간 확인    

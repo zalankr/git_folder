@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 class USLAS:
     def __init__(self):
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
-        self.all_tickers = self.etf_tickers + ['CASH']
+        self.all_tickers = self.etf_tickers + ['USLA_CASH']
         self.tax_rate = 0.0009
         
     def get_month_end_date(self, year, month):
@@ -206,7 +206,7 @@ class USLAS:
             for ticker in self.etf_tickers:
                 data = yf.download(ticker, period='1d', interval='1d', progress=False, multi_level_index=False)['Close']
                 prices[ticker] = float(data.iloc[-1])
-            prices['CASH'] = 1.0
+            prices['USLA_CASH'] = 1.0
             return prices
         except Exception as e:
             print(f"가격 조회 오류: {e}")
@@ -237,9 +237,9 @@ class USLAS:
         # 3. 투자 전략 결정
         if regime < 0: # < 0으로 변경, 테스트 후엔
             print(f"\nRegime Signal: {regime:.2f} < 0 → RISK 모드")
-            print("투자 결정: 99% BIL, 1% CASH")
+            print("투자 결정: 99% BIL, 1% USLA_CASH")
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
-            allocation['CASH'] = 0.01
+            allocation['USLA_CASH'] = 0.01
             allocation['BIL'] = 0.99
 
         else:
@@ -253,7 +253,7 @@ class USLAS:
             
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
             allocation.update(weights)
-            allocation['CASH'] = 0.01  # 1% 현금 보유
+            allocation['USLA_CASH'] = 0.01  # 1% 현금 보유
         
         # 4. 현재 가격 조회
         current_prices = self.get_current_prices()

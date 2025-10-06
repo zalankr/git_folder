@@ -1,0 +1,57 @@
+[
+    {
+        "ticker": "EDC",
+        "position": "Buy",
+        "target_amount": 19,
+        "hold_amount": 0,
+        "TR_quantity": 19,
+        "order_quantity": 0,
+        "filled_quantity": 0,
+        "unfilled_quantity": 0,
+        "pending_order": 0
+    },
+    {
+        "ticker": "TMF",
+        "position": "Sell",
+        "target_amount": 0,
+        "hold_amount": 21,
+        "TR_quantity": -21,
+        "order_quantity": 0,
+        "filled_quantity": 0,
+        "unfilled_quantity": 0,
+        "pending_order": 0
+    },
+    {
+        "ticker": "TQQQ",
+        "position": "Buy",
+        "target_amount": 8,
+        "hold_amount": 0,
+        "TR_quantity": 8,
+        "order_quantity": 0,
+        "filled_quantity": 0,
+        "unfilled_quantity": 0,
+        "pending_order": 0
+    },
+    {
+        "ticker": "UPRO",
+        "position": "Sell",
+        "target_amount": 0,
+        "hold_amount": 10,
+        "TR_quantity": -10,
+        "order_quantity": 0,
+        "filled_quantity": 0,
+        "unfilled_quantity": 0,
+        "pending_order": 0
+    },
+    {
+        "ticker": "USLA_CASH",
+        "position": "USLA_Cash",
+        "target_amount": 135.71,
+        "hold_amount": 22.21,
+        "TR_quantity": "",
+        "order_quantity": "",
+        "filled_quantity": "",
+        "unfilled_quantity": "",
+        "pending_order": ""
+    }
+]
