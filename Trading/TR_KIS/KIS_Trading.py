@@ -1,5 +1,22 @@
 from datetime import datetime, timedelta
 
+
+"""
+crontab 설정
+1. 매월 첫 거래일 USAA(USLA, HAA) Rebalancing
+*/5 
+*/1 * * * * python3 /home/ubuntu/Trading/TR_KIS/KIS_Trading.py
+
+
+
+
+
+"""
+
+
+
+
+
 # 서머타임(DST) 확인
 def is_us_dst():
     """
