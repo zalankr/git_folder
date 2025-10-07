@@ -427,7 +427,7 @@ class KIS_API:
     
     # 미국 주식 매수 주문
     def order_buy_US(self, ticker: str, quantity: int, price: float, 
-                     exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
+                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
         """미국 주식 매수 주문"""
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
@@ -467,7 +467,7 @@ class KIS_API:
     
     # 미국 주식 매도 주문
     def order_sell_US(self, ticker: str, quantity: int, price: float,
-                      exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
+                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
         """미국 주식 매도 주문 ord_dvsn "00"은 지정가 """
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
@@ -505,6 +505,120 @@ class KIS_API:
 
         return requests.post(url, headers=headers, data=json.dumps(data))
     
+    # 미국 주간거래 매수 주문 (Pre-market/After-hours)
+    def order_daytime_buy_US(self, ticker: str, quantity: int, price: float,
+                            exchange: Optional[str] = None) -> Optional[requests.Response]:
+        """
+        미국 주간거래 매수 주문 (Pre-market/After-hours)
+        - 지정가 주문만 가능
+        - 나스닥, NYSE, AMEX만 지원
+        
+        Parameters:
+        ticker: 종목 코드
+        quantity: 주문 수량
+        price: 지정가
+        exchange: 거래소 코드 (None이면 자동 검색)
+        
+        Returns:
+        requests.Response 또는 None
+        """
+        if exchange is None:
+            exchange = self.get_US_exchange(ticker)
+        
+        if exchange is None:
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            return None
+        
+        # 주간거래는 나스닥, NYSE, AMEX만 가능
+        if exchange not in ["NAS", "NYS", "AMS"]:
+            print(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
+            return None
+        
+        path = "uapi/overseas-stock/v1/trading/daytime-order"
+        url = f"{self.url_base}/{path}"
+        
+        data = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "OVRS_EXCG_CD": exchange,
+            "PDNO": ticker,
+            "ORD_DVSN": "00",  # 주간거래는 지정가(00)만 가능
+            "ORD_QTY": str(quantity),
+            "OVRS_ORD_UNPR": str(price),
+            "CTAC_TLNO": "",
+            "MGCO_APTM_ODNO": "",
+            "ORD_SVR_DVSN_CD": "0"
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTS6036U",  # 미국 주간거래 매수
+            "custtype": "P",
+            "hashkey": self.hashkey(data)
+        }
+        
+        return requests.post(url, headers=headers, data=json.dumps(data))
+
+    # 미국 주간거래 매도 주문 (Pre-market/After-hours)
+    def order_daytime_sell_US(self, ticker: str, quantity: int, price: float,
+                            exchange: Optional[str] = None) -> Optional[requests.Response]:
+        """
+        미국 주간거래 매도 주문 (Pre-market/After-hours)
+        - 지정가 주문만 가능
+        - 나스닥, NYSE, AMEX만 지원
+        
+        Parameters:
+        ticker: 종목 코드
+        quantity: 주문 수량
+        price: 지정가
+        exchange: 거래소 코드 (None이면 자동 검색)
+        
+        Returns:
+        requests.Response 또는 None
+        """
+        if exchange is None:
+            exchange = self.get_US_exchange(ticker)
+        
+        if exchange is None:
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            return None
+        
+        # 주간거래는 나스닥, NYSE, AMEX만 가능
+        if exchange not in ["NAS", "NYS", "AMS"]:
+            print(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
+            return None
+        
+        path = "uapi/overseas-stock/v1/trading/daytime-order"
+        url = f"{self.url_base}/{path}"
+        
+        data = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "OVRS_EXCG_CD": exchange,
+            "PDNO": ticker,
+            "ORD_DVSN": "00",  # 주간거래는 지정가(00)만 가능
+            "ORD_QTY": str(quantity),
+            "OVRS_ORD_UNPR": str(price),
+            "CTAC_TLNO": "",
+            "MGCO_APTM_ODNO": "",
+            "ORD_SVR_DVSN_CD": "0"
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTS6037U",  # 미국 주간거래 매도
+            "custtype": "P",
+            "hashkey": self.hashkey(data)
+        }
+        
+        return requests.post(url, headers=headers, data=json.dumps(data))
+
     # 미국 주식 종목별 잔고
     def get_US_stock_balance(self) -> Optional[List[Dict]]:
         """미국 주식 종목별 잔고"""
