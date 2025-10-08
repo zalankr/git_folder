@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as time_obj
 import json
 
 """
@@ -61,7 +61,7 @@ def USAA_rebalancing_day_Making(USAA_summer, USAA_winter):
         print(f"JSON 파일 저장 오류: {e}")
         return None
 
-def check_USAA_rebalancing(now):
+def check_USAA_rebalancing(current_date):
     '''오늘이 USAA 리밸런싱일인지 확인'''
     USAA_rebalancing_day_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USAA_rebalancing_day.json'
 
@@ -71,22 +71,120 @@ def check_USAA_rebalancing(now):
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
 
-    if str(now['date']) in USAA_rebalancing_day["summer_dst"] or now['date'] in USAA_rebalancing_day["summer_dst"]:
-        print("today is summer_dst")
-        return "USAA_summer_rebalancing"
-    elif str(now['date']) in USAA_rebalancing_day["winter_standard"] or now['date'] in USAA_rebalancing_day["winter_standard"]:
-        print("today is winter_standard")
-        return "USAA_winter_rebalancing"
+    if str(current_date) in USAA_rebalancing_day["summer_dst"] or str(current_date) in USAA_rebalancing_day["summer_dst"]:
+        return "USAA_summer"
+    elif str(current_date) in USAA_rebalancing_day["winter_standard"] or str(current_date) in USAA_rebalancing_day["winter_standard"]:
+        return "USAA_winter"
     else:
-        print("today is not rebalancing day")
         return "USAA_not_rebalancing"
+
+def check_order_time():
+    """USAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
+    # 현재 날짜와 시간 확인
+    # now = datetime.now()
+    # current_date = now.date()
+    # current_time = now.time()
+
+    # test #
+    current_date = datetime.strptime("2026-11-03", "%Y-%m-%d").date()
+    current_time = datetime.strptime("09:00:01", "%H:%M:%S").time()
+    # test #
+
+    print(f"현재 UTC 날짜: {current_date}, 시간: {current_time}")
+
+    # USAA 리밸런싱일 확인
+    check_USAA = check_USAA_rebalancing(current_date)
+    # order_time 딕셔너리 생성: season, date, time, market, round, total_round, USAA리밸런싱일 확인
+    order_time = dict()
+    order_time['season'] = check_USAA
+    order_time['date'] = str(current_date)
+    order_time['time'] = str(current_time)
+
+    if check_USAA == "USAA_winter":
+        current = time_obj(current_time.hour, current_time.minute) # current_time
+        Pre_market_start = time_obj(9, 0)   # 09:00
+        Pre_market_end = time_obj(14, 29)   # 14:29
+        Regular_start = time_obj(14, 30)   # 14:30
+        Regular_end = time_obj(21, 1)      # 21:01
+        
+        if Pre_market_start <= current <= Pre_market_end:
+            order_time['market'] = "Pre-market"            
+            order_time['round'] = 1 + (current.hour - 9) * 12 + (current.minute // 5)
+            order_time['total_round'] = 66  # Pre-market 총 회차
+            
+        elif Regular_start <= current_time <= Regular_end:
+            order_time['market'] = "Regular"
+            order_time['round'] = 1 + (current.hour - 14) * 12 + (current.minute // 5) - 6
+            order_time['total_round'] = 79  # Regular 총 회차
+
+    elif check_USAA == "USAA_summer":
+        current = time_obj(current_time.hour, current_time.minute) # current_time
+        Pre_market_start = time_obj(8, 0)   # 08:00
+        Pre_market_end = time_obj(13, 29)   # 13:29
+        Regular_start = time_obj(13, 30)   # 13:30
+        Regular_end = time_obj(20, 1)      # 20:01
+
+        if Pre_market_start <= current <= Pre_market_end:
+            order_time['market'] = "Pre-market"            
+            order_time['round'] = 1 + (current.hour - 8) * 12 + (current.minute // 5)
+            order_time['total_round'] = 66  # Pre-market 총 회차
+            
+        elif Regular_start <= current_time <= Regular_end:
+            order_time['market'] = "Regular"
+            order_time['round'] = 1 + (current.hour - 13) * 12 + (current.minute // 5) - 6
+            order_time['total_round'] = 79  # Regular 총 회차
+
+    else:
+        order_time['market'] = "No_trading"
+        order_time['round'] = 0
+        order_time['total_round'] = 0
+
+    return order_time
     
+# 서머타임(DST) 확인
+def is_us_dst():
+    """
+    미국 동부 시간 기준 현재 서머타임(DST) 여부 확인
+    
+    미국 서머타임 규칙:
+    - 시작: 3월 두 번째 일요일 02:00
+    - 종료: 11월 첫 번째 일요일 02:00
+    
+    Returns:
+    bool: 서머타임이면 True, 아니면 False
+    """
+    # 현재 UTC 시간 가져오기 (timezone-naive)
+    now = datetime.now()
+    
+    # 미국 동부 시간 계산 (일단 EST 기준 UTC-5로 계산)
+    us_eastern_time = now - timedelta(hours=5)
+    year = us_eastern_time.year
+    
+    # 3월 두 번째 일요일 찾기
+    march_first = datetime(year, 3, 1)
+    days_to_sunday = (6 - march_first.weekday()) % 7
+    first_sunday_march = march_first + timedelta(days=days_to_sunday)
+    second_sunday_march = first_sunday_march + timedelta(days=7)
+    dst_start = second_sunday_march.replace(hour=2, minute=0, second=0, microsecond=0)
+    
+    # 11월 첫 번째 일요일 찾기
+    november_first = datetime(year, 11, 1)
+    days_to_sunday = (6 - november_first.weekday()) % 7
+    first_sunday_november = november_first + timedelta(days=days_to_sunday)
+    dst_end = first_sunday_november.replace(hour=2, minute=0, second=0, microsecond=0)
+    
+    # 서머타임 기간 확인
+    return dst_start <= us_eastern_time < dst_end
 
 # 실행
 if __name__ == "__main__":
     # USAA Rebalancing day list 기입하기
     USAA_summer = ["2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01", "2026-08-03", "2026-09-01", "2026-10-01"]
     USAA_winter = ["2025-11-03", "2025-12-01", "2026-01-02", "2026-02-02", "2026-03-02"]
+    # 연간 USAA Rebalancing day json 파일로 저장
+    # result = USAA_rebalancing_day_Making(USAA_summer, USAA_winter)
 
-    result = USAA_rebalancing_day_Making(USAA_summer, USAA_winter)
-    print(result)
+    order_time = check_order_time()
+    print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
+
+

@@ -350,6 +350,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         buy_ticker = {}
         keep_ticker = {}
 
+        # split수, split 수량, 주문1번호, 
         for holding in hold_ticker:
             if holding not in target_ticker:
                 sell_ticker[holding] = {
@@ -372,8 +373,11 @@ class USLA_Model(KIS_US.KIS_API): #상속
             if target not in hold_ticker:
                 buy_ticker[target] = int(target_qty[target])
 
-        date = datetime.now().strftime('%Y-%m-%d')
-        time = datetime.now().strftime('%H:%M:%S')
+        # dst check, tradingrnqns 및 회차/총회차, 이를 바탕으로 총splits수 산출
+
+        # date = datetime.now().strftime('%Y-%m-%d')
+        # time = datetime.now().strftime('%H:%M:%S')
+        # check_dst = self.is_us_dst()
 
         trading_data = {
             'date': date,

@@ -20,58 +20,57 @@ now = KIS_Calender.get_current()
 1. USAA 리밸런싱 모델 구분
 - 정해진 리밸런싱일에 미국증시 시간대로 crontab 실행되었는 지 확인. 이후 해당일 8-20(summer), 9-21(winter) 5분마다 실행
 '''
-# 밑에 부분 테스트용으로 삭제 #
-now = {
-    'date': datetime.strptime("2025-11-03", "%Y-%m-%d").date(),
-    'time': datetime.strptime("09:00:00", "%H:%M:%S").time(),
-    'year': 2025, 
-    'month': 11, 
-    'day': 3, 
-    'hour': 9, 
-    'minute': 0
-    }
-# 위에 부분 테스트용으로 삭제 #
+# USAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인 반환 #
+order_time = KIS_Calender.check_order_time()
+print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']}")
+print(f"{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
+# 위에 부분 테스트용 정식버전은 current_date, current_time 수정 #
 
-# USAA 리밸런싱일 확인 후 trading
-check_USAA = KIS_Calender.check_USAA_rebalancing(now)
 
-if check_USAA == "USAA_winter_rebalancing":
-    print("USAA winter 리밸런싱 모델 구동")
 
-    # 공통 USLA모델 객체 생성
-    key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
-    token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
-    cano = "63721147"  # 종합계좌번호 (8자리)
-    acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
-    USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
-    # USLA 리밸런싱일 최초 장전거래시간 확인 및 코드(8시59분~9시2분 사이에 구동)
-    if  now['hour'] == 9 and now['minute'] <= 2 or now['hour'] == 8 and now['minute'] >= 59:
-        # USLA 데이터 json파일 불러오고 > 당일 target 비중, ticker별 trading 수량 산출
-        USLA_data = USLA.get_USLA_data()
-        trading_data = USLA.make_trading_data(USLA_data)
-        print("*"*60)
-        print(trading_data['sell_ticker'])
-        print(trading_data['buy_ticker'])
-        print(trading_data['keep_ticker'])
-        print(trading_data['hold'])
-        print(trading_data['target_quantity'])
+
+
+
+
+
+
+
+
+# 공통 USLA모델 객체 생성
+key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
+token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
+cano = "63721147"  # 종합계좌번호 (8자리)
+acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
+USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
+
+    # # USLA 리밸런싱일 최초 장전거래시간 확인 및 코드(8시59분~9시2분 사이에 구동)
+    # if  now['hour'] == 9 and now['minute'] <= 2 or now['hour'] == 8 and now['minute'] >= 59:
+    #     # USLA 데이터 json파일 불러오고 > 당일 target 비중, ticker별 trading 수량 산출
+    #     USLA_data = USLA.get_USLA_data()
+    #     trading_data = USLA.make_trading_data(USLA_data)
+    #     print("*"*60)
+    #     print(trading_data['sell_ticker'])
+    #     print(trading_data['buy_ticker'])
+    #     print(trading_data['keep_ticker'])
+    #     print(trading_data['hold'])
+    #     print(trading_data['target_quantity'])
 
         # 최초 미국 Pre-market 주간거래 매도, 매수 주문하기
         ## Pre-market 5 split 수량 계산
 
-        def split_stock(split_num, trading_data):
-            splits_{split_num}_sell_qty = dict()
-            splits_{split_num}_buy_qty = dict()
-            for ticker in trading_data['sell_ticker'].keys():
-                splits_{split_num}_sell_qty[ticker] = int(trading_data['sell_ticker'][ticker] // split_num)  # split_num로 정수 나누기(나머지는 버리기)
+        # def split_stock(split_num, trading_data):
+        #     splits_{split_num}_sell_qty = dict()
+        #     splits_{split_num}_buy_qty = dict()
+        #     for ticker in trading_data['sell_ticker'].keys():
+        #         splits_{split_num}_sell_qty[ticker] = int(trading_data['sell_ticker'][ticker] // split_num)  # split_num로 정수 나누기(나머지는 버리기)
 
-        split_5_qty = dict()
-        for ticker in trading_data['sell_ticker'].keys():
-            split_5_qty[ticker] = int(trading_data['sell_ticker'][ticker] // 5)  # 5로 정수 나누기(이단계에서 int을 꼭 해줌 나머지는 버리기)
+        # split_5_qty = dict()
+        # for ticker in trading_data['sell_ticker'].keys():
+        #     split_5_qty[ticker] = int(trading_data['sell_ticker'][ticker] // 5)  # 5로 정수 나누기(이단계에서 int을 꼭 해줌 나머지는 버리기)
         
-        print("*"*60)
-        print(split_5_qty)
+        # print("*"*60)
+        # print(split_5_qty)
 
         ## 매매 시 USD 변동 가치 기입
 

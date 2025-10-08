@@ -1,232 +1,162 @@
-import pandas_market_calendars as mcal
-from datetime import datetime, timedelta
-import pytz
+# KIS_US.py에 추가할 메서드들
+# 기존 KIS_API 클래스에 아래 메서드들을 추가하세요
 
-class US_Market_Calendar:
-    """미국 증시 거래일 체크 클래스"""
+import pandas as pd
+from typing import Dict, List, Optional
+import time
+
+class KIS_API_Extended:
+    """KIS_API 클래스에 추가할 메서드들"""
     
-    def __init__(self):
-        # NYSE 캘린더 (나스닥과 동일한 거래일)
-        self.nyse = mcal.get_calendar('NYSE')
-        
-    def is_trading_day(self, date=None):
+    # 클래스 변수로 수수료율 추가
+    SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
+    
+    def get_order_executions_detailed(
+        self,
+        start_date: str = None,
+        end_date: str = None,
+        ticker: str = "",
+        sll_buy_dvsn: str = "00",
+        ccld_nccs_dvsn: str = "01",
+        exchange: str = "NASD"
+    ) -> pd.DataFrame:
         """
-        특정 날짜가 거래일인지 확인
+        주문 체결내역 상세 조회 (수수료 계산 포함)
         
         Parameters:
-        date: datetime 객체 또는 'YYYY-MM-DD' 문자열 (None이면 오늘)
+        start_date: 조회 시작일 (YYYYMMDD)
+        end_date: 조회 종료일 (YYYYMMDD)
+        ticker: 종목코드
+        sll_buy_dvsn: 00:전체, 01:매도, 02:매수
+        ccld_nccs_dvsn: 00:전체, 01:체결, 02:미체결
+        exchange: 거래소코드
         
         Returns:
-        bool: 거래일이면 True
+        pd.DataFrame: 체결내역 + 수수료 계산
         """
-        if date is None:
-            date = datetime.now()
-        elif isinstance(date, str):
-            date = datetime.strptime(date, '%Y-%m-%d')
+        from datetime import datetime
         
-        # 해당 날짜의 거래일 스케줄 조회
-        schedule = self.nyse.schedule(
-            start_date=date.strftime('%Y-%m-%d'),
-            end_date=date.strftime('%Y-%m-%d')
-        )
+        # 날짜 기본값 설정
+        if start_date is None:
+            start_date = datetime.now().strftime('%Y%m%d')
+        if end_date is None:
+            end_date = datetime.now().strftime('%Y%m%d')
         
-        return len(schedule) > 0
-    
-    def get_next_trading_day(self, date=None):
-        """
-        다음 거래일 찾기
+        path = "/uapi/overseas-stock/v1/trading/inquire-ccnl"
+        url = f"{self.url_base}{path}"
         
-        Parameters:
-        date: 기준 날짜 (None이면 오늘)
-        
-        Returns:
-        datetime: 다음 거래일
-        """
-        if date is None:
-            date = datetime.now()
-        elif isinstance(date, str):
-            date = datetime.strptime(date, '%Y-%m-%d')
-        
-        # 최대 14일 앞까지 조회 (주말+공휴일 대비)
-        end_date = date + timedelta(days=14)
-        
-        schedule = self.nyse.schedule(
-            start_date=date.strftime('%Y-%m-%d'),
-            end_date=end_date.strftime('%Y-%m-%d')
-        )
-        
-        # 오늘 이후의 거래일 찾기
-        future_days = schedule[schedule.index.date > date.date()]
-        
-        if len(future_days) > 0:
-            return future_days.index[0].date()
-        return None
-    
-    def get_previous_trading_day(self, date=None):
-        """
-        이전 거래일 찾기
-        
-        Parameters:
-        date: 기준 날짜 (None이면 오늘)
-        
-        Returns:
-        datetime: 이전 거래일
-        """
-        if date is None:
-            date = datetime.now()
-        elif isinstance(date, str):
-            date = datetime.strptime(date, '%Y-%m-%d')
-        
-        # 최대 14일 전까지 조회
-        start_date = date - timedelta(days=14)
-        
-        schedule = self.nyse.schedule(
-            start_date=start_date.strftime('%Y-%m-%d'),
-            end_date=date.strftime('%Y-%m-%d')
-        )
-        
-        # 오늘 이전의 거래일 찾기
-        past_days = schedule[schedule.index.date < date.date()]
-        
-        if len(past_days) > 0:
-            return past_days.index[-1].date()
-        return None
-    
-    def get_trading_days_in_month(self, year=None, month=None):
-        """
-        특정 월의 모든 거래일 조회
-        
-        Parameters:
-        year: 연도 (None이면 올해)
-        month: 월 (None이면 이번달)
-        
-        Returns:
-        list: 거래일 리스트
-        """
-        if year is None or month is None:
-            today = datetime.now()
-            year = year or today.year
-            month = month or today.month
-        
-        # 월 시작일과 마지막일
-        from calendar import monthrange
-        last_day = monthrange(year, month)[1]
-        
-        start_date = f"{year}-{month:02d}-01"
-        end_date = f"{year}-{month:02d}-{last_day}"
-        
-        schedule = self.nyse.schedule(
-            start_date=start_date,
-            end_date=end_date
-        )
-        
-        return [day.date() for day in schedule.index]
-    
-    def get_market_hours(self, date=None):
-        """
-        거래 시간 조회 (ET 시간대)
-        
-        Parameters:
-        date: 조회 날짜 (None이면 오늘)
-        
-        Returns:
-        dict: 시장 개장/마감 시간 또는 None
-        """
-        if date is None:
-            date = datetime.now()
-        elif isinstance(date, str):
-            date = datetime.strptime(date, '%Y-%m-%d')
-        
-        schedule = self.nyse.schedule(
-            start_date=date.strftime('%Y-%m-%d'),
-            end_date=date.strftime('%Y-%m-%d')
-        )
-        
-        if len(schedule) == 0:
-            return None
-        
-        row = schedule.iloc[0]
-        
-        return {
-            'market_open': row['market_open'].to_pydatetime(),
-            'market_close': row['market_close'].to_pydatetime(),
-            'is_early_close': row['market_close'].hour < 16
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTS3035R",
+            "custtype": "P"
         }
-    
-    def get_holidays(self, year=None):
-        """
-        연간 휴장일 조회
         
-        Parameters:
-        year: 연도 (None이면 올해)
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "PDNO": ticker,
+            "ORD_STRT_DT": start_date,
+            "ORD_END_DT": end_date,
+            "SLL_BUY_DVSN": sll_buy_dvsn,
+            "CCLD_NCCS_DVSN": ccld_nccs_dvsn,
+            "OVRS_EXCG_CD": exchange,
+            "SORT_SQN": "DS",
+            "ORD_DT": "",
+            "ORD_GNO_BRNO": "",
+            "ODNO": "",
+            "CTX_AREA_NK200": "",
+            "CTX_AREA_FK200": ""
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                orders = result.get('output', [])
+                if not orders:
+                    return pd.DataFrame()
+                
+                df = pd.DataFrame(orders)
+                
+                # 수치형 변환
+                df['ft_ccld_qty'] = pd.to_numeric(df['ft_ccld_qty'], errors='coerce')
+                df['ft_ccld_unpr3'] = pd.to_numeric(df['ft_ccld_unpr3'], errors='coerce')
+                df['ft_ccld_amt3'] = pd.to_numeric(df['ft_ccld_amt3'], errors='coerce')
+                
+                # 매도/매수 구분
+                df['is_sell'] = df['sll_buy_dvsn_cd'] == '01'
+                
+                # 수수료 계산
+                df['fee'] = 0.0
+                df.loc[df['is_sell'], 'fee'] = df.loc[df['is_sell'], 'ft_ccld_amt3'] * self.SELL_FEE_RATE
+                
+                # 순 체결금액 (매도: 수수료 차감, 매수: 그대로)
+                df['net_amount'] = df['ft_ccld_amt3'] - df['fee']
+                
+                # 예수금 변동액 (매도: +, 매수: -)
+                df['deposit_change'] = df['net_amount']
+                df.loc[~df['is_sell'], 'deposit_change'] = -df.loc[~df['is_sell'], 'ft_ccld_amt3']
+                
+                # 반올림
+                df['fee'] = df['fee'].round(2)
+                df['net_amount'] = df['net_amount'].round(2)
+                df['deposit_change'] = df['deposit_change'].round(2)
+                
+                return df
+            else:
+                print(f"API 오류: {result.get('msg1')}")
+                return pd.DataFrame()
+                
+        except Exception as e:
+            print(f"체결내역 조회 오류: {e}")
+            return pd.DataFrame()
+    
+    def get_usd_deposit_info(self) -> Dict:
+        """
+        USD 예수금 상세 정보 조회
         
         Returns:
-        list: (날짜, 휴일명) 튜플 리스트
+        Dict: {
+            'deposit': 예수금,
+            'withdrawable': 출금가능금액,
+            'exchange_rate': 환율,
+            'krw_value': 원화환산금액
+        }
         """
-        if year is None:
-            year = datetime.now().year
+        path = "/uapi/overseas-stock/v1/trading/inquire-present-balance"
+        url = f"{self.url_base}{path}"
         
-        start_date = f"{year}-01-01"
-        end_date = f"{year}-12-31"
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "CTRP6504R",
+            "custtype": "P"
+        }
         
-        # 전체 달력과 거래일 비교
-        all_days = mcal.date_range(
-            self.nyse.schedule(start_date=start_date, end_date=end_date),
-            frequency='1D'
-        )
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "WCRC_FRCR_DVSN_CD": "02",  # 외화
+            "NATN_CD": "840",  # 미국
+            "TR_MKET_CD": "00",
+            "INQR_DVSN_CD": "00"
+        }
         
-        holidays = self.nyse.holidays().holidays
-        
-        result = []
-        for holiday in holidays:
-            if holiday.year == year:
-                result.append((holiday, holidays[holiday]))
-        
-        return sorted(result, key=lambda x: x[0])
-
-
-# 사용 예시
-if __name__ == "__main__":
-    calendar = US_Market_Calendar()
-    
-    # 오늘이 거래일인지 확인
-    print("="*60)
-    today = datetime.now()
-    is_trading = calendar.is_trading_day()
-    print(f"오늘 ({today.strftime('%Y-%m-%d')}): {'거래일' if is_trading else '휴장일'}")
-    
-    # 특정 날짜 확인 (크리스마스)
-    christmas = "2025-12-25"
-    is_trading = calendar.is_trading_day(christmas)
-    print(f"{christmas}: {'거래일' if is_trading else '휴장일'}")
-    
-    # 다음 거래일
-    next_day = calendar.get_next_trading_day()
-    print(f"\n다음 거래일: {next_day}")
-    
-    # 이전 거래일
-    prev_day = calendar.get_previous_trading_day()
-    print(f"이전 거래일: {prev_day}")
-    
-    # 이번 달 거래일 수
-    trading_days = calendar.get_trading_days_in_month()
-    print(f"\n이번 달 거래일: {len(trading_days)}일")
-    print(f"거래일 목록: {[d.strftime('%Y-%m-%d') for d in trading_days[:5]]}...")
-    
-    # 오늘의 거래 시간
-    hours = calendar.get_market_hours()
-    if hours:
-        print(f"\n오늘의 거래 시간:")
-        print(f"개장: {hours['market_open'].strftime('%Y-%m-%d %H:%M:%S %Z')}")
-        print(f"마감: {hours['market_close'].strftime('%Y-%m-%d %H:%M:%S %Z')}")
-        print(f"조기 마감: {'예' if hours['is_early_close'] else '아니오'}")
-    else:
-        print("\n오늘은 휴장일입니다.")
-    
-    # 2025년 휴장일 목록
-    print("\n" + "="*60)
-    print("2025년 미국 증시 휴장일:")
-    print("="*60)
-    holidays = calendar.get_holidays(2025)
-    for date, name in holidays:
-        print(f"{date.strftime('%Y-%m-%d')}: {name}")
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                output2 = result.get('output2', [])
+                if output2:
+                    info = output2[0]
+                    deposit = float(info.get('frcr_dncl_amt_2', 0))
+                    exchange_rate = float(info.get('frst_bltn
