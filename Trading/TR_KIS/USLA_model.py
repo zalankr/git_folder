@@ -9,6 +9,15 @@ import calendar
 import warnings
 warnings.filterwarnings('ignore')
 
+def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
+    self.key_file_path = key_file_path
+    self.token_file_path = token_file_path
+    self.cano = cano
+    self.acnt_prdt_cd = acnt_prdt_cd
+    self.url_base = "https://openapi.koreainvestment.com:9443"
+    
+    self._load_api_keys()
+    self.access_token = self.get_access_token()
 
 class USLA_Model(KIS_US.KIS_API): #상속
     def __init__(self, key_file_path, token_file_path, cano, acnt_prdt_cd):
@@ -375,8 +384,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         # dst check, tradingrnqns 및 회차/총회차, 이를 바탕으로 총splits수 산출
 
-        # date = datetime.now().strftime('%Y-%m-%d')
-        # time = datetime.now().strftime('%H:%M:%S')
+        date = datetime.now().strftime('%Y-%m-%d')
+        time = datetime.now().strftime('%H:%M:%S')
         # check_dst = self.is_us_dst()
 
         trading_data = {

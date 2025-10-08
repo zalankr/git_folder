@@ -15,7 +15,7 @@ crontab 설정
 """
 
 # TR Model 구분
-now = KIS_Calender.get_current()
+
 '''
 1. USAA 리밸런싱 모델 구분
 - 정해진 리밸런싱일에 미국증시 시간대로 crontab 실행되었는 지 확인. 이후 해당일 8-20(summer), 9-21(winter) 5분마다 실행

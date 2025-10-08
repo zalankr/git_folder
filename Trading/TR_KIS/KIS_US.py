@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 import os
 from typing import Union, Optional, Dict, List
 import time
+import pandas as pd
 
 class KIS_API:
-    """한국투자증권 API 클래스 (최종 정제 버전)"""
+    """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
     
     EXCHANGE_MAP = {
         # 나스닥
@@ -23,6 +24,10 @@ class KIS_API:
         "BAC": "NYS", "XOM": "NYS", "KO": "NYS", "PFE": "NYS",
         "T": "NYS", "VZ": "NYS", "CVX": "NYS", "NKE": "NYS",
     }
+    
+    # 수수료율
+    SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
+    BUY_FEE_RATE = 0.0  # 매수 수수료는 체결단가에 포함
 
     def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
         self.key_file_path = key_file_path
@@ -675,7 +680,7 @@ class KIS_API:
     def get_US_dollar_balance(self) -> Optional[Dict]:
         """미국 달러 예수금"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
-        url = f"{self.url_base}/{path}"
+        url = f"{self.url_base}{path}"
         
         headers = {
             "Content-Type": "application/json",
@@ -722,7 +727,7 @@ class KIS_API:
     def get_total_balance(self) -> Optional[Dict]:
         """전체 계좌 잔고"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
-        url = f"{self.url_base}/{path}"
+        url = f"{self.url_base}{path}"
         
         headers = {
             "Content-Type": "application/json",
@@ -894,7 +899,251 @@ class KIS_API:
                 
         except Exception as e:
             print(f"체결 확인 중 오류: {e}")
-            return None   
+            return None
+
+    # ==================== 추가된 메서드: 체결내역 조회 및 수수료 계산 ====================
+    
+    def get_order_executions_detailed(
+        self,
+        start_date: str = None,
+        end_date: str = None,
+        ticker: str = "",
+        sll_buy_dvsn: str = "00",
+        ccld_nccs_dvsn: str = "01",
+        exchange: str = "NASD"
+    ) -> pd.DataFrame:
+        """
+        주문 체결내역 상세 조회 (수수료 계산 포함)
+        
+        Parameters:
+        start_date: 조회 시작일 (YYYYMMDD)
+        end_date: 조회 종료일 (YYYYMMDD)
+        ticker: 종목코드
+        sll_buy_dvsn: 00:전체, 01:매도, 02:매수
+        ccld_nccs_dvsn: 00:전체, 01:체결, 02:미체결
+        exchange: 거래소코드
+        
+        Returns:
+        pd.DataFrame: 체결내역 + 수수료 계산
+        """
+        # 날짜 기본값 설정
+        if start_date is None:
+            start_date = datetime.now().strftime('%Y%m%d')
+        if end_date is None:
+            end_date = datetime.now().strftime('%Y%m%d')
+        
+        path = "/uapi/overseas-stock/v1/trading/inquire-ccnl"
+        url = f"{self.url_base}{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTS3035R",
+            "custtype": "P"
+        }
+        
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "PDNO": ticker,
+            "ORD_STRT_DT": start_date,
+            "ORD_END_DT": end_date,
+            "SLL_BUY_DVSN": sll_buy_dvsn,
+            "CCLD_NCCS_DVSN": ccld_nccs_dvsn,
+            "OVRS_EXCG_CD": exchange,
+            "SORT_SQN": "DS",
+            "ORD_DT": "",
+            "ORD_GNO_BRNO": "",
+            "ODNO": "",
+            "CTX_AREA_NK200": "",
+            "CTX_AREA_FK200": ""
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                orders = result.get('output', [])
+                if not orders:
+                    return pd.DataFrame()
+                
+                df = pd.DataFrame(orders)
+                
+                # 수치형 변환
+                df['ft_ccld_qty'] = pd.to_numeric(df['ft_ccld_qty'], errors='coerce')
+                df['ft_ccld_unpr3'] = pd.to_numeric(df['ft_ccld_unpr3'], errors='coerce')
+                df['ft_ccld_amt3'] = pd.to_numeric(df['ft_ccld_amt3'], errors='coerce')
+                
+                # 매도/매수 구분
+                df['is_sell'] = df['sll_buy_dvsn_cd'] == '01'
+                
+                # 수수료 계산
+                df['fee'] = 0.0
+                df.loc[df['is_sell'], 'fee'] = df.loc[df['is_sell'], 'ft_ccld_amt3'] * self.SELL_FEE_RATE
+                
+                # 순 체결금액 (매도: 수수료 차감, 매수: 그대로)
+                df['net_amount'] = df['ft_ccld_amt3'] - df['fee']
+                
+                # 예수금 변동액 (매도: +, 매수: -)
+                df['deposit_change'] = df['net_amount']
+                df.loc[~df['is_sell'], 'deposit_change'] = -df.loc[~df['is_sell'], 'ft_ccld_amt3']
+                
+                # 반올림
+                df['fee'] = df['fee'].round(2)
+                df['net_amount'] = df['net_amount'].round(2)
+                df['deposit_change'] = df['deposit_change'].round(2)
+                
+                return df
+            else:
+                print(f"API 오류: {result.get('msg1')}")
+                return pd.DataFrame()
+                
+        except Exception as e:
+            print(f"체결내역 조회 오류: {e}")
+            return pd.DataFrame()
+    
+    def get_usd_deposit_info(self) -> Dict:
+        """
+        USD 예수금 상세 정보 조회
+        
+        Returns:
+        Dict: {
+            'deposit': 예수금,
+            'withdrawable': 출금가능금액,
+            'exchange_rate': 환율,
+            'krw_value': 원화환산금액
+        }
+        """
+        return self.get_US_dollar_balance()
+    
+    def print_execution_summary(
+        self, 
+        executions_df: pd.DataFrame, 
+        initial_balance: Dict = None
+    ):
+        """
+        체결내역 요약 출력
+        
+        Parameters:
+        executions_df: 체결내역 DataFrame
+        initial_balance: 초기 잔고 정보
+        """
+        if executions_df.empty:
+            print("체결내역이 없습니다.")
+            return
+        
+        print("\n" + "="*120)
+        print("미국주식 주문 체결내역 요약")
+        print("="*120)
+        
+        if initial_balance:
+            print(f"\n[초기 USD 예수금]")
+            print(f"예수금: ${initial_balance['deposit']:,.2f}")
+            print(f"출금가능: ${initial_balance['withdrawable']:,.2f}")
+            print(f"환율: ₩{initial_balance['exchange_rate']:,.2f}")
+        
+        total_sell_amount = 0
+        total_buy_amount = 0
+        total_fees = 0
+        
+        print(f"\n{'주문번호':<15} {'종목':<8} {'구분':<6} {'수량':<6} {'단가':<10} "
+              f"{'체결금액':<12} {'수수료':<10} {'입출금액':<12} {'상태':<10}")
+        print("-"*120)
+        
+        for idx, row in executions_df.iterrows():
+            is_sell = row['deposit_change'] > 0
+            
+            print(f"{row['odno']:<15} "
+                  f"{row['pdno']:<8} "
+                  f"{row['sll_buy_dvsn_cd_name']:<6} "
+                  f"{int(row['ft_ccld_qty']):<6} "
+                  f"${row['ft_ccld_unpr3']:<9,.2f} "
+                  f"${row['ft_ccld_amt3']:<11,.2f} "
+                  f"${row['fee']:<9,.2f} "
+                  f"${row['deposit_change']:+11,.2f} "
+                  f"{row['prcs_stat_name']:<10}")
+            
+            if is_sell:
+                total_sell_amount += row['net_amount']
+            else:
+                total_buy_amount += abs(row['deposit_change'])
+            
+            total_fees += row['fee']
+        
+        print("="*120)
+        print(f"\n[합계]")
+        print(f"총 매도 입금액: ${total_sell_amount:,.2f}")
+        print(f"총 매수 출금액: ${total_buy_amount:,.2f}")
+        print(f"총 수수료: ${total_fees:,.2f}")
+        print(f"순 예수금 변동: ${(total_sell_amount - total_buy_amount):+,.2f}")
+        
+        if initial_balance:
+            final_balance = initial_balance['deposit'] + (total_sell_amount - total_buy_amount)
+            print(f"\n예상 최종 예수금: ${final_balance:,.2f}")
+            print(f"예수금 변동: ${(final_balance - initial_balance['deposit']):+,.2f}")
+    
+    def track_order_execution(
+        self,
+        order_number: str,
+        ticker: str,
+        wait_seconds: int = 10,
+        max_attempts: int = 5
+    ) -> Optional[Dict]:
+        """
+        특정 주문번호의 체결 추적
+        
+        Parameters:
+        order_number: 추적할 주문번호
+        ticker: 종목코드
+        wait_seconds: 재시도 대기 시간
+        max_attempts: 최대 시도 횟수
+        
+        Returns:
+        Dict: 체결 정보 또는 None
+        """
+        today = datetime.now().strftime('%Y%m%d')
+        
+        for attempt in range(max_attempts):
+            print(f"\n[{attempt + 1}/{max_attempts}] 체결 확인 중... (주문번호: {order_number})")
+            
+            executions = self.get_order_executions_detailed(
+                start_date=today,
+                end_date=today,
+                ticker=ticker,
+                ccld_nccs_dvsn="01"  # 체결만
+            )
+            
+            if not executions.empty:
+                # 해당 주문번호 찾기
+                order = executions[executions['odno'] == order_number]
+                if not order.empty:
+                    row = order.iloc[0]
+                    detail = {
+                        'order_number': row['odno'],
+                        'ticker': row['pdno'],
+                        'name': row['prdt_name'],
+                        'order_type': row['sll_buy_dvsn_cd_name'],
+                        'quantity': int(row['ft_ccld_qty']),
+                        'price': float(row['ft_ccld_unpr3']),
+                        'amount_before_fee': float(row['ft_ccld_amt3']),
+                        'fee': float(row['fee']),
+                        'net_amount': float(row['net_amount']),
+                        'deposit_change': float(row['deposit_change']),
+                        'status': row['prcs_stat_name']
+                    }
+                    print("✅ 체결 확인 완료!")
+                    return detail
+            
+            if attempt < max_attempts - 1:
+                print(f"⏳ {wait_seconds}초 후 재시도...")
+                time.sleep(wait_seconds)
+        
+        print("❌ 체결 확인 실패")
+        return None
 
     # 서머타임(DST) 확인
     def is_us_dst(self):
@@ -931,8 +1180,10 @@ class KIS_API:
         # 서머타임 기간 확인
         return dst_start <= us_eastern_time < dst_end
 
+
 # 사용 예시
 if __name__ == "__main__":
+    # 계좌 정보 설정
     api = KIS_API(
         key_file_path="C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt",
         token_file_path="C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json",
@@ -940,32 +1191,55 @@ if __name__ == "__main__":
         acnt_prdt_cd="01"
     )
     
-    # 현재가 조회
-    print("\n=== 현재가 조회 ===")
-    tickers = ["AAPL", "TSLA", "BIL", "TQQQ", "UPRO"]
-    for ticker in tickers:
-        price = api.get_US_current_price(ticker)
-        if isinstance(price, float):
-            print(f"{ticker}: ${price:,.2f}")
-        else:
-            print(f"{ticker}: {price}")
+    print("\n=== 미국주식 주문 체결내역 추적 시스템 ===\n")
     
-    # 시가 조회
-    print("\n=== 시가 조회 ===")
-    for ticker in tickers:
-        open_price = api.get_US_open_price(ticker)
-        if isinstance(open_price, float):
-            print(f"{ticker} 시가: ${open_price:,.2f}")
-        else:
-            print(f"{ticker} 시가: {open_price}")
-
-    # 서머타임(DST) 확인
-    is_dst = api.is_us_dst()
-    print("="*60)
-    print(is_dst)
-    print(f"현재 UTC 시간: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"서머타임(DST): {True if is_dst else False}")
-
+    # 1. 초기 USD 예수금 조회
+    print("[1] 초기 USD 예수금 조회")
+    initial_balance = api.get_usd_deposit_info()
+    if initial_balance:
+        print(f"현재 예수금: ${initial_balance['deposit']:,.2f}")
+        print(f"출금가능: ${initial_balance['withdrawable']:,.2f}")
+        print(f"환율: ₩{initial_balance['exchange_rate']:,.2f}")
+    
+    # 2. 오늘의 체결내역 조회
+    print("\n[2] 오늘의 체결내역 조회")
+    today = datetime.now().strftime('%Y%m%d')
+    executions_df = api.get_order_executions_detailed(
+        start_date=today,
+        end_date=today,
+        ccld_nccs_dvsn="01"  # 체결만
+    )
+    
+    # 3. 체결내역 출력
+    if not executions_df.empty:
+        print(f"\n총 {len(executions_df)}건의 체결내역 발견")
+        api.print_execution_summary(executions_df, initial_balance)
+        
+        # 4. 최종 예수금 확인
+        print("\n[4] 최종 USD 예수금 확인")
+        final_balance = api.get_usd_deposit_info()
+        if final_balance and initial_balance:
+            print(f"최종 예수금: ${final_balance['deposit']:,.2f}")
+            print(f"변동액: ${(final_balance['deposit'] - initial_balance['deposit']):+,.2f}")
+    else:
+        print("오늘 체결된 주문이 없습니다.")
+    
+    # 예제: 특정 주문번호 추적
+    # execution_info = api.track_order_execution(
+    #     order_number="0123456789",
+    #     ticker="AAPL",
+    #     wait_seconds=10,
+    #     max_attempts=5
+    # )
+    # if execution_info:
+    #     print(f"\n체결 상세:")
+    #     print(f"종목: {execution_info['name']} ({execution_info['ticker']})")
+    #     print(f"구분: {execution_info['order_type']}")
+    #     print(f"수량: {execution_info['quantity']}")
+    #     print(f"단가: ${execution_info['price']:,.2f}")
+    #     print(f"체결금액: ${execution_info['amount_before_fee']:,.2f}")
+    #     print(f"수수료: ${execution_info['fee']:,.2f}")
+    #     print(f"입출금액: ${execution_info['deposit_change']:+,.2f}")
 
 
 """
@@ -990,9 +1264,6 @@ if __name__ == "__main__":
 [Header tr_id TTTS1001U(홍콩 매도 주문)]
 00 : 지정가
 50 : 단주지정가
-
-[그외 tr_id]
-제거
 
 ※ TWAP, VWAP 주문은 정정 불가
 """
