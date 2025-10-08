@@ -14,13 +14,11 @@ crontab 설정
 30 19 31 3 * python3 /TR_KIS/KIS_Trading.py 서머타임 시간대 UTC 20시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
 """
 
-# TR Model 구분
-
 '''
 1. USAA 리밸런싱 모델 구분
+- USAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인 반환
 - 정해진 리밸런싱일에 미국증시 시간대로 crontab 실행되었는 지 확인. 이후 해당일 8-20(summer), 9-21(winter) 5분마다 실행
 '''
-# USAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인 반환 #
 order_time = KIS_Calender.check_order_time()
 print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']}")
 print(f"{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
