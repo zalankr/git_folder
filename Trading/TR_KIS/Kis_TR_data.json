@@ -1,13 +1,17 @@
 [
     {
+        "date": "2025-10-08"},
+    {
         "ticker": "EDC",
         "position": "Buy",
         "target_amount": 16,
         "hold_amount": 0,
+        "buy_qty": 16,
+        "sell_qty": 0,
         "TR_quantity": 16,
-        "order_quantity": 0,
-        "filled_quantity": 0,
-        "unfilled_quantity": 0,
+        "order_qty": 0,
+        "filled_qty": 0,
+        "unfilled_qty": 0,
         "pending_order": 0
     },
     {

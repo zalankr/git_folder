@@ -59,9 +59,16 @@ if check_USAA == "USAA_winter_rebalancing":
 
         # 최초 미국 Pre-market 주간거래 매도, 매수 주문하기
         ## Pre-market 5 split 수량 계산
+
+        def split_stock(split_num, trading_data):
+            splits_{split_num}_sell_qty = dict()
+            splits_{split_num}_buy_qty = dict()
+            for ticker in trading_data['sell_ticker'].keys():
+                splits_{split_num}_sell_qty[ticker] = int(trading_data['sell_ticker'][ticker] // split_num)  # split_num로 정수 나누기(나머지는 버리기)
+
         split_5_qty = dict()
         for ticker in trading_data['sell_ticker'].keys():
-            split_5_qty[ticker] = int(trading_data['sell_ticker'][ticker] // 5)  # 5로 정수 나누기(나머지는 버리기)
+            split_5_qty[ticker] = int(trading_data['sell_ticker'][ticker] // 5)  # 5로 정수 나누기(이단계에서 int을 꼭 해줌 나머지는 버리기)
         
         print("*"*60)
         print(split_5_qty)
