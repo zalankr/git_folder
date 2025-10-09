@@ -86,7 +86,7 @@ def check_order_time():
     # current_time = now.time()
 
     # test #
-    current_date = datetime.strptime("2026-11-03", "%Y-%m-%d").date()
+    current_date = datetime.strptime("2025-11-03", "%Y-%m-%d").date()
     current_time = datetime.strptime("09:00:01", "%H:%M:%S").time()
     # test #
 

@@ -9,16 +9,6 @@ import calendar
 import warnings
 warnings.filterwarnings('ignore')
 
-def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
-    self.key_file_path = key_file_path
-    self.token_file_path = token_file_path
-    self.cano = cano
-    self.acnt_prdt_cd = acnt_prdt_cd
-    self.url_base = "https://openapi.koreainvestment.com:9443"
-    
-    self._load_api_keys()
-    self.access_token = self.get_access_token()
-
 class USLA_Model(KIS_US.KIS_API): #상속
     def __init__(self, key_file_path, token_file_path, cano, acnt_prdt_cd):
         super().__init__(key_file_path, token_file_path, cano, acnt_prdt_cd)  # 부모 생성자 호출
@@ -27,12 +17,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.tax_rate = 0.0009
         self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"  
 
-    def get_month_end_date(self, year, month):
+    def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
         """월말일 반환"""
         last_day = calendar.monthrange(year, month)[1]
         return f'{year}-{month:02d}-{last_day}'
     
-    def calculate_regime(self, target_month, target_year):
+    def calculate_regime(self, target_month, target_year): # run_strategy함수에 종속되어 Regime Signal 계산
         """AGG ETF 기반 Regime Signal 계산"""
         try:
             # 4개월 전 시작일 계산
@@ -69,7 +59,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             print(f"Regime 계산 오류: {e}")
             return 0
     
-    def calculate_momentum(self, target_month, target_year):
+    def calculate_momentum(self, target_month, target_year): # run_strategy함수에 종속되어 모멘텀점수 계산
         """모멘텀 점수 계산"""
         try:
             # 13개월 데이터 필요 (현재 + 12개월)
@@ -136,7 +126,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             print(f"모멘텀 점수 계산 오류: {e}")
             return pd.DataFrame()
     
-    def calculate_portfolio_weights(self, top_tickers):
+    def calculate_portfolio_weights(self, top_tickers): # run_strategy함수에 종속되어 최소분산 포트폴리오 가중치 계산
             """최소분산 포트폴리오 가중치 계산"""
             try:
                 # 최근 3개월 일일 수익률 데이터
@@ -213,7 +203,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 equal_weight = 0.99 / len(top_tickers)
                 return {ticker: equal_weight for ticker in top_tickers}
     
-    def get_USLA_current_prices(self):
+    def get_USLA_current_prices(self): # run_strategy함수에 종속되어 USLA model의 현재 가격 조회
         """현재 가격 조회"""
         try:
             prices = {}
@@ -226,7 +216,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             print(f"가격 조회 오류: {e}")
             return {ticker: 100.0 for ticker in self.all_tickers}  # 기본값
     
-    def run_strategy(self, target_month=None, target_year=None):
+    def run_strategy(self, target_month=None, target_year=None): # USLA model의 Regime signal, momentum결과 투자 ticker 및 비중
         """전략 실행"""
         if target_month is None or target_year is None:
             today = date.today()
@@ -285,7 +275,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'current_prices': current_prices
         }
     
-    def get_USLA_data(self):
+    def get_USLA_data(self): # make_trading_data함수에 종속되어 USLA data 불러오기
         """USLA data 불러오기"""   
         try:
             with open(self.USLA_data_path, 'r', encoding='utf-8') as f:
@@ -312,7 +302,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         return hold_USD_value
     
-    def target_ticker_weight(self): # target 티커별 목표 비중 산출
+    def target_ticker_weight(self): # make_trading_data함수에 종속되어 target 티커별 목표 비중 산출
         """USLA 모델 실행, target ticker와 weight 구하기"""
         invest = self.run_strategy()
         target = {
@@ -322,7 +312,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         }
         return target    
 
-    def calculate_target_data(self, target, target_usd_value): # make_trading_data함수에 종속되어 target 티커별 목표 quantity 산출
+    def calculate_target_quantity(self, target, target_usd_value): # make_trading_data함수에 종속되어 target 티커별 목표 quantity 산출
         # 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
         target_quantity = {}
         target_stock_value = 0
@@ -344,7 +334,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         return target_quantity
 
-    def make_trading_data(self, USLA_data):
+    def make_trading_data(self, USLA_data, strategy_result): #############################################################################################################
         """trading 할 ticker별 매수매도량 구하기"""
         hold = {ticker: float(qty) for ticker, qty in zip(USLA_data['ticker'], USLA_data['quantity'])} # Hold dict 생성, ticker별 quantity를 float로 변환
         hold_ticker = list(hold.keys())
@@ -352,7 +342,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         target = self.target_ticker_weight() # target_ticker별 비중 dict
         target_ticker = list(target.keys())
         target_usd_value = {ticker: target[ticker] * hold_USD_value for ticker in target.keys()} # target_ticker별 USD 배정 dict
-        target_qty = self.calculate_target_data(target, target_usd_value) # target_ticker별 목표 quantity 계산
+        target_qty = self.calculate_target_quantity(target, target_usd_value) # target_ticker별 목표 quantity 계산
 
         # trading data 만들기
         sell_ticker = {}
@@ -403,6 +393,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         }
         return trading_data
     
+
     def create_kis_tr_data(self, sell_ticker, buy_ticker, hold, target_qty):
         """
         거래 데이터를 JSON 형식으로 생성
