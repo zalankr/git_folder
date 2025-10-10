@@ -14,25 +14,27 @@ crontab 설정
 30 19 31 3 * python3 /TR_KIS/KIS_Trading.py 서머타임 시간대 UTC 20시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
 """
 
+def make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd):
+    # 공통 USLA모델 객체 생성
+    USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
+    print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_time['total_round']}회차")
+
+    return USLA
+
+key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
+token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
+cano = "63721147"  # 종합계좌번호 (8자리)
+acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
+
 # 날짜를 받아 USAA 리밸런싱일이 맞는 지, summer or winter time 시간대인지 확인
 # 리밸런싱일인 경우 시간을 받아 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인
 order_time = KIS_Calender.check_order_time()
 # 위에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
 
-# print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']}")
-# print(f"{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
-
 # USAA 리밸런싱일인 경우
 if order_time['season'] == "USAA_summer" or order_time['season'] == "USAA_winter":
-    # 공통 USLA모델 객체 생성
-    key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
-    token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
-    cano = "63721147"  # 종합계좌번호 (8자리)
-    acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
-
-    USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
-    print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_time['total_round']}회차")
-
+    USLA = make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd)
+    
     # Pre_market 1회차 거래
     if order_time['market'] == "Pre-market":
         if order_time['round'] == 1:
