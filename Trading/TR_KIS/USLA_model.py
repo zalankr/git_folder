@@ -351,6 +351,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         target_qty = self.calculate_target_quantity(target, target_usd_value) # target_ticker별 목표 quantity 계산
 
         # split수, split 수량 산출 #############
+        
         splits = 5 ##### 산출용 마켓별, 시간대별 json 파일
         # trading data 만들기
         sell_ticker = {}
