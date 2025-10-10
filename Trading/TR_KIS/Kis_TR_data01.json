@@ -4,15 +4,11 @@
         "time": "09:00:00",
         "model": "USLA",
         "season": "USAA_winter",
-        "market": "pre-market",
+        "market": "Pre-market",
         "round": 1,
         "total_rounds": 66
     },
-    "portfolio": {
-        "hold_USD_value": 2000.0,
-        "target_USD_value": 1999.8
-    },
-    "positions": {
+    "sell_ticker": {
         "UPRO": {
             "position": "sell",
             "hold_qty": 10,
@@ -83,6 +79,78 @@
                 }
             }
         },
+        "TMF": {
+            "position": "sell",
+            "hold_qty": 21,
+            "target_qty": 0,
+            "trading": {
+                "action": "sell",
+                "total_qty": 21,
+                "splits": 5,
+                "qty_distribution": [4, 4, 4, 4, 5],
+                "orders": [
+                    {
+                        "split_num": 1,
+                        "qty": 4,
+                        "price": 45.0,
+                        "usd_value": 180.0,
+                        "order_num": "20251010016",
+                        "status": "pending",
+                        "filled_qty": 0,
+                        "filled_value": 0
+                    },
+                    {
+                        "split_num": 2,
+                        "qty": 4,
+                        "price": 46.0,
+                        "usd_value": 184.0,
+                        "order_num": "20251010017",
+                        "status": "pending",
+                        "filled_qty": 0,
+                        "filled_value": 0
+                    },
+                    {
+                        "split_num": 3,
+                        "qty": 4,
+                        "price": 47.0,
+                        "usd_value": 188.0,
+                        "order_num": "20251010018",
+                        "status": "pending",
+                        "filled_qty": 0,
+                        "filled_value": 0
+                    },
+                    {
+                        "split_num": 4,
+                        "qty": 4,
+                        "price": 48.0,
+                        "usd_value": 192.0,
+                        "order_num": "20251010019",
+                        "status": "pending",
+                        "filled_qty": 0,
+                        "filled_value": 0
+                    },
+                    {
+                        "split_num": 5,
+                        "qty": 5,
+                        "price": 49.0,
+                        "usd_value": 245.0,
+                        "order_num": "20251010020",
+                        "status": "pending",
+                        "filled_qty": 0,
+                        "filled_value": 0
+                    }
+                ],
+                "summary": {
+                    "total_ordered": 21,
+                    "total_filled": 0,
+                    "total_unfilled": 21,
+                    "filled_value": 0,
+                    "unfilled_value": 988.1099
+                }                                
+            }
+        }
+    },
+    "buy_ticker": {
         "TQQQ": {
             "position": "buy",
             "hold_qty": 0,
@@ -222,82 +290,15 @@
                     "unfilled_value": 1090.981
                 }
             }
-        },
-        "TMF": {
-            "position": "sell",
-            "hold_qty": 21,
-            "target_qty": 0,
-            "trading": {
-                "action": "sell",
-                "total_qty": 21,
-                "splits": 5,
-                "qty_distribution": [4, 4, 4, 4, 5],
-                "orders": [
-                    {
-                        "split_num": 1,
-                        "qty": 4,
-                        "price": 45.0,
-                        "usd_value": 180.0,
-                        "order_num": "20251010016",
-                        "status": "pending",
-                        "filled_qty": 0,
-                        "filled_value": 0
-                    },
-                    {
-                        "split_num": 2,
-                        "qty": 4,
-                        "price": 46.0,
-                        "usd_value": 184.0,
-                        "order_num": "20251010017",
-                        "status": "pending",
-                        "filled_qty": 0,
-                        "filled_value": 0
-                    },
-                    {
-                        "split_num": 3,
-                        "qty": 4,
-                        "price": 47.0,
-                        "usd_value": 188.0,
-                        "order_num": "20251010018",
-                        "status": "pending",
-                        "filled_qty": 0,
-                        "filled_value": 0
-                    },
-                    {
-                        "split_num": 4,
-                        "qty": 4,
-                        "price": 48.0,
-                        "usd_value": 192.0,
-                        "order_num": "20251010019",
-                        "status": "pending",
-                        "filled_qty": 0,
-                        "filled_value": 0
-                    },
-                    {
-                        "split_num": 5,
-                        "qty": 5,
-                        "price": 49.0,
-                        "usd_value": 245.0,
-                        "order_num": "20251010020",
-                        "status": "pending",
-                        "filled_qty": 0,
-                        "filled_value": 0
-                    }
-                ],
-                "summary": {
-                    "total_ordered": 21,
-                    "total_filled": 0,
-                    "total_unfilled": 21,
-                    "filled_value": 0,
-                    "unfilled_value": 988.1099
-                }                                
-            }
-        },
+        }
+    },
+    "keep_ticker": {
         "TMV": {
             "position": "keep",
             "hold_qty": 0,
             "target_qty": 0
-        },
+        }
+    },
     "CASH": {
         "position": "cash",
         "hold_amount": 22.21,
@@ -309,6 +310,9 @@
             "from_sells_net": 1029.073,
             "to_buys_net": -1010.0
         }
-    }
+    },
+    "USD_value_change": {
+        "hold_USD_value": 2000.0,
+        "target_USD_value": 1999.8
     }
 }

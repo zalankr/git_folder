@@ -21,15 +21,15 @@ def make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd):
 
     return USLA
 
-
-
 # 날짜를 받아 USAA 리밸런싱일이 맞는 지, summer or winter time 시간대인지 확인
 # 리밸런싱일인 경우 시간을 받아 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인
+# 밑에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
 order_time = KIS_Calender.check_order_time()
-# 위에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
+season = order_time['season']
+round = order_time['round']
 
 # USAA 리밸런싱일인 경우
-if order_time['season'] == "USAA_summer" or order_time['season'] == "USAA_winter":
+if season == "USAA_summer" or round == "USAA_winter":
     # USLA 모델 생성
     key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
     token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
@@ -38,15 +38,12 @@ if order_time['season'] == "USAA_summer" or order_time['season'] == "USAA_winter
     
     USLA = make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd)
     
-    # Pre_market 거래
+    # Pre-market 거래
     if order_time['market'] == "Pre-market":
         if order_time['round'] == 1: #1회차
-            # USLA 데이터 불러오기
-            USLA_data = USLA.get_USLA_data()
-            # USLA model의 Regime signal, momentum결과 투자 ticker 및 비중 구하기
-            strategy_result = USLA.run_strategy(target_month=None, target_year=None)
-            print(USLA_data)
-            print(strategy_result)
+            USLA_data = USLA.USLA_rebalancing_data()
+            USLA_trading_data = USLA.USLA_trading_data(USLA_data, order_time)
+
 
             # make_trading_data(USLA_data, strategy_result) -> 매수, 매도 티커 및 티커별 qty 산출
 

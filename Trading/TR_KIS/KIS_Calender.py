@@ -97,8 +97,8 @@ def check_order_time():
     # order_time 딕셔너리 생성: season, date, time, market, round, total_round, USAA리밸런싱일 확인
     order_time = dict()
     order_time['season'] = check_USAA
-    order_time['date'] = str(current_date)
-    order_time['time'] = str(current_time)
+    order_time['date'] = current_date
+    order_time['time'] = current_time
 
     if check_USAA == "USAA_winter":
         current = time_obj(current_time.hour, current_time.minute) # current_time

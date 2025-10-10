@@ -15,7 +15,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
         self.all_tickers = self.etf_tickers + ['USLA_CASH']
         self.tax_rate = 0.0009
-        self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"  
+        self.USLA_rebalancing_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_rebalancing_data.json"  
 
     def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
         """월말일 반환"""
@@ -275,10 +275,10 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'current_prices': current_prices
         }
     
-    def get_USLA_data(self): # make_trading_data함수에 종속되어 USLA data 불러오기
+    def USLA_rebalancing_data(self): # make_trading_data함수에 종속되어 USLA data 불러오기
         """USLA data 불러오기"""   
         try:
-            with open(self.USLA_data_path, 'r', encoding='utf-8') as f:
+            with open(self.USLA_rebalancing_data_path, 'r', encoding='utf-8') as f:
                 USLA_data = json.load(f)
             return USLA_data
 
@@ -334,25 +334,42 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         return target_quantity
 
-    def make_trading_data(self, USLA_data, strategy_result): #############################################################################################################
-        """trading 할 ticker별 매수매도량 구하기"""
-        hold = {ticker: float(qty) for ticker, qty in zip(USLA_data['ticker'], USLA_data['quantity'])} # Hold dict 생성, ticker별 quantity를 float로 변환
-        hold_ticker = list(hold.keys())
+    def USLA_trading_data(self, USLA_data, order_time): #############################################################################################################
+        """trading 할 모든 데이터 구하기"""
+
+        # order_time 딕셔너리에 있는 key값을 value값으로 변환, 시장 시간대, 회차 구하기
+        market = order_time[market]
+        round = order_time[round]
+
+        # 보유, 목표 티커 및 잔고, 수량 구하기
+        hold = {ticker: float(qty) for ticker, qty in zip(USLA_data['ticker'], USLA_data['quantity'])} # Hold dict 생성, ticker별 qty를 float로 변환
+        hold_ticker = list(hold.keys()) # hold tocker 리스트
         hold_USD_value = self.calculate_USD_value(hold) # Hold 보유 잔고를 바탕으로 USD 환산 잔고 계산
         target = self.target_ticker_weight() # target_ticker별 비중 dict
-        target_ticker = list(target.keys())
+        target_ticker = list(target.keys()) # target_ticker 리스트
         target_usd_value = {ticker: target[ticker] * hold_USD_value for ticker in target.keys()} # target_ticker별 USD 배정 dict
         target_qty = self.calculate_target_quantity(target, target_usd_value) # target_ticker별 목표 quantity 계산
 
+        # split수, split 수량 산출 #############
+        splits = 5 ##### 산출용 마켓별, 시간대별 json 파일
         # trading data 만들기
         sell_ticker = {}
         buy_ticker = {}
         keep_ticker = {}
 
-        # split수, split 수량, 주문1번호, 
+        # data 
         for holding in hold_ticker:
             if holding not in target_ticker:
                 sell_ticker[holding] = {
+                    'position': 'sell',
+                    'hold_qty': int(hold[holding]),
+                    'target_qty': 0,
+                    'trading': {
+                        'action': 'sell',
+                        'total_qty': int(hold[holding]),
+                        'splits': splits,
+                        'qty_per_split': int(hold[holding] // splits)
+                    }
                     'buy_qty': 0,
                     'sell_qty': hold[holding],
                     'number_of_order_splits': 0,
@@ -372,26 +389,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
             if target not in hold_ticker:
                 buy_ticker[target] = int(target_qty[target])
 
-        # dst check, tradingrnqns 및 회차/총회차, 이를 바탕으로 총splits수 산출
-
-        date = datetime.now().strftime('%Y-%m-%d')
-        time = datetime.now().strftime('%H:%M:%S')
-        # check_dst = self.is_us_dst()
-
-        trading_data = {
-            'date': date,
-            'time': time,
-            'current_trading': '{time} Pre-market ',
-            'sell_ticker': sell_ticker,
-            'buy_ticker': buy_ticker,            
-            'keep_ticker': keep_ticker,
-            'hold': hold,
-            'hold_USD_value': hold_USD_value,
-            'target': target,
-            'target_usd_value': target_usd_value,
-            'target_qty': target_qty
-        }
-        return trading_data
     
 
     def create_kis_tr_data(self, sell_ticker, buy_ticker, hold, target_qty):
@@ -506,10 +503,10 @@ if __name__ == "__main__":
     USLA = USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
     # 최초 1회 target비중 계산, Json데이터에서 holding ticker와 quantity 구하기
-    USLA_data = USLA.get_USLA_data()
+    USLA_data = USLA.USLA_rebalancing_data()
 
     # target비중에 맞춰 USD환산금액을 곱하고 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
-    trading_data = USLA.make_trading_data(USLA_data)
+    trading_data = USLA.USLA_trading_data(USLA_data)
 
     print("\n[매도 종목]")
     print(trading_data['sell_ticker'])
