@@ -21,10 +21,7 @@ def make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd):
 
     return USLA
 
-key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
-token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
-cano = "63721147"  # 종합계좌번호 (8자리)
-acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
+
 
 # 날짜를 받아 USAA 리밸런싱일이 맞는 지, summer or winter time 시간대인지 확인
 # 리밸런싱일인 경우 시간을 받아 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인
@@ -33,11 +30,17 @@ order_time = KIS_Calender.check_order_time()
 
 # USAA 리밸런싱일인 경우
 if order_time['season'] == "USAA_summer" or order_time['season'] == "USAA_winter":
+    # USLA 모델 생성
+    key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
+    token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
+    cano = "63721147"  # 종합계좌번호 (8자리)
+    acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
+    
     USLA = make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd)
     
-    # Pre_market 1회차 거래
+    # Pre_market 거래
     if order_time['market'] == "Pre-market":
-        if order_time['round'] == 1:
+        if order_time['round'] == 1: #1회차
             # USLA 데이터 불러오기
             USLA_data = USLA.get_USLA_data()
             # USLA model의 Regime signal, momentum결과 투자 ticker 및 비중 구하기
