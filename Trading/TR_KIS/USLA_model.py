@@ -368,13 +368,17 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         'action': 'sell',
                         'total_qty': int(hold[holding]),
                         'splits': splits,
-                        'qty_per_split': int(hold[holding] // splits)
+                        'qty_per_split': int(hold[holding] // splits),
+                        'orders': [],
+                        'summary': {
+                            'total_ordered': 0,
+                            'total_filled': 0,
+                            'total_unfilled': 0,
+                            'filled_value': 0,
+                            'unfilled_value': 0
+                        }
                     }
-                    'buy_qty': 0,
-                    'sell_qty': hold[holding],
-                    'number_of_order_splits': 0,
-                    'split_quantity': 0
-                    }
+                }
 
             else:
                 edited_qty = target_qty[holding] - hold[holding]
