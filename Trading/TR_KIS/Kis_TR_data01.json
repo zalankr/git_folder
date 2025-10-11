@@ -15,7 +15,7 @@
             "target_qty": 0,
             "trading": {
                 "action": "sell",
-                "total_qty": 10,
+                "trading_qty": 10,
                 "splits": 5,
                 "qty_per_split": 2,
                 "orders": [
@@ -85,7 +85,7 @@
             "target_qty": 0,
             "trading": {
                 "action": "sell",
-                "total_qty": 21,
+                "trading_qty": 21,
                 "splits": 5,
                 "qty_distribution": [4, 4, 4, 4, 5],
                 "orders": [
@@ -157,7 +157,7 @@
             "target_qty": 10,
             "trading": {
                 "action": "buy",
-                "total_qty": 10,
+                "trading_qty": 10,
                 "splits": 5,
                 "qty_per_split": 2,
                 "orders": [
@@ -227,7 +227,7 @@
             "target_qty": 16,
             "trading": {
                 "action": "buy",
-                "total_qty": 16,
+                "trading_qty": 16,
                 "splits": 5,
                 "qty_distribution": [3, 3, 3, 3, 4],
                 "orders": [
@@ -301,8 +301,8 @@
     },
     "CASH": {
         "position": "cash",
-        "hold_amount": 22.21,
-        "target_amount": 52.47,
+        "hold_qty": 22.21,
+        "target_qty": 52.47,
         "expected_change": 30.26,
         "breakdown": {
             "from_sells": 1030.0,

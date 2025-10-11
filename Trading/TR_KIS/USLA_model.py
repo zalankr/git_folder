@@ -350,13 +350,74 @@ class USLA_Model(KIS_US.KIS_API): #상속
         target_usd_value = {ticker: target[ticker] * hold_USD_value for ticker in target.keys()} # target_ticker별 USD 배정 dict
         target_qty = self.calculate_target_quantity(target, target_usd_value) # target_ticker별 목표 quantity 계산
 
-        # split수, split 수량 산출 #############
-        
-        splits = 5 ##### 산출용 마켓별, 시간대별 json 파일
-        # trading data 만들기
-        sell_ticker = {}
-        buy_ticker = {}
-        keep_ticker = {}
+        # buy, sell, keep 티커 구하기
+        buy_ticker = {} # buy 티커 dict
+        sell_ticker = {} # sell 티커 dict
+        keep_ticker = {} # keep 티커 dict
+        TR_data = {buy_ticker, sell_ticker, keep_ticker}
+
+        # buy, sell, keep 티커 트레이딩 수량 구하기
+        for holding in hold_ticker:
+            if holding not in target_ticker:
+                sell_ticker[holding] = {
+                    'position': 'sell',
+                    'hold_qty': hold[holding],
+                    'target_qty': 0,
+                    'trading_qty': int(hold[holding])
+                }
+            else:
+                edited_qty = target_qty[holding] - hold[holding]
+                if edited_qty > 0:
+                    buy_ticker[holding] = {
+                        'position': 'buy',
+                        'hold_qty': hold[holding],
+                        'target_qty': target_qty[holding],
+                        'trading_qty': int(edited_qty)
+                    }
+                elif edited_qty < 0:
+                    sell_ticker[holding] = {
+                        'position': 'sell',
+                        'hold_qty': hold[holding],
+                        'target_qty': target_qty[holding],
+                        'trading_qty': int(abs(edited_qty))
+                    }
+                elif edited_qty == 0:
+                    keep_ticker[holding] = hold[holding]
+
+        for target in target_ticker:
+            if target not in hold_ticker:
+                buy_ticker[target] = {
+                    'position': 'buy',
+                    'hold_qty': 0,
+                    'target_qty': target_qty[holding],
+                    'trading_qty': int(target_qty[holding])
+                }
+
+        # split수, split 수량 산출 ###########################################################################################################################################
+        if market == "Pre-market":
+            sell_splits = 4
+            sell_price_adjust = [1.015, 1.03, 1.045, 1.06]
+            buy_splits = 2
+            buy_price_adjust = [0.995, 0.99]
+
+        elif market == "Regular":
+            sell_splits = 6
+            sell_price_adjust = [1.0025, 1.005, 1.0075, 1.01, 1.0125, 1.015]
+            buy_splits = 6
+            buy_price_adjust = [0.9975, 0.995, 0.9925, 0.99, 0.9875, 0.985]
+
+            if round in range(1, 7):
+                pass
+
+            elif round in range(7, 13):
+                sell_price_adjust[0] = [0.99]
+            
+
+
+        for t in price_adjust:
+
+
+
 
         # data 
         for holding in hold_ticker:
@@ -367,9 +428,10 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     'target_qty': 0,
                     'trading': {
                         'action': 'sell',
-                        'total_qty': int(hold[holding]),
+                        'trading_qty': int(hold[holding]),
                         'splits': splits,
                         'qty_per_split': int(hold[holding] // splits),
+                        'price_adjust': price_adjust,
                         'orders': [],
                         'summary': {
                             'total_ordered': 0,
@@ -385,7 +447,26 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 edited_qty = target_qty[holding] - hold[holding]
                 if edited_qty > 0:
                     buy_ticker[holding] = int(edited_qty)
-                elif edited_qty < 0:
+                    buy_ticker[holding] = {
+                        'position': 'sell',
+                        'hold_qty': hold[holding],
+                        'target_qty': target_qty[holding],
+                        'trading': {
+                            'action': 'buy',
+                            'trading_qty': edited_qty,
+                            'splits': splits,
+                            'qty_per_split': int(edited_qty // splits),
+                            'orders': [],
+                            'summary': {
+                                'total_ordered': 0,
+                                'total_filled': 0,
+                                'total_unfilled': 0,
+                                'filled_value': 0,
+                                'unfilled_value': 0
+                            }
+                        }
+                    }
+                elif edited_qty < 0: ######################################
                     sell_ticker[holding] = abs(edited_qty)  # 음수를 양수로
                 elif edited_qty == 0:
                     keep_ticker[holding] = hold[holding]
