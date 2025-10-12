@@ -5,6 +5,7 @@ import riskfolio as rp
 import KIS_US
 import json
 from datetime import datetime, date
+import time as time_module  # time 모듈을 별칭으로 import
 import calendar
 import warnings
 warnings.filterwarnings('ignore')
@@ -13,7 +14,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
     def __init__(self, key_file_path, token_file_path, cano, acnt_prdt_cd):
         super().__init__(key_file_path, token_file_path, cano, acnt_prdt_cd)  # 부모 생성자 호출
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
-        self.all_tickers = self.etf_tickers + ['USLA_CASH']
+        self.all_tickers = self.etf_tickers + ['CASH']
         self.tax_rate = 0.0009
         self.USLA_rebalancing_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_rebalancing_data.json"  
 
@@ -210,7 +211,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             for ticker in self.etf_tickers:
                 data = yf.download(ticker, period='1d', interval='1d', progress=False, multi_level_index=False)['Close']
                 prices[ticker] = float(data.iloc[-1])
-            prices['USLA_CASH'] = 1.0
+            prices['CASH'] = 1.0
             return prices
         except Exception as e:
             print(f"가격 조회 오류: {e}")
@@ -241,9 +242,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
         # 3. 투자 전략 결정
         if regime < 0: # < 0으로 변경, 테스트 후엔
             print(f"\nRegime Signal: {regime:.2f} < 0 → RISK 모드")
-            print("투자 결정: 99% BIL, 1% USLA_CASH")
+            print("투자 결정: 99% BIL, 1% CASH")
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
-            allocation['USLA_CASH'] = 0.01
+            allocation['CASH'] = 0.01
             allocation['BIL'] = 0.99
 
         else:
@@ -257,7 +258,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
             allocation.update(weights)
-            allocation['USLA_CASH'] = 0.01  # 1% 현금 보유
+            allocation['CASH'] = 0.01  # 1% 현금 보유
         
         # 4. 현재 가격 조회
         current_prices = self.get_USLA_current_prices()
@@ -290,14 +291,14 @@ class USLA_Model(KIS_US.KIS_API): #상속
         """USD 환산 잔고 계산"""
         hold_USD_value = 0
         for t in hold.keys():
-            if t == "USLA_CASH":
+            if t == "CASH":
                 # USLA_CASH도 float로 변환
-                hold_USD_value += float(hold["USLA_CASH"])
+                hold_USD_value += float(hold["CASH"])
             else:
                 price = self.get_US_current_price(ticker=t)
                 # hold[t]를 float로 변환
-                quantity = float(hold[t])
-                value = price * quantity * (1 - self.tax_rate)
+                qty = float(hold[t])
+                value = price * qty * (1 - self.tax_rate)
                 hold_USD_value += value
 
         return hold_USD_value
@@ -312,95 +313,38 @@ class USLA_Model(KIS_US.KIS_API): #상속
         }
         return target    
 
-    def calculate_target_quantity(self, target, target_usd_value): # make_trading_data함수에 종속되어 target 티커별 목표 quantity 산출
+    def calculate_target_qty(self, target, target_usd_value): # make_trading_data함수에 종속되어 target 티커별 목표 quantity 산출
         # 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
-        target_quantity = {}
+        target_qty = {}
         target_stock_value = 0
         for ticker in target.keys():
-            if ticker != "USLA_CASH":
+            if ticker != "CASH":
                 try:
                     price = self.get_US_current_price(ticker)
                     if price and price > 0:
-                        target_quantity[ticker] = int(target_usd_value[ticker] / price)
-                        target_stock_value += target_quantity[ticker] * price * (1 + self.tax_rate)
+                        target_qty[ticker] = int(target_usd_value[ticker] / price)
+                        target_stock_value += target_qty[ticker] * price * (1 + self.tax_rate)
                     else:
                         print(f"{ticker}: 가격 정보 없음")
-                        target_quantity[ticker] = 0
+                        target_qty[ticker] = 0
                 except Exception as e:
                     print(f"{ticker}: 수량 계산 오류 - {e}")
-                    target_quantity[ticker] = 0
+                    target_qty[ticker] = 0
 
-        target_quantity["USLA_CASH"] = sum(target_usd_value.values()) - target_stock_value
+        target_qty["CASH"] = sum(target_usd_value.values()) - target_stock_value
 
-        return target_quantity
-
-    def USLA_trading_data(self, USLA_data, order_time): #############################################################################################################
-        """trading 할 모든 데이터 구하기"""
-
-        # order_time 딕셔너리에 있는 key값을 value값으로 변환, 시장 시간대, 회차 구하기
-        market = order_time[market]
-        round = order_time[round]
-
-        # 보유, 목표 티커 및 잔고, 수량 구하기
-        hold = {ticker: float(qty) for ticker, qty in zip(USLA_data['ticker'], USLA_data['quantity'])} # Hold dict 생성, ticker별 qty를 float로 변환
-        hold_ticker = list(hold.keys()) # hold tocker 리스트
-        hold_USD_value = self.calculate_USD_value(hold) # Hold 보유 잔고를 바탕으로 USD 환산 잔고 계산
-        target = self.target_ticker_weight() # target_ticker별 비중 dict
-        target_ticker = list(target.keys()) # target_ticker 리스트
-        target_usd_value = {ticker: target[ticker] * hold_USD_value for ticker in target.keys()} # target_ticker별 USD 배정 dict
-        target_qty = self.calculate_target_quantity(target, target_usd_value) # target_ticker별 목표 quantity 계산
-
-        # buy, sell, keep 티커 구하기
-        buy_ticker = {} # buy 티커 dict
-        sell_ticker = {} # sell 티커 dict
-        keep_ticker = {} # keep 티커 dict
-        TR_data = {buy_ticker, sell_ticker, keep_ticker}
-
-        # buy, sell, keep 티커 트레이딩 수량 구하기
-        for holding in hold_ticker:
-            if holding not in target_ticker:
-                sell_ticker[holding] = {
-                    'position': 'sell',
-                    'hold_qty': hold[holding],
-                    'target_qty': 0,
-                    'trading_qty': int(hold[holding])
-                }
-            else:
-                edited_qty = target_qty[holding] - hold[holding]
-                if edited_qty > 0:
-                    buy_ticker[holding] = {
-                        'position': 'buy',
-                        'hold_qty': hold[holding],
-                        'target_qty': target_qty[holding],
-                        'trading_qty': int(edited_qty)
-                    }
-                elif edited_qty < 0:
-                    sell_ticker[holding] = {
-                        'position': 'sell',
-                        'hold_qty': hold[holding],
-                        'target_qty': target_qty[holding],
-                        'trading_qty': int(abs(edited_qty))
-                    }
-                elif edited_qty == 0:
-                    keep_ticker[holding] = hold[holding]
-
-        for target in target_ticker:
-            if target not in hold_ticker:
-                buy_ticker[target] = {
-                    'position': 'buy',
-                    'hold_qty': 0,
-                    'target_qty': target_qty[holding],
-                    'trading_qty': int(target_qty[holding])
-                }
-
-        # split수, split 수량 산출 ###########################################################################################################################################
+        return target_qty
+    
+    def make_split_data(self, market, round): # make_trading_data함수에 종속되어 시장과 시간대별 티커별 분할횟수와 분할당 가격 산출
         if market == "Pre-market":
+            order_type = "order_daytime_US"
             sell_splits = 4
             sell_price_adjust = [1.015, 1.03, 1.045, 1.06]
             buy_splits = 2
             buy_price_adjust = [0.995, 0.99]
 
         elif market == "Regular":
+            order_type = "order_US"
             sell_splits = 6
             sell_price_adjust = [1.0025, 1.005, 1.0075, 1.01, 1.0125, 1.015]
             buy_splits = 6
@@ -410,208 +354,300 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 pass
 
             elif round in range(7, 13):
-                sell_price_adjust[0] = [0.99]
+                sell_price_adjust[0] = 0.99
+
+            elif round in range(13, 19):
+                sell_splits = 5
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_price_adjust[0] = 1.01
+
+            elif round in range(19, 25):
+                sell_splits = 5
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 5
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+
+            elif round in range(25, 31):
+                sell_splits = 5
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.99
+                buy_splits = 5
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+
+            elif round in range(31, 37):
+                sell_splits = 4
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 5
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+                buy_price_adjust[0] = 1.01
+
+            elif round in range(37, 43):
+                sell_splits = 4
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 4
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+
+            elif round in range(43, 49):
+                sell_splits = 4
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.99
+                buy_splits = 4
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+
+            elif round in range(49, 55):
+                sell_splits = 3
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 4
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+                buy_price_adjust[0] = 1.01
+
+            elif round in range(55, 61):
+                sell_splits = 3
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 3
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+
+            elif round in range(61, 67):
+                sell_splits = 3
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.99
+                buy_splits = 3
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+
+            elif round in range(67, 73):
+                sell_splits = 2
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 3
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+                buy_price_adjust[0] = 1.01
+
+            elif round in range(73, 76):
+                sell_splits = 2
+                sell_price_adjust = [0.99, 1.0025]
+                buy_splits = 2
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+
+            elif round == 77:
+                sell_splits = 1
+                sell_price_adjust = [0.97]
+                buy_splits = 2
+                buy_price_adjust = [1.01, 0.9975]
+
+            elif round == 78:
+                sell_splits = 1
+                sell_price_adjust = [0.97]
+                buy_splits = 1
+                buy_price_adjust = [1.03]
             
+        round_split = {
+            "order_type": order_type,
+            "sell_splits": sell_splits, 
+            "sell_price_adjust": sell_price_adjust, 
+            "buy_splits": buy_splits, 
+            "buy_price_adjust": buy_price_adjust
+        }
 
+        return round_split
 
-        for t in price_adjust:
+    def USLA_trading_data(self, order_time):
+        """trading에 필요한 모든 데이터 구하기"""
+        # oround_split 딕셔너리에 있는 key값을 value값으로 변환, 시장 시간대, 회차 구하기
+        market = order_time['market']
+        round = order_time['round']
+        round_split = self.make_split_data(market, round)
 
+        # order_type = round_split['order_type']
+        sell_splits = round_split['sell_splits']
+        sell_price_adjust = round_split['sell_price_adjust']
+        buy_splits = round_split['buy_splits']
+        buy_price_adjust = round_split['buy_price_adjust']
 
+        # 지난 시즌 저장한 USLA_rebalancing_data.json 불러오기
+        USLA_data = self.USLA_rebalancing_data()
 
+        # 보유 티커 및 전체 잔고 및 달러화 가치, 목표 티커 및 전체 비중 수량 달러화 가치 구하기
+        hold = {ticker: float(qty) for ticker, qty in zip(USLA_data['ticker'], USLA_data['qty'])} # Hold dict 생성, ticker별 qty를 float로 변환
+        hold_ticker = list(hold.keys()) # hold tocker 리스트
+        hold_USD_value = self.calculate_USD_value(hold) # Hold 보유 잔고를 바탕으로 USD 환산 잔고 계산
+        target = self.target_ticker_weight() # target_ticker별 비중 dict
+        target_ticker = list(target.keys()) # target_ticker 리스트
+        target_usd_value = {ticker: target[ticker] * hold_USD_value for ticker in target.keys()} # target_ticker별 USD 배정 dict
+        target_qty = self.calculate_target_qty(target, target_usd_value) # target_ticker별 목표 quantity 계산
 
-        # data 
-        for holding in hold_ticker:
-            if holding not in target_ticker:
-                sell_ticker[holding] = {
+        # data 정리
+        meta_data = {
+            'date': order_time['date'],
+            'time': order_time['time'],
+            'model': 'USLA',
+            'season': order_time['season'],
+            'market': order_time['market'],
+            'order_type': round_split['order_type'], #####에러발생#####
+            'round': order_time['round'],
+            'total_rounds': order_time['total_rounds']
+        }
+
+        buy_ticker = {} # buy 티커 dict 초기화
+        sell_ticker = {} # sell 티커 dict 초기화
+        keep_ticker = {} # keep 티커 dict 초기화
+        CASH = {} # CASH dict 초기화
+
+        # buy, sell, keep 티커 트레이딩 수량 구하기
+        for ticker in hold_ticker:
+            if ticker not in target_ticker:
+                qty_per_split = int(hold[ticker] // buy_splits)
+                sell_ticker[ticker] = {
                     'position': 'sell',
-                    'hold_qty': int(hold[holding]),
+                    'hold_qty': hold[ticker],
                     'target_qty': 0,
-                    'trading': {
-                        'action': 'sell',
-                        'trading_qty': int(hold[holding]),
-                        'splits': splits,
-                        'qty_per_split': int(hold[holding] // splits),
-                        'price_adjust': price_adjust,
-                        'orders': [],
-                        'summary': {
-                            'total_ordered': 0,
-                            'total_filled': 0,
-                            'total_unfilled': 0,
-                            'filled_value': 0,
-                            'unfilled_value': 0
-                        }
-                    }
+                    'trading_qty': hold[ticker],
+                    'splits': sell_splits,
+                    'price_adjust': sell_price_adjust,
+                    'qty_per_split': qty_per_split,
+                    'order_status': 'ready',
+                    'orders': [                      
+                    ]
                 }
+                for price_adjust in sell_price_adjust: # sell > -self.tax_rate
+                    sell_ticker[ticker]['orders'].append({
+                        'order_num': 0,
+                        'order_price': self.get_US_current_price(ticker) * price_adjust,
+                        'qty': qty_per_split,
+                        'splits_value': qty_per_split * self.get_US_current_price(ticker) * (price_adjust-self.tax_rate),
+                        'status': 'ready',
+                        'filled_qty': 0,
+                        'filled_value': 0,
+                        "unfilled_qty": 0,
+                        "unfilled_value": 0
+                    })
+                    time_module.sleep(0.1)
 
             else:
-                edited_qty = target_qty[holding] - hold[holding]
+                edited_qty = int(target_qty[ticker]) - int(hold[ticker])
                 if edited_qty > 0:
-                    buy_ticker[holding] = int(edited_qty)
-                    buy_ticker[holding] = {
-                        'position': 'sell',
-                        'hold_qty': hold[holding],
-                        'target_qty': target_qty[holding],
-                        'trading': {
-                            'action': 'buy',
-                            'trading_qty': edited_qty,
-                            'splits': splits,
-                            'qty_per_split': int(edited_qty // splits),
-                            'orders': [],
-                            'summary': {
-                                'total_ordered': 0,
-                                'total_filled': 0,
-                                'total_unfilled': 0,
-                                'filled_value': 0,
-                                'unfilled_value': 0
-                            }
-                        }
+                    qty_per_split = int(edited_qty // buy_splits)
+                    buy_ticker[ticker] = {
+                        'position': 'buy',
+                        'hold_qty': hold[ticker],
+                        'target_qty': target_qty[ticker],
+                        'trading_qty': edited_qty,
+                        'splits': buy_splits,
+                        'price_adjust': buy_price_adjust,
+                        'qty_per_split': qty_per_split,
+                        'order_status': 'ready',
+                        'orders': [                      
+                        ]
                     }
-                elif edited_qty < 0: ######################################
-                    sell_ticker[holding] = abs(edited_qty)  # 음수를 양수로
+                    for price_adjust in buy_price_adjust: # buy > +self.tax_rate
+                        buy_ticker[ticker]['orders'].append({
+                            'order_num': 0,
+                            'order_price': self.get_US_current_price(ticker) * price_adjust,
+                            'qty': qty_per_split,
+                            'splits_value': qty_per_split * self.get_US_current_price(ticker) * (price_adjust+self.tax_rate),
+                            'status': 'ready',
+                            'filled_qty': 0,
+                            'filled_value': 0,
+                            "unfilled_qty": 0,
+                            "unfilled_value": 0
+                        })
+                    time_module.sleep(0.1)
+
+                elif edited_qty < 0:
+                    qty_per_split = int(abs(edited_qty) // buy_splits)
+                    sell_ticker[ticker] = {
+                        'position': 'sell',
+                        'hold_qty': hold[ticker],
+                        'target_qty': target_qty[ticker],
+                        'trading_qty': abs(edited_qty),
+                        'splits': sell_splits,                       
+                        'price_adjust': sell_price_adjust,
+                        'qty_per_split': qty_per_split,
+                        'order_status': 'ready',
+                        'orders': [                      
+                        ]
+                    }
+                    for price_adjust in sell_price_adjust: # sell > -self.tax_rate
+                        sell_ticker[ticker]['orders'].append({
+                            'order_num': 0,
+                            'order_price': self.get_US_current_price(ticker) * price_adjust,
+                            'qty': qty_per_split,
+                            'splits_value': qty_per_split * self.get_US_current_price(ticker) * (price_adjust-self.tax_rate),
+                            'status': 'ready',
+                            'filled_qty': 0,
+                            'filled_value': 0,
+                            "unfilled_qty": 0,
+                            "unfilled_value": 0
+                        })
+                        time_module.sleep(0.1)
+
                 elif edited_qty == 0:
-                    keep_ticker[holding] = hold[holding]
+                    qty_per_split = 0
+                    keep_ticker[ticker] = {
+                        'position': 'keep',
+                        'hold_qty': hold[ticker],
+                        'target_qty': target_qty[ticker],
+                        'trading_qty': edited_qty,
+                        'splits': 0,
+                        'price_adjust': 0,
+                        'qty_per_split': 0,
+                        'order_status': 'hold',
+                        'orders': [                      
+                        ]
+                    }
 
         for target in target_ticker:
             if target not in hold_ticker:
-                buy_ticker[target] = int(target_qty[target])
+                qty_per_split = int(target_qty[target] // buy_splits)
+                buy_ticker[target] = {
+                    'position': 'buy',
+                    'hold_qty': 0,
+                    'target_qty': target_qty[target],
+                    'trading_qty': target_qty[target],
+                    'splits': buy_splits,
+                    'price_adjust': buy_price_adjust,
+                    'qty_per_split': qty_per_split,
+                    'order_status': 'ready',
+                    'orders': [                      
+                    ]
+                }
+                for price_adjust in buy_price_adjust: # buy > +self.tax_rate
+                    buy_ticker[target]['orders'].append({
+                        'order_num': 0,
+                        'order_price': self.get_US_current_price(target) * price_adjust,
+                        'qty': qty_per_split,
+                        'splits_value': qty_per_split * self.get_US_current_price(target) * (price_adjust+self.tax_rate),
+                        'status': 'ready',
+                        'filled_qty': 0,
+                        'filled_value': 0,
+                        "unfilled_qty": 0,
+                        "unfilled_value": 0
+                    })
+                time_module.sleep(0.1)
 
-    
+        hold_cash = hold['CASH']
+        target_cash = target_qty['CASH']
 
-    def create_kis_tr_data(self, sell_ticker, buy_ticker, hold, target_qty):
-        """
-        거래 데이터를 JSON 형식으로 생성
-        
-        Parameters:
-        hold: 현재 보유 수량
-        USLA_data: USLA JSON 데이터
-        sell_ticker: 매도할 티커와 수량
-        buy_ticker: 매수할 티커와 수량
-        """
-        kis_tr_data = []
-
-        # 모든 관련 티커 수집 (CASH 제외)
-        all_tickers = set(hold.keys()) | set(target_qty.keys())
-        all_tickers.discard("USLA_CASH")
-        
-        for ticker in sorted(all_tickers):
-            # 포지션 결정
-            if ticker in buy_ticker:
-                position = "Buy"
-            elif ticker in sell_ticker:
-                position = "Sell"
-            else:
-                position = "Hold"
-            
-            # 수량 정보
-            hold_amount = hold.get(ticker, 0)
-            target_amount = target_qty.get(ticker, 0)
-            tr_qty = target_amount - hold_amount
-            
-            ticker_data = {
-                "ticker": ticker,
-                "position": position,
-                "target_amount": target_amount,
-                "hold_amount": hold_amount,
-                "TR_qty": tr_qty,
-                "order_qty": 0,
-                "filled_qty": 0,
-                "unfilled_qty": 0,
-                "pending_order": 0
-            }
-            
-            kis_tr_data.append(ticker_data)
-        
-        # CASH 정보 추가
-        USLA_cash_data = {
-            "ticker": "USLA_CASH",
-            "position": "Cash",
-            "target_amount": round(target_qty.get("USLA_CASH", 0), 2),
-            "hold_amount": round(hold.get("USLA_CASH", 0), 2),
-            "TR_qty": "",
-            "order_qty": "",
-            "filled_qty": "",
-            "unfilled_qty": "",
-            "pending_order": ""
+        CASH = {
+            'position': 'cash',
+            'hold_qty': hold_cash,
+            'target_qty': target_cash,
+            'expected_change': target_cash - hold_cash
         }
-        kis_tr_data.append(USLA_cash_data)
-        
-        return kis_tr_data
 
-    def save_kis_tr_json(self, kis_tr_data):
+        TR_data = {meta_data, buy_ticker, sell_ticker, keep_ticker, CASH}
+
+        return TR_data
+
+    def save_kis_tr_json(self, TR_data):
         """Kis_TR_data를 JSON 파일로 저장"""
         file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/Kis_TR_data.json"
         
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(kis_tr_data, f, ensure_ascii=False, indent=4)
+                json.dump(TR_data, f, ensure_ascii=False, indent=4)
             print(f"\n Kis_TR_data.json 파일 저장 완료: {file_path}")
             return True
         except Exception as e:
             print(f"\n JSON 파일 저장 오류: {e}")
             return False
 
-    def print_tr_table(self, kis_tr_data):
-        """거래 데이터를 표 형식으로 출력"""
-        print("\n" + "="*120)
-        print("Kis Trading Data Table")
-        print("="*120)
-        
-        # 헤더
-        header = f"{'ticker':<8} {'position':<10} {'target':<8} {'hold':<8} {'TR qty':<8} {'order':<8} {'filled':<8} {'unfilled':<8} {'pending':<8}"
-        print(header)
-        print("-"*120)
-        
-        # 데이터
-        for data in kis_tr_data:
-            row = (f"{data['ticker']:<8} "
-                f"{data['position']:<10} "
-                f"{str(data['target_amount']):<8} "
-                f"{str(data['hold_amount']):<8} "
-                f"{str(data['TR_qty']):<8} "
-                f"{str(data['order_qty']):<8} "
-                f"{str(data['filled_qty']):<8} "
-                f"{str(data['unfilled_qty']):<8} "
-                f"{str(data['pending_order']):<8}")
-            print(row)
-        
-        print("="*120)
-
 # 실행 예제
-if __name__ == "__main__":
-    # 또는 특정 월 지정 실행
-    # result = strategy.run_strategy(target_month=1, target_year=2025)
-    # print(result)
-
-    key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
-    token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
-    cano = "63721147"  # 종합계좌번호 (8자리)
-    acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
-    USLA = USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
-
-    # 최초 1회 target비중 계산, Json데이터에서 holding ticker와 quantity 구하기
-    USLA_data = USLA.USLA_rebalancing_data()
-
-    # target비중에 맞춰 USD환산금액을 곱하고 현재가로 나누기 > ticker별 수량 반환+USD금액 반환
-    trading_data = USLA.USLA_trading_data(USLA_data)
-
-    print("\n[매도 종목]")
-    print(trading_data['sell_ticker'])
-    print("\n[매수 종목]")
-    print(trading_data['buy_ticker'])
-    print("\n[유지 종목]")
-    print(trading_data['keep_ticker'])
-
-    # Kis_TR_data 생성
-    print("\n" + "="*60)
-    print("거래 데이터 생성 중...")
-    print("="*60)
-
-    # USLA_data 전달 (hold이 아님)
-    kis_tr_data = USLA.create_kis_tr_data(trading_data['sell_ticker'], trading_data['buy_ticker'], 
-                                          trading_data['hold'], trading_data['target_qty'])
-
-    # 표 형식으로 출력
-    USLA.print_tr_table(kis_tr_data)
-
-    # JSON 파일로 저장
-    USLA.save_kis_tr_json(kis_tr_data)

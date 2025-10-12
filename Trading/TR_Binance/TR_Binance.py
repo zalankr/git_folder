@@ -70,7 +70,7 @@ now = datetime.now() # 현재시간 확인
 if position["position"] == "Buy full":
     try:
         USDT = USDTM.get_spot_balance('USDT')['free']
-        USDT_per_splits = (float(USDT) * 0.99) / 10
+        USDT_per_splits = float(USDT) / 10  # USDT_per_splits = (float(USDT) * 0.99) / 10 에러가 생기면 원복
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
     except Exception as e:
         USDT_per_splits = float(Invest_quantity)
@@ -79,7 +79,7 @@ if position["position"] == "Buy full":
 elif position["position"] == "Buy half":
     try:
         USDT = USDTM.get_spot_balance('USDT')['free']
-        USDT_per_splits = (float(USDT) * 0.5 * 0.99) / 10
+        USDT_per_splits = (float(USDT) * 0.5) / 10  # USDT_per_splits = (float(USDT) * 0.5 * 0.99) / 10 에러가 생기면 원복
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
     except Exception as e:
         USDT_per_splits = float(Invest_quantity)
@@ -88,7 +88,7 @@ elif position["position"] == "Buy half":
 elif position["position"] == "Sell full":
     try:
         BTC = USDTM.get_spot_balance('BTC')['free']
-        BTC_per_splits = (float(BTC) * 0.99) / 10
+        BTC_per_splits = float(BTC) / 10  # BTC_per_splits = (float(BTC) * 0.99) / 10 에러가 생기면 원복
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
     except Exception as e:
         BTC_per_splits = float(Invest_quantity)
@@ -97,7 +97,7 @@ elif position["position"] == "Sell full":
 elif position["position"] == "Sell half":
     try:
         BTC = USDTM.get_spot_balance('BTC')['free']
-        BTC_per_splits = (float(BTC) * 0.5 * 0.99) / 10
+        BTC_per_splits = (float(BTC) * 0.5) / 10  # BTC_per_splits = (float(BTC) * 0.5 * 0.99) / 10 에러가 생기면 원복
         KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
     except Exception as e:
         BTC_per_splits = float(Invest_quantity)

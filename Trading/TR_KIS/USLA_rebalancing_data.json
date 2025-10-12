@@ -3,7 +3,7 @@
     "last_rebalancing": "2025-10-01",
     "last_regime_signal": 1.0,
     "ticker": ["UPRO", "TMF", "CASH"],
-    "quantity": [10, 21, 22.21],
+    "qty": [10, 21, 22.21],
     "balance": 2000.0,
     "last_day_balance": 2000.0,
     "last_month_balance": 2000.0,

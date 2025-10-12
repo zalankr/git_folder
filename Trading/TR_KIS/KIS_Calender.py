@@ -87,10 +87,8 @@ def check_order_time():
 
     # test #
     current_date = datetime.strptime("2025-11-03", "%Y-%m-%d").date()
-    current_time = datetime.strptime("09:00:01", "%H:%M:%S").time()
+    current_time = datetime.strptime("15:00:00", "%H:%M:%S").time()
     # test #
-
-    print(f"현재 UTC 날짜: {current_date}, 시간: {current_time}")
 
     # USAA 리밸런싱일 확인
     check_USAA = check_USAA_rebalancing(current_date)
@@ -103,16 +101,16 @@ def check_order_time():
     if check_USAA == "USAA_winter":
         current = time_obj(current_time.hour, current_time.minute) # current_time
         Pre_market_start = time_obj(9, 0)   # 09:00
-        Pre_market_end = time_obj(14, 29)   # 14:29
+        Pre_market_end = time_obj(14, 30)   # 14:29
         Regular_start = time_obj(14, 30)   # 14:30
-        Regular_end = time_obj(21, 1)      # 21:01
+        Regular_end = time_obj(21, 5)      # 21:01
         
-        if Pre_market_start <= current <= Pre_market_end:
+        if Pre_market_start <= current < Pre_market_end:
             order_time['market'] = "Pre-market"            
             order_time['round'] = 1 + (current.hour - 9) * 12 + (current.minute // 5)
             order_time['total_round'] = 66  # Pre-market 총 회차
             
-        elif Regular_start <= current_time <= Regular_end:
+        elif Regular_start <= current_time < Regular_end:
             order_time['market'] = "Regular"
             order_time['round'] = 1 + (current.hour - 14) * 12 + (current.minute // 5) - 6
             order_time['total_round'] = 79  # Regular 총 회차
@@ -120,16 +118,16 @@ def check_order_time():
     elif check_USAA == "USAA_summer":
         current = time_obj(current_time.hour, current_time.minute) # current_time
         Pre_market_start = time_obj(8, 0)   # 08:00
-        Pre_market_end = time_obj(13, 29)   # 13:29
+        Pre_market_end = time_obj(13, 30)   # 13:29
         Regular_start = time_obj(13, 30)   # 13:30
-        Regular_end = time_obj(20, 1)      # 20:01
+        Regular_end = time_obj(20, 5)      # 20:01
 
-        if Pre_market_start <= current <= Pre_market_end:
+        if Pre_market_start <= current < Pre_market_end:
             order_time['market'] = "Pre-market"            
             order_time['round'] = 1 + (current.hour - 8) * 12 + (current.minute // 5)
             order_time['total_round'] = 66  # Pre-market 총 회차
             
-        elif Regular_start <= current_time <= Regular_end:
+        elif Regular_start <= current_time < Regular_end:
             order_time['market'] = "Regular"
             order_time['round'] = 1 + (current.hour - 13) * 12 + (current.minute // 5) - 6
             order_time['total_round'] = 79  # Regular 총 회차
@@ -177,14 +175,14 @@ def is_us_dst():
     return dst_start <= us_eastern_time < dst_end
 
 # 실행
-if __name__ == "__main__":
-    # USAA Rebalancing day list 기입하기
-    USAA_summer = ["2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01", "2026-08-03", "2026-09-01", "2026-10-01"]
-    USAA_winter = ["2025-11-03", "2025-12-01", "2026-01-02", "2026-02-02", "2026-03-02"]
-    # 연간 USAA Rebalancing day json 파일로 저장
-    # result = USAA_rebalancing_day_Making(USAA_summer, USAA_winter)
+# if __name__ == "__main__":
+#     # USAA Rebalancing day list 기입하기
+#     USAA_summer = ["2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01", "2026-08-03", "2026-09-01", "2026-10-01"]
+#     USAA_winter = ["2025-11-03", "2025-12-01", "2026-01-02", "2026-02-02", "2026-03-02"]
+#     # 연간 USAA Rebalancing day json 파일로 저장
+#     # result = USAA_rebalancing_day_Making(USAA_summer, USAA_winter)
 
-    order_time = check_order_time()
-    print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
+#     order_time = check_order_time()
+#     print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
 
 

@@ -1,17 +1,17 @@
 {
-    "Date": "2025-09-27",
-    "Position": "Hold state",
+    "Date": "2025-10-12",
+    "Position": "Sell full",
     "BTC_weight": 0.0,
     "BTC_target": 0.0,
     "CASH_weight": 1.0,
-    "Invest_quantity": 0.0,
-    "Total_balance": 45516.2031747579,
-    "BTC": 0.00007719,
-    "USDT": 45509.47303104,
-    "Last_day_Total_balance": 45505.59,
-    "Last_month_Total_balance": 47975.8000378226,
+    "Invest_quantity": 0.390033171,
+    "Total_balance": 43956.071587486,
+    "BTC": 0.0000029,
+    "USDT": 43959.80965573,
+    "Last_day_Total_balance": 44912.516902434996,
+    "Last_month_Total_balance": 45410.773945759,
     "Last_year_Total_balance": 47975.8000378226,
-    "Daily_return": 0.02332279343681876,
-    "Monthly_return": -5.126744861212587,
-    "Yearly_return": -5.126744861212587
+    "Daily_return": -2.1295740718043294,
+    "Monthly_return": -3.2034300054224327,
+    "Yearly_return": -8.378658505262173
 }
