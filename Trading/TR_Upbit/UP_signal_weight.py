@@ -173,17 +173,18 @@ def partial_selling(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]
                 
-            # 마지막 주문 처리 개선
-            if t == TR_time[1] - 1:
-                remaining_balance = upbit.get_balance_t("ETH")
-                # 안전마진 제거 - 전량 매도
-                volume = round(remaining_balance, 8)  # 소수점 8자리로 정확히
-            else:
-                volume = round(amount_per_times, 8)
+            # 마지막 주문 처리 개선 - 계속 오류가 생기니 일단 이부분 없애고
+            # if t == TR_time[1] - 1:
+            #     remaining_balance = upbit.get_balance_t("ETH")
+            #     # 안전마진 제거 - 전량 매도
+            #     volume = round(remaining_balance, 8)  # 소수점 8자리로 정확히
+            # else:
+            #     volume = round(amount_per_times, 8)
+            volume = round(amount_per_times, 8)
 
             # 주문 금액 체크 - 실제 주문 금액으로 검증
             order_amount = volume * price
-            if order_amount < 5500:  # 6000원보다 여유있게 5500원으로 체크
+            if order_amount < 5500:  # 5500원으로 체크
                 print(f"주문 {t+1}회차: 주문금액 부족 (금액: {order_amount:.0f}원, 필요: 5500원)")
                 continue
 
@@ -221,13 +222,14 @@ def partial_buying(current_price, amount_per_times, TR_time, upbit):
             else:
                 price = prices[t]
             
-            # 마지막 주문 처리 개선
-            if t == TR_time[1] - 1:
-                KRW = upbit.get_balance_t("KRW")
-                # 수수료 고려하여 안전하게 계산
-                volume = round((KRW / price) * 0.9990, 8)  # 0.9995 -> 0.9990으로 더 안전하게
-            else:
-                volume = round(amount_per_times / price, 8)
+            # 마지막 주문 처리 개선 - 계속 오류가 생기니 일단 이부분 없애고
+            # if t == TR_time[1] - 1:
+            #     KRW = upbit.get_balance_t("KRW")
+            #     # 수수료 고려하여 안전하게 계산
+            #     volume = round((KRW / price) * 0.9990, 8)  # 0.9995 -> 0.9990으로 더 안전하게
+            # else:
+            #     volume = round(amount_per_times / price, 8)
+            volume = round(amount_per_times / price, 8)
             
             # 주문 금액 체크 - 실제 주문 금액으로 검증
             order_amount = volume * price
