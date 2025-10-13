@@ -173,16 +173,3 @@ def is_us_dst():
     
     # 서머타임 기간 확인
     return dst_start <= us_eastern_time < dst_end
-
-# 실행
-# if __name__ == "__main__":
-#     # USAA Rebalancing day list 기입하기
-#     USAA_summer = ["2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01", "2026-08-03", "2026-09-01", "2026-10-01"]
-#     USAA_winter = ["2025-11-03", "2025-12-01", "2026-01-02", "2026-02-02", "2026-03-02"]
-#     # 연간 USAA Rebalancing day json 파일로 저장
-#     # result = USAA_rebalancing_day_Making(USAA_summer, USAA_winter)
-
-#     order_time = check_order_time()
-#     print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
-
-

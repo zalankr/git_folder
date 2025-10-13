@@ -242,10 +242,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
         # 3. 투자 전략 결정
         if regime < 0: # < 0으로 변경, 테스트 후엔
             print(f"\nRegime Signal: {regime:.2f} < 0 → RISK 모드")
-            print("투자 결정: 99% BIL, 1% CASH")
+            print("투자 결정: 100% CASH")
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
-            allocation['CASH'] = 0.01
-            allocation['BIL'] = 0.99
+            allocation['CASH'] = 1.0
 
         else:
             print(f"\nRegime Signal: {regime:.2f} ≥ 0 → 투자 모드")
@@ -311,7 +310,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             for ticker, weight in invest['allocation'].items() 
             if weight > 0
         }
-        return target    
+        return target
 
     def calculate_target_qty(self, target, target_usd_value): # make_trading_data함수에 종속되어 target 티커별 목표 quantity 산출
         # 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
@@ -481,9 +480,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'model': 'USLA',
             'season': order_time['season'],
             'market': order_time['market'],
-            'order_type': round_split['order_type'], #####에러발생#####
+            'order_type': round_split['order_type'], #####에러발생했던 부분#####
             'round': order_time['round'],
-            'total_rounds': order_time['total_rounds']
+            'total_round': order_time['total_round']
         }
 
         buy_ticker = {} # buy 티커 dict 초기화
@@ -519,7 +518,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         "unfilled_qty": 0,
                         "unfilled_value": 0
                     })
-                    time_module.sleep(0.1)
+                    time_module.sleep(0.05)
 
             else:
                 edited_qty = int(target_qty[ticker]) - int(hold[ticker])
@@ -549,7 +548,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                             "unfilled_qty": 0,
                             "unfilled_value": 0
                         })
-                    time_module.sleep(0.1)
+                    time_module.sleep(0.05)
 
                 elif edited_qty < 0:
                     qty_per_split = int(abs(edited_qty) // buy_splits)
@@ -577,7 +576,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                             "unfilled_qty": 0,
                             "unfilled_value": 0
                         })
-                        time_module.sleep(0.1)
+                        time_module.sleep(0.05)
 
                 elif edited_qty == 0:
                     qty_per_split = 0
@@ -633,7 +632,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'expected_change': target_cash - hold_cash
         }
 
-        TR_data = {meta_data, buy_ticker, sell_ticker, keep_ticker, CASH}
+        TR_data = {
+            "metadata": meta_data,
+            "sell_ticker": sell_ticker,
+            "buy_ticker": buy_ticker,
+            "keep_ticker": keep_ticker, 
+            "CASH": CASH}
 
         return TR_data
 

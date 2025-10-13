@@ -14,34 +14,33 @@ crontab 설정
 30 19 31 3 * python3 /TR_KIS/KIS_Trading.py 서머타임 시간대 UTC 20시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
 """
 
-def make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd):
-    # 공통 USLA모델 객체 생성
-    USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
-    print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_time['total_round']}회차")
-
-    return USLA
+# USLA모델 instance 생성
+key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
+token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
+cano = "63721147"  # 종합계좌번호 (8자리)
+acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
+USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 # 날짜를 받아 USAA 리밸런싱일이 맞는 지, summer or winter time 시간대인지 확인
 # 리밸런싱일인 경우 시간을 받아 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인
 # 밑에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
 order_time = KIS_Calender.check_order_time()
+print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_time['total_round']}회차")
 print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래입니다.")
 
 # USAA 리밸런싱일인 경우
 if order_time['season'] in ["USAA_summer", "USAA_winter"]:
-    # USLA모델 instance 생성
-    key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
-    token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
-    cano = "63721147"  # 종합계좌번호 (8자리)
-    acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
-    USLA = make_USLA(key_file_path, token_file_path, cano, acnt_prdt_cd)
-    
     # Trading data 만들기
-
     TR_data = USLA.USLA_trading_data(order_time)
-
-    print(TR_data)
-
+    print("USLA Model Trading Data")
+    print(TR_data['metadata']['date'])
+    print(TR_data['metadata']['time'])
+    print(TR_data['metadata']['model'])
+    print(TR_data['metadata']['season'])
+    print(TR_data['metadata']['market'])
+    print(TR_data['metadata']['round'])
+    print(TR_data['metadata']['total_round'])
+    print(TR_data['sell_ticker']['UPRO']['hold_qty'])
 
 
 
