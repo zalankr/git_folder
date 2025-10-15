@@ -46,9 +46,34 @@ if order_time['season'] in ["USAA_summer", "USAA_winter"]:
         print(TR_data_meta['round'])
         print(TR_data_meta['total_round'])
 
-
         for ticker in TR_data_ticker:
-            print(ticker, TR_data_ticker[ticker])
+            print(ticker)
+            print(TR_data_ticker[ticker]['position'])
+            print(TR_data_ticker[ticker].get('trading_qty', None)) # valie가 없을 시 None을 반환하는 법 >  get() 메서드 사용 (가장 추천)
+            print(TR_data_ticker[ticker].get('price_adjust', None))
+            print('*'*60)
+
+        # 실제 트레이딩 식 
+
+
+        # sell_ticker = {}
+        # buy_ticker = {}
+        # cash = {}
+
+        # for ticker in TR_data_ticker:
+        #     if ticker['position'] == 'sell':
+        #         sell_ticker[ticker.key()] = ticker
+            
+        #     elif ticker['position'] == 'buy':
+        #         buy_ticker[ticker.key()] = ticker
+
+        #     elif ticker['position'] == 'cash':
+        #         cash[ticker.key()] = ticker
+
+
+        # print(sell_ticker)
+        # print(buy_ticker)
+        # print(cash)
 
     
 

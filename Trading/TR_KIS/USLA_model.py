@@ -503,7 +503,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 qty_per_split = int(hold[ticker] // buy_splits)
                 cprice = self.get_US_current_price(ticker)
                 etf = ticker
-                ticker = {
+                etf = {
+                    'ticker': ticker,
                     'position': 'sell',
                     'hold_qty': hold[ticker],
                     'target_qty': 0,
@@ -517,7 +518,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 }
                 
                 for price_adjust in sell_price_adjust: # sell > -self.tax_rate
-                    ticker['orders'].append({
+                    etf['orders'].append({
                         'order_num': 0,
                         'order_price': cprice * price_adjust,
                         'qty': qty_per_split,
@@ -529,7 +530,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         "unfilled_value": 0
                     })
                 time_module.sleep(0.1)
-                TR_data[etf] = ticker
+                TR_data[ticker] = etf
 
             else:
                 edited_qty = int(target_qty[ticker]) - int(hold[ticker])
@@ -537,7 +538,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     qty_per_split = int(edited_qty // buy_splits)
                     cprice = self.get_US_current_price(ticker)
                     etf = ticker
-                    ticker = {
+                    etf = {
+                        'ticker': ticker,
                         'position': 'buy',
                         'hold_qty': hold[ticker],
                         'target_qty': target_qty[ticker],
@@ -551,7 +553,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     }
                     
                     for price_adjust in buy_price_adjust: # buy > +self.tax_rate
-                        ticker['orders'].append({
+                        etf['orders'].append({
                             'order_num': 0,
                             'order_price': cprice * price_adjust,
                             'qty': qty_per_split,
@@ -563,13 +565,14 @@ class USLA_Model(KIS_US.KIS_API): #상속
                             "unfilled_value": 0
                         })
                     time_module.sleep(0.1)
-                    TR_data[etf] = ticker
+                    TR_data[ticker] = etf
 
                 elif edited_qty < 0:
                     qty_per_split = int(abs(edited_qty) // buy_splits)
                     cprice = self.get_US_current_price(ticker)
                     etf = ticker
-                    ticker = {
+                    etf = {
+                        'ticker': ticker,
                         'position': 'sell',
                         'hold_qty': hold[ticker],
                         'target_qty': target_qty[ticker],
@@ -583,7 +586,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     }
                     
                     for price_adjust in sell_price_adjust: # sell > -self.tax_rate
-                        ticker['orders'].append({
+                        etf['orders'].append({
                             'order_num': 0,
                             'order_price': cprice * price_adjust,
                             'qty': qty_per_split,
@@ -595,12 +598,13 @@ class USLA_Model(KIS_US.KIS_API): #상속
                             "unfilled_value": 0
                         })
                     time_module.sleep(0.1)
-                    TR_data[etf] = ticker
+                    TR_data[ticker] = etf
 
                 elif edited_qty == 0:
                     qty_per_split = 0
                     etf = ticker
-                    ticker = {
+                    etf = {
+                        'ticker': ticker,
                         'position': 'keep',
                         'hold_qty': hold[ticker],
                         'target_qty': target_qty[ticker],
@@ -612,14 +616,15 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         'orders': [                      
                         ]
                     }
-                    TR_data[etf] = ticker
+                    TR_data[ticker] = etf
 
         for target in target_ticker:
             if target not in hold_ticker:
                 qty_per_split = int(target_qty[target] // buy_splits)
                 cprice = self.get_US_current_price(target)
                 etf = target
-                target = {
+                etf = {
+                    'ticker': target,
                     'position': 'buy',
                     'hold_qty': 0,
                     'target_qty': target_qty[target],
@@ -633,7 +638,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 }
                 
                 for price_adjust in buy_price_adjust: # buy > +self.tax_rate
-                    target['orders'].append({
+                    etf['orders'].append({
                         'order_num': 0,
                         'order_price': cprice * price_adjust,
                         'qty': qty_per_split,
@@ -645,12 +650,13 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         "unfilled_value": 0
                     })
                 time_module.sleep(0.1)
-                TR_data[etf] = target
+                TR_data[target] = etf
 
         hold_cash = hold['CASH']
         target_cash = target_qty['CASH']
 
         CASH = {
+            'ticker': 'CASH',
             'position': 'cash',
             'hold_qty': hold_cash,
             'target_qty': target_cash,
