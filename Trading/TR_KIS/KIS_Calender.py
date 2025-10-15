@@ -87,7 +87,7 @@ def check_order_time():
 
     # test #
     current_date = datetime.strptime("2025-11-03", "%Y-%m-%d").date()
-    current_time = datetime.strptime("15:00:00", "%H:%M:%S").time()
+    current_time = datetime.strptime("09:01:00", "%H:%M:%S").time()
     # test #
 
     # USAA 리밸런싱일 확인

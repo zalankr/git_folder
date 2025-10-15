@@ -30,17 +30,27 @@ print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['m
 
 # USAA 리밸런싱일인 경우
 if order_time['season'] in ["USAA_summer", "USAA_winter"]:
-    # Trading data 만들기
-    TR_data = USLA.USLA_trading_data(order_time)
-    print("USLA Model Trading Data")
-    print(TR_data['metadata']['date'])
-    print(TR_data['metadata']['time'])
-    print(TR_data['metadata']['model'])
-    print(TR_data['metadata']['season'])
-    print(TR_data['metadata']['market'])
-    print(TR_data['metadata']['round'])
-    print(TR_data['metadata']['total_round'])
-    print(TR_data['sell_ticker']['UPRO']['hold_qty'])
+    # Rebalancing 1회차에만 Trading data 만들기
+    if order_time['market'] == "Pre-market" and order_time['round'] == 1:
+        TR_data = USLA.USLA_trading_data(order_time)
+
+        TR_data_meta = TR_data.pop('meta_data')
+        TR_data_ticker = TR_data
+        
+        print("USLA Model Trading Data")
+        print(TR_data_meta['date'])
+        print(TR_data_meta['time'])
+        print(TR_data_meta['model'])
+        print(TR_data_meta['season'])
+        print(TR_data_meta['market'])
+        print(TR_data_meta['round'])
+        print(TR_data_meta['total_round'])
+
+
+        for ticker in TR_data_ticker:
+            print(ticker, TR_data_ticker[ticker])
+
+    
 
 
 
