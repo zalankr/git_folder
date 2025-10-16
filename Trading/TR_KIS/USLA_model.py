@@ -490,6 +490,13 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'model': 'USLA',
             'season': order_time['season'],
             'market': order_time['market'],
+            'hold': hold,
+            'hold_ticker': hold_ticker,
+            'hold_USD_value': hold_USD_value,
+            'target': target,
+            'target_ticker': target_ticker,
+            'target_usd_value': target_usd_value,
+            'target_qty': target_qty,
             'order_type': round_split['order_type'], #####에러발생했던 부분#####
             'round': order_time['round'],
             'total_round': order_time['total_round']

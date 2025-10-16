@@ -1,17 +1,17 @@
 {
-    "Date": "2025-10-11",
+    "Date": "2025-10-16",
     "Position": "Sell full",
     "ETH_weight": 0.0,
     "ETH_target": 0.0,
     "CASH_weight": 1.0,
-    "Invest_quantity": 6.89835294,
-    "Total_balance": 40831414.902871154,
-    "ETH": 1.54e-06,
-    "KRW": 40831405.86153115,
-    "Last_day_Total_balance": 44151552.86247285,
+    "Invest_quantity": 6.51632423,
+    "Total_balance": 39572587.73461427,
+    "ETH": 2e-08,
+    "KRW": 39572587.61293427,
+    "Last_day_Total_balance": 40336059.423163846,
     "Last_month_Total_balance": 42829974.04208175,
     "Last_year_Total_balance": 40859674.0,
-    "Daily_return": -7.519866786890943,
-    "Monthly_return": -4.66626278420564,
-    "Yearly_return": -0.0691613377259098
+    "Daily_return": -1.8927770820149532,
+    "Monthly_return": -7.6053894038483465,
+    "Yearly_return": -3.1500159922610544
 }
