@@ -80,7 +80,7 @@ try:
             KA.SendMessage(f"Upbit {TR_time[0]} JSON 파일 오류: {e}")
             exit()
           
-        # 포지션별 주문하기##############################################################################################################
+        # 포지션별 주문하기 ticker인수 넣기
         if ETH_Position == "Sell_full":
             current_price = pyupbit.get_current_price("KRW-ETH")
             ETH = upbit.get_balance_t("ETH")

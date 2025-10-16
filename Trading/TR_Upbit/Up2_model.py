@@ -295,7 +295,7 @@ def Cancel_Order(upbit):
             result.append(upbit.cancel_order(order['uuid']))
     return result
 
-# 매도주문
+# 매도주문 ###### ticker 인수 넣기
 def partial_selling(current_price, amount_per_times, TR_time, upbit):        
     prices = []
     for i in range(TR_time[1]):
