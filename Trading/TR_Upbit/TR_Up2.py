@@ -8,7 +8,6 @@ from tendo import singleton
 me = singleton.SingleInstance()
 
 # 필요한 라이브러리 설치: pip install gspread google-auth
-# crontab 수정 추가 3회
 
 # Upbit 토큰 불러오기
 with open("/var/autobot/TR_Upbit/upnkr.txt") as f:
@@ -16,36 +15,28 @@ with open("/var/autobot/TR_Upbit/upnkr.txt") as f:
 
 # 업비트 접속, JSON data 경로 설정
 upbit = pyupbit.Upbit(access_key, secret_key)
-Upbit_data_path = '/var/autobot/TR_Upbit/Upbit2_data.json'
+TR_data_path = '/var/autobot/TR_Upbit/TR_data2.json'
 
 # 시간확인 조건문
 now, current_time, TR_time = UP.what_time()
-TR_time = ["0858", 8] ## test
 
 # If 8:58 Trading 8분할(첫 번째)에만 전일 Upbit_data json읽고 Signal계산, 투자 금액 산출 후 다시 저장
 try:
     if TR_time[1] == 8: # 8:58 8분할 매매시에만 실행
-        # 잔고 확인
-        KRW, ETH, BTC, Total_balance = UP.Total_balance(upbit)
         # 포지션 확인 및 투자 수량 산출
-        ETH, BTC, Account = UP.make_position(ETH, BTC, KRW)
-
-        # Upbit_data 만들고 저장하기
-        Upbit2_data = {
-             "Date": now.strftime("%Y-%m-%d"),
-             "ETH": ETH,
-             "BTC": BTC,
-             "Account": Account
-        }
+        TR_data = UP.make_position(upbit)
+        ETH = TR_data["ETH"]
+        BTC = TR_data["BTC"]
+        print(TR_data)
 
         # Upbit_data.json파일 생성 후 알림
-        with open(Upbit_data_path, 'w', encoding='utf-8') as f:
-            json.dump(Upbit2_data, f, ensure_ascii=False, indent=4)
-        KA.SendMessage(f"Upbit Trading, {TR_time[0]}\n \nETH: {ETH} \n \nBTC: {BTC}")
+        with open(TR_data_path, 'w', encoding='utf-8') as f:
+            json.dump(TR_data, f, ensure_ascii=False, indent=4)
+        KA.SendMessage(f"Upbit Trading, {TR_time[0]} Upbit trade 당일 전략 data 생성완료")
 
 except Exception as e:
-        print(f"Upbit {TR_time[0]} \n포지션 생성 시 예외 오류: {e}")
-        KA.SendMessage(f"Upbit {TR_time[0]} \n포지션 생성 시 예외 오류: {e}")
+        print(f"Upbit {TR_time[0]} \nUpbit trade 당일 전략 생성 시 예외 오류: {e}")
+        KA.SendMessage(f"Upbit {TR_time[0]} \nUpbit trade 당일 전략 생성 시 예외 오류: {e}")
 time_module.sleep(1) # 타임슬립 1초
 
 # 회차별매매 주문하기
@@ -62,70 +53,105 @@ try:
 
         # 당일의 Upbit_data.json 파일 불러오고 position 추출       
         try:
-            with open(Upbit_data_path, 'r', encoding='utf-8') as f:
-                Upbit2_data = json.load(f)
-
-            ETH = Upbit2_data["ETH"]
-            BTC = Upbit2_data["BTC"]
-
-            ETH_Position = ETH["Position"]
-            BTC_Position = BTC["Position"]
-            ETH_sell_qty= ETH["ETH_sell_qty"]
-            ETH_KRW_buy_qty= ETH["KRW_buy_qty"]
-            BTC_sell_qty= BTC["BTC_sell_qty"]
-            BTC_KRW_buy_qty= BTC["KRW_buy_qty"]
-            
+            with open(TR_data_path, 'r', encoding='utf-8') as f:
+                TR_data = json.load(f)
         except Exception as e:
             print(f"JSON 파일 오류: {e}")
             KA.SendMessage(f"Upbit {TR_time[0]} JSON 파일 오류: {e}")
             exit()
+
+        # 변수지정
+        ETH_Position = TR_data["ETH_Position"]
+        BTC_Position = TR_data["BTC_Position"]
+        ETH_weight = TR_data["ETH_weight"]
+        BTC_weight = TR_data["BTC_weight"]
           
-        # 포지션별 주문하기 ticker인수 넣기
+        # ETH 포지션별 주문하기 ticker인수 넣기
+        current_price = pyupbit.get_current_price("KRW-ETH")        
         if ETH_Position == "Sell_full":
-            current_price = pyupbit.get_current_price("KRW-ETH")
             ETH = upbit.get_balance_t("ETH")
             amount_per_times = ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+            ticker = "KRW-ETH"
+            result = UP.partial_selling(ticker, current_price, amount_per_times, TR_time, upbit) 
 
-            if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 6000원 미만일 때 pass
-                pass
-            else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
-                UP.partial_selling(current_price, amount_per_times, TR_time, upbit) 
-
-#         elif Position == "Sell half":
-#             current_price = pyupbit.get_current_price("KRW-ETH")    
-#             ETH = upbit.get_balance_t("ETH")
-#             Remain_ETH = max(0, ETH - Invest_quantity)
-#             amount_per_times = Remain_ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
-            
-#             if amount_per_times * current_price < 6000: # ETH투자량을 KRW로 환산한 후 분할 매매당 금액이 6000원 미만일 때 pass
-#                 pass
-#             else: # 분할 매매당 금액이 6000원 이상일 때만 매도 주문
-#                 UP.partial_selling(current_price, amount_per_times, TR_time, upbit)
+        elif ETH_Position == "Sell half":
+            ETH = upbit.get_balance_t("ETH")
+            RemainETH = ETH - TR_data["ETHKRW_sell"]
+            NowTR_ETH = max(0, ETH - RemainETH)
+            amount_per_times = NowTR_ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+            ticker = "KRW-ETH"
+            result = UP.partial_selling(ticker, current_price, amount_per_times, TR_time, upbit) 
         
-#         elif Position == "Buy full":
-#             current_price = pyupbit.get_current_price("KRW-ETH")
-#             KRW = upbit.get_balance_t("KRW")
-#             amount_per_times = KRW / TR_time[1] # 분할 매매 횟수당 KRW Quantity
+        elif ETH_Position == "Buy full":
+            KRW = upbit.get_balance_t("KRW")
+            if BTC_weight == 0.5:
+                KRWETH_buy = KRW
+            elif BTC_weight == 0.25:
+                KRWETH_buy = KRW * 0.5
+            elif BTC_weight == 0.0:
+                KRWETH_buy = KRW / 3
+            amount_per_times = (KRWETH_buy * 0.99) / TR_time[1] # 분할 매매 횟수당 KRW Quantity, 안정성 있게 현금의 99%만 매매
+            ticker = "KRW-ETH"
+            result = UP.partial_buying(ticker, current_price, amount_per_times, TR_time, upbit)
 
-#             if amount_per_times < 6000: # KRW로 분할 매매당 금액이 6000원 미만일 때 pass
-#                 pass
-#             else: # 분할 매매당 금액이 6000원 이상일 때만 매수 주문
-#                 UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
-
-#         elif Position == "Buy half":
-#             current_price = pyupbit.get_current_price("KRW-ETH")
-#             KRW = upbit.get_balance_t("KRW")
-#             Remain_KRW = max(0, KRW - Invest_quantity)
-
-#             amount_per_times = Remain_KRW / TR_time[1] # 분할 매매 횟수당 KRW Quantity
-
-#             if amount_per_times < 6000: # KRW로 분할 매매당 금액이 6000원 미만일 때 pass
-#                 pass
-#             else: # 분할 매매당 금액이 6000원 이상일 때만 매수 주문
-#                 UP.partial_buying(current_price, amount_per_times, TR_time, upbit)
+        elif ETH_Position == "Buy half":
+            KRW = upbit.get_balance_t("KRW")
+            if BTC_weight == 0.5:
+                KRWETH_buy = KRW * 0.5
+            elif BTC_weight == 0.25:
+                KRWETH_buy = KRW / 3
+            elif BTC_weight == 0.0:
+                KRWETH_buy = KRW * 0.25            
+            Remain_KRW = KRW - KRWETH_buy
+            NowTR_KRW = max(0, KRW - Remain_KRW)    
+            amount_per_times = (NowTR_KRW * 0.99) / TR_time[1] # 분할 매매 횟수당 KRW Quantity
+            ticker = "KRW-ETH"
+            result = UP.partial_buying(ticker, current_price, amount_per_times, TR_time, upbit)
     
-#     else:
-#          pass
+        # BTC 포지션별 주문하기 ticker인수 넣기
+        current_price = pyupbit.get_current_price("KRW-BTC")       
+        if BTC_Position == "Sell_full":
+            BTC = upbit.get_balance_t("BTC")
+            amount_per_times = BTC / TR_time[1] # 분할 매매 횟수당 BTC Quantity
+            ticker = "KRW-BTC"
+            result = UP.partial_selling(ticker, current_price, amount_per_times, TR_time, upbit) 
+
+        elif BTC_Position == "Sell half":
+            BTC = upbit.get_balance_t("BTC")
+            RemainBTC = BTC - TR_data["BTCKRW_sell"]
+            NowTR_BTC = max(0, BTC - RemainBTC)
+            amount_per_times = NowTR_BTC / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+            ticker = "KRW-BTC"
+            result = UP.partial_selling(ticker, current_price, amount_per_times, TR_time, upbit) 
+        
+        elif BTC_Position == "Buy full":
+            KRW = upbit.get_balance_t("KRW")
+            if ETH_weight == 0.5:
+                KRWBTC_buy = KRW
+            elif ETH_weight == 0.25:
+                KRWBTC_buy = KRW * 0.5
+            elif ETH_weight == 0.0:
+                KRWBTC_buy = KRW / 3
+            amount_per_times = (KRWBTC_buy * 0.99) / TR_time[1] # 분할 매매 횟수당 KRW Quantity, 안정성 있게 현금의 99%만 매매
+            ticker = "KRW-BTC"
+            result = UP.partial_buying(ticker, current_price, amount_per_times, TR_time, upbit)
+
+        elif BTC_Position == "Buy half":
+            KRW = upbit.get_balance_t("KRW")
+            if ETH_weight == 0.5:
+                KRWBTC_buy = KRW * 0.5
+            elif ETH_weight == 0.25:
+                KRWBTC_buy = KRW / 3
+            elif ETH_weight == 0.0:
+                KRWBTC_buy = KRW * 0.25            
+            Remain_KRW = KRW - KRWBTC_buy
+            NowTR_KRW = max(0, KRW - Remain_KRW)    
+            amount_per_times = (NowTR_KRW * 0.99) / TR_time[1] # 분할 매매 횟수당 KRW Quantity
+            ticker = "KRW-BTC"
+            result = UP.partial_buying(ticker, current_price, amount_per_times, TR_time, upbit)
+
+        else:
+            pass
 
 except Exception as e:
         print(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
