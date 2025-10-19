@@ -352,9 +352,9 @@ def partial_selling(ticker, current_price, amount_per_times, TR_time, upbit):
             print(f"{TR_time[0]}차 {t+1}/{TR_time[1]} {ticker} 분할 매도:", result)
 
             if result and 'price' in result:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}, {ticker} 분할 매도가: {result['price']}원, 수량: {volume}")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}, {ticker} 분할 매도 수량: {volume}")
             else:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 주문 실패: {result}")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 주문 실패")
 
         except Exception as order_error:
             print(f"주문 {t+1}회차 오류: {order_error}")
@@ -392,9 +392,9 @@ def partial_buying(ticker, current_price, krw_per_times, TR_time, upbit):
             print(f"{TR_time[0]}차 {t+1}/{TR_time[1]} {ticker} 분할 매수", result)
             
             if result and 'price' in result:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수가: {result['price']}원, 수량: {volume}")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 수량: {volume}")
             else:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류: {result}")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류")
                 
         except Exception as order_error:
             print(f"주문 {t+1}회차 오류: {order_error}")

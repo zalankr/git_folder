@@ -91,7 +91,6 @@ try:
                 ticker = "KRW-ETH"
                 ETH_result = UP.partial_selling(ticker, ETH_price, amount_per_times, TR_time, upbit) 
             else:
-                print(f"ETH Sell_full: 매도할 ETH 없음 (보유: {ETH:.8f})")
                 KA.SendMessage(f"Upbit {TR_time[0]} ETH Sell_full: 보유량 0")
 
         elif ETH_Position == "Sell_half":
@@ -256,10 +255,12 @@ try:
             json.dump(TR_data, f, ensure_ascii=False, indent=4)
 
         # KakaoTalk 메시지 보내기
+        ETH_target = TR_data["ETH_target"]
+        BTC_target = TR_data["BTC_target"]
         KA.SendMessage(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
         KA.SendMessage(f"Upbit 일수익률: {Daily_return}% \n월수익률: {Monthly_return}% \n연수익률: {Yearly_return}% \n환산잔고: {round(Total):,}원 \nETH: {ETH:,}, BTC: {BTC:,} \nKRW: {(round(KRW)):,}원")
-        KA.SendMessage(f"Upbit ETH Position: {ETH_Position} \nETH weight: {ETH_weight} \nETH target: {TR_data["ETH_target"]}")
-        KA.SendMessage(f"Upbit BTC Position: {BTC_Position} \nBTC_weight: {BTC_weight} \nBTC_target: {TR_data['BTC_target']}")
+        KA.SendMessage(f"Upbit ETH Position: {ETH_Position} \nETH weight: {ETH_weight} \nETH target: {ETH_target}")
+        KA.SendMessage(f"Upbit BTC Position: {BTC_Position} \nBTC_weight: {BTC_weight} \nBTC_target: {BTC_target}")
 
         # Google Spreadsheet에 데이터 추가
         # 설정값 (실제 값으로 변경 필요)
