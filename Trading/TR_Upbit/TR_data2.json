@@ -5,6 +5,8 @@
     "KRW": 103962302.30396159,
     "ETH_Position": "Hold_state",
     "BTC_Position": "Hold_state",
+    "Last_ETH_weight": 0.0,
+    "Last_BTC_weight": 0.0,
     "ETH_weight": 0.0,
     "BTC_weight": 0.0,
     "ETH_target": 0.0,

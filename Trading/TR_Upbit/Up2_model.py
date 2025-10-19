@@ -1,5 +1,5 @@
 import pyupbit
-from datetime import datetime
+from datetime import datetime, timedelta
 import time as time_module  # time 모듈을 별칭으로 import
 import json
 import math
@@ -23,8 +23,8 @@ def make_position(upbit):
     except Exception as e:
         print("Exception File")
     # JSON data에서 티커별 어제의 목표비중 불러오기
-    ETH_weight = TR_data["ETH_weight"]
-    BTC_weight = TR_data["BTC_weight"]
+    Last_ETH_weight = TR_data["ETH_weight"] #어제의 티커별 목표비중
+    Last_BTC_weight = TR_data["BTC_weight"] #어제의 티커별 목표비중
 
     # 현재 날짜 구하기
     now = datetime.now()
@@ -46,150 +46,152 @@ def make_position(upbit):
     BTC_MA45 = getMA(BTC_data, 45, -1)
     BTC_MA120 = getMA(BTC_data, 120, -1)
 
+    # 전일 ETH/KRW/원화환산 잔고, 전월말, 전년말 원화환산 잔고
+
     # ETH포지션 산출
-    if ETH_weight == 0.5 :
+    if Last_ETH_weight == 0.5 : # 어제
         if ETH_price >= ETH_MA20 and ETH_price >= ETH_MA40:
             ETH_Position = "Hold_state"
-            ETH_weight = 0.5
+            ETH_weight = 0.5 # 오늘
             ETH_target = ETH
             ETHKRW_sell = 0.0
             KRWETH_buy = 0.0
         elif ETH_price < ETH_MA20 and ETH_price < ETH_MA40:
             ETH_Position = "Sell_full"
-            ETH_weight = 0.0
+            ETH_weight = 0.0 # 오늘
             ETH_target = 0.0
             ETHKRW_sell = ETH
             KRWETH_buy = 0.0
         else:
             ETH_Position = "Sell_half"
-            ETH_weight = 0.25
+            ETH_weight = 0.25 # 오늘
             ETH_target = ETH * 0.5
             ETHKRW_sell = ETH * 0.5
             KRWETH_buy = 0.0
-    elif ETH_weight == 0.25 :
+    elif Last_ETH_weight == 0.25 : # 어제
         if ETH_price >= ETH_MA20 and ETH_price >= ETH_MA40:
             ETH_Position = "Buy_full"
-            ETH_weight = 0.5
-            if BTC_weight == 0.5:
+            ETH_weight = 0.5 # 오늘
+            if Last_BTC_weight == 0.5: #어제
                 KRWETH_buy = KRW
-            elif BTC_weight == 0.25:
+            elif Last_BTC_weight == 0.25: #어제
                 KRWETH_buy = KRW * 0.5
-            elif BTC_weight == 0.0:
+            elif Last_BTC_weight == 0.0: #어제
                 KRWETH_buy = KRW / 3
             ETH_target = ETH + ((KRWETH_buy*0.99) / ETH_price)
             ETHKRW_sell = 0.0
         elif ETH_price < ETH_MA20 and ETH_price < ETH_MA40:
             ETH_Position = "Sell_full"
-            ETH_weight = 0.0
+            ETH_weight = 0.0 # 오늘
             ETH_target = 0.0
             ETHKRW_sell = ETH
             KRWETH_buy = 0.0
         else:
             ETH_Position = "Hold_state"
-            ETH_weight = 0.25
+            ETH_weight = 0.25 # 오늘
             ETH_target = ETH
             ETHKRW_sell = 0.0
             KRWETH_buy = 0.0
-    elif ETH_weight == 0.0 :
+    elif Last_ETH_weight == 0.0 : # 어제
         if ETH_price >= ETH_MA20 and ETH_price >= ETH_MA40:
             ETH_Position = "Buy_full"
-            ETH_weight = 0.5
-            if BTC_weight == 0.5:
+            ETH_weight = 0.5 # 오늘
+            if Last_BTC_weight == 0.5: #어제
                 KRWETH_buy = KRW
-            elif BTC_weight == 0.25:
+            elif Last_BTC_weight == 0.25: #어제
                 KRWETH_buy = KRW * 2 / 3
-            elif BTC_weight == 0.0:
+            elif Last_BTC_weight == 0.0: #어제
                 KRWETH_buy = KRW * 0.5
             ETH_target = (KRWETH_buy * 0.99) / ETH_price
             ETHKRW_sell = 0.0
         elif ETH_price < ETH_MA20 and ETH_price < ETH_MA40:
             ETH_Position = "Hold_state"
-            ETH_weight = 0.0
+            ETH_weight = 0.0 # 오늘
             ETH_target = 0.0
             ETHKRW_sell = 0.0
             KRWETH_buy = 0.0
         else:
             ETH_Position = "Buy_half"
-            ETH_weight = 0.25
-            if BTC_weight == 0.5:
+            ETH_weight = 0.25 # 오늘
+            if Last_BTC_weight == 0.5: #어제
                 KRWETH_buy = KRW * 0.5
-            elif BTC_weight == 0.25:
+            elif Last_BTC_weight == 0.25: #어제
                 KRWETH_buy = KRW / 3
-            elif BTC_weight == 0.0:
+            elif Last_BTC_weight == 0.0: #어제
                 KRWETH_buy = KRW * 0.25
             ETH_target = (KRWETH_buy * 0.99) / ETH_price
             ETHKRW_sell = 0.0
 
     # BTC포지션 산출
-    if BTC_weight == 0.5 :
+    if Last_BTC_weight == 0.5 : #어제
         if BTC_price >= BTC_MA45 and BTC_price >= BTC_MA120:
             BTC_Position = "Hold_state"
-            BTC_weight = 0.5
+            BTC_weight = 0.5 # 오늘
             BTC_target = BTC
             BTCKRW_sell = 0.0
             KRWBTC_buy = 0.0
         elif BTC_price < BTC_MA45 and BTC_price < BTC_MA120:
             BTC_Position = "Sell_full"
-            BTC_weight = 0.0
+            BTC_weight = 0.0 # 오늘
             BTC_target = 0.0
             BTCKRW_sell = BTC
             KRWBTC_buy = 0.0
         else:
             BTC_Position = "Sell_half"
-            BTC_weight = 0.25
+            BTC_weight = 0.25 # 오늘
             BTC_target = BTC * 0.5
             BTCKRW_sell = BTC * 0.5
             KRWBTC_buy = 0.0
-    elif BTC_weight == 0.25 :
+    elif Last_BTC_weight == 0.25 : #어제
         if BTC_price >= BTC_MA45 and BTC_price >= BTC_MA120:
             BTC_Position = "Buy_full"
-            BTC_weight = 0.5
-            if ETH_weight == 0.5:
+            BTC_weight = 0.5 # 오늘
+            if Last_ETH_weight == 0.5: #어제
                 KRWBTC_buy = KRW
-            elif ETH_weight == 0.25:
+            elif Last_ETH_weight == 0.25: #어제
                 KRWBTC_buy = KRW * 0.5
-            elif ETH_weight == 0.0:
+            elif Last_ETH_weight == 0.0: #어제
                 KRWBTC_buy = KRW / 3
             BTC_target = BTC + ((KRWBTC_buy*0.99) / BTC_price)
             BTCKRW_sell = 0.0
         elif BTC_price < BTC_MA45 and BTC_price < BTC_MA120:
             BTC_Position = "Sell_full"
-            BTC_weight = 0.0
+            BTC_weight = 0.0 # 오늘
             BTC_target = 0.0
             BTCKRW_sell = BTC
             KRWBTC_buy = 0.0
         else:
             BTC_Position = "Hold_state"
-            BTC_weight = 0.25
+            BTC_weight = 0.25 # 오늘
             BTC_target = BTC
             BTCKRW_sell = 0.0
             KRWBTC_buy = 0.0
-    elif BTC_weight == 0.0 :
+    elif Last_BTC_weight == 0.0 : #어제
         if BTC_price >= BTC_MA45 and BTC_price >= BTC_MA120:
             BTC_Position = "Buy_full"
-            BTC_weight = 0.5
-            if ETH_weight == 0.5:
+            BTC_weight = 0.5 # 오늘
+            if Last_ETH_weight == 0.5: #어제
                 KRWBTC_buy = KRW
-            elif ETH_weight == 0.25:
+            elif Last_ETH_weight == 0.25: #어제
                 KRWBTC_buy = KRW * 2 / 3
-            elif ETH_weight == 0.0:
+            elif Last_ETH_weight == 0.0: #어제
                 KRWBTC_buy = KRW * 0.5
             BTC_target = (KRWBTC_buy * 0.99) / BTC_price
             BTCKRW_sell = 0.0
         elif BTC_price < BTC_MA45 and BTC_price < BTC_MA120:
             BTC_Position = "Hold_state"
-            BTC_weight = 0.0
+            BTC_weight = 0.0 # 오늘
             BTC_target = 0.0
             BTCKRW_sell = 0.0
             KRWBTC_buy = 0.0
         else:
             BTC_Position = "Buy_half"
-            BTC_weight = 0.25
-            if ETH_weight == 0.5:
+            BTC_weight = 0.25 # 오늘
+            if Last_ETH_weight == 0.5: #어제
                 KRWBTC_buy = KRW * 0.5
-            elif ETH_weight == 0.25:
+            elif Last_ETH_weight == 0.25: #어제
                 KRWBTC_buy = KRW / 3
-            elif ETH_weight == 0.0:
+            elif Last_ETH_weight == 0.0: #어제
                 KRWBTC_buy = KRW * 0.25
             BTC_target = (KRWBTC_buy * 0.99) / BTC_price
             BTCKRW_sell = 0.0
@@ -201,6 +203,8 @@ def make_position(upbit):
         "KRW": KRW,
         "ETH_Position": ETH_Position,
         "BTC_Position": BTC_Position,
+        "Last_ETH_weight": Last_ETH_weight,
+        "Last_BTC_weight": Last_BTC_weight,
         "ETH_weight": ETH_weight,
         "BTC_weight": BTC_weight,
         "ETH_target": ETH_target,
@@ -333,7 +337,7 @@ def partial_selling(ticker, current_price, amount_per_times, TR_time, upbit):
             # 주문 금액 체크 - 실제 주문 금액으로 검증
             order_amount = volume * price
             if order_amount < 5500:  # 5500원으로 체크
-                print(f"주문 {t+1}회차: {ticker} 주문금액 부족 (금액: {order_amount:.0f}원, 필요: 5500원)")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}회차 {ticker} 주문금액 부족으로 스킵")
                 continue
 
             result = upbit.sell_limit_order(ticker, price, volume)
@@ -356,7 +360,6 @@ def partial_buying(ticker, current_price, amount_per_times, TR_time, upbit):
         order_num = i + 1
         price = current_price * (1-(order_num*0.0005))
         prices.append(get_tick_size(price=price, method="floor"))
-
     if TR_time[1] < 5:
         prices[0] = get_tick_size(price=current_price*1.01, method="floor")
 
@@ -369,13 +372,12 @@ def partial_buying(ticker, current_price, amount_per_times, TR_time, upbit):
                 price = prices[t][0]
             else:
                 price = prices[t]
-            
             volume = round(amount_per_times / price, 8)
             
             # 주문 금액 체크 - 실제 주문 금액으로 검증
             order_amount = volume * price
             if order_amount < 5500:  # 5500원으로 체크
-                print(f"주문 {t+1}회차: {ticker} 주문금액 부족 (금액: {order_amount:.0f}원, 필요: 5500원)")
+                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}회차 {ticker} 주문금액 부족으로 스킵")
                 continue
                 
             result = upbit.buy_limit_order(ticker, price, volume)
@@ -392,11 +394,110 @@ def partial_buying(ticker, current_price, amount_per_times, TR_time, upbit):
 
     return result
 
+# 직전 1시간 체결 주문 확인 함수
+def check_filled_orders_last_hour(upbit, ticker):
+    """
+    Args:
+        upbit: Upbit 객체
+        ticker: "KRW-ETH" 또는 "KRW-BTC"
+    
+    Returns:
+        tuple: (사용된 총 KRW, 체결된 총 수량)
+    """
+    total_krw_used = 0.0
+    total_volume_filled = 0.0
+    
+    try:
+        # 현재 시간과 1시간 전 시간 계산
+        now = datetime.now()
+        one_hour_ago = now - timedelta(hours=1)
+        
+        # 체결 완료된 주문 조회 (최근 100개)
+        filled_orders = upbit.get_order(ticker, state='done', limit=100)
+        
+        if not filled_orders:
+            print(f"{ticker} 직전 1시간 체결 내역 없음")
+            return 0.0, 0.0
+        
+        for filled_order in filled_orders:
+            # 주문 체결 시간 파싱
+            created_at_str = filled_order.get('created_at', '')
+            if not created_at_str:
+                continue
+            
+            # ISO 8601 형식 파싱 (예: '2025-10-19T00:05:23+09:00')
+            try:
+                # '+09:00' 제거하고 파싱
+                created_at_clean = created_at_str.split('+')[0].split('.')[0]
+                created_at = datetime.fromisoformat(created_at_clean)
+            except:
+                continue
+            
+            # 1시간 이내의 주문만 확인
+            if created_at < one_hour_ago:
+                continue
+            
+            # 매수 주문만 확인
+            if filled_order['side'] == 'bid':
+                executed_volume = float(filled_order.get('executed_volume', 0))
+                avg_price = float(filled_order.get('avg_price', 0))
+                paid_fee = float(filled_order.get('paid_fee', 0))
+                
+                krw_used = (executed_volume * avg_price) + paid_fee
+                total_krw_used += krw_used
+                total_volume_filled += executed_volume
+                
+                print(f"체결 확인: {ticker} 매수 {executed_volume:.8f}개, "
+                      f"평균가 {avg_price:.0f}원, 수수료 {paid_fee:.0f}원, "
+                      f"시간: {created_at_str}")
+        
+        KA.SendMessage(f"{ticker} 직전 1시간 체결 요약: 사용 KRW {total_krw_used:.0f}원")
+        KA.SendMessage(f"체결량 {total_volume_filled:.8f}개")
+        
+        return total_krw_used, total_volume_filled
+    
+    except Exception as e:
+        print(f"{ticker} 체결 확인 중 오류: {e}")
+        KA.SendMessage(f"Upbit {ticker} 체결 확인 오류: {e}")
+        return 0.0, 0.0
+
+
+# ETH와 BTC 모두의 직전 1시간 매수 체결 내역을 확인하는 래퍼 함수
+def check_all_filled_orders_last_hour(upbit):
+    """
+    Args:
+        upbit: Upbit 객체
+    
+    Returns:
+        dict: {
+            'ETH_krw_used': float,
+            'ETH_volume_filled': float,
+            'BTC_krw_used': float,
+            'BTC_volume_filled': float,
+            'total_krw_used': float
+        }
+    """
+    # ETH 체결 확인
+    eth_krw, eth_volume = check_filled_orders_last_hour(upbit, "KRW-ETH")
+    
+    # BTC 체결 확인
+    btc_krw, btc_volume = check_filled_orders_last_hour(upbit, "KRW-BTC")
+    
+    result = {
+        'KRWETH_used': eth_krw,
+        'ETH_volume_filled': eth_volume,
+        'KRWBTC_used': btc_krw,
+        'BTC_volume_filled': btc_volume,
+        'total_krw_used': eth_krw + btc_krw
+    }
+    
+    return result
+
 # 종합 잔고조회
 def Total_balance(upbit):
     KRW = upbit.get_balance_t("KRW")
     ETH = upbit.get_balance_t("ETH")
     BTC = upbit.get_balance_t("BTC")
-    Total = KRW + (ETH * pyupbit.get_current_price("KRW-ETH")) + (BTC * pyupbit.get_current_price("KRW-BTC"))
+    Total = KRW + (ETH * pyupbit.get_current_price("KRW-ETH") * 0.9995) + (BTC * pyupbit.get_current_price("KRW-BTC") * 0.9995)
 
     return KRW, ETH, BTC, Total
