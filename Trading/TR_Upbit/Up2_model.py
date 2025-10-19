@@ -1,5 +1,5 @@
 import pyupbit
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time as time_module  # time 모듈을 별칭으로 import
 import json
 import math
@@ -20,11 +20,19 @@ def make_position(upbit):
     try:
         with open(TR_data_path, 'r', encoding='utf-8') as f:
             TR_data = json.load(f)
+    except FileNotFoundError:
+        print("JSON 파일 없음 - 기본값 사용")
+        TR_data = {
+            "ETH_weight": 0.0,
+            "BTC_weight": 0.0
+        }
+        KA.SendMessage("TR_data 파일 없음, 초기값으로 시작")
     except Exception as e:
-        print("Exception File")
+        print(f"JSON 파일 오류: {e}")
+        raise
     # JSON data에서 티커별 어제의 목표비중 불러오기
-    Last_ETH_weight = TR_data["ETH_weight"] #어제의 티커별 목표비중
-    Last_BTC_weight = TR_data["BTC_weight"] #어제의 티커별 목표비중
+    Last_ETH_weight = TR_data.get("ETH_weight", 0.0)
+    Last_BTC_weight = TR_data.get("BTC_weight", 0.0) #어제의 티커별 목표비중
 
     # 현재 날짜 구하기
     now = datetime.now()
@@ -354,7 +362,7 @@ def partial_selling(ticker, current_price, amount_per_times, TR_time, upbit):
 
     return result
 # 매수주문
-def partial_buying(ticker, current_price, amount_per_times, TR_time, upbit):        
+def partial_buying(ticker, current_price, krw_per_times, TR_time, upbit):        
     prices = []
     for i in range(TR_time[1]):
         order_num = i + 1
@@ -372,7 +380,7 @@ def partial_buying(ticker, current_price, amount_per_times, TR_time, upbit):
                 price = prices[t][0]
             else:
                 price = prices[t]
-            volume = round(amount_per_times / price, 8)
+            volume = round(krw_per_times / price, 8)
             
             # 주문 금액 체크 - 실제 주문 금액으로 검증
             order_amount = volume * price
@@ -408,8 +416,9 @@ def check_filled_orders_last_hour(upbit, ticker):
     total_volume_filled = 0.0
     
     try:
-        # 현재 시간과 1시간 전 시간 계산
-        now = datetime.now()
+        # UTC 타임존으로 현재 시간 계산
+        utc_tz = timezone.utc
+        now = datetime.now(utc_tz)
         one_hour_ago = now - timedelta(hours=1)
         
         # 체결 완료된 주문 조회 (최근 100개)
@@ -425,15 +434,14 @@ def check_filled_orders_last_hour(upbit, ticker):
             if not created_at_str:
                 continue
             
-            # ISO 8601 형식 파싱 (예: '2025-10-19T00:05:23+09:00')
+            # ISO 8601 형식 파싱 (타임존 정보 포함)
             try:
-                # '+09:00' 제거하고 파싱
-                created_at_clean = created_at_str.split('+')[0].split('.')[0]
-                created_at = datetime.fromisoformat(created_at_clean)
+                # Python 3.7+ 지원: fromisoformat으로 타임존 자동 처리
+                created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
             except:
                 continue
             
-            # 1시간 이내의 주문만 확인
+            # 1시간 이내의 주문만 확인 (타임존 자동 변환되어 비교)
             if created_at < one_hour_ago:
                 continue
             
@@ -461,7 +469,6 @@ def check_filled_orders_last_hour(upbit, ticker):
         KA.SendMessage(f"Upbit {ticker} 체결 확인 오류: {e}")
         return 0.0, 0.0
 
-
 # ETH와 BTC 모두의 직전 1시간 매수 체결 내역을 확인하는 래퍼 함수
 def check_all_filled_orders_last_hour(upbit):
     """
@@ -488,7 +495,6 @@ def check_all_filled_orders_last_hour(upbit):
         'ETH_volume_filled': eth_volume,
         'KRWBTC_used': btc_krw,
         'BTC_volume_filled': btc_volume,
-        'total_krw_used': eth_krw + btc_krw
     }
     
     return result

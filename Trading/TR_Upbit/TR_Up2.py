@@ -80,65 +80,98 @@ try:
         BTC_weight = TR_data["BTC_weight"]
         ETH_price = pyupbit.get_current_price("KRW-ETH") 
         BTC_price = pyupbit.get_current_price("KRW-BTC")
+        ETH_result = None
+        BTC_result = None
 
         # ETH 포지션별 주문하기 ticker인수 넣기              
         if ETH_Position == "Sell_full":
             ETH = upbit.get_balance_t("ETH")
-            amount_per_times = ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
-            ticker = "KRW-ETH"
-            ETH_result = UP.partial_selling(ticker, ETH_price, amount_per_times, TR_time, upbit) 
+            if ETH > 0:  # 매도할 물량이 있을 때만
+                amount_per_times = ETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+                ticker = "KRW-ETH"
+                ETH_result = UP.partial_selling(ticker, ETH_price, amount_per_times, TR_time, upbit) 
+            else:
+                print(f"ETH Sell_full: 매도할 ETH 없음 (보유: {ETH:.8f})")
+                KA.SendMessage(f"Upbit {TR_time[0]} ETH Sell_full: 보유량 0")
 
         elif ETH_Position == "Sell_half":
             ETH = upbit.get_balance_t("ETH")
-            RemainETH = ETH - TR_data["ETH_target"]
-            amount_per_times = RemainETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
-            ticker = "KRW-ETH"
-            ETH_result = UP.partial_selling(ticker, ETH_price, amount_per_times, TR_time, upbit) 
+            ETH_target = TR_data["ETH_target"]
+            SellETH = max(0, ETH - ETH_target)
+
+            if SellETH > 0:  # 매도할 물량이 있을 때만
+                amount_per_times = SellETH / TR_time[1] # 분할 매매 횟수당 ETH Quantity
+                ticker = "KRW-ETH"
+                ETH_result = UP.partial_selling(ticker, ETH_price, amount_per_times, TR_time, upbit)
+            else:
+                print(f"ETH Sell_half: 매도할 수량 없음 (보유: {ETH:.8f}, 목표: {ETH_target:.8f})")
+                KA.SendMessage(f"Upbit {TR_time[0]} ETH Sell_half: 매도 물량 부족")
         
-        elif ETH_Position == "Buy_full" and ETH_Position == "Buy_half":
-            ETH = upbit.get_balance_t("ETH")
+        elif ETH_Position == "Buy_full" or ETH_Position == "Buy_half":
             KRWETH_buy = float(TR_data["KRWETH_buy"])
             result = UP.check_all_filled_orders_last_hour(upbit)
             KRWETH_used = float(result["KRWETH_used"])
             Remain_buy = max(0, KRWETH_buy - KRWETH_used)
-            amount_per_times = (Remain_buy * 0.99) / TR_time[1] # 분할 매매 횟수당 ETH Quantity, 안정성 있게 현금의 99%만 매매
-            ticker = "KRW-ETH"
-            ETH_result = UP.partial_buying(ticker, ETH_price, amount_per_times, TR_time, upbit) # amount가 ETH로 교체
+
+            if Remain_buy > 5500: # 5500원 이상만 매매
+                krw_per_times = (Remain_buy * 0.99) / TR_time[1] # 분할 매매 횟수당 ETH Quantity, 안정성 있게 현금의 99%만 매매
+                ticker = "KRW-ETH"
+                ETH_result = UP.partial_buying(ticker, ETH_price, krw_per_times, TR_time, upbit) # amount가 ETH로 교체
+            else:
+                print(f"ETH Buy: 매수 가능 금액 부족 (남은 금액: {Remain_buy:.0f}원)")
+                KA.SendMessage(f"Upbit {TR_time[0]} ETH Buy: 매수 가능 금액 부족 (남은 금액: {Remain_buy:.0f}원)")
+
+        elif ETH_Position == "Hold_state":
+            print(f"ETH Hold_state: 주문 없음")
+
+        else:
+            print(f"예상치 못한 ETH_Position: {ETH_Position}")
+            KA.SendMessage(f"Upbit {TR_time[0]} 예상치 못한 ETH_Position: {ETH_Position}")
     
         # BTC 포지션별 주문하기 ticker인수 넣기             
         if BTC_Position == "Sell_full":
             BTC = upbit.get_balance_t("BTC")
-            amount_per_times = BTC / TR_time[1] # 분할 매매 횟수당 BTC Quantity
-            ticker = "KRW-BTC"
-            BTC_result = UP.partial_selling(ticker, BTC_price, amount_per_times, TR_time, upbit)
+            if BTC > 0:
+                amount_per_times = BTC / TR_time[1] # 분할 매매 횟수당 BTC Quantity
+                ticker = "KRW-BTC"
+                BTC_result = UP.partial_selling(ticker, BTC_price, amount_per_times, TR_time, upbit)
+            else:
+                print(f"BTC Sell_full: 매도할 BTC 없음 (보유: {BTC:.8f})")
+                KA.SendMessage(f"Upbit {TR_time[0]} BTC Sell_full: 보유량 0")
 
         elif BTC_Position == "Sell_half":
             BTC = upbit.get_balance_t("BTC")
-            RemainBTC = BTC - TR_data["BTC_target"]
-            amount_per_times = RemainBTC / TR_time[1] # 분할 매매 횟수당 BTC Quantity
-            ticker = "KRW-BTC"
-            BTC_result = UP.partial_selling(ticker, BTC_price, amount_per_times, TR_time, upbit) 
+            BTC_target = TR_data["BTC_target"]
+            SellBTC = max(0, BTC - BTC_target)
+
+            if SellBTC > 0:  # 매도할 물량이 있을 때만
+                amount_per_times = SellBTC / TR_time[1] # 분할 매매 횟수당 BTC Quantity
+                ticker = "KRW-BTC"
+                BTC_result = UP.partial_selling(ticker, BTC_price, amount_per_times, TR_time, upbit)
+            else:
+                print(f"BTC Sell_half: 매도할 수량 없음 (보유: {BTC:.8f}, 목표: {BTC_target:.8f})")
+                KA.SendMessage(f"Upbit {TR_time[0]} BTC Sell_half: 매도 물량 부족")            
         
-        elif BTC_Position == "Buy_full" and BTC_Position == "Buy_half":
-            BTC = upbit.get_balance_t("BTC")
+        elif BTC_Position == "Buy_full" or BTC_Position == "Buy_half":
             KRWBTC_buy = float(TR_data["KRWBTC_buy"])
             result = UP.check_all_filled_orders_last_hour(upbit)
-            KRWBTC_used = float(result["BTC_krw_used"])
+            KRWBTC_used = float(result["KRWBTC_used"])
             Remain_buy = max(0, KRWBTC_buy - KRWBTC_used)
-            amount_per_times = (Remain_buy * 0.99) / TR_time[1] # 분할 매매 횟수당 BTC Quantity, 안정성 있게 현금의 99%만 매매
-            ticker = "KRW-BTC"
-            BTC_result = UP.partial_buying(ticker, BTC_price, amount_per_times, TR_time, upbit) # amount가 BTC로 교체
+
+            if Remain_buy > 5500: # 5500원 이상만 매매
+                krw_per_times = (Remain_buy * 0.99) / TR_time[1] # 분할 매매 횟수당 BTC Quantity, 안정성 있게 현금의 99%만 매매
+                ticker = "KRW-BTC"
+                BTC_result = UP.partial_buying(ticker, BTC_price, krw_per_times, TR_time, upbit) # amount가 BTC로 교체
+            else:
+                print(f"BTC Buy: 매수 가능 금액 부족 (남은 금액: {Remain_buy:.0f}원)")
+                KA.SendMessage(f"Upbit {TR_time[0]} BTC Buy: 매수 가능 금액 부족 (남은 금액: {Remain_buy:.0f}원)")
+
+        elif BTC_Position == "Hold_state":
+            print(f"BTC Hold_state: 주문 없음")
 
         else:
-            pass
-
-        # Upbit_order.json 파일에 저장
-        ETH_result_path = '/var/autobot/TR_Upbit/ETH_result.json'
-        BTC_result_path = '/var/autobot/TR_Upbit/BTC_result.json'
-        with open(ETH_result_path, 'w', encoding='utf-8') as f:
-            json.dump(ETH_result, f, indent=4, ensure_ascii=False)
-        with open(BTC_result_path, 'w', encoding='utf-8') as f:
-            json.dump(BTC_result, f, indent=4, ensure_ascii=False)
+            print(f"예상치 못한 BTC_Position: {BTC_Position}")
+            KA.SendMessage(f"Upbit {TR_time[0]} 예상치 못한 BTC_Position: {BTC_Position}")
 
 except Exception as e:
         print(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
