@@ -19,7 +19,6 @@ TR_data_path = '/var/autobot/TR_Upbit/TR_data3.json'
 
 # 시간확인 조건문
 now, current_time, TR_time = UP.what_time()
-TR_time[1] = 8 ### test 이상 여부 확인 후 TR_data3을 2로 해서 다시 업로드 ###
 
 # If 8:58 Trading 8분할(첫 번째)에만 전일 Upbit_data json읽고 Signal계산, 투자 금액 산출 후 다시 저장
 try:
@@ -249,7 +248,7 @@ try:
             "Yearly_return": Yearly_return
         }
 
-        # TR_data2.json파일 생성
+        # TR_data3.json파일 생성
         TR_data = TR_data_today
         with open(TR_data_path, 'w', encoding='utf-8') as f:
             json.dump(TR_data, f, ensure_ascii=False, indent=4)
