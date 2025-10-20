@@ -1,7 +1,7 @@
 import pyupbit
 import json
 import time as time_module  # time 모듈을 별칭으로 import
-import Up2_model as UP
+import Up3_model as UP
 import kakao_alert as KA
 import gspread_updater as GU
 from tendo import singleton
@@ -15,10 +15,11 @@ with open("/var/autobot/TR_Upbit/upnkr.txt") as f:
 
 # 업비트 접속, JSON data 경로 설정
 upbit = pyupbit.Upbit(access_key, secret_key)
-TR_data_path = '/var/autobot/TR_Upbit/TR_data2.json'
+TR_data_path = '/var/autobot/TR_Upbit/TR_data3.json'
 
 # 시간확인 조건문
 now, current_time, TR_time = UP.what_time()
+TR_time[1] = 8 ### test 이상 여부 확인 후 TR_data3을 2로 해서 다시 업로드 ###
 
 # If 8:58 Trading 8분할(첫 번째)에만 전일 Upbit_data json읽고 Signal계산, 투자 금액 산출 후 다시 저장
 try:

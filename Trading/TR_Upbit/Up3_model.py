@@ -16,7 +16,7 @@ def getMA(ohlcv,period,st):
 # 어제 포지션을 오늘 포지션으로 변경 함수
 def make_position(upbit):
     # 어제의 json값 불러오기
-    TR_data_path = '/var/autobot/TR_Upbit/TR_data2.json'
+    TR_data_path = '/var/autobot/TR_Upbit/TR_data3.json'
     try:
         with open(TR_data_path, 'r', encoding='utf-8') as f:
             TR_data = json.load(f)
