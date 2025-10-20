@@ -17,7 +17,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
         self.all_tickers = self.etf_tickers + ['CASH']
         self.tax_rate = 0.0009
-        self.USLA_rebalancing_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_rebalancing_data.json"  
+        self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"  
 
     def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
         """월말일 반환"""
@@ -276,10 +276,10 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'current_prices': current_prices
         }
     
-    def USLA_rebalancing_data(self): # make_trading_data함수에 종속되어 USLA data 불러오기
+    def load_USLA_data(self): # make_trading_data함수에 종속되어 USLA data 불러오기
         """USLA data 불러오기"""   
         try:
-            with open(self.USLA_rebalancing_data_path, 'r', encoding='utf-8') as f:
+            with open(self.USLA_data_path, 'r', encoding='utf-8') as f:
                 USLA_data = json.load(f)
             return USLA_data
 
@@ -463,7 +463,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         buy_price_adjust = round_split['buy_price_adjust']
 
         # 지난 시즌 저장한 USLA_rebalancing_data.json 불러오기
-        USLA_data = self.USLA_rebalancing_data()
+        USLA_data = self.load_USLA_data()
 
         # 보유 티커 및 전체 잔고 및 달러화 가치, 목표 티커 및 전체 비중 수량 달러화 가치 구하기
         hold = {ticker: float(qty) for ticker, qty in zip(USLA_data['ticker'], USLA_data['qty'])} # Hold dict 생성, ticker별 qty를 float로 변환
@@ -483,10 +483,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         # data 정리
         TR_data = {}
+        date = order_time['date'].isoformat()
+        time =order_time['time'].isoformat()
 
         meta_data = {
-            'date': order_time['date'],
-            'time': order_time['time'],
+            'date': date,
+            'time': time,
             'model': 'USLA',
             'season': order_time['season'],
             'market': order_time['market'],
@@ -539,7 +541,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 time_module.sleep(0.1)
                 TR_data[ticker] = etf
 
-            else:
+            elif ticker in target_ticker:
                 edited_qty = int(target_qty[ticker]) - int(hold[ticker])
                 if edited_qty > 0:
                     qty_per_split = int(edited_qty // buy_splits)
