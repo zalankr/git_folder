@@ -37,7 +37,7 @@ def make_position(upbit):
     # 현재 날짜 구하기
     now = datetime.now()
 
-    # ETH, BTC, 원화 잔고 불러오rh data에 저장
+    # ETH, BTC, 원화 잔고 불러오기 data에 저장
     KRW, ETH, BTC, Total = Total_balance(upbit)
 
     # ETH 가격자료 불러오기
@@ -53,8 +53,6 @@ def make_position(upbit):
     ETH_MA40 = getMA(ETH_data, 40, -1)
     BTC_MA45 = getMA(BTC_data, 45, -1)
     BTC_MA120 = getMA(BTC_data, 120, -1)
-
-    # 전일 ETH/KRW/원화환산 잔고, 전월말, 전년말 원화환산 잔고
 
     # ETH포지션 산출
     if Last_ETH_weight == 0.5 : # 어제
