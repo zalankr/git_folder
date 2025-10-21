@@ -80,7 +80,7 @@ def check_USAA_rebalancing(current_date):
 
 def check_order_time():
     """USAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
-    # 현재 날짜와 시간 확인
+    # 현재 날짜와 시간 확인 ## AWS EC2 UTC시간대 사용
     # now = datetime.now()
     # current_date = now.date()
     # current_time = now.time()
