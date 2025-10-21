@@ -35,10 +35,47 @@ if order_time['season'] in ["USAA_summer", "USAA_winter"]:
         TR_data = USLA.USLA_trading_data(order_time)
         USLA.save_kis_tr_json(TR_data)
         print(TR_data)
+        print()
         # TR_data_meta = TR_data.pop('meta_data')
         # TR_data_ticker = TR_data
         
         # USAA Pre-market 1회차 order
+        Real_stocks = USLA.get_US_stock_balance()
+        print(Real_stocks)
+
+        for i in range(len(Real_stocks)):
+            ticker = Real_stocks[i]['ticker']
+            quantity = Real_stocks[i]['quantity']
+            avg_price = Real_stocks[i]['avg_price']
+            current_price = Real_stocks[i]['current_price']
+            exchange = Real_stocks[i]['exchange']
+
+            print(ticker, quantity, avg_price, current_price, exchange)
+
+        # 실제 잔고와 data잔고를 비교해서 보완(실제 잔고 중심으로)
+
+
+
+
+
+            # USLA.order_daytime_sell_US(ticker, quantity, price, exchange)
+
+        # USLA.order_daytime_sell_US(ticker: str, quantity: int, price: float,
+        #                     exchange: Optional[str] = None) -> Optional[requests.Response]:
+        """
+        미국 주간거래 매도 주문 (Pre-market/After-hours)
+        - 지정가 주문만 가능
+        - 나스닥, NYSE, AMEX만 지원
+        
+        Parameters:
+        ticker: 종목 코드
+        quantity: 주문 수량
+        price: 지정가
+        exchange: 거래소 코드 (None이면 자동 검색)
+        
+        Returns:
+        requests.Response 또는 None
+        """
 
 
 

@@ -15,10 +15,10 @@
             "TMF",
             "CASH"
         ],
-        "hold_USD_value": 2071.1283124,
+        "hold_USD_value": 2074.6861074999997,
         "target": {
-            "TQQQ": 0.7919999827401788,
-            "EDC": 0.19800001725982125,
+            "TQQQ": 0.7919999984685004,
+            "EDC": 0.1980000015314997,
             "CASH": 0.01
         },
         "target_ticker": [
@@ -27,14 +27,14 @@
             "CASH"
         ],
         "target_usd_value": {
-            "TQQQ": 1640.3335876734957,
-            "EDC": 410.0834416025045,
-            "CASH": 20.711283124
+            "TQQQ": 1643.1513939626188,
+            "EDC": 410.78785246238107,
+            "CASH": 20.746861074999998
         },
         "target_qty": {
             "TQQQ": 15,
             "EDC": 7,
-            "CASH": 89.31558477000021
+            "CASH": 93.05574385
         },
         "order_type": "order_daytime_US",
         "round": 1,
@@ -58,9 +58,9 @@
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 114.38034999999999,
+                "order_price": 114.67469999999999,
                 "qty": 5,
-                "splits_value": 571.3946450000001,
+                "splits_value": 572.86509,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -69,9 +69,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 116.0707,
+                "order_price": 116.36940000000001,
                 "qty": 5,
-                "splits_value": 579.8463950000001,
+                "splits_value": 581.3385900000001,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -80,9 +80,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 117.76104999999998,
+                "order_price": 118.0641,
                 "qty": 5,
-                "splits_value": 588.2981450000001,
+                "splits_value": 589.81209,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -91,9 +91,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 119.4514,
+                "order_price": 119.75880000000001,
                 "qty": 5,
-                "splits_value": 596.7498950000002,
+                "splits_value": 598.2855900000001,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -120,9 +120,9 @@
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 44.675225,
+                "order_price": 44.69045,
                 "qty": 10,
-                "splits_value": 446.356115,
+                "splits_value": 446.50823,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -131,9 +131,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 45.33545,
+                "order_price": 45.3509,
                 "qty": 10,
-                "splits_value": 452.958365,
+                "splits_value": 453.11273000000006,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -142,9 +142,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 45.995675,
+                "order_price": 46.01135,
                 "qty": 10,
-                "splits_value": 459.560615,
+                "splits_value": 459.71723000000003,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -153,9 +153,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 46.6559,
+                "order_price": 46.671800000000005,
                 "qty": 10,
-                "splits_value": 466.16286500000007,
+                "splits_value": 466.32173000000006,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -168,8 +168,8 @@
         "ticker": "CASH",
         "position": "cash",
         "hold_qty": 22.21,
-        "target_qty": 89.31558477000021,
-        "expected_change": 67.1055847700002
+        "target_qty": 93.05574385,
+        "expected_change": 70.84574384999999
     },
     "TQQQ": {
         "ticker": "TQQQ",
@@ -187,9 +187,9 @@
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 106.65405,
+                "order_price": 106.6839,
                 "qty": 7,
-                "splits_value": 747.2536469999999,
+                "splits_value": 747.4627859999999,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -198,9 +198,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 106.1181,
+                "order_price": 106.1478,
                 "qty": 7,
-                "splits_value": 743.501997,
+                "splits_value": 743.7100859999999,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -225,9 +225,9 @@
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 52.8823595,
+                "order_price": 52.8345,
                 "qty": 3,
-                "splits_value": 158.79057837,
+                "splits_value": 158.64687,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -236,9 +236,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 52.616619,
+                "order_price": 52.569,
                 "qty": 3,
-                "splits_value": 157.99335686999999,
+                "splits_value": 157.85037,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,

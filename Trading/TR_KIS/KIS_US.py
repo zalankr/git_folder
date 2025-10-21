@@ -626,7 +626,7 @@ class KIS_API:
 
     # 미국 주식 종목별 잔고
     def get_US_stock_balance(self) -> Optional[List[Dict]]:
-        """미국 주식 종목별 잔고"""
+        """미국 주식 종목별 잔고 (체결기준 현재잔고)"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
         
@@ -641,10 +641,10 @@ class KIS_API:
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "WCRC_FRCR_DVSN_CD": "02",
-            "NATN_CD": "840",
-            "TR_MKET_CD": "00",
-            "INQR_DVSN_CD": "00"
+            "WCRC_FRCR_DVSN_CD": "02",  # 02: 외화
+            "NATN_CD": "840",  # 840: 미국
+            "TR_MKET_CD": "00",  # 00: 전체
+            "INQR_DVSN_CD": "00"  # 00: 전체
         }
         
         try:
@@ -653,29 +653,44 @@ class KIS_API:
             data = response.json()
             
             if data.get('rt_cd') != '0':
+                print(f"API 오류: {data.get('msg1')}")
                 return None
             
             output1 = data.get('output1', [])
             stocks = []
             
             for stock in output1:
+                # ✅ 핵심 수정: ccld_qty_smtl1 (체결수량합계) 사용
+                quantity = int(float(stock.get('ccld_qty_smtl1', 0)))
+                
+                # 수량이 0인 종목은 제외 (옵션)
+                if quantity == 0:
+                    continue
+                
                 stock_info = {
                     'ticker': stock.get('pdno', ''),
                     'name': stock.get('prdt_name', ''),
-                    'quantity': int(float(stock.get('cblc_qty13', 0))),
+                    'quantity': quantity,  # ✅ 체결수량합계 = 전일잔고 + 당일매수 - 당일매도
                     'avg_price': float(stock.get('avg_unpr3', 0)),
                     'current_price': float(stock.get('ovrs_now_pric1', 0)),
                     'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
                     'profit_loss': float(stock.get('evlu_pfls_amt2', 0)),
                     'profit_loss_rate': float(stock.get('evlu_pfls_rt1', 0)),
-                    'exchange': stock.get('tr_mket_name', '')
+                    'exchange': stock.get('ovrs_excg_cd', ''),
+                    # 추가 정보 (선택)
+                    'thdt_buy_qty': int(float(stock.get('thdt_buy_ccld_qty1', 0))),  # 당일 매수량
+                    'thdt_sell_qty': int(float(stock.get('thdt_sll_ccld_qty1', 0)))  # 당일 매도량
                 }
                 stocks.append(stock_info)
             
             return stocks
-        except:
+            
+        except Exception as e:
+            print(f"잔고 조회 오류: {e}")
+            import traceback
+            traceback.print_exc()
             return None
-    
+
     # 미국 달러 예수금
     def get_US_dollar_balance(self) -> Optional[Dict]:
         """미국 달러 예수금"""
@@ -1054,7 +1069,6 @@ if __name__ == "__main__":
     #     print(f"체결금액: ${execution_info['amount_before_fee']:,.2f}")
     #     print(f"수수료: ${execution_info['fee']:,.2f}")
     #     print(f"입출금액: ${execution_info['deposit_change']:+,.2f}")
-
 
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]
