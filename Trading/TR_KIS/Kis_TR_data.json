@@ -15,10 +15,10 @@
             "TMF",
             "CASH"
         ],
-        "hold_USD_value": 2053.5951065,
+        "hold_USD_value": 2071.1283124,
         "target": {
-            "TQQQ": 0.7418882702440619,
-            "EDC": 0.24811172975593823,
+            "TQQQ": 0.7919999827401788,
+            "EDC": 0.19800001725982125,
             "CASH": 0.01
         },
         "target_ticker": [
@@ -27,14 +27,14 @@
             "CASH"
         ],
         "target_usd_value": {
-            "TQQQ": 1523.538121342955,
-            "EDC": 509.52103409204517,
-            "CASH": 20.535951065
+            "TQQQ": 1640.3335876734957,
+            "EDC": 410.0834416025045,
+            "CASH": 20.711283124
         },
         "target_qty": {
-            "TQQQ": 14,
-            "EDC": 9,
-            "CASH": 58.1122868500006
+            "TQQQ": 15,
+            "EDC": 7,
+            "CASH": 89.31558477000021
         },
         "order_type": "order_daytime_US",
         "round": 1,
@@ -58,9 +58,9 @@
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 114.22302499999998,
+                "order_price": 114.38034999999999,
                 "qty": 5,
-                "splits_value": 570.6087174999999,
+                "splits_value": 571.3946450000001,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -69,9 +69,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 115.91105,
+                "order_price": 116.0707,
                 "qty": 5,
-                "splits_value": 579.0488425,
+                "splits_value": 579.8463950000001,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -80,9 +80,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 117.59907499999998,
+                "order_price": 117.76104999999998,
                 "qty": 5,
-                "splits_value": 587.4889675,
+                "splits_value": 588.2981450000001,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -91,9 +91,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 119.28710000000001,
+                "order_price": 119.4514,
                 "qty": 5,
-                "splits_value": 595.9290925,
+                "splits_value": 596.7498950000002,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -120,9 +120,9 @@
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 43.863225,
+                "order_price": 44.675225,
                 "qty": 10,
-                "splits_value": 438.24331500000005,
+                "splits_value": 446.356115,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -131,9 +131,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 44.51145,
+                "order_price": 45.33545,
                 "qty": 10,
-                "splits_value": 444.7255650000001,
+                "splits_value": 452.958365,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -142,9 +142,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 45.159675,
+                "order_price": 45.995675,
                 "qty": 10,
-                "splits_value": 451.20781500000004,
+                "splits_value": 459.560615,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -153,9 +153,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 45.807900000000004,
+                "order_price": 46.6559,
                 "qty": 10,
-                "splits_value": 457.6900650000001,
+                "splits_value": 466.16286500000007,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -168,15 +168,15 @@
         "ticker": "CASH",
         "position": "cash",
         "hold_qty": 22.21,
-        "target_qty": 58.1122868500006,
-        "expected_change": 35.9022868500006
+        "target_qty": 89.31558477000021,
+        "expected_change": 67.1055847700002
     },
     "TQQQ": {
         "ticker": "TQQQ",
         "position": "buy",
         "hold_qty": 0,
-        "target_qty": 14,
-        "trading_qty": 14,
+        "target_qty": 15,
+        "trading_qty": 15,
         "splits": 2,
         "price_adjust": [
             0.995,
@@ -187,9 +187,9 @@
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 107.0718505,
+                "order_price": 106.65405,
                 "qty": 7,
-                "splits_value": 750.18089587,
+                "splits_value": 747.2536469999999,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -198,9 +198,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 106.533801,
+                "order_price": 106.1181,
                 "qty": 7,
-                "splits_value": 746.4145493699999,
+                "splits_value": 743.501997,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -213,21 +213,21 @@
         "ticker": "EDC",
         "position": "buy",
         "hold_qty": 0,
-        "target_qty": 9,
-        "trading_qty": 9,
+        "target_qty": 7,
+        "trading_qty": 7,
         "splits": 2,
         "price_adjust": [
             0.995,
             0.99
         ],
-        "qty_per_split": 4,
+        "qty_per_split": 3,
         "order_status": "ready",
         "orders": [
             {
                 "order_num": 0,
-                "order_price": 53.8900955,
-                "qty": 4,
-                "splits_value": 215.75536123999998,
+                "order_price": 52.8823595,
+                "qty": 3,
+                "splits_value": 158.79057837,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,
@@ -236,9 +236,9 @@
             },
             {
                 "order_num": 0,
-                "order_price": 53.619291,
-                "qty": 4,
-                "splits_value": 214.67214324,
+                "order_price": 52.616619,
+                "qty": 3,
+                "splits_value": 157.99335686999999,
                 "status": "ready",
                 "filled_qty": 0,
                 "filled_value": 0,

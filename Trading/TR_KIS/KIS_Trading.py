@@ -33,13 +33,13 @@ if order_time['season'] in ["USAA_summer", "USAA_winter"]:
     # Rebalancing Pre-market 1회차에만 Trading data 만들기 + Pre-1회차 order
     if order_time['market'] == "Pre-market" and order_time['round'] == 1:
         TR_data = USLA.USLA_trading_data(order_time)
-
         USLA.save_kis_tr_json(TR_data)
-
+        print(TR_data)
         # TR_data_meta = TR_data.pop('meta_data')
         # TR_data_ticker = TR_data
         
         # USAA Pre-market 1회차 order
+
 
 
 
