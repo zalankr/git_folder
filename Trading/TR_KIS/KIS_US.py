@@ -430,56 +430,40 @@ class KIS_API:
         except Exception as e:
             return f"yfinance 오류: {str(e)}"
     
-    # 미국 주식 매수 주문
-    def order_buy_US(self, ticker: str, quantity: int, price: float, 
-                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
-        """미국 주식 매수 주문"""
-        if exchange is None:
-            exchange = self.get_US_exchange(ticker)
-        
-        if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
-            return None
-        
-        path = "uapi/overseas-stock/v1/trading/order"
-        url = f"{self.url_base}/{path}"
-
-        data = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "OVRS_EXCG_CD": exchange,
-            "PDNO": ticker,
-            "ORD_DVSN": ord_dvsn,
-            "ORD_QTY": str(quantity),
-            "OVRS_ORD_UNPR": str(price),
-            "CTAC_TLNO": "",
-            "MGCO_APTM_ODNO": "",
-            "SLL_TYPE": "",
-            "ORD_SVR_DVSN_CD": "0"
-        }
-
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "TTTT1002U",
-            "custtype": "P",
-            "hashkey": self.hashkey(data)
-        }
-
-        return requests.post(url, headers=headers, data=json.dumps(data))
-    
-    # 미국 주식 매도 주문
+    # 미국 정규시장 주식 매도 주문
     def order_sell_US(self, ticker: str, quantity: int, price: float,
-                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[requests.Response]:
-        """미국 주식 매도 주문 ord_dvsn "00"은 지정가 """
+                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
+        """
+        미국 주식 매도 주문 (Regular Market)
+        
+        Parameters:
+        ticker: 종목 코드
+        quantity: 주문 수량
+        price: 지정가
+        exchange: 거래소 코드 (None이면 자동 검색)
+        ord_dvsn: 주문구분 ("00": 지정가, "31": MOO, "32": LOO, "33": MOC, "34": LOC)
+        
+        Returns:
+        Dict 또는 None - 주문 정보 딕셔너리
+        {
+            'success': bool,
+            'ticker': str,
+            'quantity': int,
+            'price': float,
+            'order_number': str,  # 주문번호 (ODNO)
+            'order_time': str,    # 주문시각
+            'response': requests.Response
+        }
+        """
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
         
         if exchange is None:
             print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
+        
+        # 가격을 소수점 2자리로 반올림
+        price = round(price, 2)
         
         path = "uapi/overseas-stock/v1/trading/order"
         url = f"{self.url_base}/{path}"
@@ -491,7 +475,7 @@ class KIS_API:
             "PDNO": ticker,
             "ORD_DVSN": ord_dvsn,
             "ORD_QTY": str(quantity),
-            "OVRS_ORD_UNPR": str(price),
+            "OVRS_ORD_UNPR": f"{price:.2f}",  # 소수점 2자리 문자열
             "CTAC_TLNO": "",
             "MGCO_APTM_ODNO": "",
             "SLL_TYPE": "00",
@@ -508,24 +492,161 @@ class KIS_API:
             "hashkey": self.hashkey(data)
         }
 
-        return requests.post(url, headers=headers, data=json.dumps(data))
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            # 응답 성공 여부 확인
+            if result.get('rt_cd') == '0':
+                output = result.get('output', {})
+                
+                order_info = {
+                    'success': True,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': output.get('ODNO', ''),      # 주문번호
+                    'order_time': output.get('ORD_TMD', ''),     # 주문시각
+                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
+                    'message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+                print(f" 매도 주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
+                print(f" 주문번호: {order_info['order_number']}")
+                
+                return order_info
+            else:
+                print(f" 매도 주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                return {
+                    'success': False,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': '',
+                    'error_code': result.get('rt_cd'),
+                    'error_message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+        except Exception as e:
+            print(f" 매도 주문 오류: {e}")
+            return None
+
+    # 미국 정규시장 주식 매수 주문
+    def order_buy_US(self, ticker: str, quantity: int, price: float, 
+                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
+        """
+        미국 주식 매수 주문 (Regular Market)
+        
+        Parameters:
+        ticker: 종목 코드
+        quantity: 주문 수량
+        price: 지정가
+        exchange: 거래소 코드 (None이면 자동 검색)
+        ord_dvsn: 주문구분 ("00": 지정가, "32": LOO, "34": LOC)
+        
+        Returns:
+        Dict 또는 None - 주문 정보 딕셔너리
+        """
+        if exchange is None:
+            exchange = self.get_US_exchange(ticker)
+        
+        if exchange is None:
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            return None
+        
+        # 가격을 소수점 2자리로 반올림
+        price = round(price, 2)
+        
+        path = "uapi/overseas-stock/v1/trading/order"
+        url = f"{self.url_base}/{path}"
+
+        data = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "OVRS_EXCG_CD": exchange,
+            "PDNO": ticker,
+            "ORD_DVSN": ord_dvsn,
+            "ORD_QTY": str(quantity),
+            "OVRS_ORD_UNPR": f"{price:.2f}",
+            "CTAC_TLNO": "",
+            "MGCO_APTM_ODNO": "",
+            "SLL_TYPE": "",  # 매수는 공란
+            "ORD_SVR_DVSN_CD": "0"
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTT1002U",  # 매수는 TTTT1002U
+            "custtype": "P",
+            "hashkey": self.hashkey(data)
+        }
+
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                output = result.get('output', {})
+                
+                order_info = {
+                    'success': True,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': output.get('ODNO', ''),
+                    'order_time': output.get('ORD_TMD', ''),
+                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
+                    'message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+                print(f" 매수 주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
+                print(f" 주문번호: {order_info['order_number']}")
+                
+                return order_info
+            else:
+                print(f" 매수 주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                return {
+                    'success': False,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': '',
+                    'error_code': result.get('rt_cd'),
+                    'error_message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+        except Exception as e:
+            print(f" 매수 주문 오류: {e}")
+            return None
     
     # 미국 주간거래 매수 주문 (Pre-market/After-hours)
     def order_daytime_buy_US(self, ticker: str, quantity: int, price: float,
-                            exchange: Optional[str] = None) -> Optional[requests.Response]:
+                            exchange: Optional[str] = None) -> Optional[Dict]:
         """
         미국 주간거래 매수 주문 (Pre-market/After-hours)
-        - 지정가 주문만 가능
-        - 나스닥, NYSE, AMEX만 지원
-        
-        Parameters:
-        ticker: 종목 코드
-        quantity: 주문 수량
-        price: 지정가
-        exchange: 거래소 코드 (None이면 자동 검색)
         
         Returns:
-        requests.Response 또는 None
+        Dict 또는 None - 주문 정보 딕셔너리
+        {
+            'success': bool,
+            'ticker': str,
+            'quantity': int,
+            'price': float,
+            'order_number': str,  # 주문번호 (ODNO)
+            'order_time': str,    # 주문시각
+            'response': requests.Response
+        }
         """
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
@@ -534,10 +655,12 @@ class KIS_API:
             print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
-        # 주간거래는 나스닥, NYSE, AMEX만 가능
         if exchange not in ["NAS", "NYS", "AMS"]:
             print(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
             return None
+        
+        # 가격을 소수점 2자리로 반올림
+        price = round(price, 2)
         
         path = "uapi/overseas-stock/v1/trading/daytime-order"
         url = f"{self.url_base}/{path}"
@@ -547,9 +670,9 @@ class KIS_API:
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
             "OVRS_EXCG_CD": exchange,
             "PDNO": ticker,
-            "ORD_DVSN": "00",  # 주간거래는 지정가(00)만 가능
+            "ORD_DVSN": "00",
             "ORD_QTY": str(quantity),
-            "OVRS_ORD_UNPR": str(price),
+            "OVRS_ORD_UNPR": f"{price:.2f}",  # 소수점 2자리 문자열
             "CTAC_TLNO": "",
             "MGCO_APTM_ODNO": "",
             "ORD_SVR_DVSN_CD": "0"
@@ -560,29 +683,71 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey": self.app_key,
             "appSecret": self.app_secret,
-            "tr_id": "TTTS6036U",  # 미국 주간거래 매수
+            "tr_id": "TTTS6036U",
             "custtype": "P",
             "hashkey": self.hashkey(data)
         }
         
-        return requests.post(url, headers=headers, data=json.dumps(data))
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            # 응답 성공 여부 확인
+            if result.get('rt_cd') == '0':
+                output = result.get('output', {})
+                
+                order_info = {
+                    'success': True,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': output.get('ODNO', ''),      # 주문번호 (체결/취소 시 사용)
+                    'order_time': output.get('ORD_TMD', ''),     # 주문시각
+                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),  # 한국거래소 주문조직번호
+                    'message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+                print(f"주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
+                print(f"주문번호: {order_info['order_number']}")
+                
+                return order_info
+            else:
+                print(f"주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                return {
+                    'success': False,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': '',
+                    'error_code': result.get('rt_cd'),
+                    'error_message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+        except Exception as e:
+            print(f"주문 오류: {e}")
+            return None
 
     # 미국 주간거래 매도 주문 (Pre-market/After-hours)
     def order_daytime_sell_US(self, ticker: str, quantity: int, price: float,
-                            exchange: Optional[str] = None) -> Optional[requests.Response]:
+                            exchange: Optional[str] = None) -> Optional[Dict]:
         """
         미국 주간거래 매도 주문 (Pre-market/After-hours)
-        - 지정가 주문만 가능
-        - 나스닥, NYSE, AMEX만 지원
-        
-        Parameters:
-        ticker: 종목 코드
-        quantity: 주문 수량
-        price: 지정가
-        exchange: 거래소 코드 (None이면 자동 검색)
         
         Returns:
-        requests.Response 또는 None
+        Dict 또는 None - 주문 정보 딕셔너리
+        {
+            'success': bool,
+            'ticker': str,
+            'quantity': int,
+            'price': float,
+            'order_number': str,  # 주문번호 (ODNO)
+            'order_time': str,    # 주문시각
+            'response': requests.Response
+        }
         """
         if exchange is None:
             exchange = self.get_US_exchange(ticker)
@@ -591,10 +756,12 @@ class KIS_API:
             print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
-        # 주간거래는 나스닥, NYSE, AMEX만 가능
         if exchange not in ["NAS", "NYS", "AMS"]:
             print(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
             return None
+        
+        # 가격을 소수점 2자리로 반올림
+        price = round(price, 2)
         
         path = "uapi/overseas-stock/v1/trading/daytime-order"
         url = f"{self.url_base}/{path}"
@@ -604,9 +771,9 @@ class KIS_API:
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
             "OVRS_EXCG_CD": exchange,
             "PDNO": ticker,
-            "ORD_DVSN": "00",  # 주간거래는 지정가(00)만 가능
+            "ORD_DVSN": "00",
             "ORD_QTY": str(quantity),
-            "OVRS_ORD_UNPR": str(price),
+            "OVRS_ORD_UNPR": f"{price:.2f}",  # 소수점 2자리 문자열
             "CTAC_TLNO": "",
             "MGCO_APTM_ODNO": "",
             "ORD_SVR_DVSN_CD": "0"
@@ -617,12 +784,53 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey": self.app_key,
             "appSecret": self.app_secret,
-            "tr_id": "TTTS6037U",  # 미국 주간거래 매도
+            "tr_id": "TTTS6037U",
             "custtype": "P",
             "hashkey": self.hashkey(data)
         }
         
-        return requests.post(url, headers=headers, data=json.dumps(data))
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            # 응답 성공 여부 확인
+            if result.get('rt_cd') == '0':
+                output = result.get('output', {})
+                
+                order_info = {
+                    'success': True,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': output.get('ODNO', ''),      # 주문번호 (체결/취소 시 사용)
+                    'order_time': output.get('ORD_TMD', ''),     # 주문시각
+                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),  # 한국거래소 주문조직번호
+                    'message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+                print(f"주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
+                print(f"주문번호: {order_info['order_number']}")
+                
+                return order_info
+            else:
+                print(f"주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                return {
+                    'success': False,
+                    'ticker': ticker,
+                    'quantity': quantity,
+                    'price': price,
+                    'order_number': '',
+                    'error_code': result.get('rt_cd'),
+                    'error_message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+        except Exception as e:
+            print(f"주문 오류: {e}")
+            return None
 
     # 미국 주식 종목별 잔고
     def get_US_stock_balance(self) -> Optional[List[Dict]]:
@@ -691,7 +899,7 @@ class KIS_API:
             traceback.print_exc()
             return None
 
-    # 미국 달러 예수금
+    # 미국 달러 예수금 # 오류 클로드 정상화 이후 확인
     def get_US_dollar_balance(self) -> Optional[Dict]:
         """미국 달러 예수금"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
@@ -964,7 +1172,7 @@ class KIS_API:
                         'deposit_change': float(row['deposit_change']),
                         'status': row['prcs_stat_name']
                     }
-                    print("✅ 체결 확인 완료!")
+                    print(" 체결 확인 완료!")
                     return detail
             
             if attempt < max_attempts - 1:

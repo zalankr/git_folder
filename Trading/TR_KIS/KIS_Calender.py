@@ -28,39 +28,6 @@ def get_current():
     }
     return now
 
-def USAA_rebalancing_day_Making(USAA_summer, USAA_winter):
-    """USAA 리밸런싱 날짜를 JSON 파일로 저장"""
-    # 날짜 문자열을 date 객체로 변환
-    USAA_summer_dates = []
-    for d in USAA_summer:
-        date_obj = datetime.strptime(d, "%Y-%m-%d").date()
-        USAA_summer_dates.append(date_obj)
-
-    USAA_winter_dates = []
-    for d in USAA_winter:
-        date_obj = datetime.strptime(d, "%Y-%m-%d").date()
-        USAA_winter_dates.append(date_obj)
-
-    # JSON 저장용 딕셔너리 (date를 다시 문자열로 변환)
-    rebalancing_data = {
-        "summer_dst": [d.strftime("%Y-%m-%d") for d in USAA_summer_dates],
-        "winter_standard": [d.strftime("%Y-%m-%d") for d in USAA_winter_dates]
-    }
-    
-    # JSON 파일로 저장
-    file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USAA_rebalancing_day.json"
-    
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(rebalancing_data, f, ensure_ascii=False, indent=4)
-        
-        print(f"USAA_rebalancing_day.json 파일 저장 완료: {file_path}")
-        return rebalancing_data
-        
-    except Exception as e:
-        print(f"JSON 파일 저장 오류: {e}")
-        return None
-
 def check_USAA_rebalancing(current_date):
     '''오늘이 USAA 리밸런싱일인지 확인'''
     USAA_rebalancing_day_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USAA_rebalancing_day.json'

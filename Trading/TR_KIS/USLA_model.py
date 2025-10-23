@@ -687,5 +687,153 @@ class USLA_Model(KIS_US.KIS_API): #상속
         except Exception as e:
             print(f"\n JSON 파일 저장 오류: {e}")
             return False
-
-# 실행 예제
+        
+    def calculate_sell_summary(self, Sell_order):
+        """매도 체결 내역 조회 및 집계 (종목별 집계 포함)"""
+        
+        Sell_result = []
+        
+        for order in Sell_order:
+            execution = self.check_order_execution(
+                order_number=order['order_number'],
+                ticker=order['ticker'],
+                order_type="01"
+            )
+            Sell_result.append(execution)
+        
+        # 체결된 주문만 필터링
+        filled = [r for r in Sell_result if r and r.get('success')]
+        
+        if not filled:
+            return {
+                'success': False,
+                'count': 0,
+                'total_quantity': 0,
+                'total_amount': 0.0,
+                'avg_price': 0.0,
+                'by_ticker': {},
+                'details': []
+            }
+        
+        # 전체 집계
+        total_quantity = sum(int(r.get('qty', 0)) for r in filled)
+        total_amount = sum(float(r.get('amount', 0)) for r in filled)
+        avg_price = total_amount / total_quantity if total_quantity > 0 else 0
+        
+        # 종목별 집계
+        from collections import defaultdict
+        ticker_summary = defaultdict(lambda: {'qty': 0, 'amount': 0, 'orders': []})
+        
+        for r in filled:
+            ticker = r.get('name', '알 수 없음')  # 종목명
+            qty = int(r.get('qty', 0))
+            amount = float(r.get('amount', 0))
+            price = float(r.get('price', 0))
+            
+            ticker_summary[ticker]['qty'] += qty
+            ticker_summary[ticker]['amount'] += amount
+            ticker_summary[ticker]['orders'].append({
+                'qty': qty,
+                'price': price,
+                'amount': amount
+            })
+        
+        # 종목별 평균가 계산
+        by_ticker = {}
+        for ticker, data in ticker_summary.items():
+            qty = data['qty']
+            amount = data['amount']
+            avg = amount / qty if qty > 0 else 0
+            
+            by_ticker[ticker] = {
+                'quantity': qty,
+                'amount': amount,
+                'avg_price': avg,
+                'order_count': len(data['orders']),
+                'orders': data['orders']
+            }
+        
+        return {
+            'success': True,
+            'count': len(filled),
+            'total_quantity': total_quantity,
+            'total_amount': total_amount,
+            'avg_price': avg_price,
+            'by_ticker': by_ticker,
+            'details': filled
+        }
+    
+    def calculate_buy_summary(self, Buy_order):
+        """매수 체결 내역 조회 및 집계 (종목별 집계 포함)"""
+        
+        Buy_result = []
+        
+        for order in Buy_order:
+            execution = self.check_order_execution(
+                order_number=order['order_number'],
+                ticker=order['ticker'],
+                order_type="02"  # ✅ 매수는 "02"
+            )
+            Buy_result.append(execution)
+        
+        # 체결된 주문만 필터링
+        filled = [r for r in Buy_result if r and r.get('success')]
+        
+        if not filled:
+            return {
+                'success': False,
+                'count': 0,
+                'total_quantity': 0,
+                'total_amount': 0.0,
+                'avg_price': 0.0,
+                'by_ticker': {},
+                'details': []
+            }
+        
+        # 전체 집계
+        total_quantity = sum(int(r.get('qty', 0)) for r in filled)
+        total_amount = sum(float(r.get('amount', 0)) for r in filled)
+        avg_price = total_amount / total_quantity if total_quantity > 0 else 0
+        
+        # 종목별 집계
+        from collections import defaultdict
+        ticker_summary = defaultdict(lambda: {'qty': 0, 'amount': 0, 'orders': []})
+        
+        for r in filled:
+            ticker = r.get('name', '알 수 없음')
+            qty = int(r.get('qty', 0))
+            amount = float(r.get('amount', 0))
+            price = float(r.get('price', 0))
+            
+            ticker_summary[ticker]['qty'] += qty
+            ticker_summary[ticker]['amount'] += amount
+            ticker_summary[ticker]['orders'].append({
+                'qty': qty,
+                'price': price,
+                'amount': amount
+            })
+        
+        # 종목별 평균가 계산
+        by_ticker = {}
+        for ticker, data in ticker_summary.items():
+            qty = data['qty']
+            amount = data['amount']
+            avg = amount / qty if qty > 0 else 0
+            
+            by_ticker[ticker] = {
+                'quantity': qty,
+                'amount': amount,
+                'avg_price': avg,
+                'order_count': len(data['orders']),
+                'orders': data['orders']
+            }
+        
+        return {
+            'success': True,
+            'count': len(filled),
+            'total_quantity': total_quantity,
+            'total_amount': total_amount,
+            'avg_price': avg_price,
+            'by_ticker': by_ticker,
+            'details': filled
+        }
