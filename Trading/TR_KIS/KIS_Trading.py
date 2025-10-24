@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import time as time_module  # time 모듈을 별칭으로 import
 import json
 import sys
 import KIS_Calender
@@ -60,6 +61,7 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1:
     # USLA USD 잔고 X 티커별 비중 = target qty
     target_usd_value = {ticker: target_weight[ticker] * hold_usd_value for ticker in target_weight.keys()} # target_ticker별 USD 배정 dict
     target_qty = USLA.calculate_target_qty(target_weight, target_usd_value) # target_ticker별 quantity
+    target_usd = target_qty["CASH"]
     
     # target qty hold qty 비교 조정
     Buy = dict()
@@ -106,27 +108,58 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1:
                 else:
                     quantity = qty_per_split
                 price = round(current_price * sell_price_adjust[i], 2)
+                if quantity == 0:
+                    continue
                 # Sell_order.append(USLA.order_daytime_sell_US(ticker, quantity, price))
                 print(f"{i}회차 분할 sell {ticker} {quantity} {price}")
+                time_module.sleep(0.2)
 
-    # 매수 주문하기 코드 앞 도입부 함수로 빼기
+    # USD현재보유량과 목표보유량 비교 후 매수 주문
+    Buy_value = dict()
+    total = 0
+    for ticker in Buy.keys():
+        Buy_value[ticker] = Buy[ticker] * USLA.get_US_open_price(ticker)
+        total += Buy_value[ticker]
+        time_module.sleep(0.1)
+
+    TR_usd = Hold['CASH'] - target_usd
+    Buy_weight = dict()
+    Buy_usd = dict()
+    Buy_qty = dict()
+    for ticker in Buy_value.keys():
+        Buy_weight[ticker] = Buy_value[ticker] / total
+        Buy_usd[ticker] = TR_usd * Buy_weight[ticker]
+        Buy_qty[ticker] = Buy_usd[ticker] // (USLA.get_US_open_price(ticker)*(1+USLA.tax_rate))
+        time_module.sleep(0.1)
+
     Buy_order = []
-    if len(Buy.keys()) > 0:
-        for ticker in Buy.keys():
-            qty_per_split = int(Buy[ticker] // buy_splits)
+    for ticker in Buy_qty.keys():
+        if Buy_qty[ticker] > 0:
+            qty_per_split = int(Buy_qty[ticker] // buy_splits)
             current_price = USLA.get_US_open_price(ticker)
             for i in range(buy_splits):
                 if i == buy_splits - 1:
-                    quantity = Buy[ticker] - qty_per_split * (buy_splits - 1)
+                    quantity = Buy_qty[ticker] - qty_per_split * (buy_splits - 1)
                 else:
                     quantity = qty_per_split
                 price = round(current_price * buy_price_adjust[i], 2)
+                if quantity == 0:
+                    continue
                 # Buy_order.append(USLA.order_daytime_buy_US(ticker, quantity, price))
                 print(f"{i}회차 분할 buy {ticker} {quantity} {price}")
+                # 주문 후 usd 변화 재계산 ####TR_usd = TR_usd - 매회 매수 금액(fee포함, quantity * price) > Hold['CASH'] = TR_usd + target_usd > 다음 회차엔 재계산
+                time_module.sleep(0.2)            
+            
 
-    ### 주문 후 CASH 재계산 ####
+    ### 주문 후 CASH 재계산 ############################################################
     
     
+
+
+
+
+
+
     
     # TR data 만들기(임시 데이터)
     TR_data = {
