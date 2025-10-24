@@ -95,6 +95,7 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1:
     buy_price_adjust = round_split['buy_price_adjust']
 
     # 매도 주문하기
+    Sell_order = []
     if len(Sell.keys()) > 0:
         for ticker in Sell.keys():
             qty_per_split = int(Sell[ticker] // sell_splits)
@@ -123,8 +124,9 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1:
                 # Buy_order.append(USLA.order_daytime_buy_US(ticker, quantity, price))
                 print(f"{i}회차 분할 buy {ticker} {quantity} {price}")
 
-
     ### 주문 후 CASH 재계산 ####
+    
+    
     
     # TR data 만들기(임시 데이터)
     TR_data = {
