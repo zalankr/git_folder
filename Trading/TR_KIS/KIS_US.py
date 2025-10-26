@@ -1102,6 +1102,342 @@ class KIS_API:
         print("체결 확인 실패")
         return None
 
+    # 미국 주식 주문 취소
+    def cancel_US_order(self, order_number: str, ticker: str, 
+                        quantity: int, exchange: Optional[str] = None,
+                        is_daytime: bool = False) -> Optional[Dict]:
+        """
+        미국 주식 주문 취소
+        
+        Parameters:
+        order_number (str): 취소할 주문번호 (ODNO)
+        ticker (str): 종목코드
+        quantity (int): 취소 수량 (전량 취소시 원주문 수량)
+        exchange (str): 거래소 코드 (None이면 자동 검색)
+        is_daytime (bool): 주간거래 여부 (False: 정규장, True: 주간거래)
+        
+        Returns:
+        Dict 또는 None - 취소 결과
+        """
+        if exchange is None:
+            exchange = self.get_US_exchange(ticker)
+        
+        if exchange is None:
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            return None
+        
+        # 주간거래와 정규장 TR_ID 구분
+        tr_id = "TTTS6038U" if is_daytime else "TTTT1004U"
+        path = "uapi/overseas-stock/v1/trading/order-rvsecncl"
+        url = f"{self.url_base}/{path}"
+        
+        data = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "OVRS_EXCG_CD": exchange,
+            "PDNO": ticker,
+            "ORGN_ODNO": order_number,
+            "ORD_DVSN": "00",
+            "RVSE_CNCL_DVSN_CD": "02",  # 02: 취소
+            "ORD_QTY": "0",  # 취소는 0
+            "OVRS_ORD_UNPR": "0",  # 취소는 0
+            "CTAC_TLNO": "",
+            "MGCO_APTM_ODNO": "",
+            "ORD_SVR_DVSN_CD": "0"
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": tr_id,
+            "custtype": "P",
+            "hashkey": self.hashkey(data)
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                print(f"주문 취소 성공: {ticker} (주문번호: {order_number})")
+                return {
+                    'success': True,
+                    'ticker': ticker,
+                    'order_number': order_number,
+                    'message': result.get('msg1', ''),
+                    'response': response
+                }
+            else:
+                print(f"주문 취소 실패: {result.get('msg1', '알 수 없는 오류')}")
+                return {
+                    'success': False,
+                    'ticker': ticker,
+                    'order_number': order_number,
+                    'error_message': result.get('msg1', ''),
+                    'response': response
+                }
+                
+        except Exception as e:
+            print(f"주문 취소 오류: {e}")
+            return None
+
+    # 미체결 주문 조회
+    def get_unfilled_orders(self, start_date: Optional[str] = None, 
+                        end_date: Optional[str] = None) -> List[Dict]:
+        """
+        미체결 주문 조회
+        
+        Parameters:
+        start_date (str): 시작일 (YYYYMMDD) - None이면 오늘
+        end_date (str): 종료일 (YYYYMMDD) - None이면 오늘
+        
+        Returns:
+        List[Dict]: 미체결 주문 리스트
+        """
+        if start_date is None or end_date is None:
+            today = datetime.now().strftime('%Y%m%d')
+            start_date = end_date = today
+        
+        path = "uapi/overseas-stock/v1/trading/inquire-nccs"
+        url = f"{self.url_base}/{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTS3018R"
+        }
+        
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "PDNO": "",
+            "ORD_STRT_DT": start_date,
+            "ORD_END_DT": end_date,
+            "SLL_BUY_DVSN": "00",  # 00: 전체
+            "CCLD_NCCS_DVSN": "02",  # 02: 미체결만
+            "OVRS_EXCG_CD": "",  # 전체
+            "SORT_SQN": "DS",
+            "ORD_DT": "",
+            "ORD_GNO_BRNO": "",
+            "ODNO": "",
+            "CTX_AREA_NK200": "",
+            "CTX_AREA_FK200": ""
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                orders = result.get('output', [])
+                
+                unfilled_orders = []
+                for order in orders:
+                    unfilled_orders.append({
+                        'order_number': order.get('odno', ''),
+                        'ticker': order.get('pdno', ''),
+                        'name': order.get('prdt_name', ''),
+                        'order_type': order.get('sll_buy_dvsn_cd_name', ''),
+                        'order_qty': int(order.get('ft_ord_qty', 0)),
+                        'filled_qty': int(order.get('ft_ccld_qty', 0)),
+                        'unfilled_qty': int(order.get('nccs_qty', 0)),
+                        'order_price': float(order.get('ft_ord_unpr3', 0)),
+                        'exchange': order.get('ovrs_excg_cd', ''),
+                        'status': order.get('prcs_stat_name', '')
+                    })
+                
+                return unfilled_orders
+            else:
+                print(f"미체결 조회 실패: {result.get('msg1')}")
+                return []
+                
+        except Exception as e:
+            print(f"미체결 조회 오류: {e}")
+            return []
+
+    # 미국 주식 주문 취소 (자동 재시도)
+    def cancel_US_order_auto(self, order_number: str, ticker: str, 
+                            quantity: int, exchange: Optional[str] = None) -> Optional[Dict]:
+        """
+        미국 주식 주문 취소 (자동 재시도)
+        정규장 TR_ID로 시도 후 실패하면 주간거래 TR_ID로 재시도
+        
+        Parameters:
+        order_number (str): 취소할 주문번호
+        ticker (str): 종목코드
+        quantity (int): 취소 수량
+        exchange (str): 거래소 코드
+        
+        Returns:
+        Dict 또는 None - 취소 결과
+        """
+        # 1차 시도: 정규장 TR_ID (TTTT1004U)
+        result = self.cancel_US_order(
+            order_number=order_number,
+            ticker=ticker,
+            quantity=quantity,
+            exchange=exchange,
+            is_daytime=False
+        )
+        
+        if result and result.get('success'):
+            print(f"정규장 TR_ID로 취소 성공")
+            return result
+        
+        # 2차 시도: 주간거래 TR_ID (TTTS6038U)
+        print(f"정규장 취소 실패. 주간거래 TR_ID로 재시도...")
+        time.sleep(0.2)  # API 호출 간격
+        
+        result = self.cancel_US_order(
+            order_number=order_number,
+            ticker=ticker,
+            quantity=quantity,
+            exchange=exchange,
+            is_daytime=True
+        )
+        
+        if result and result.get('success'):
+            print(f"주간거래 TR_ID로 취소 성공")
+        else:
+            print(f"양쪽 TR_ID 모두 취소 실패")
+        
+        return result
+
+    # 모든 미체결 주문 취소
+    def cancel_all_unfilled_orders(self, start_date: Optional[str] = None,
+                                end_date: Optional[str] = None,
+                                auto_retry: bool = True,
+                                is_daytime: bool = False) -> Dict:
+        """
+        모든 미체결 주문 일괄 취소 (자동 재시도 지원)
+        
+        Parameters:
+        start_date (str): 시작일 (YYYYMMDD) - None이면 오늘
+        end_date (str): 종료일 (YYYYMMDD) - None이면 오늘
+        auto_retry (bool): True시 정규장/주간거래 TR_ID 자동 재시도 (기본값: True)
+        is_daytime (bool): auto_retry=False일 때 사용. True면 주간거래, False면 정규장 (기본값: False)
+        
+        Returns:
+        Dict: 취소 결과 요약
+        {
+            'total': int,           # 전체 미체결 주문 수
+            'success': int,         # 취소 성공 수
+            'failed': int,          # 취소 실패 수
+            'success_list': List,   # 성공한 주문 리스트
+            'failed_list': List     # 실패한 주문 리스트
+        }
+        """
+        # 1. 미체결 주문 조회
+        print("\n=== 미체결 주문 조회 중... ===")
+        unfilled_orders = self.get_unfilled_orders(start_date, end_date)
+        
+        if not unfilled_orders:
+            print("미체결 주문이 없습니다.")
+            return {
+                'total': 0,
+                'success': 0,
+                'failed': 0,
+                'success_list': [],
+                'failed_list': []
+            }
+        
+        print(f"미체결 주문 {len(unfilled_orders)}건 발견")
+        
+        # 모드 출력
+        if auto_retry:
+            print("자동 재시도 모드: 정규장 → 주간거래 TR_ID 순차 시도")
+        else:
+            market_type = "주간거래 (Pre-market/After-hours)" if is_daytime else "정규장 (Regular Market)"
+            print(f"수동 모드: {market_type} TR_ID만 사용")
+        
+        # 2. 각 주문 취소
+        success_list = []
+        failed_list = []
+        
+        for i, order in enumerate(unfilled_orders, 1):
+            print(f"\n{'='*60}")
+            print(f"[{i}/{len(unfilled_orders)}] 취소 진행: {order['name']} ({order['ticker']})")
+            print(f"주문번호: {order['order_number']}")
+            print(f"미체결 수량: {order['unfilled_qty']}주")
+            print(f"{'='*60}")
+            
+            if auto_retry:
+                # ✅ 자동 재시도 방식
+                result = self.cancel_US_order_auto(
+                    order_number=order['order_number'],
+                    ticker=order['ticker'],
+                    quantity=order['order_qty'],
+                    exchange=order['exchange']
+                )
+            else:
+                # ✅ 수동 지정 방식 (is_daytime 파라미터 사용)
+                result = self.cancel_US_order(
+                    order_number=order['order_number'],
+                    ticker=order['ticker'],
+                    quantity=order['order_qty'],
+                    exchange=order['exchange'],
+                    is_daytime=is_daytime  # ← 파라미터로 받은 값 사용
+                )
+            
+            # 결과 처리
+            if result and result.get('success'):
+                success_list.append({
+                    'ticker': order['ticker'],
+                    'name': order['name'],
+                    'order_number': order['order_number'],
+                    'unfilled_qty': order['unfilled_qty']
+                })
+            else:
+                failed_list.append({
+                    'ticker': order['ticker'],
+                    'name': order['name'],
+                    'order_number': order['order_number'],
+                    'unfilled_qty': order['unfilled_qty'],
+                    'error': result.get('error_message') if result else '알 수 없는 오류'
+                })
+            
+            # API 호출 간격 (0.3초)
+            time.sleep(0.3)
+        
+        # 3. 결과 요약
+        summary = {
+            'total': len(unfilled_orders),
+            'success': len(success_list),
+            'failed': len(failed_list),
+            'success_list': success_list,
+            'failed_list': failed_list
+        }
+        
+        # 4. 결과 출력
+        print("\n" + "="*60)
+        print("미체결 주문 취소 최종 결과")
+        print("="*60)
+        print(f"전체 미체결: {summary['total']}건")
+        print(f"취소 성공: {summary['success']}건")
+        print(f"취소 실패: {summary['failed']}건")
+        
+        if success_list:
+            print(f"\n취소 성공 목록:")
+            for item in success_list:
+                print(f"  - {item['name']} ({item['ticker']}): {item['unfilled_qty']}주")
+        
+        if failed_list:
+            print(f"\n취소 실패 목록:")
+            for item in failed_list:
+                print(f"  - {item['name']} ({item['ticker']}): {item['error']}")
+        
+        print("="*60)
+        
+        return summary
+
     # 서머타임(DST) 확인
     def is_us_dst(self):
         """

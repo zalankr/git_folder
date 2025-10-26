@@ -19,6 +19,7 @@ token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_
 cano = "63721147"  # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
+file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_TR_data.json"
 USLA_ticker = ["UPRO", "TQQQ", "EDC", "TMF", "TMV"]
 
 def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
@@ -30,10 +31,7 @@ def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
             Hold[ticker] = real_balance[i]['quantity']
     return Hold
 
-def make_target_data(Hold): # target weight, target qty, target usd 만들기
-    # Target ticker와 weight dict 만들기
-    target_weight = USLA.target_ticker_weight() # 목표 티커 비중 반환O
-    print(target_weight)
+def make_target_data(Hold, target_weight): # target qty, target usd 만들기 #### target_weight타
     # 현재 USD환산 USLA 잔고
     hold_usd_value = USLA.calculate_USD_value(Hold) # 반환X
     print(hold_usd_value)
@@ -42,7 +40,7 @@ def make_target_data(Hold): # target weight, target qty, target usd 만들기
     target_qty = USLA.calculate_target_qty(target_weight, target_usd_value) # target_ticker별 quantity 반환O
     target_usd = target_qty["CASH"] # 반환O
 
-    return target_weight, target_qty, target_usd
+    return target_qty, target_usd
 
 def make_Buy_Sell(target_weight, target_qty, Hold): # target qty, hold qty 비교 조정 후 Buy와 Sell dict 만들고 반환하는 함수
     Buy = dict()
@@ -67,66 +65,214 @@ def make_Buy_Sell(target_weight, target_qty, Hold): # target qty, hold qty 비�
             Sell[ticker] = Hold[ticker]
     return Buy, Sell
 
-def Sell_daytime(Sell, sell_split): # Pre market 매도 주문하기
+def Selling(Sell, sell_split, is_daytime: bool = False):
+    """
+    매도 주문 실행 함수
+    
+    Parameters:
+    - Sell: 매도할 종목과 수량 딕셔너리 {ticker: quantity}
+    - sell_split: [분할횟수, [가격조정비율 리스트]]
+    - is_daytime: True면 주간거래, False면 정규장
+    
+    Returns:
+    - Sell_order: 주문 결과 리스트
+    """
     Sell_order = []
-    if len(Sell.keys()) > 0:
-        for ticker in Sell.keys():
-            qty_per_split = int(Sell[ticker] // sell_split[0])
-            current_price = USLA.get_US_open_price(ticker)
-            for i in range(sell_split[0]):
-                if i == sell_split[0] - 1:
-                    quantity = Sell[ticker] - qty_per_split * (sell_split[0] - 1)
-                else:
-                    quantity = qty_per_split
-                price = round(current_price * sell_split[1][i], 2)
-                if quantity == 0:
-                    continue
-                Sell_order.append(USLA.order_daytime_sell_US(ticker, quantity, price))
-                print(f"{i}회차 분할 sell {ticker} {quantity} {price}")
-                time_module.sleep(0.2)
+    
+    # 매도할 종목이 없으면 빈 리스트 반환
+    if len(Sell.keys()) == 0:
+        print("매도할 종목이 없습니다.")
+        return Sell_order
+    
+    # 매도 주문 실행
+    for ticker in Sell.keys():
+        qty_per_split = int(Sell[ticker] // sell_split[0])
+        current_price = USLA.get_US_current_price(ticker)
+        
+        for i in range(sell_split[0]):
+            # 마지막 분할은 남은 수량 전부
+            if i == sell_split[0] - 1:
+                quantity = Sell[ticker] - qty_per_split * (sell_split[0] - 1)
+            else:
+                quantity = qty_per_split
+            
+            # 수량이 0이면 스킵
+            if quantity == 0:
+                continue
+            
+            # 주문 가격 계산
+            price = round(current_price * sell_split[1][i], 2)
+            
+            # 시장 시간대에 따라 주문
+            if is_daytime == True:
+                result = USLA.order_daytime_sell_US(ticker, quantity, price)
+            else:
+                result = USLA.order_sell_US(ticker, quantity, price)
+            
+            if result:
+                Sell_order.append(result)
+                print(f"{i+1}회차 분할 매도: {ticker} {quantity}주 @ ${price}")
+            else:
+                print(f"{i+1}회차 분할 매도 실패: {ticker} {quantity}주 @ ${price}")
+            
+            time_module.sleep(0.2)
+    
     return Sell_order
 
 def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보유량 비교 매수 수량과 매수 비중 매수 금액 산출
-    Buy_value = dict() # 티커별 매수거래 usd환산액 
+    Buy_value = {} # 티커별 매수거래 usd환산액 
     total_Buy_value = 0 # 전체 매수거래 usd환산액 
+
+    ticker_prices = {}  # 가격 캐싱
+
     for ticker in Buy.keys():
-        Buy_value[ticker] = Buy[ticker] * USLA.get_US_open_price(ticker) # 티커별 매수 주식수 usd환산액
-        total_Buy_value += Buy_value[ticker] # 티커별 매수 주식수 usd환산액의 합
+        price = USLA.get_US_current_price(ticker)
+
+        if isinstance(price, (int, float)) and price > 0:
+            ticker_prices[ticker] = price  # 가격 저장
+            Buy_value[ticker] = Buy[ticker] * price
+            total_Buy_value += Buy_value[ticker]
+        else:
+            print(f"{ticker} 가격 조회 실패")
+            Buy_value[ticker] = 0
+            ticker_prices[ticker] = 0
+
         time_module.sleep(0.1)
 
     TR_usd = Hold['CASH'] - target_usd # USD현재보유량에서 목표보유량을 뺀 매수 가능 USD 산출
     if TR_usd < 0: # 거래 가능 usd가 음수인경우 0으로 변환
         TR_usd = 0
+        print(f"매수 가능 USD 부족: ${Hold['CASH']:.2f} (목표: ${target_usd:.2f})")
+
     Buy_weight = dict() # 금회 티커별 매수거래 비중
     Buy_usd = dict() # 금회 티커별 매수거래 USD
     Buy_qty = dict() # 금회 티커별 매수거래 수량
+
+    if total_Buy_value == 0:
+        print("매수 가능한 종목이 없습니다.")
+        return Buy_qty
+
     for ticker in Buy_value.keys():
-        Buy_weight[ticker] = Buy_value[ticker] / total_Buy_value # 전체 USD중 티커별 매수거래 비중
-        Buy_usd[ticker] = TR_usd * Buy_weight[ticker] # 금회 티커별 매수거래 비중을 곱한 USD, 0이거나 값이 있거나
-        Buy_qty[ticker] = Buy_usd[ticker] // (USLA.get_US_open_price(ticker)*(1+USLA.tax_rate)) # 금회 티커별 매수거래 수량, 0이거나 값이 있거나
+        Buy_weight = Buy_value[ticker] / total_Buy_value
+        Buy_usd = TR_usd * Buy_weight
+        
+        price = ticker_prices[ticker]  # 캐싱된 가격 사용
+        
+        if price > 0:
+            # tax_rate 사용 (문서와 일관성 유지)
+            Buy_qty[ticker] = int(Buy_usd // (price * (1 + USLA.tax_rate)))
+        else:
+            Buy_qty[ticker] = 0
+        
         time_module.sleep(0.1)
 
-    return Buy_qty, Buy_weight, Buy_usd
+    return Buy_qty, TR_usd
 
-def Buy_daytime(Buy_qty, buy_split): # Pre market 매도 주문하기
+def Buying(Buy_qty, buy_split, TR_usd, is_daytime: bool = False):
+    """
+    매수 주문 실행 함수
+    
+    Parameters:
+    - Buy_qty: 매수할 종목과 수량 딕셔너리 {ticker: quantity}
+    - buy_split: [분할횟수, [가격조정비율 리스트]]
+    - TR_usd: 매수가능 금액
+    - is_daytime: True면 주간거래, False면 정규장
+    
+    Returns:
+    - Buy_order: 주문 결과 리스트
+    - TR_usd: 남은 거래 가능 USD
+    """
     Buy_order = []
+    
+    # 매수 가능 USD 계산
+    if TR_usd < 0:
+        TR_usd = 0
+        print("매수 가능 USD 부족")
+    
+    # 매수할 종목이 없으면 조기 반환
+    if len(Buy_qty.keys()) == 0:
+        print("매수할 종목이 없습니다.")
+        return Buy_order, TR_usd
+    
+    # 매수 주문 실행
     for ticker in Buy_qty.keys():
-        qty_per_split = int(Buy_qty[ticker] // buy_split[0]) # 분할 횟수당 수량, 0이거나 값이 있거나
-        current_price = USLA.get_US_open_price(ticker) # 현재가
+        # 매수 수량이 0이면 스킵
+        if Buy_qty[ticker] == 0:
+            continue
+        
+        qty_per_split = int(Buy_qty[ticker] // buy_split[0])
+        current_price = USLA.get_US_current_price(ticker)
+        
+        # 가격 조회 실패 시 스킵
+        if not isinstance(current_price, (int, float)) or current_price <= 0:
+            print(f"{ticker} 가격 조회 실패 - 주문 스킵")
+            continue
+        
         for i in range(buy_split[0]):
-            if i == buy_split[0] - 1: # 마지막 주문 나머지 수량으로 조정
+            # 마지막 분할은 남은 수량 전부
+            if i == buy_split[0] - 1:
                 quantity = Buy_qty[ticker] - qty_per_split * (buy_split[0] - 1)
             else:
                 quantity = qty_per_split
-            if quantity == 0: 
+            
+            if quantity == 0:
                 continue
-            price = round(current_price * buy_split[1][i], 2) # 분할당 가격: 미국주식 매수가격 기준인 소숫점 2자리로 주문 가격 만들기
-            Buy_order.append(USLA.order_daytime_buy_US(ticker, quantity, price)) # 매수 주문
-            print(f"{i}회차 분할 buy {ticker} {quantity} {price}")
-            TR_usd -= quantity * (price * (1+USLA.tax_rate)) # 주문 후 usd 변화 계산
-            time_module.sleep(0.2) 
+            
+            # 주문 가격 계산
+            price = round(current_price * buy_split[1][i], 2)
+            
+            # USD 잔액 체크
+            order_cost = quantity * price * (1 + USLA.fee)
+            if TR_usd < order_cost:
+                print(f"USD 부족 - {ticker} {quantity}주 주문 스킵 (필요: ${order_cost:.2f}, 잔액: ${TR_usd:.2f})")
+                continue
+            
+            # 시장 시간대에 따라 주문
+            if is_daytime:
+                result = USLA.order_daytime_buy_US(ticker, quantity, price)
+            else:
+                result = USLA.order_buy_US(ticker, quantity, price)
+            
+            if result:
+                Buy_order.append(result)
+                TR_usd -= order_cost
+                print(f"{i+1}회차 분할 매수: {ticker} {quantity}주 @ ${price:.2f} (잔액: ${TR_usd:.2f})")
+            else:
+                print(f"{i+1}회차 분할 매수 실패: {ticker} {quantity}주 @ ${price:.2f}")
+            
+            time_module.sleep(0.2)
+    
     return Buy_order, TR_usd
 
+def round_TR_data(Hold_usd, target_weight): # 이번 라운드 실제 잔고 dict 만들고 USLA용 usd 추가  
+    Hold = real_Hold()
+    # Hold 잔고에 CASH usd 추가
+    Hold['CASH'] = Hold_usd # 현재 잔고 TR_data초기버전에는 dict에는 'CASH'만 있으면 됨, make trading data 함수 불필요
+    # 목표 수량, 달러화 산출 후 현재 잔고와 비교 조정한 매수 매도 수량 있는 Buy와 Sell dict 만들기
+    target_qty, target_usd = make_target_data(Hold, target_weight)
+    Buy, Sell = make_Buy_Sell(target_weight, target_qty, Hold)
+    print(f"Buy: {Buy}")
+    print(f"Sell: {Sell}")
+    # order splits 데이터 산출
+    round_split =USLA.make_split_data(order_time['market'], order_time['round'])
+    sell_split = [round_split['sell_splits'], round_split['sell_price_adjust']]
+    buy_split = [round_split['buy_splits'], round_split['buy_price_adjust']]
+    return Hold, target_usd, Buy, Sell, sell_split, buy_split
+
+def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd): # 필요한 TR data 만들고 저장
+    TR_data = {
+        'market': order_time['market'],
+        'round': order_time['round'],
+        'Sell_order': Sell_order, # 매도주문내역
+        'Buy_order': Buy_order, # 매수주문내역
+        'Hold': Hold, #현재 티커별 잔고
+        'target_weight': target_weight, #최초 타겟 티커별 비중
+        'CASH': Hold['CASH'], # 체결 전 포함 모든 usd
+        'TR_usd': TR_usd # 모든거래 후 예상 매수잔액
+    } 
+    USLA.save_kis_tr_json(TR_data) # json 파일로 저장
+    print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료.")
+    return TR_data
 
 
 # 밑에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
@@ -140,115 +286,142 @@ print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_ti
 print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-market round 1회에만 Trading qty를 구하기
-    # Hold 실제 잔고 dict 만들기
-    Hold = real_Hold()
-    # Hold 잔고에 CASH usd 추가
+    # 목표 비중 만들기
+    target_weight = USLA.target_ticker_weight() # 목표 티커 비중 반환
     TR_data = USLA.load_USLA_data() # 1회차는 지난 리밸런싱 후의 USLA model usd 불러오기
-    Hold['CASH'] = TR_data['CASH'] # 현재 잔고 TR_data초기버전에는 dict에는 'CASH'만 있으면 됨, make trading data 함수 불필요
+    Hold_usd = TR_data['CASH']
+    is_daytime = True
+    print(target_weight)
 
-    # 목표 비중, 수량, 달러화 산출 후 현재 잔고와 비교 조정한 매수 매도 수량 있는 Buy와 Sell dict 만들기
-    target_weight, target_qty, target_usd = make_target_data(Hold)
-    Buy, Sell = make_Buy_Sell(target_weight, target_qty, Hold)
-    print(f"Buy: {Buy}")
-    print(f"Sell: {Sell}")
-
-    # Pre-market Round1 order splits
-    round_split =USLA.make_split_data(order_time['market'], order_time['round'])
-    sell_split = [round_split['sell_splits'], round_split['sell_price_adjust']]
-    buy_split = [round_split['buy_splits'], round_split['buy_price_adjust']]
+    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
 
     # Sell Pre market 주문, Sell주문데이터
-    Sell_order = Sell_daytime(Sell, sell_split)
+    Sell_order = Selling(Sell, sell_split, is_daytime)
 
-    # USD현재보유량과 목표보유량 비교 매수 수량과 매수 비중 매수 금액 산출
-    Buy_qty, Buy_weight, Buy_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+    # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
+    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
 
     # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
-    Buy_order, TR_usd = Buy_daytime(Buy_qty, buy_split)
+    Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd, is_daytime)
+
+    # 데이터 저장
+    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
     
-    # 필요한 TR data 만들고 저장
-    TR_data = {
-        'market': order_time['market'],
-        'round': order_time['round'],
-        'Sell_order': Sell_order, # 매도주문내역
-        'Buy_order': Buy_order, # 매수주문내역
-        'Hold': Hold, #현재 티커별 잔고
-        'target_weight': target_weight, #최초 타겟 티커별 비중
-        'CASH': Hold['CASH'], # 체결 전 포함 모든 usd
-        'TR_usd': TR_usd # 체결주문 중인 usd
-    } 
-    USLA.save_kis_tr_json(TR_data) # json 파일로 저장
-    print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래롼료.")
-
-
-elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12): # Pre-market Round2~66
-    # Pre-market 09:00~14:30 / 30분 단위 > 전회 주문 데이터 불러오기 주문취소 후 매수 매도 체결금액 usd에 더하기 빼기 할 것 > 비중 계산 주문
-
-    # 지난 주문 취소하기
-    
+elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12): # Pre-market Round 2~11
+    # Pre-market 지난 주문 취소하기
+    try:
+        cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=False, is_daytime = True)
+    except Exception as e:
+        print(f"주문 취소 오류: {e}")    
 
     # 지난 라운드 TR_data 불러오기
-    file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_TR_data.json"
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             TR_data = json.load(f)
+            Sell_order = TR_data['Sell_order']
+            Buy_order = TR_data['Buy_order']
+            Hold_usd = TR_data['CASH']
+            target_weight = TR_data['target_weight']
+            is_daytime = True
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
         exit()
 
-
-
-
-
-
-
-
-    # 체결내역 확인
-    # Hold['CASH']에서 매도금액은 더하고 매수금액은 빼기
-    # 실제 티커별 잔고 불러오기 Hold + Hold['CASH']추가하기
-
-    # 다시 이 번 라운드 목표 비중, 수량, 달러화 산출 후 현재 잔고와 비교 조정한 매수 매도 수량 있는 Buy와 Sell dict 만들기
-    # Pre-market Round2~66 order splits
-    # Sell 전 티커별 현재 주문 잔여 미체결 수량과 목표 매도주문 수량 비교 후 동일하면 유지
-    # TR_data의 Sell_order의 티커별 주문수량, 금액과 체결내역의 주문수량과 금액 비교 후 차감해 남은 주문량 산출 > 모든 값의 usd환산가치 계산
-    # Sell Pre market 주문, Sell주문데이터
-    # 다시 금번 라운드용 USD현재보유량과 목표보유량 비교 매수 수량과 매수 비중 매수 금액 산출
-    # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
-    # 필요한 TR data 만들기
-
-
-
-    Sell_order = TR_data['Sell_order']
-    Buy_order = TR_data['Buy_order']
-
-    # 지난 매도 주문체결내역 확인 > 매도 체결 금액 확인  > 매도 없었으면 시스템종료!!!!
+    # 매수 매도 체결결과 반영 금액 산출
     sell_summary = USLA.calculate_sell_summary(Sell_order)
+    Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
+    buy_summary = USLA.calculate_buy_summary(Buy_order)
+    Hold_usd -= buy_summary['net_amount']  # 출금 (수수료 포함됨)
 
-    if not sell_summary['success']: # 체결 매도금액이 없으면 빠른 종료
-        print("체결된 매도 주문이 없습니다.")
-        sys.exit(0)
+    # 목표 비중 만들기
+    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
 
-    # 간단 출력 #
-    print(f"\n 매도 체결 완료: {sell_summary['count']}개 주문\n")
-    print(f"\n 총 매도 금액: ${sell_summary['total_amount']:,.2f}\n")
-    total_sell_amount = sell_summary['total_amount']
-    # for ticker, data in sell_summary['by_ticker'].items():
-    #     print(f"  {ticker}: {data['quantity']}주 x ${data['avg_price']:.2f} = ${data['amount']:,.2f}")
+    # Sell Pre market 주문, Sell주문데이터
+    Sell_order = Selling(Sell, sell_split, is_daytime)
 
-    ################################################### 총매도금액 + TR CASH(지난 번 안 쓴 USD) >> 가용 추가금액
-    cash = Hold['CASH']
-    total_sell_amount += cash
-    Hold['CASH'] = total_sell_amount
+    # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
+    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+
+    # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
+    Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd, is_daytime)
+
+    # 데이터 저장
+    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+
+elif order_time['market'] == "Regular" and order_time['round'] in range(1, 14): # Regular Round 1~13
+    # 지난 주문 취소하기
+    try:
+        cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=True)
+    except Exception as e:
+        print(f"주문 취소 오류: {e}")
+
+    # 지난 라운드 TR_data 불러오기
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            TR_data = json.load(f)
+            Sell_order = TR_data['Sell_order']
+            Buy_order = TR_data['Buy_order']
+            Hold_usd = TR_data['CASH']
+            target_weight = TR_data['target_weight']
+            is_daytime = False
+    except Exception as e:
+        print(f"JSON 파일 오류: {e}")
+        exit()
+
+    # 매수 매도 체결결과 반영 금액 산출
+    sell_summary = USLA.calculate_sell_summary(Sell_order)
+    Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
+    buy_summary = USLA.calculate_buy_summary(Buy_order)
+    Hold_usd -= buy_summary['net_amount']  # 출금 (수수료 포함됨)
+
+    # 목표 비중 만들기
+    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
+
+    # Sell Pre market 주문, Sell주문데이터
+    Sell_order = Selling(Sell, sell_split, is_daytime)
+
+    # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
+    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+
+    # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
+    Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd, is_daytime)
+
+    # 데이터 저장
+    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+
+elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular Round 14 최종 기록
+    # 지난 주문 취소하기
+    try:
+        cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=True)
+    except Exception as e:
+        print(f"주문 취소 오류: {e}")
+
+    # 지난 라운드 TR_data 불러오기
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            TR_data = json.load(f)
+            Sell_order = TR_data['Sell_order']
+            Buy_order = TR_data['Buy_order']
+            Hold_usd = TR_data['CASH']
+            target_weight = TR_data['target_weight']
+    except Exception as e:
+        print(f"JSON 파일 오류: {e}")
+        exit()
+
+# USLA_data(월 리벨런싱 데이터) json저장
+# 카톡 리밸 종료 결과 보내기 최초 홀딩 잔고 티커2 + 현금 > 최후 잔고티커2 + 현금변화 기록
+# 투자결과는 다른 코드1.로 현금에 배당 등으로 변화 생긴 경우 변경 코드2.도 만들기
+# 실제 테스트 > 신한>한투 이체 실제 진행
+# US HAA전략도 합치는 법
 
 
 
-    # 매수주문확인
-    
-
-    
-    # 지난 매수 주문체결내역 확인 > 티커별 매수 체결 수량 확인 Claude로 
-    # > 매도체결금액+USLA_USD+매수주문대기 = 3가지 합쳐서 USD환산 잔고 * 티커별 비중 > 다시 티버별 매수 수량추가
-    # 추가 매수주문 > 다시TRdata 저장
 
 
+
+
+
+
+    # 데이터 저장
+    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, TR_usd)
 

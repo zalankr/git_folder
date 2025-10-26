@@ -16,7 +16,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         super().__init__(key_file_path, token_file_path, cano, acnt_prdt_cd)  # 부모 생성자 호출
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
         self.all_tickers = self.etf_tickers + ['CASH']
-        self.tax_rate = 0.0009
+        self.fee = 0.0009
         self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"  
 
     def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
@@ -298,7 +298,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 price = self.get_US_current_price(ticker=t)
                 # hold[t]를 float로 변환
                 qty = float(hold[t])
-                value = price * qty * (1 - self.tax_rate)
+                value = price * qty * (1 - self.fee)
                 hold_USD_value += value
 
         return hold_USD_value
@@ -321,20 +321,25 @@ class USLA_Model(KIS_US.KIS_API): #상속
             if ticker != "CASH":
                 try:
                     price = self.get_US_current_price(ticker)
-                    if price and price > 0:
-                        target_qty[ticker] = int(target_usd_value[ticker] / price)
-                        target_stock_value += target_qty[ticker] * price * (1 + self.tax_rate)
+                    
+                    # 타입 체크 추가
+                    if isinstance(price, (int, float)) and price > 0:
+                        target_qty[ticker] = int(target_usd_value[ticker] / (price * (1 + self.fee)))                       
+                        target_stock_value += target_qty[ticker] * price
+                        
                     else:
-                        print(f"{ticker}: 가격 정보 없음")
+                        print(f"{ticker}: 가격 정보 없음 (price={price})")
                         target_qty[ticker] = 0
+                        
                 except Exception as e:
                     print(f"{ticker}: 수량 계산 오류 - {e}")
                     target_qty[ticker] = 0
 
+        # 남은 현금 = 전체 USD - 주식 매수 예정 금액
         target_qty["CASH"] = sum(target_usd_value.values()) - target_stock_value
 
         return target_qty
-    
+
     def make_split_data(self, market, round): # make_trading_data함수에 종속되어 시장과 시간대별 티커별 분할횟수와 분할당 가격 산출
         if market == "Pre-market":
             order_type = "order_daytime_US"
@@ -427,232 +432,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         return round_split
 
-    def USLA_trading_data(self, order_time):
-        """trading에 필요한 모든 데이터 구하기"""
-        # oround_split 딕셔너리에 있는 key값을 value값으로 변환, 시장 시간대, 회차 구하기
-        market = order_time['market']
-        round = order_time['round']
-        round_split = self.make_split_data(market, round)
-
-        # order_type = round_split['order_type']
-        sell_splits = round_split['sell_splits']
-        sell_price_adjust = round_split['sell_price_adjust']
-        buy_splits = round_split['buy_splits']
-        buy_price_adjust = round_split['buy_price_adjust']
-
-        # 지난 시즌 저장한 USLA_rebalancing_data.json 불러오기
-        USLA_data = self.load_USLA_data()
-
-        # 보유 티커 및 전체 잔고 및 달러화 가치, 목표 티커 및 전체 비중 수량 달러화 가치 구하기
-        hold = {ticker: float(qty) for ticker, qty in zip(USLA_data['ticker'], USLA_data['qty'])} # Hold dict 생성, ticker별 qty를 float로 변환
-        hold_ticker = list(hold.keys()) # hold ticker 리스트
-        hold_USD_value = self.calculate_USD_value(hold) # Hold 보유 잔고를 바탕으로 USD 환산 잔고 계산
-        target = self.target_ticker_weight() # target_ticker별 비중 dict
-        target_ticker = list(target.keys()) # target_ticker 리스트
-        target_usd_value = {ticker: target[ticker] * hold_USD_value for ticker in target.keys()} # target_ticker별 USD 배정 dict
-        target_qty = self.calculate_target_qty(target, target_usd_value) # target_ticker별 목표 quantity 계산
-
-        # test
-        print(f"hold: {hold}")
-        print(f"hold_ticker: {hold_ticker}")
-        print(f"target_ticker: {target_ticker}")
-        print(f"target_usd_value: {target_usd_value}")
-        print(f"target_qty: {target_qty}")
-
-        # data 정리
-        TR_data = {}
-        date = order_time['date'].isoformat()
-        time =order_time['time'].isoformat()
-
-        meta_data = {
-            'date': date,
-            'time': time,
-            'model': 'USLA',
-            'season': order_time['season'],
-            'market': order_time['market'],
-            'hold': hold,
-            'hold_ticker': hold_ticker,
-            'hold_USD_value': hold_USD_value,
-            'target': target,
-            'target_ticker': target_ticker,
-            'target_usd_value': target_usd_value,
-            'target_qty': target_qty,
-            'order_type': round_split['order_type'], #####에러발생했던 부분#####
-            'round': order_time['round'],
-            'total_round': order_time['total_round']
-        }
-
-        TR_data['meta_data'] = meta_data
-
-        # 티커별 트레이딩 수량 구하기
-        for ticker in hold_ticker:
-            if ticker not in target_ticker:
-                qty_per_split = int(hold[ticker] // buy_splits)
-                cprice = self.get_US_current_price(ticker)
-                etf = ticker
-                etf = {
-                    'ticker': ticker,
-                    'position': 'sell',
-                    'hold_qty': hold[ticker],
-                    'target_qty': 0,
-                    'trading_qty': hold[ticker],
-                    'splits': sell_splits,
-                    'price_adjust': sell_price_adjust,
-                    'qty_per_split': qty_per_split,
-                    'order_status': 'ready',
-                    'orders': [                      
-                    ]
-                }
-                
-                for price_adjust in sell_price_adjust: # sell > -self.tax_rate
-                    etf['orders'].append({
-                        'order_num': 0,
-                        'order_price': cprice * price_adjust,
-                        'qty': qty_per_split,
-                        'splits_value': qty_per_split * cprice * (price_adjust-self.tax_rate),
-                        'status': 'ready',
-                        'filled_qty': 0,
-                        'filled_value': 0,
-                        "unfilled_qty": 0,
-                        "unfilled_value": 0
-                    })
-                time_module.sleep(0.1)
-                TR_data[ticker] = etf
-
-            elif ticker in target_ticker:
-                edited_qty = int(target_qty[ticker]) - int(hold[ticker])
-                if edited_qty > 0:
-                    qty_per_split = int(edited_qty // buy_splits)
-                    cprice = self.get_US_current_price(ticker)
-                    etf = ticker
-                    etf = {
-                        'ticker': ticker,
-                        'position': 'buy',
-                        'hold_qty': hold[ticker],
-                        'target_qty': target_qty[ticker],
-                        'trading_qty': edited_qty,
-                        'splits': buy_splits,
-                        'price_adjust': buy_price_adjust,
-                        'qty_per_split': qty_per_split,
-                        'order_status': 'ready',
-                        'orders': [                      
-                        ]
-                    }
-                    
-                    for price_adjust in buy_price_adjust: # buy > +self.tax_rate
-                        etf['orders'].append({
-                            'order_num': 0,
-                            'order_price': cprice * price_adjust,
-                            'qty': qty_per_split,
-                            'splits_value': qty_per_split * cprice * (price_adjust+self.tax_rate),
-                            'status': 'ready',
-                            'filled_qty': 0,
-                            'filled_value': 0,
-                            "unfilled_qty": 0,
-                            "unfilled_value": 0
-                        })
-                    time_module.sleep(0.1)
-                    TR_data[ticker] = etf
-
-                elif edited_qty < 0:
-                    qty_per_split = int(abs(edited_qty) // buy_splits)
-                    cprice = self.get_US_current_price(ticker)
-                    etf = ticker
-                    etf = {
-                        'ticker': ticker,
-                        'position': 'sell',
-                        'hold_qty': hold[ticker],
-                        'target_qty': target_qty[ticker],
-                        'trading_qty': abs(edited_qty),
-                        'splits': sell_splits,                       
-                        'price_adjust': sell_price_adjust,
-                        'qty_per_split': qty_per_split,
-                        'order_status': 'ready',
-                        'orders': [                      
-                        ]
-                    }
-                    
-                    for price_adjust in sell_price_adjust: # sell > -self.tax_rate
-                        etf['orders'].append({
-                            'order_num': 0,
-                            'order_price': cprice * price_adjust,
-                            'qty': qty_per_split,
-                            'splits_value': qty_per_split * cprice * (price_adjust-self.tax_rate),
-                            'status': 'ready',
-                            'filled_qty': 0,
-                            'filled_value': 0,
-                            "unfilled_qty": 0,
-                            "unfilled_value": 0
-                        })
-                    time_module.sleep(0.1)
-                    TR_data[ticker] = etf
-
-                elif edited_qty == 0:
-                    qty_per_split = 0
-                    etf = ticker
-                    etf = {
-                        'ticker': ticker,
-                        'position': 'keep',
-                        'hold_qty': hold[ticker],
-                        'target_qty': target_qty[ticker],
-                        'trading_qty': edited_qty,
-                        'splits': 0,
-                        'price_adjust': 0,
-                        'qty_per_split': 0,
-                        'order_status': 'hold',
-                        'orders': [                      
-                        ]
-                    }
-                    TR_data[ticker] = etf
-
-        for target in target_ticker:
-            if target not in hold_ticker:
-                qty_per_split = int(target_qty[target] // buy_splits)
-                cprice = self.get_US_current_price(target)
-                etf = target
-                etf = {
-                    'ticker': target,
-                    'position': 'buy',
-                    'hold_qty': 0,
-                    'target_qty': target_qty[target],
-                    'trading_qty': target_qty[target],
-                    'splits': buy_splits,
-                    'price_adjust': buy_price_adjust,
-                    'qty_per_split': qty_per_split,
-                    'order_status': 'ready',
-                    'orders': [                      
-                    ]
-                }
-                
-                for price_adjust in buy_price_adjust: # buy > +self.tax_rate
-                    etf['orders'].append({
-                        'order_num': 0,
-                        'order_price': cprice * price_adjust,
-                        'qty': qty_per_split,
-                        'splits_value': qty_per_split * cprice * (price_adjust+self.tax_rate),
-                        'status': 'ready',
-                        'filled_qty': 0,
-                        'filled_value': 0,
-                        "unfilled_qty": 0,
-                        "unfilled_value": 0
-                    })
-                time_module.sleep(0.1)
-                TR_data[target] = etf
-
-        hold_cash = hold['CASH']
-        target_cash = target_qty['CASH']
-
-        CASH = {
-            'ticker': 'CASH',
-            'position': 'cash',
-            'hold_qty': hold_cash,
-            'target_qty': target_cash,
-            'expected_change': target_cash - hold_cash
-        }
-        TR_data["CASH"] = CASH
-
-        return TR_data
-
     def save_kis_tr_json(self, TR_data):
         """Kis_TR_data를 JSON 파일로 저장"""
         file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_TR_data.json"
@@ -688,6 +467,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 'count': 0,
                 'total_quantity': 0,
                 'total_amount': 0.0,
+                'total_fee': 0.0,  # 추가
+                'net_amount': 0.0,  # 추가 (실제 입금액)
                 'avg_price': 0.0,
                 'by_ticker': {},
                 'details': []
@@ -696,81 +477,13 @@ class USLA_Model(KIS_US.KIS_API): #상속
         # 전체 집계
         total_quantity = sum(int(r.get('qty', 0)) for r in filled)
         total_amount = sum(float(r.get('amount', 0)) for r in filled)
-        avg_price = total_amount / total_quantity if total_quantity > 0 else 0
         
-        # 종목별 집계
-        from collections import defaultdict
-        ticker_summary = defaultdict(lambda: {'qty': 0, 'amount': 0, 'orders': []})
+        # 수수료 계산
+        total_fee = total_amount * self.SELL_FEE_RATE
         
-        for r in filled:
-            ticker = r.get('name', '알 수 없음')  # 종목명
-            qty = int(r.get('qty', 0))
-            amount = float(r.get('amount', 0))
-            price = float(r.get('price', 0))
-            
-            ticker_summary[ticker]['qty'] += qty
-            ticker_summary[ticker]['amount'] += amount
-            ticker_summary[ticker]['orders'].append({
-                'qty': qty,
-                'price': price,
-                'amount': amount
-            })
+        # 실제 입금액 (체결금액 - 수수료)
+        net_amount = total_amount - total_fee
         
-        # 종목별 평균가 계산
-        by_ticker = {}
-        for ticker, data in ticker_summary.items():
-            qty = data['qty']
-            amount = data['amount']
-            avg = amount / qty if qty > 0 else 0
-            
-            by_ticker[ticker] = {
-                'quantity': qty,
-                'amount': amount,
-                'avg_price': avg,
-                'order_count': len(data['orders']),
-                'orders': data['orders']
-            }
-        
-        return {
-            'success': True,
-            'count': len(filled),
-            'total_quantity': total_quantity,
-            'total_amount': total_amount,
-            'avg_price': avg_price,
-            'by_ticker': by_ticker,
-            'details': filled
-        }
-
-    def calculate_buy_summary(self, Buy_order):
-        """매수 체결 내역 조회 및 집계 (종목별 집계 포함)"""
-        
-        Buy_result = []
-        
-        for order in Buy_order:
-            execution = self.check_order_execution(
-                order_number=order['order_number'],
-                ticker=order['ticker'],
-                order_type="02"  # ✅ 매수는 "02"
-            )
-            Buy_result.append(execution)
-        
-        # 체결된 주문만 필터링
-        filled = [r for r in Buy_result if r and r.get('success')]
-        
-        if not filled:
-            return {
-                'success': False,
-                'count': 0,
-                'total_quantity': 0,
-                'total_amount': 0.0,
-                'avg_price': 0.0,
-                'by_ticker': {},
-                'details': []
-            }
-        
-        # 전체 집계
-        total_quantity = sum(int(r.get('qty', 0)) for r in filled)
-        total_amount = sum(float(r.get('amount', 0)) for r in filled)
         avg_price = total_amount / total_quantity if total_quantity > 0 else 0
         
         # 종목별 집계
@@ -798,9 +511,15 @@ class USLA_Model(KIS_US.KIS_API): #상속
             amount = data['amount']
             avg = amount / qty if qty > 0 else 0
             
+            # 종목별 수수료 및 실제 입금액 계산
+            fee = amount * self.SELL_FEE_RATE
+            net = amount - fee
+            
             by_ticker[ticker] = {
                 'quantity': qty,
-                'amount': amount,
+                'amount': amount,  # 체결금액
+                'fee': fee,  # 수수료
+                'net_amount': net,  # 실제 입금액
                 'avg_price': avg,
                 'order_count': len(data['orders']),
                 'orders': data['orders']
@@ -810,7 +529,101 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'success': True,
             'count': len(filled),
             'total_quantity': total_quantity,
-            'total_amount': total_amount,
+            'total_amount': total_amount,  # 체결금액
+            'total_fee': total_fee,  # 전체 수수료
+            'net_amount': net_amount,  # 실제 입금액 ← 이것이 예수금!
+            'avg_price': avg_price,
+            'by_ticker': by_ticker,
+            'details': filled
+        }
+
+    def calculate_buy_summary(self, Buy_order):
+        """매수 체결 내역 조회 및 집계 (종목별 집계 포함)"""
+        
+        Buy_result = []
+        
+        for order in Buy_order:
+            execution = self.check_order_execution(
+                order_number=order['order_number'],
+                ticker=order['ticker'],
+                order_type="02"  # 매수는 "02"
+            )
+            Buy_result.append(execution)
+        
+        # 체결된 주문만 필터링
+        filled = [r for r in Buy_result if r and r.get('success')]
+        
+        if not filled:
+            return {
+                'success': False,
+                'count': 0,
+                'total_quantity': 0,
+                'total_amount': 0.0,
+                'total_fee': 0.0,  # 추가
+                'net_amount': 0.0,  # 추가 (실제 사용 금액)
+                'avg_price': 0.0,
+                'by_ticker': {},
+                'details': []
+            }
+        
+        # 전체 집계
+        total_quantity = sum(int(r.get('qty', 0)) for r in filled)
+        total_amount = sum(float(r.get('amount', 0)) for r in filled)
+        
+        # ✅ 매수 수수료 계산
+        total_fee = total_amount * self.tax_rate  # 또는 self.fee
+        
+        # ✅ 실제 사용 금액 (체결금액 + 수수료)
+        net_amount = total_amount + total_fee
+        
+        avg_price = total_amount / total_quantity if total_quantity > 0 else 0
+        
+        # 종목별 집계
+        from collections import defaultdict
+        ticker_summary = defaultdict(lambda: {'qty': 0, 'amount': 0, 'orders': []})
+        
+        for r in filled:
+            ticker = r.get('name', '알 수 없음')
+            qty = int(r.get('qty', 0))
+            amount = float(r.get('amount', 0))
+            price = float(r.get('price', 0))
+            
+            ticker_summary[ticker]['qty'] += qty
+            ticker_summary[ticker]['amount'] += amount
+            ticker_summary[ticker]['orders'].append({
+                'qty': qty,
+                'price': price,
+                'amount': amount
+            })
+        
+        # 종목별 평균가 계산
+        by_ticker = {}
+        for ticker, data in ticker_summary.items():
+            qty = data['qty']
+            amount = data['amount']
+            avg = amount / qty if qty > 0 else 0
+            
+            # ✅ 종목별 수수료 및 실제 사용 금액 계산
+            fee = amount * self.tax_rate  # 또는 self.fee
+            net = amount + fee
+            
+            by_ticker[ticker] = {
+                'quantity': qty,
+                'amount': amount,  # 체결금액
+                'fee': fee,  # 수수료
+                'net_amount': net,  # 실제 사용 금액
+                'avg_price': avg,
+                'order_count': len(data['orders']),
+                'orders': data['orders']
+            }
+        
+        return {
+            'success': True,
+            'count': len(filled),
+            'total_quantity': total_quantity,
+            'total_amount': total_amount,  # 체결금액
+            'total_fee': total_fee,  # 전체 수수료
+            'net_amount': net_amount,  # 실제 사용 금액 ← 이것이 실제 차감된 USD!
             'avg_price': avg_price,
             'by_ticker': by_ticker,
             'details': filled
