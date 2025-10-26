@@ -274,7 +274,6 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
     print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료.")
     return TR_data
 
-
 # 밑에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
 # 별도 일수익변화 체크 코드는 따로 운영
 order_time = KIS_Calender.check_order_time()
@@ -408,20 +407,10 @@ elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular 
         print(f"JSON 파일 오류: {e}")
         exit()
 
-# USLA_data(월 리벨런싱 데이터) json저장
+# USLA_data(월 리벨런싱 데이터)로 json저장
 # 카톡 리밸 종료 결과 보내기 최초 홀딩 잔고 티커2 + 현금 > 최후 잔고티커2 + 현금변화 기록
 # 투자결과는 다른 코드1.로 현금에 배당 등으로 변화 생긴 경우 변경 코드2.도 만들기
-# 실제 테스트 > 신한>한투 이체 실제 진행
-# US HAA전략도 합치는 법
-
-
-
-
-
-
-
-
-
-    # 데이터 저장
-    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, TR_usd)
-
+# 1차 오류 잡기 > 실제 테스트 2차 오류잡기 
+# 신한>한투 이체 실제 진행
+# US HAA전략도 합치는 방법 연구 후 테스트 실제화
+# QT로......
