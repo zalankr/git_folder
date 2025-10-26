@@ -345,98 +345,76 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         elif market == "Regular":
             order_type = "order_US"
-            sell_splits = 6
-            sell_price_adjust = [1.0025, 1.005, 1.0075, 1.01, 1.0125, 1.015]
-            buy_splits = 6
-            buy_price_adjust = [0.9975, 0.995, 0.9925, 0.99, 0.9875, 0.985]
+            sell_splits = 5
+            sell_price_adjust = [1.0025, 1.005, 1.0075, 1.01, 1.0125]
+            buy_splits = 5
+            buy_price_adjust = [0.9975, 0.995, 0.9925, 0.99, 0.9875]
 
-            if round in range(1, 7):
+            if round == 1:
                 pass
-
-            elif round in range(7, 13):
+            elif round == 2:
                 sell_price_adjust[0] = 0.99
-
-            elif round in range(13, 19):
-                sell_splits = 5
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_price_adjust[0] = 1.01
-
-            elif round in range(19, 25):
-                sell_splits = 5
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_splits = 5
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-
-            elif round in range(25, 31):
-                sell_splits = 5
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                sell_price_adjust[0] = 0.99
-                buy_splits = 5
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-
-            elif round in range(31, 37):
+            elif round == 3:
                 sell_splits = 4
                 sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_splits = 5
-                buy_price_adjust = buy_price_adjust[:buy_splits]
                 buy_price_adjust[0] = 1.01
-
-            elif round in range(37, 43):
+            elif round == 4:
                 sell_splits = 4
                 sell_price_adjust = sell_price_adjust[:sell_splits]
                 buy_splits = 4
                 buy_price_adjust = buy_price_adjust[:buy_splits]
-
-            elif round in range(43, 49):
+            elif round == 5:
                 sell_splits = 4
                 sell_price_adjust = sell_price_adjust[:sell_splits]
                 sell_price_adjust[0] = 0.99
                 buy_splits = 4
                 buy_price_adjust = buy_price_adjust[:buy_splits]
-
-            elif round in range(49, 55):
+            elif round == 6:
                 sell_splits = 3
                 sell_price_adjust = sell_price_adjust[:sell_splits]
                 buy_splits = 4
                 buy_price_adjust = buy_price_adjust[:buy_splits]
                 buy_price_adjust[0] = 1.01
-
-            elif round in range(55, 61):
+            elif round == 7:
                 sell_splits = 3
                 sell_price_adjust = sell_price_adjust[:sell_splits]
                 buy_splits = 3
                 buy_price_adjust = buy_price_adjust[:buy_splits]
-
-            elif round in range(61, 67):
+            elif round == 8:
                 sell_splits = 3
                 sell_price_adjust = sell_price_adjust[:sell_splits]
                 sell_price_adjust[0] = 0.99
                 buy_splits = 3
                 buy_price_adjust = buy_price_adjust[:buy_splits]
-
-            elif round in range(67, 73):
+            elif round == 9:
                 sell_splits = 2
                 sell_price_adjust = sell_price_adjust[:sell_splits]
                 buy_splits = 3
                 buy_price_adjust = buy_price_adjust[:buy_splits]
                 buy_price_adjust[0] = 1.01
-
-            elif round in range(73, 76):
+            elif round == 10:
                 sell_splits = 2
-                sell_price_adjust = [0.99, 1.0025]
+                sell_price_adjust = sell_price_adjust[:sell_splits]
                 buy_splits = 2
                 buy_price_adjust = buy_price_adjust[:buy_splits]
-
-            elif round == 77:
-                sell_splits = 1
-                sell_price_adjust = [0.97]
+            elif round == 11:
+                sell_splits = 2
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.99
                 buy_splits = 2
-                buy_price_adjust = [1.01, 0.9975]
-
-            elif round == 78:
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+            elif round == 12:
                 sell_splits = 1
-                sell_price_adjust = [0.97]
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.97
+                buy_splits = 2
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+                buy_price_adjust[0] = 1.01
+            elif round == 13:
+                sell_splits = 1
+                sell_price_adjust[0] = 0.97
                 buy_splits = 1
+                buy_price_adjust = buy_price_adjust[:buy_splits]
                 buy_price_adjust = [1.03]
             
         round_split = {
@@ -677,12 +655,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
     def save_kis_tr_json(self, TR_data):
         """Kis_TR_data를 JSON 파일로 저장"""
-        file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/Kis_TR_data.json"
+        file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_TR_data.json"
         
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(TR_data, f, ensure_ascii=False, indent=4)
-            print(f"\n Kis_TR_data.json 파일 저장 완료: {file_path}")
+            print(f"\n USLA_TR_data.json 파일 저장 완료: {file_path}")
             return True
         except Exception as e:
             print(f"\n JSON 파일 저장 오류: {e}")
@@ -762,7 +740,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'by_ticker': by_ticker,
             'details': filled
         }
-    
+
     def calculate_buy_summary(self, Buy_order):
         """매수 체결 내역 조회 및 집계 (종목별 집계 포함)"""
         

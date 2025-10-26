@@ -72,15 +72,15 @@ def check_order_time():
         Regular_start = time_obj(14, 30)   # 14:30
         Regular_end = time_obj(21, 5)      # 21:01
         
-        if Pre_market_start <= current < Pre_market_end:
+        if Pre_market_start <= current < Pre_market_end: # 프리마켓 30분 단위 총 11회
             order_time['market'] = "Pre-market"            
-            order_time['round'] = 1 + (current.hour - 9) * 12 + (current.minute // 5)
-            order_time['total_round'] = 66  # Pre-market 총 회차
+            order_time['round'] = 1 + (current.hour - 9) * 2 + (current.minute // 30)
+            order_time['total_round'] = 11  # Pre-market 총 11회차
             
-        elif Regular_start <= current_time < Regular_end:
+        elif Regular_start <= current < Regular_end: # 정규시장 30분 단위 총 14회
             order_time['market'] = "Regular"
-            order_time['round'] = 1 + (current.hour - 14) * 12 + (current.minute // 5) - 6
-            order_time['total_round'] = 79  # Regular 총 회차
+            order_time['round'] = (current.hour - 14) * 2 + (current.minute // 30)
+            order_time['total_round'] = 14  # Regular 총 14회차
 
     elif check_USAA == "USAA_summer":
         current = time_obj(current_time.hour, current_time.minute) # current_time
@@ -89,15 +89,15 @@ def check_order_time():
         Regular_start = time_obj(13, 30)   # 13:30
         Regular_end = time_obj(20, 5)      # 20:01
 
-        if Pre_market_start <= current < Pre_market_end:
+        if Pre_market_start <= current < Pre_market_end: # 프리마켓 30분 단위 총 11회
             order_time['market'] = "Pre-market"            
-            order_time['round'] = 1 + (current.hour - 8) * 12 + (current.minute // 5)
-            order_time['total_round'] = 66  # Pre-market 총 회차
+            order_time['round'] = 1 + (current.hour - 8) * 2 + (current.minute // 30)
+            order_time['total_round'] = 11  # Pre-market 총 11회차
             
-        elif Regular_start <= current_time < Regular_end:
+        elif Regular_start <= current < Regular_end: # 레귤러마켓 30분 단위 총 14회
             order_time['market'] = "Regular"
-            order_time['round'] = 1 + (current.hour - 13) * 12 + (current.minute // 5) - 6
-            order_time['total_round'] = 79  # Regular 총 회차
+            order_time['round'] = (current.hour - 13) * 2 + (current.minute // 30)
+            order_time['total_round'] = 14  # Regular 총 14회차
 
     else:
         order_time['market'] = "No_trading"

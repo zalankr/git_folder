@@ -144,8 +144,8 @@ class KIS_API:
             return self.EXCHANGE_MAP[ticker]
         
         exchanges = ["NAS", "NYS", "AMS"]
-        path = "/uapi/overseas-price/v1/quotations/price"
-        url = f"{self.url_base}{path}"
+        path = "uapi/overseas-price/v1/quotations/price"
+        url = f"{self.url_base}/{path}"
         
         headers = {
             "Content-Type": "application/json",
@@ -205,88 +205,8 @@ class KIS_API:
         
         # yfinance 백업
         return self._get_price_from_yfinance(ticker)
-    
-    # 주식 시가 조회
-    def get_US_open_price(self, ticker: str, exchange: Optional[str] = None) -> Union[float, str]:
-        """
-        미국 주식 시가 조회 (KIS API → yfinance 백업)
-        
-        Parameters:
-        ticker (str): 주식 티커 심볼
-        exchange (str): 거래소 코드 (None이면 자동 검색)
-        
-        Returns:
-        float: 시가
-        str: 에러 메시지
-        """
-        if not ticker:
-            return "티커를 입력해주세요."
-        
-        ticker = ticker.upper()
-        
-        if exchange is None:
-            exchange = self.get_US_exchange(ticker)
-            if exchange is None:
-                return self._get_open_price_from_yfinance(ticker)
-        
-        # KIS API 조회 시도
-        open_price = self._get_open_price_from_kis(ticker, exchange)
-        if isinstance(open_price, float):
-            return open_price
-        
-        # yfinance 백업
-        return self._get_open_price_from_yfinance(ticker)
-    
-    # KIS API로 시가 조회
-    def _get_open_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
-        """KIS API로 시가 조회 (기간별시세 API 사용)"""
-        path = "/uapi/overseas-price/v1/quotations/dailyprice"
-        url = f"{self.url_base}{path}"
-        
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "HHDFS76240000"
-        }
-        
-        params = {
-            "AUTH": "",
-            "EXCD": exchange,
-            "SYMB": ticker,
-            "GUBN": "0",  # 일봉
-            "BYMD": "",   # 오늘 날짜
-            "MODP": "0"   # 수정주가 미반영
-        }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('rt_cd') == '0':
-                output2 = data.get('output2', [])
-                
-                if output2 and len(output2) > 0:
-                    latest = output2[0]
-                    
-                    # 시가(open) 확인
-                    open_price = latest.get('open', '').strip()
-                    if open_price and open_price != '0':
-                        try:
-                            price = float(open_price)
-                            if price > 0:
-                                return price
-                        except (ValueError, TypeError):
-                            pass
-        except:
-            pass
-        
-        return "KIS API 시가 조회 실패"
-    
-    # yfinance로 시가 조회
-    def _get_open_price_from_yfinance(self, ticker: str) -> Union[float, str]:
+
+
         """yfinance로 시가 조회"""
         try:
             import yfinance as yf
@@ -314,7 +234,7 @@ class KIS_API:
             return "yfinance 미설치 (pip install yfinance)"
         except Exception as e:
             return f"yfinance 오류: {str(e)}"
-    
+
     # KIS API로 현재가 조회
     def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
         """KIS API로 현재가 조회 (3단계)"""
@@ -868,7 +788,7 @@ class KIS_API:
             stocks = []
             
             for stock in output1:
-                # ✅ 핵심 수정: ccld_qty_smtl1 (체결수량합계) 사용
+                # 핵심 수정: ccld_qty_smtl1 (체결수량합계) 사용
                 quantity = int(float(stock.get('ccld_qty_smtl1', 0)))
                 
                 # 수량이 0인 종목은 제외 (옵션)
@@ -878,7 +798,7 @@ class KIS_API:
                 stock_info = {
                     'ticker': stock.get('pdno', ''),
                     'name': stock.get('prdt_name', ''),
-                    'quantity': quantity,  # ✅ 체결수량합계 = 전일잔고 + 당일매수 - 당일매도
+                    'quantity': quantity,  # 체결수량합계 = 전일잔고 + 당일매수 - 당일매도
                     'avg_price': float(stock.get('avg_unpr3', 0)),
                     'current_price': float(stock.get('ovrs_now_pric1', 0)),
                     'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
@@ -899,11 +819,11 @@ class KIS_API:
             traceback.print_exc()
             return None
 
-    # 미국 달러 예수금 # 오류 클로드 정상화 이후 확인
+    # 미국 달러 예수금 # 오류 클로드 정상화 이후 확인 에러 # 삭제예정
     def get_US_dollar_balance(self) -> Optional[Dict]:
         """미국 달러 예수금"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
-        url = f"{self.url_base}{path}"
+        url = f"{self.url_base}/{path}"
         
         headers = {
             "Content-Type": "application/json",
@@ -950,7 +870,7 @@ class KIS_API:
     def get_total_balance(self) -> Optional[Dict]:
         """전체 계좌 잔고"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
-        url = f"{self.url_base}{path}"
+        url = f"{self.url_base}/{path}"
         
         headers = {
             "Content-Type": "application/json",
@@ -1062,8 +982,8 @@ class KIS_API:
         # 체결 내역 조회
         print(f"\n주문번호 {order_number} 체결 내역 확인 중...")
         
-        path = "/uapi/overseas-stock/v1/trading/inquire-ccnl"
-        url = f"{self.url_base}{path}"
+        path = "uapi/overseas-stock/v1/trading/inquire-ccnl"
+        url = f"{self.url_base}/{path}"
         
         headers = {
             "Content-Type": "application/json",
@@ -1179,7 +1099,7 @@ class KIS_API:
                 print(f"⏳ {wait_seconds}초 후 재시도...")
                 time.sleep(wait_seconds)
         
-        print("❌ 체결 확인 실패")
+        print("체결 확인 실패")
         return None
 
     # 서머타임(DST) 확인
@@ -1217,66 +1137,22 @@ class KIS_API:
         # 서머타임 기간 확인
         return dst_start <= us_eastern_time < dst_end
 
-
 # 사용 예시
 if __name__ == "__main__":
     # 계좌 정보 설정
     api = KIS_API(
-        key_file_path="C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt",
-        token_file_path="C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json",
+        key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt",
+        token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json",
         cano="63721147",
         acnt_prdt_cd="01"
     )
-    
+    get_US_stock_balance = api.get_US_stock_balance()
+    get_total_balance = api.get_total_balance()
+    get_US_dollar_balance = api.get_US_dollar_balance()
     print("\n=== 미국주식 주문 체결내역 추적 시스템 ===\n")
-    
-    # 1. 초기 USD 예수금 조회
-    print("[1] 초기 USD 예수금 조회")
-    initial_balance = api.get_usd_deposit_info()
-    if initial_balance:
-        print(f"현재 예수금: ${initial_balance['deposit']:,.2f}")
-        print(f"출금가능: ${initial_balance['withdrawable']:,.2f}")
-        print(f"환율: ₩{initial_balance['exchange_rate']:,.2f}")
-    
-    # 2. 오늘의 체결내역 조회
-    print("\n[2] 오늘의 체결내역 조회")
-    today = datetime.now().strftime('%Y%m%d')
-    executions_df = api.get_order_executions_detailed(
-        start_date=today,
-        end_date=today,
-        ccld_nccs_dvsn="01"  # 체결만
-    )
-    
-    # 3. 체결내역 출력
-    if not executions_df.empty:
-        print(f"\n총 {len(executions_df)}건의 체결내역 발견")
-        api.print_execution_summary(executions_df, initial_balance)
-        
-        # 4. 최종 예수금 확인
-        print("\n[4] 최종 USD 예수금 확인")
-        final_balance = api.get_usd_deposit_info()
-        if final_balance and initial_balance:
-            print(f"최종 예수금: ${final_balance['deposit']:,.2f}")
-            print(f"변동액: ${(final_balance['deposit'] - initial_balance['deposit']):+,.2f}")
-    else:
-        print("오늘 체결된 주문이 없습니다.")
-    
-    # 예제: 특정 주문번호 추적
-    # execution_info = api.track_order_execution(
-    #     order_number="0123456789",
-    #     ticker="AAPL",
-    #     wait_seconds=10,
-    #     max_attempts=5
-    # )
-    # if execution_info:
-    #     print(f"\n체결 상세:")
-    #     print(f"종목: {execution_info['name']} ({execution_info['ticker']})")
-    #     print(f"구분: {execution_info['order_type']}")
-    #     print(f"수량: {execution_info['quantity']}")
-    #     print(f"단가: ${execution_info['price']:,.2f}")
-    #     print(f"체결금액: ${execution_info['amount_before_fee']:,.2f}")
-    #     print(f"수수료: ${execution_info['fee']:,.2f}")
-    #     print(f"입출금액: ${execution_info['deposit_change']:+,.2f}")
+    print(get_US_stock_balance)
+    print(get_US_dollar_balance)
+    print(get_total_balance)
 
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]
