@@ -1,10 +1,8 @@
-from datetime import datetime, timedelta
 import time as time_module  # time 모듈을 별칭으로 import
 import json
 import sys
 import KIS_Calender
 import USLA_model
-import KIS_US
 
 """
 crontab 설정
@@ -18,9 +16,8 @@ key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
 token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
 cano = "63721147"  # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
-USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
-file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_TR_data.json"
 USLA_ticker = ["UPRO", "TQQQ", "EDC", "TMF", "TMV"]
+USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
     real_balance = USLA.get_US_stock_balance()
@@ -270,13 +267,14 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
         'CASH': Hold['CASH'], # 체결 전 포함 모든 usd
         'TR_usd': TR_usd # 모든거래 후 예상 매수잔액
     } 
-    USLA.save_kis_tr_json(TR_data) # json 파일로 저장
-    print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료.")
+    USLA.save_KIS_TR_json(TR_data) # json 파일로 저장
+    print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료")
     return TR_data
 
 # 밑에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
 # 별도 일수익변화 체크 코드는 따로 운영
 order_time = KIS_Calender.check_order_time()
+
 if order_time['season'] == "USAA_not_rebalancing":
     print("오늘은 리밸런싱일이 아닙니다. 프로그램을 종료합니다.")
     sys.exit(0)
@@ -285,26 +283,60 @@ print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_ti
 print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-market round 1회에만 Trading qty를 구하기
-    # 목표 비중 만들기
-    target_weight = USLA.target_ticker_weight() # 목표 티커 비중 반환
-    TR_data = USLA.load_USLA_data() # 1회차는 지난 리밸런싱 후의 USLA model usd 불러오기
-    Hold_usd = TR_data['CASH']
+    # 목표 데이터 만들기
+    target_weight, regime_signal = USLA.target_ticker_weight() # 목표 티커 비중 반환
+    USLA_data = USLA.load_USLA_data() # 1회차는 지난 리밸런싱 후의 USLA model usd 불러오기
+    Hold_usd = USLA_data['CASH']
+    target_ticker = list(target_weight.keys())
     is_daytime = True
     print(target_weight)
 
     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
+
+    # USLA_data update 1차 당일 리밸런싱 데이터로@update
+    USLA_data = {
+        'date': order_time['date'],
+        'regime_signal': regime_signal,
+        'target_ticker1': target_ticker[0],
+        'target_weight1': target_weight[target_ticker[0]],
+        'target_ticker2': target_ticker[1],
+        'target_weight2': target_weight[target_ticker[1]],
+        'UPRO': Hold['UPRO'],
+        'TQQQ': Hold['TQQQ'],
+        'EDC': Hold['EDC'],
+        'TMF': Hold['TMF'],
+        'TMV': Hold['TMV'],
+        'CASH': Hold['CASH'],
+        'balance': USLA_data['balance'],
+        'last_day_balance': USLA_data['last_day_balance'],
+        'last_month_balance': USLA_data['last_month_balance'],
+        'last_year_balance': USLA_data['last_year_balance'],
+        'daily_return': USLA_data['daily_return'],
+        'monthly_return': USLA_data['monthly_return'],
+        'yearly_return': USLA_data['yearly_return'],
+        'exchange_rate': USLA_data['exchange_rate'],
+        'balance_KRW': USLA_data['balance_KRW'],
+        'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
+        'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
+        'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
+        'daily_return_KRW': USLA_data['daily_return_KRW'],
+        'monthly_return_KRW': USLA_data['monthly_return_KRW'],
+        'yearly_return_KRW': USLA_data['yearly_return_KRW']
+    }
+
+    USLA.save_USLA_data_json(USLA_data)
 
     # Sell Pre market 주문, Sell주문데이터
     Sell_order = Selling(Sell, sell_split, is_daytime)
 
     # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
-
     # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
     Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd, is_daytime)
 
     # 데이터 저장
-    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    sys.exit(0)
     
 elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12): # Pre-market Round 2~11
     # Pre-market 지난 주문 취소하기
@@ -315,13 +347,12 @@ elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12
 
     # 지난 라운드 TR_data 불러오기
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            TR_data = json.load(f)
-            Sell_order = TR_data['Sell_order']
-            Buy_order = TR_data['Buy_order']
-            Hold_usd = TR_data['CASH']
-            target_weight = TR_data['target_weight']
-            is_daytime = True
+        TR_data = USLA.load_KIS_TR()
+        Sell_order = TR_data['Sell_order']
+        Buy_order = TR_data['Buy_order']
+        Hold_usd = TR_data['CASH']
+        target_weight = TR_data['target_weight']
+        is_daytime = True
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
         exit()
@@ -340,12 +371,12 @@ elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12
 
     # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
-
     # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
     Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd, is_daytime)
 
     # 데이터 저장
-    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    sys.exit(0)
 
 elif order_time['market'] == "Regular" and order_time['round'] in range(1, 14): # Regular Round 1~13
     # 지난 주문 취소하기
@@ -356,13 +387,12 @@ elif order_time['market'] == "Regular" and order_time['round'] in range(1, 14): 
 
     # 지난 라운드 TR_data 불러오기
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            TR_data = json.load(f)
-            Sell_order = TR_data['Sell_order']
-            Buy_order = TR_data['Buy_order']
-            Hold_usd = TR_data['CASH']
-            target_weight = TR_data['target_weight']
-            is_daytime = False
+        TR_data = USLA.load_KIS_TR()
+        Sell_order = TR_data['Sell_order']
+        Buy_order = TR_data['Buy_order']
+        Hold_usd = TR_data['CASH']
+        target_weight = TR_data['target_weight']
+        is_daytime = False
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
         exit()
@@ -381,12 +411,12 @@ elif order_time['market'] == "Regular" and order_time['round'] in range(1, 14): 
 
     # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
-
     # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
     Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd, is_daytime)
 
     # 데이터 저장
-    TR_data = save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    sys.exit(0)
 
 elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular Round 14 최종 기록
     # 지난 주문 취소하기
@@ -397,20 +427,85 @@ elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular 
 
     # 지난 라운드 TR_data 불러오기
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            TR_data = json.load(f)
-            Sell_order = TR_data['Sell_order']
-            Buy_order = TR_data['Buy_order']
-            Hold_usd = TR_data['CASH']
-            target_weight = TR_data['target_weight']
+        TR_data = USLA.load_KIS_TR()
+        Sell_order = TR_data['Sell_order']
+        Buy_order = TR_data['Buy_order']
+        Hold_usd = TR_data['CASH']
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
         exit()
 
-# USLA_data(월 리벨런싱 데이터)로 json저장
+    # 매수 매도 체결결과 반영 금액 산출
+    sell_summary = USLA.calculate_sell_summary(Sell_order)
+    Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
+    buy_summary = USLA.calculate_buy_summary(Buy_order)
+    Hold_usd -= buy_summary['net_amount']  # 출금 (수수료 포함됨)
+
+    # USLA_data(월 리벨런싱 데이터)로 json저장
+    USLA_data = USLA.load_USLA_data()
+
+    Hold = USLA.get_total_balance()
+    Hold_tickers = {}
+    if len(Hold['stocks']) > 0:
+        for stock in Hold['stocks'] : # Hold['stocks']는 list
+            ticker = stock['ticker']
+            qty = stock['quantity']
+            Hold_tickers[ticker] = qty
+    else:
+        pass
+
+    UPRO = Hold_tickers.get('UPRO', 0)
+    TQQQ = Hold_tickers.get('TQQQ', 0)
+    EDC = Hold_tickers.get('EDC', 0)
+    TMF = Hold_tickers.get('TMF', 0)
+    TMV = Hold_tickers.get('TMV', 0)
+    balance = Hold['stock_eval_usd']+Hold_usd
+    USLA_data = {
+        'date': order_time['date'],
+        'regime_signal': USLA_data['regime_signal'],
+        'target_ticker1': USLA_data['target_ticker1'],
+        'target_weight1': USLA_data['target_weight1'],
+        'target_ticker2': USLA_data['target_ticker2'],
+        'target_weight2': USLA_data['target_weight2'],
+        'UPRO': UPRO,
+        'TQQQ': TQQQ,
+        'EDC': EDC,
+        'TMF': TMF,
+        'TMV': TMV,
+        'CASH': Hold_usd,
+        'balance': balance,
+        'last_day_balance': USLA_data['last_day_balance'], # 따로 데일리 리턴 계산 안 할 거면 그대로, 지금 계산할거면 ['balance']f로 바꿀 것
+        'last_month_balance': USLA_data['last_month_balance'],
+        'last_year_balance': USLA_data['last_year_balance'],
+        'daily_return': USLA_data['daily_return'],
+        'monthly_return': USLA_data['monthly_return'],
+        'yearly_return': USLA_data['yearly_return'],
+        'exchange_rate': Hold['exchange_rate'],
+        'balance_KRW': Hold['stock_eval_krw']+(Hold_usd*Hold['exchange_rate']),
+        'last_day_balance_KRW': USLA_data['last_day_balance_KRW'], # 따로 데일리 리턴 계산 안 할 거면 그대로, 지금 계산할거면 ['balance']f로 바꿀 것
+        'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
+        'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
+        'daily_return_KRW': USLA_data['daily_return_KRW'],
+        'monthly_return_KRW': USLA_data['monthly_return_KRW'],
+        'yearly_return_KRW': USLA_data['yearly_return_KRW']
+    }
+    USLA.save_USLA_data_json(USLA_data) # 일단 저장 수익률과 일간 월간 연간 변화는 다른 일일 기록 코드로(카톡, 수익 기록용)
+
 # 카톡 리밸 종료 결과 보내기 최초 홀딩 잔고 티커2 + 현금 > 최후 잔고티커2 + 현금변화 기록
-# 투자결과는 다른 코드1.로 현금에 배당 등으로 변화 생긴 경우 변경 코드2.도 만들기
-# 1차 오류 잡기 > 실제 테스트 2차 오류잡기 
-# 신한>한투 이체 실제 진행
-# US HAA전략도 합치는 방법 연구 후 테스트 실제화
-# QT로......
+print(f"KIS USLA {order_time['date']} \n당월 리벨런싱 완료")
+print(f"KIS USLA regime_signal: {regime_signal} \ntarget1: {target_ticker[0]}, {target_weight[target_ticker[0]]} \ntarget2: {target_ticker[1]}, {target_weight[target_ticker[1]]}")
+print(f"KIS USLA balance: {balance} \nUPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}")
+
+
+
+
+
+# 투자결과는 다른 코드로 현금에 배당 등으로 변화 생긴 경우 변경 시 코드 수정할 부분 알림 메세지도 add_usd = 0,  usd += add_usd
+# 1차 오류 테스트 claude로
+# 2차 오류 테스트 로컬PD로 실제 소액 실행
+# 3차 오류 테스트 AWS ec2 실제 서버 오류잡기 & 카톡 메세지 정리 하기 필요한 것만 & crontab 테스트
+# 신한>한투 이체 실제 진행 11월 중
+
+# US HAA전략도 합치는 방법 연구 후 테스트 실제화 12월 중
+
+# QT도 코딩...... 1~2월 중

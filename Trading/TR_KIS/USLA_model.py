@@ -1,14 +1,11 @@
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import riskfolio as rp
 import KIS_US
 import json
-from datetime import datetime, date
-import time as time_module  # time 모듈을 별칭으로 import
+from datetime import date
 import calendar
 import warnings
-import KIS_Calender
 warnings.filterwarnings('ignore')
 
 class USLA_Model(KIS_US.KIS_API): #상속
@@ -17,7 +14,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
         self.all_tickers = self.etf_tickers + ['CASH']
         self.fee = 0.0009
-        self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"  
+        self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"
+        self.KIS_TR_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/KIS_TR.json"   
 
     def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
         """월말일 반환"""
@@ -276,17 +274,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'current_prices': current_prices
         }
     
-    def load_USLA_data(self): # make_trading_data함수에 종속되어 USLA data 불러오기
-        """USLA data 불러오기"""   
-        try:
-            with open(self.USLA_data_path, 'r', encoding='utf-8') as f:
-                USLA_data = json.load(f)
-            return USLA_data
-
-        except Exception as e:
-            print(f"JSON 파일 오류: {e}")
-            exit()
-
     def calculate_USD_value(self, hold): # make_trading_data함수에 종속되어 USD 환산 잔고 계산
         """USD 환산 잔고 계산"""
         hold_USD_value = 0
@@ -311,7 +298,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
             for ticker, weight in invest['allocation'].items() 
             if weight > 0
         }
-        return target
+        regime_signal = invest['regime']
+        return target, regime_signal
 
     def calculate_target_qty(self, target, target_usd_value): # make_trading_data함수에 종속되어 target 티커별 목표 quantity 산출
         # 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
@@ -432,14 +420,45 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         return round_split
 
-    def save_kis_tr_json(self, TR_data):
-        """Kis_TR_data를 JSON 파일로 저장"""
-        file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_TR_data.json"
-        
+    def load_USLA_data(self): # make_trading_data함수에 종속되어 USLA data 불러오기
+        """USLA data 불러오기"""   
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(self.USLA_data_path, 'r', encoding='utf-8') as f:
+                USLA_data = json.load(f)
+            return USLA_data
+
+        except Exception as e:
+            print(f"JSON 파일 오류: {e}")
+            exit()
+
+    def load_KIS_TR(self): # Kis_TR data 불러오기
+        """KIS_TR 불러오기"""   
+        try:
+            with open(self.KIS_TR_path, 'r', encoding='utf-8') as f:
+                TR_data = json.load(f)
+            return TR_data
+
+        except Exception as e:
+            print(f"JSON 파일 오류: {e}")
+            exit()
+
+    def save_USLA_data_json(self, USLA_data):
+        """Kis_TR_data를 JSON 파일로 저장"""     
+        try:
+            with open(self.USLA_data_path, 'w', encoding='utf-8') as f:
+                json.dump(USLA_data, f, ensure_ascii=False, indent=4)
+            print(f"\n USLA_data.json 파일 저장 완료")
+            return True
+        except Exception as e:
+            print(f"\n JSON 파일 저장 오류: {e}")
+            return False
+
+    def save_KIS_TR_json(self, TR_data):
+        """Kis_TR_data를 JSON 파일로 저장"""     
+        try:
+            with open(self.KIS_TR_path, 'w', encoding='utf-8') as f:
                 json.dump(TR_data, f, ensure_ascii=False, indent=4)
-            print(f"\n USLA_TR_data.json 파일 저장 완료: {file_path}")
+            print(f"\n Kis_TR.json 파일 저장 완료")
             return True
         except Exception as e:
             print(f"\n JSON 파일 저장 오류: {e}")

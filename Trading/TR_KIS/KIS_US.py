@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import os
 from typing import Union, Optional, Dict, List
 import time
-import pandas as pd
 
 class KIS_API:
     """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
@@ -1483,8 +1482,8 @@ if __name__ == "__main__":
         acnt_prdt_cd="01"
     )
     get_US_stock_balance = api.get_US_stock_balance()
-    get_total_balance = api.get_total_balance()
     get_US_dollar_balance = api.get_US_dollar_balance()
+    get_total_balance = api.get_total_balance()
     print("\n=== 미국주식 주문 체결내역 추적 시스템 ===\n")
     print(get_US_stock_balance)
     print(get_US_dollar_balance)
