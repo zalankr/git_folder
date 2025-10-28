@@ -38,9 +38,9 @@ def check_USAA_rebalancing(current_date):
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
 
-    if str(current_date) in USAA_rebalancing_day["summer_dst"] or str(current_date) in USAA_rebalancing_day["summer_dst"]:
+    if str(current_date) in USAA_rebalancing_day["summer_dst"]:
         return "USAA_summer"
-    elif str(current_date) in USAA_rebalancing_day["winter_standard"] or str(current_date) in USAA_rebalancing_day["winter_standard"]:
+    elif str(current_date) in USAA_rebalancing_day["winter_standard"]:
         return "USAA_winter"
     else:
         return "USAA_not_rebalancing"

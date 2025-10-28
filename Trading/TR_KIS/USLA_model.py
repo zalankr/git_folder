@@ -296,7 +296,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         target = {
             ticker: weight 
             for ticker, weight in invest['allocation'].items() 
-            if weight > 0
+            if weight >= 0.01
         }
         regime_signal = invest['regime']
         return target, regime_signal
@@ -312,7 +312,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     
                     # 타입 체크 추가
                     if isinstance(price, (int, float)) and price > 0:
-                        target_qty[ticker] = int(target_usd_value[ticker] / (price * (1 + self.fee)))                       
+                        target_qty[ticker] = int(target_usd_value[ticker] / (price * (1 + self.fee)))  
                         target_stock_value += target_qty[ticker] * price
                         
                     else:
@@ -531,7 +531,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             avg = amount / qty if qty > 0 else 0
             
             # 종목별 수수료 및 실제 입금액 계산
-            fee = amount * self.SELL_FEE_RATE
+            fee = amount * self.fee
             net = amount - fee
             
             by_ticker[ticker] = {
@@ -578,8 +578,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 'count': 0,
                 'total_quantity': 0,
                 'total_amount': 0.0,
-                'total_fee': 0.0,  # 추가
-                'net_amount': 0.0,  # 추가 (실제 사용 금액)
                 'avg_price': 0.0,
                 'by_ticker': {},
                 'details': []
@@ -589,12 +587,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
         total_quantity = sum(int(r.get('qty', 0)) for r in filled)
         total_amount = sum(float(r.get('amount', 0)) for r in filled)
         
-        # ✅ 매수 수수료 계산
-        total_fee = total_amount * self.tax_rate  # 또는 self.fee
-        
-        # ✅ 실제 사용 금액 (체결금액 + 수수료)
-        net_amount = total_amount + total_fee
-        
+        # 실제 사용 금액 (체결금액 + 수수료)
+        net_amount = total_amount
         avg_price = total_amount / total_quantity if total_quantity > 0 else 0
         
         # 종목별 집계
@@ -622,15 +616,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
             amount = data['amount']
             avg = amount / qty if qty > 0 else 0
             
-            # ✅ 종목별 수수료 및 실제 사용 금액 계산
-            fee = amount * self.tax_rate  # 또는 self.fee
-            net = amount + fee
-            
             by_ticker[ticker] = {
                 'quantity': qty,
                 'amount': amount,  # 체결금액
-                'fee': fee,  # 수수료
-                'net_amount': net,  # 실제 사용 금액
                 'avg_price': avg,
                 'order_count': len(data['orders']),
                 'orders': data['orders']
@@ -640,9 +628,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'success': True,
             'count': len(filled),
             'total_quantity': total_quantity,
-            'total_amount': total_amount,  # 체결금액
-            'total_fee': total_fee,  # 전체 수수료
-            'net_amount': net_amount,  # 실제 사용 금액 ← 이것이 실제 차감된 USD!
+            'total_amount': total_amount,
             'avg_price': avg_price,
             'by_ticker': by_ticker,
             'details': filled

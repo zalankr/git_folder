@@ -79,7 +79,7 @@ class KIS_API:
             expires_in = token_data.get('expires_in', 86400)
             now = datetime.now()
             expiry_time = issued_at + timedelta(seconds=expires_in)
-            safe_expiry_time = expiry_time - timedelta(minutes=800)
+            safe_expiry_time = expiry_time - timedelta(minutes=60)
             
             return now < safe_expiry_time
         except:

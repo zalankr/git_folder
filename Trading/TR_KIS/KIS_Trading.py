@@ -26,6 +26,7 @@ def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
         ticker = real_balance[i]['ticker']
         if real_balance[i]['ticker'] in USLA_ticker:
             Hold[ticker] = real_balance[i]['quantity']
+    Hold['CASH'] = 0 # 기본값 초기값
     return Hold
 
 def make_target_data(Hold, target_weight): # target qty, target usd 만들기 #### target_weight타
@@ -141,8 +142,6 @@ def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보�
         TR_usd = 0
         print(f"매수 가능 USD 부족: ${Hold['CASH']:.2f} (목표: ${target_usd:.2f})")
 
-    Buy_weight = dict() # 금회 티커별 매수거래 비중
-    Buy_usd = dict() # 금회 티커별 매수거래 USD
     Buy_qty = dict() # 금회 티커별 매수거래 수량
 
     if total_Buy_value == 0:
@@ -157,7 +156,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보�
         
         if price > 0:
             # tax_rate 사용 (문서와 일관성 유지)
-            Buy_qty[ticker] = int(Buy_usd // (price * (1 + USLA.tax_rate)))
+            Buy_qty[ticker] = int(Buy_usd // (price * (1 + USLA.fee)))
         else:
             Buy_qty[ticker] = 0
         
@@ -338,7 +337,7 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-mark
     save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
     sys.exit(0)
     
-elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12): # Pre-market Round 2~11
+elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12): # Pre-market Round 2~11회차
     # Pre-market 지난 주문 취소하기
     try:
         cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=False, is_daytime = True)
@@ -361,7 +360,7 @@ elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12
     sell_summary = USLA.calculate_sell_summary(Sell_order)
     Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
     buy_summary = USLA.calculate_buy_summary(Buy_order)
-    Hold_usd -= buy_summary['net_amount']  # 출금 (수수료 포함됨)
+    Hold_usd -= buy_summary['total_amount']  # 출금 (수수료 포함됨)
 
     # 목표 비중 만들기
     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
@@ -401,7 +400,7 @@ elif order_time['market'] == "Regular" and order_time['round'] in range(1, 14): 
     sell_summary = USLA.calculate_sell_summary(Sell_order)
     Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
     buy_summary = USLA.calculate_buy_summary(Buy_order)
-    Hold_usd -= buy_summary['net_amount']  # 출금 (수수료 포함됨)
+    Hold_usd -= buy_summary['total_amount']  # 출금 (수수료 포함됨)
 
     # 목표 비중 만들기
     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
@@ -439,7 +438,7 @@ elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular 
     sell_summary = USLA.calculate_sell_summary(Sell_order)
     Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
     buy_summary = USLA.calculate_buy_summary(Buy_order)
-    Hold_usd -= buy_summary['net_amount']  # 출금 (수수료 포함됨)
+    Hold_usd -= buy_summary['total_amount']  # 출금 (수수료 포함됨)
 
     # USLA_data(월 리벨런싱 데이터)로 json저장
     USLA_data = USLA.load_USLA_data()
