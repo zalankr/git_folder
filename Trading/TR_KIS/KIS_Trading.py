@@ -501,6 +501,7 @@ print(f"KIS USLA balance: {balance} \nUPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TM
 # 1차 오류 테스트 claude로
 # 2차 오류 테스트 로컬PD로 실제 소액 실행
 # 3차 오류 테스트 AWS ec2 실제 서버 오류잡기 & 카톡 메세지 정리 하기 필요한 것만 & crontab 테스트
+# 투자결과는 다른 코드로 현금에 배당 등으로 변화 생긴 경우 변경 시 코드 수정할 부분 알림 메세지도 add_usd = 0,  usd += add_usd
 # 신한>한투 이체 실제 진행 11월 중
 
 # US HAA전략도 합치는 방법 연구 후 테스트 실제화 12월 중
