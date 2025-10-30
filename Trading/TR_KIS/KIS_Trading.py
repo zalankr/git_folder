@@ -151,7 +151,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보�
 
     if total_Buy_value == 0:
         print("매수 가능한 종목이 없습니다.")
-        return Buy_qty
+        return Buy_qty, TR_usd
 
     for ticker in Buy_value.keys():
         Buy_weight = Buy_value[ticker] / total_Buy_value
@@ -464,7 +464,7 @@ elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular 
     TMV = Hold_tickers.get('TMV', 0)
     balance = Hold['stock_eval_usd']+Hold_usd
     USLA_data = {
-        'date': order_time['date'],
+        'date': str(order_time['date']),
         'regime_signal': USLA_data['regime_signal'],
         'target_ticker1': USLA_data['target_ticker1'],
         'target_weight1': USLA_data['target_weight1'],
@@ -496,7 +496,7 @@ elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular 
 
 # 카톡 리밸 종료 결과 보내기 최초 홀딩 잔고 티커2 + 현금 > 최후 잔고티커2 + 현금변화 기록
 print(f"KIS USLA {order_time['date']} \n당월 리벨런싱 완료")
-print(f"KIS USLA regime_signal: {regime_signal} \ntarget1: {target_ticker[0]}, {target_weight[target_ticker[0]]} \ntarget2: {target_ticker[1]}, {target_weight[target_ticker[1]]}")
+print(f"KIS USLA regime_signal: {USLA_data['regime_signal']} \ntarget1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']} \ntarget2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}")
 print(f"KIS USLA balance: {balance} \nUPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}")
 
 
