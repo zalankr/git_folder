@@ -205,35 +205,6 @@ class KIS_API:
         # yfinance 백업
         return self._get_price_from_yfinance(ticker)
 
-
-        """yfinance로 시가 조회"""
-        try:
-            import yfinance as yf
-            
-            stock = yf.Ticker(ticker)
-            
-            # 최근 1일 데이터 조회
-            hist = stock.history(period='1d')
-            
-            if not hist.empty and 'Open' in hist.columns:
-                open_price = float(hist['Open'].iloc[-1])
-                if open_price > 0:
-                    return open_price
-            
-            # 실패시 2일 데이터로 재시도
-            hist = stock.history(period='2d')
-            if not hist.empty and 'Open' in hist.columns:
-                open_price = float(hist['Open'].iloc[-1])
-                if open_price > 0:
-                    return open_price
-            
-            return "yfinance 시가 조회 실패"
-        
-        except ImportError:
-            return "yfinance 미설치 (pip install yfinance)"
-        except Exception as e:
-            return f"yfinance 오류: {str(e)}"
-
     # KIS API로 현재가 조회
     def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
         """KIS API로 현재가 조회 (3단계)"""

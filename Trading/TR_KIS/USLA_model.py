@@ -13,7 +13,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
         super().__init__(key_file_path, token_file_path, cano, acnt_prdt_cd)  # 부모 생성자 호출
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
         self.all_tickers = self.etf_tickers + ['CASH']
-        self.fee = 0.0009
         self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"
         self.KIS_TR_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/KIS_TR.json"   
 
@@ -531,7 +530,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             avg = amount / qty if qty > 0 else 0
             
             # 종목별 수수료 및 실제 입금액 계산
-            fee = amount * self.fee
+            fee = amount * self.SELL_FEE_RATE
             net = amount - fee
             
             by_ticker[ticker] = {
@@ -588,7 +587,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
         total_amount = sum(float(r.get('amount', 0)) for r in filled)
         
         # 실제 사용 금액 (체결금액 + 수수료)
-        net_amount = total_amount
         avg_price = total_amount / total_quantity if total_quantity > 0 else 0
         
         # 종목별 집계

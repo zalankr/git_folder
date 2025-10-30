@@ -86,6 +86,11 @@ def Selling(Sell, sell_split, is_daytime: bool = False):
     for ticker in Sell.keys():
         qty_per_split = int(Sell[ticker] // sell_split[0])
         current_price = USLA.get_US_current_price(ticker)
+
+        # 가격 조회 실패 시 스킵
+        if not isinstance(current_price, (int, float)) or current_price <= 0:
+            print(f"{ticker} 가격 조회 실패 - 매도 주문 스킵")
+            continue        
         
         for i in range(sell_split[0]):
             # 마지막 분할은 남은 수량 전부
@@ -155,8 +160,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보�
         price = ticker_prices[ticker]  # 캐싱된 가격 사용
         
         if price > 0:
-            # tax_rate 사용 (문서와 일관성 유지)
-            Buy_qty[ticker] = int(Buy_usd // (price * (1 + USLA.fee)))
+            Buy_qty[ticker] = int(Buy_usd // (price * 1.001))
         else:
             Buy_qty[ticker] = 0
         
@@ -294,7 +298,7 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-mark
 
     # USLA_data update 1차 당일 리밸런싱 데이터로@update
     USLA_data = {
-        'date': order_time['date'],
+        'date': str(order_time['date']),
         'regime_signal': regime_signal,
         'target_ticker1': target_ticker[0],
         'target_weight1': target_weight[target_ticker[0]],
@@ -358,9 +362,9 @@ elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12
 
     # 매수 매도 체결결과 반영 금액 산출
     sell_summary = USLA.calculate_sell_summary(Sell_order)
-    Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
+    Hold_usd += sell_summary['net_amount']  # 매도: 실제 입금액 (수수료 차감)
     buy_summary = USLA.calculate_buy_summary(Buy_order)
-    Hold_usd -= buy_summary['total_amount']  # 출금 (수수료 포함됨)
+    Hold_usd -= buy_summary['total_amount']  # 매수: 실제 출금액 (체결가에 수수료 포함)
 
     # 목표 비중 만들기
     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
