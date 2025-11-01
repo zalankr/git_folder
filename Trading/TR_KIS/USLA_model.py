@@ -13,8 +13,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
         super().__init__(key_file_path, token_file_path, cano, acnt_prdt_cd)  # 부모 생성자 호출
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
         self.all_tickers = self.etf_tickers + ['CASH']
-        self.USLA_data_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USLA_data.json"
-        self.KIS_TR_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/KIS_TR.json"   
+        self.USLA_data_path = "/var/autobot/TR_KIS/USLA_data.json"
+        self.KIS_TR_path = "/var/autobot/TR_KIS/KIS_TR.json"
 
     def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
         """월말일 반환"""

@@ -3,6 +3,8 @@ import json
 import sys
 import KIS_Calender
 import USLA_model
+from tendo import singleton
+me = singleton.SingleInstance()
 
 """
 crontab 설정
@@ -12,8 +14,8 @@ crontab 설정
 """
 
 # USLA모델 instance 생성
-key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt"
-token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json"
+key_file_path = "/var/autobot/TR_KIS/kis63721147nkr.txt"
+token_file_path = "/var/autobot/TR_KIS/kis63721147_token.json"
 cano = "63721147"  # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 USLA_ticker = ["UPRO", "TQQQ", "EDC", "TMF", "TMV"]
@@ -279,6 +281,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
 order_time = KIS_Calender.check_order_time()
 
 if order_time['season'] == "USAA_not_rebalancing":
+
     print("오늘은 리밸런싱일이 아닙니다. 프로그램을 종료합니다.")
     sys.exit(0)
 

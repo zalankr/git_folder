@@ -1447,8 +1447,8 @@ class KIS_API:
 if __name__ == "__main__":
     # 계좌 정보 설정
     api = KIS_API(
-        key_file_path = "C:/Users/ilpus/Desktop/NKL_invest/kis63721147nkr.txt",
-        token_file_path = "C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/kis63721147_token.json",
+        key_file_path = "/var/autobot/TR_KIS/kis63721147nkr.txt",
+        token_file_path = "/var/autobot/TR_KIS/kis63721147_token.json",
         cano="63721147",
         acnt_prdt_cd="01"
     )
