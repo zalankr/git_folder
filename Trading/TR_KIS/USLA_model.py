@@ -15,6 +15,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.all_tickers = self.etf_tickers + ['CASH']
         self.USLA_data_path = "/var/autobot/TR_KIS/USLA_data.json"
         self.KIS_TR_path = "/var/autobot/TR_KIS/KIS_TR.json"
+        self.fee = self.SELL_FEE_RATE  # 매도 수수료 0.09%
 
     def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
         """월말일 반환"""

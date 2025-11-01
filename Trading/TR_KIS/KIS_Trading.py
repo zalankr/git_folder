@@ -224,7 +224,7 @@ def Buying(Buy_qty, buy_split, TR_usd, is_daytime: bool = False):
             price = round(current_price * buy_split[1][i], 2)
             
             # USD 잔액 체크
-            order_cost = quantity * price * (1 + USLA.fee)
+            order_cost = quantity * price
             if TR_usd < order_cost:
                 print(f"USD 부족 - {ticker} {quantity}주 주문 스킵 (필요: ${order_cost:.2f}, 잔액: ${TR_usd:.2f})")
                 continue
