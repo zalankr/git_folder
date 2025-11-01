@@ -34,6 +34,7 @@ class KIS_API:
         self.cano = cano
         self.acnt_prdt_cd = acnt_prdt_cd
         self.url_base = "https://openapi.koreainvestment.com:9443"
+        self.fee = self.SELL_FEE_RATE  # 매도 수수료 0.09%
         
         self._load_api_keys()
         self.access_token = self.get_access_token()
