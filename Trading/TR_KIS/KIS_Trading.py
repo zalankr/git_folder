@@ -160,7 +160,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보�
         price = ticker_prices[ticker]  # 캐싱된 가격 사용
         
         if price > 0:
-            Buy_qty[ticker] = int(Buy_usd // (price * 1.001))
+            Buy_qty[ticker] = int(Buy_usd / price)
         else:
             Buy_qty[ticker] = 0
         

@@ -311,7 +311,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     
                     # 타입 체크 추가
                     if isinstance(price, (int, float)) and price > 0:
-                        target_qty[ticker] = int(target_usd_value[ticker] / (price * (1 + self.fee)))  
+                        target_qty[ticker] = int(target_usd_value[ticker] / price)  
                         target_stock_value += target_qty[ticker] * price
                         
                     else:

@@ -1,20 +1,10 @@
 from datetime import datetime, timedelta, time as time_obj
 import json
 
-"""
-crontab 설정
-1. 25년~26년 1년치 월 첫 거래일 USAA(USLA+HAA) Rebalancing
-*/5 9-21 1 11 * python3 /TR_KIS/KIS_Trading.py 일반 시간대 UTC 21시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
-*/5 8-20 1 4 * python3 /TR_KIS/KIS_Trading.py 서머타임 시간대 UTC 20시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
-2. 25년~26년 1년치 월 마지막 거래일 USAA(USLA+HAA) 'BIL'매도 후 USD CASH로 전환(이자수익용 BIL)
-30 20 31 10 * python3 /TR_KIS/KIS_Trading.py 일반 시간대 UTC 21시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
-30 19 31 3 * python3 /TR_KIS/KIS_Trading.py 서머타임 시간대 UTC 20시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
-"""
-
 # 현재 일자시간 확인(실제 구문에서는 심플하게, 로컬에서는 utcnow로)
 def get_current():
     '''현재 UTC 날짜와 시간 정보를 딕셔너리로 반환'''
-    current = datetime.utcnow() # now = datetime.now()
+    current = datetime.now()
     current_date = current.date()
     current_time = current.time()
     now = {
@@ -30,8 +20,8 @@ def get_current():
 
 def check_USAA_rebalancing(current_date):
     '''오늘이 USAA 리밸런싱일인지 확인'''
-    USAA_rebalancing_day_path = 'C:/Users/ilpus/Desktop/git_folder/Trading/TR_KIS/USAA_rebalancing_day.json'
-
+    USAA_rebalancing_day_path = '/var/autobot/TR_KIS/USAA_rebalancing_day.json'
+    
     try:
         with open(USAA_rebalancing_day_path, 'r', encoding='utf-8') as f:
             USAA_rebalancing_day = json.load(f)
