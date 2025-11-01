@@ -276,15 +276,50 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
     print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료")
     return TR_data
 
+def health_check():
+    """시스템 상태 확인"""
+    checks = []
+    
+    # 1. API 토큰 유효성
+    if not USLA.access_token:
+        checks.append("❌ API 토큰 없음")
+    
+    # 2. JSON 파일 존재
+    import os
+    files = [
+        "/var/autobot/TR_KIS/USAA_rebalancing_day.json",
+        "/var/autobot/TR_KIS/USLA_data.json",
+        "/var/autobot/TR_KIS/KIS_TR.json"
+    ]
+    for f in files:
+        if not os.path.exists(f):
+            checks.append(f"❌ 파일 없음: {f}")
+    
+    # 3. 네트워크 연결
+    try:
+        import socket
+        socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
+    except:
+        checks.append("❌ KIS API 서버 접속 불가")
+    
+    if checks:
+        print("\n".join(checks))
+        sys.exit(1)
+    
+    print("✅ 헬스체크 통과")
+
+
+
 # 밑에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
 # 별도 일수익변화 체크 코드는 따로 운영
 order_time = KIS_Calender.check_order_time()
 
 if order_time['season'] == "USAA_not_rebalancing":
-
     print("오늘은 리밸런싱일이 아닙니다. 프로그램을 종료합니다.")
     sys.exit(0)
 
+# 메인 로직 시작 전
+health_check()
 print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_time['total_round']}회차")
 print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
