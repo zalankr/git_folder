@@ -5,7 +5,12 @@ import sys
 import KIS_Calender
 import USLA_model
 from tendo import singleton
-me = singleton.SingleInstance()
+
+try:
+    me = singleton.SingleInstance()
+except singleton.SingleInstanceException:
+    KA.SendMessage("USLA: 이미 실행 중입니다.")
+    sys.exit(0)
 
 """
 crontab 설정
@@ -119,7 +124,7 @@ def Selling(Sell, sell_split, is_daytime: bool = False):
             else:
                 pass
             
-            time_module.sleep(0.2)
+            time_module.sleep(0.3)
     
     return Sell_order
 
@@ -240,7 +245,7 @@ def Buying(Buy_qty, buy_split, TR_usd, is_daytime: bool = False):
             else:
                 pass
             
-            time_module.sleep(0.2)
+            time_module.sleep(0.3)
     
     return Buy_order, TR_usd
 
