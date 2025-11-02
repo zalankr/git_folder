@@ -1325,8 +1325,7 @@ class KIS_API:
         success_list = []
         failed_list = []
         
-        for order in enumerate(unfilled_orders, 1):
-        # for i, order in enumerate(unfilled_orders, 1):
+        for i, order in enumerate(unfilled_orders, 1):
             # print(f"\n{'='*60}")
             # print(f"[{i}/{len(unfilled_orders)}] 취소 진행: {order['name']} ({order['ticker']})")
             # print(f"주문번호: {order['order_number']}")
@@ -1411,7 +1410,7 @@ class KIS_API:
         bool: 서머타임이면 True, 아니면 False
         """
         # 현재 UTC 시간 가져오기 (timezone-naive)
-        utc_now = datetime.utcnow()
+        utc_now = datetime.now()
         
         # 미국 동부 시간 계산 (일단 EST 기준 UTC-5로 계산)
         us_eastern_time = utc_now - timedelta(hours=5)

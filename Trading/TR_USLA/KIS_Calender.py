@@ -20,7 +20,7 @@ def get_current():
 
 def check_USLA_rebalancing(current_date):
     '''오늘이 USAA 리밸런싱일인지 확인'''
-    USLA_rebalancing_day_path = '/var/autobot/TR_KIS/USLA_rebalancing_day.json'
+    USLA_rebalancing_day_path = '/var/autobot/TR_USLA/USLA_rebalancing_day.json'
     
     try:
         with open(USLA_rebalancing_day_path, 'r', encoding='utf-8') as f:
