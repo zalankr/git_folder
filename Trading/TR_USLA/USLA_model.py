@@ -289,7 +289,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 price = self.get_US_current_price(ticker=t)
                 # hold[t]를 float로 변환
                 qty = float(hold[t])
-                value = price * qty * (1 - self.fee)
+                value = price * qty  # 시장 평가액 (수수료 제외)
                 hold_USD_value += value
 
         return hold_USD_value
@@ -409,9 +409,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 buy_price_adjust[0] = 1.01
             elif round == 13:
                 sell_splits = 1
-                sell_price_adjust[0] = 0.97
+                sell_price_adjust = [0.97]
                 buy_splits = 1
-                buy_price_adjust = buy_price_adjust[:buy_splits]
                 buy_price_adjust = [1.03]
             
         round_split = {
