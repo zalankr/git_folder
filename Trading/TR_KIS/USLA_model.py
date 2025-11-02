@@ -235,7 +235,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             return None
         
         momentum = momentum_df.head(5)
-        lines = ["모멘텀 순위:"]
+        lines = [f"Regime: {regime:.2f}", "모멘텀 순위:"]
         for i in range(5):
             ticker = momentum.iloc[i]['ticker']
             score = momentum.iloc[i]['momentum']
@@ -243,7 +243,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         KA.SendMessage("\n".join(lines))
             
-        
         # 3. 투자 전략 결정
         if regime < 0: # < 0으로 변경, 테스트 후엔
             KA.SendMessage(f"Regime: {regime:.2f} < 0 → 100% CASH")
@@ -251,7 +250,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             allocation['CASH'] = 1.0
 
         else:
-            KA.SendMessage(f"Regime Signal: {regime:.2f} ≥ 0 → 투자 모드")
+            # KA.SendMessage(f"Regime Signal: {regime:.2f} ≥ 0 → 투자 모드")
             
             # 상위 2개 ETF 선택
             top_2_tickers = momentum_df.head(2)['ticker'].tolist()
@@ -269,7 +268,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         # 4. 결과 출력
         for ticker in self.all_tickers:
             if allocation.get(ticker, 0) > 0:
-                print(f"{ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
+                KA.SendMessage(f"{ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
         
         return {
             'regime': regime,
