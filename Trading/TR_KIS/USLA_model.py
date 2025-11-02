@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import riskfolio as rp
+import kakao_alert as KA
 import KIS_US
 import json
 from datetime import date
@@ -45,7 +46,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                                  interval='1mo', progress=False, multi_level_index=False)['Close']
             
             if len(agg_data) < 4:
-                print("경고: AGG 데이터가 충분하지 않습니다.")
+                KA.SendMessage("USAA 경고: AGG 데이터가 충분하지 않습니다.")
                 return 0
                 
             current_price = agg_data.iloc[-1]  # 최신 가격
@@ -56,7 +57,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             return regime
             
         except Exception as e:
-            print(f"Regime 계산 오류: {e}")
+            KA.SendMessage(f"USAA Regime 계산 오류: {e}")
             return 0
     
     def calculate_momentum(self, target_month, target_year): # run_strategy함수에 종속되어 모멘텀점수 계산
@@ -75,7 +76,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                                    interval='1mo', progress=False, multi_level_index=False)['Close']
             
             if len(price_data) < 13:
-                print("경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
+                KA.SendMessage("USAA 경고: LA모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
                 return pd.DataFrame()
                 
             momentum_scores = []
@@ -110,7 +111,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     })
                     
                 except Exception as e:
-                    print(f"{ticker} 모멘텀 계산 오류: {e}")
+                    KA.SendMessage(f"USAA LA {ticker} 모멘텀 계산 오류: {e}")
                     continue
             
             if not momentum_scores:
@@ -123,7 +124,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             return momentum_df
             
         except Exception as e:
-            print(f"모멘텀 점수 계산 오류: {e}")
+            KA.SendMessage(f"USAA LA모멘텀 점수 계산 오류: {e}")
             return pd.DataFrame()
     
     def calculate_portfolio_weights(self, top_tickers): # run_strategy함수에 종속되어 최소분산 포트폴리오 가중치 계산
@@ -222,8 +223,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
             today = date.today()
             target_month = today.month
             target_year = today.year
-            
-        print(f"\n=== {target_year}년 {target_month}월 USLA 모멘텀 시그널 ===") # Kakao
         
         # 1. Regime Signal 계산
         regime = self.calculate_regime(target_month, target_year)
@@ -232,21 +231,27 @@ class USLA_Model(KIS_US.KIS_API): #상속
         momentum_df = self.calculate_momentum(target_month, target_year)
         
         if momentum_df.empty:
-            print("모멘텀 데이터를 계산할 수 없습니다.")
+            KA.SendMessage("USAA 경고: LA모멘텀 데이터가 비어 계산할 수 없습니다.")
             return None
+        
+        momentum = momentum_df.head(5)
+        lines = ["모멘텀 순위:"]
+        for i in range(5):
+            ticker = momentum.iloc[i]['ticker']
+            score = momentum.iloc[i]['momentum']
+            lines.append(f"{i+1}위: {ticker} ({score:.4f})")
+
+        KA.SendMessage("\n".join(lines))
             
-        print("\n모멘텀 순위:")
-        print(momentum_df[['ticker', 'momentum', 'rank']].round(4))
         
         # 3. 투자 전략 결정
         if regime < 0: # < 0으로 변경, 테스트 후엔
-            print(f"\nRegime Signal: {regime:.2f} < 0 → RISK 모드")
-            print("투자 결정: 100% CASH")
+            KA.SendMessage(f"Regime: {regime:.2f} < 0 → 100% CASH")
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
             allocation['CASH'] = 1.0
 
         else:
-            print(f"\nRegime Signal: {regime:.2f} ≥ 0 → 투자 모드")
+            KA.SendMessage(f"Regime Signal: {regime:.2f} ≥ 0 → 투자 모드")
             
             # 상위 2개 ETF 선택
             top_2_tickers = momentum_df.head(2)['ticker'].tolist()
@@ -261,8 +266,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         # 4. 현재 가격 조회
         current_prices = self.get_USLA_current_prices()
         
-        # 5. 결과 출력
-        print("\n최종 배분:")
+        # 4. 결과 출력
         for ticker in self.all_tickers:
             if allocation.get(ticker, 0) > 0:
                 print(f"{ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
@@ -316,11 +320,11 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         target_stock_value += target_qty[ticker] * price
                         
                     else:
-                        print(f"{ticker}: 가격 정보 없음 (price={price})")
+                        KA.SendMessage(f"{ticker}: 가격 정보 없음 (price={price})")
                         target_qty[ticker] = 0
                         
                 except Exception as e:
-                    print(f"{ticker}: 수량 계산 오류 - {e}")
+                    KA.SendMessage(f"{ticker}: 수량 계산 오류 - {e}")
                     target_qty[ticker] = 0
 
         # 남은 현금 = 전체 USD - 주식 매수 예정 금액
@@ -428,7 +432,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             return USLA_data
 
         except Exception as e:
-            print(f"JSON 파일 오류: {e}")
+            KA.SendMessage(f"JSON 파일 오류: {e}")
             exit()
 
     def load_KIS_TR(self): # Kis_TR data 불러오기

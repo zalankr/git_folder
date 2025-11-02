@@ -1,6 +1,7 @@
 import requests
 import json
 from datetime import datetime, timedelta
+import kakao_alert as KA
 import os
 from typing import Union, Optional, Dict, List
 import time
@@ -51,7 +52,7 @@ class KIS_API:
                     return json.load(f)
             return None
         except Exception as e:
-            print(f"토큰 로드 오류: {e}")
+            KA.SendMessage(f"토큰 로드 오류: {e}")
             return None
     
     # 토큰 저장
@@ -66,7 +67,7 @@ class KIS_API:
                 json.dump(token_data, f, indent=2)
             return True
         except Exception as e:
-            print(f"토큰 저장 오류: {e}")
+            KA.SendMessage(f"토큰 저장 오류: {e}")
             return False
     
     # 토큰 유효성 확인
@@ -108,7 +109,7 @@ class KIS_API:
             self.save_token(access_token, expires_in)
             return access_token
         except Exception as e:
-            print(f"토큰 발급 실패: {e}")
+            KA.SendMessage(f"토큰 발급 실패: {e}")
             return None
 
     # 토큰 접속
@@ -643,11 +644,11 @@ class KIS_API:
             exchange = self.get_US_exchange(ticker)
         
         if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         if exchange not in ["NAS", "NYS", "AMS"]:
-            print(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
+            KA.SendMessage(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -784,7 +785,7 @@ class KIS_API:
             return stocks
             
         except Exception as e:
-            print(f"잔고 조회 오류: {e}")
+            KA.Sen(f"잔고 조회 오류: {e}")
             import traceback
             traceback.print_exc()
             return None

@@ -34,8 +34,7 @@ def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
 
 def make_target_data(Hold, target_weight): # target qty, target usd 만들기 #### target_weight타
     # 현재 USD환산 USLA 잔고
-    hold_usd_value = USLA.calculate_USD_value(Hold) # 반환X
-    print(hold_usd_value)
+    hold_usd_value = USLA.calculate_USD_value(Hold) # USD 환산 잔고
     # USLA USD 잔고 X 티커별 비중 = target qty
     target_usd_value = {ticker: target_weight[ticker] * hold_usd_value for ticker in target_weight.keys()} # target_ticker별 USD 배정 dict, 반환X
     target_qty = USLA.calculate_target_qty(target_weight, target_usd_value) # target_ticker별 quantity 반환O
@@ -82,7 +81,7 @@ def Selling(Sell, sell_split, is_daytime: bool = False):
     
     # 매도할 종목이 없으면 빈 리스트 반환
     if len(Sell.keys()) == 0:
-        print("매도할 종목이 없습니다.")
+        # print("매도할 종목이 없습니다.") 
         return Sell_order
     
     # 매도 주문 실행
@@ -92,7 +91,7 @@ def Selling(Sell, sell_split, is_daytime: bool = False):
 
         # 가격 조회 실패 시 스킵
         if not isinstance(current_price, (int, float)) or current_price <= 0:
-            print(f"{ticker} 가격 조회 실패 - 매도 주문 스킵")
+            KA.SendMessage(f"{ticker} 가격 조회 실패 - 매도 주문 스킵")
             continue        
         
         for i in range(sell_split[0]):
@@ -254,8 +253,8 @@ def round_TR_data(Hold_usd, target_weight): # 이번 라운드 실제 잔고 dic
     # 목표 수량, 달러화 산출 후 현재 잔고와 비교 조정한 매수 매도 수량 있는 Buy와 Sell dict 만들기
     target_qty, target_usd = make_target_data(Hold, target_weight)
     Buy, Sell = make_Buy_Sell(target_weight, target_qty, Hold)
-    print(f"Buy: {Buy}")
-    print(f"Sell: {Sell}")
+    KA.SendMessage(f"USLA 매매목표 수량 \nBuy: {Buy} \nSell: {Sell}")
+
     # order splits 데이터 산출
     round_split =USLA.make_split_data(order_time['market'], order_time['round'])
     sell_split = [round_split['sell_splits'], round_split['sell_price_adjust']]
@@ -283,7 +282,7 @@ def health_check():
     
     # 1. API 토큰 유효성
     if not USLA.access_token:
-        checks.append("❌ API 토큰 없음")
+        checks.append("USAA 체크: API 토큰 없음")
     
     # 2. JSON 파일 존재
     import os
@@ -294,33 +293,31 @@ def health_check():
     ]
     for f in files:
         if not os.path.exists(f):
-            checks.append(f"❌ 파일 없음: {f}")
+            checks.append(f"USAA 체크: json 파일 없음: {f}")
     
     # 3. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("❌ KIS API 서버 접속 불가")
+        checks.append("USAA 체크: KIS API 서버 접속 불가")
     
     if checks:
-        print("\n".join(checks))
+        KA.SendMessage("\n".join(checks))
         sys.exit(1)
     
-    print("✅ 헬스체크 통과")
+    # KA.SendMessage("USAA 체크: 이상없슴")
 
 # 확인
 order_time = KIS_Calender.check_order_time()
 
 if order_time['season'] == "USAA_not_rebalancing":
-    KA.SendMessage(f"KIS USAA 리밸런싱일이 아닙니다. {order_time['date']}가 USAA_rebalancing_day.json에 없습니다.")
-    print("오늘은 리밸런싱일이 아닙니다. 프로그램을 종료합니다.")
+    KA.SendMessage(f"USAA 리밸런싱일이 아닙니다. \n{order_time['date']}가 USAA_rebalancing_day.json에 없습니다.")
     sys.exit(0)
 
 # 메인 로직 시작 전 시스템 상태 확인
 health_check()
-print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_time['total_round']}회차")
-print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래시작")
+KA.SendMessage(f"USAA {order_time['date']}, 리밸런싱 {order_time['market']} \n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-market round 1회에만 Trading qty를 구하기
     # 목표 데이터 만들기
@@ -329,7 +326,6 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-mark
     Hold_usd = USLA_data['CASH']
     target_ticker = list(target_weight.keys())
     is_daytime = True
-    print(target_weight)
 
     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
 
@@ -367,8 +363,7 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-mark
     USLA.save_USLA_data_json(USLA_data)
 
     # Sell Pre market 주문, Sell주문데이터
-    Sell_order = Selling(Sell, sell_split, is_daytime)
-
+    Sell_order = Selling(Sell, sell_split, is_daytime) ############# 카톡주문 체크 ############
     # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
     # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
