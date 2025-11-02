@@ -4,6 +4,7 @@ import riskfolio as rp
 import kakao_alert as KA
 import KIS_US
 import json
+import sys
 from datetime import date
 import calendar
 import warnings
@@ -432,7 +433,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         except Exception as e:
             KA.SendMessage(f"USLA_data JSON 파일 오류: {e}")
-            exit()
+            sys.exit(0)
 
     def load_USLA_TR(self): # Kis_TR data 불러오기
         """SLA_TR 불러오기"""   

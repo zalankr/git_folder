@@ -2,6 +2,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 import kakao_alert as KA
+import sys
 import os
 from typing import Union, Optional, Dict, List
 import time
@@ -110,7 +111,8 @@ class KIS_API:
             return access_token
         except Exception as e:
             KA.SendMessage(f"KIS 토큰 발급 실패: {e}")
-            return None
+            sys.exit(0)
+            # return None
 
     # 토큰 접속
     def get_access_token(self) -> Optional[str]:
