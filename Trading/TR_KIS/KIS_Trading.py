@@ -1,4 +1,5 @@
 import time as time_module  # time 모듈을 별칭으로 import
+import kakao_alert as KA
 import json
 import sys
 import KIS_Calender
@@ -308,17 +309,15 @@ def health_check():
     
     print("✅ 헬스체크 통과")
 
-
-
-# 밑에 부분 테스트용, 정식버전은 KIS_Calender해당 메써드의 current_date, current_time 수정
-# 별도 일수익변화 체크 코드는 따로 운영
+# 확인
 order_time = KIS_Calender.check_order_time()
 
 if order_time['season'] == "USAA_not_rebalancing":
+    KA.SendMessage(f"KIS USAA 리밸런싱일이 아닙니다. {order_time['date']}가 USAA_rebalancing_day.json에 없습니다.")
     print("오늘은 리밸런싱일이 아닙니다. 프로그램을 종료합니다.")
     sys.exit(0)
 
-# 메인 로직 시작 전
+# 메인 로직 시작 전 시스템 상태 확인
 health_check()
 print(f"USLA {order_time['market']} 리밸런싱 {order_time['round']}/{order_time['total_round']}회차")
 print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래시작")
@@ -540,10 +539,10 @@ print(f"KIS USLA balance: {balance} \nUPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TM
 
 
 # 투자결과는 다른 코드로 현금에 배당 등으로 변화 생긴 경우 변경 시 코드 수정할 부분 알림 메세지도 add_usd = 0,  usd += add_usd
-# 1차 오류 테스트 claude로
-# 2차 오류 테스트 로컬PD로 실제 소액 실행
-# 3차 오류 테스트 AWS ec2 실제 서버 오류잡기 & 카톡 메세지 정리 하기 필요한 것만 & crontab 테스트
+# 카톡 메세지 정리 하기
+# 3차 오류 테스트 AWS ec2 실제 서버 오류잡기 &  필요한 것만 & crontab 테스트
 # 투자결과는 다른 코드로 현금에 배당 등으로 변화 생긴 경우 변경 시 코드 수정할 부분 알림 메세지도 add_usd = 0,  usd += add_usd
+# 실제 투자겱과는 daily spreas sheet로 기록
 # 신한>한투 이체 실제 진행 11월 중
 
 # US HAA전략도 합치는 방법 연구 후 테스트 실제화 12월 중
