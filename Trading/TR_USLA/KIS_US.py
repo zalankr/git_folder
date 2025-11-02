@@ -52,7 +52,7 @@ class KIS_API:
                     return json.load(f)
             return None
         except Exception as e:
-            KA.SendMessage(f"토큰 로드 오류: {e}")
+            KA.SendMessage(f"KIS 토큰 로드 오류: {e}")
             return None
     
     # 토큰 저장
@@ -67,7 +67,7 @@ class KIS_API:
                 json.dump(token_data, f, indent=2)
             return True
         except Exception as e:
-            KA.SendMessage(f"토큰 저장 오류: {e}")
+            KA.SendMessage(f"KIS 토큰 저장 오류: {e}")
             return False
     
     # 토큰 유효성 확인
@@ -109,7 +109,7 @@ class KIS_API:
             self.save_token(access_token, expires_in)
             return access_token
         except Exception as e:
-            KA.SendMessage(f"토큰 발급 실패: {e}")
+            KA.SendMessage(f"KIS 토큰 발급 실패: {e}")
             return None
 
     # 토큰 접속
@@ -350,7 +350,7 @@ class KIS_API:
             exchange = self.get_US_exchange(ticker)
         
         if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -405,12 +405,11 @@ class KIS_API:
                     'response': response
                 }
                 
-                print(f" 매도 주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
-                print(f" 주문번호: {order_info['order_number']}")
+                KA.SendMessage(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 
                 return order_info
             else:
-                print(f" 매도 주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                KA.SendMessage(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -423,7 +422,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            print(f" 매도 주문 오류: {e}")
+            KA.SendMessage(f"정규매도 주문 오류: {e}")
             return None
 
     # 미국 정규시장 주식 매수 주문
@@ -446,7 +445,7 @@ class KIS_API:
             exchange = self.get_US_exchange(ticker)
         
         if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -500,12 +499,10 @@ class KIS_API:
                     'response': response
                 }
                 
-                print(f" 매수 주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
-                print(f" 주문번호: {order_info['order_number']}")
-                
+                KA.SendMessage(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 return order_info
             else:
-                print(f" 매수 주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                KA.SendMessage(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -518,7 +515,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            print(f" 매수 주문 오류: {e}")
+            KA.SendMessage(f"정규매수 주문 오류: {e}")
             return None
     
     # 미국 주간거래 매수 주문 (Pre-market/After-hours)
@@ -543,11 +540,11 @@ class KIS_API:
             exchange = self.get_US_exchange(ticker)
         
         if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         if exchange not in ["NAS", "NYS", "AMS"]:
-            print(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
+            KA.SendMessage(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -601,12 +598,10 @@ class KIS_API:
                     'response': response
                 }
                 
-                print(f"주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
-                print(f"주문번호: {order_info['order_number']}")
-                
+                KA.SendMessage(f"주간매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 return order_info
             else:
-                print(f"주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                KA.SendMessage(f"주간매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -619,7 +614,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            print(f"주문 오류: {e}")
+            KA.SendMessage(f"주간매수 주문 오류: {e}")
             return None
 
     # 미국 주간거래 매도 주문 (Pre-market/After-hours)
@@ -702,12 +697,10 @@ class KIS_API:
                     'response': response
                 }
                 
-                print(f"주문 성공: {ticker} {quantity}주 @ ${price:.2f}")
-                print(f"주문번호: {order_info['order_number']}")
-                
+                KA.SendMessage(f"주간매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 return order_info
             else:
-                print(f"주문 실패: {result.get('msg1', '알 수 없는 오류')}")
+                KA.SendMessage(f"주간매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -720,7 +713,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            print(f"주문 오류: {e}")
+            KA.SendMessage(f"주간매도 주문오류: {e}")
             return None
 
     # 미국 주식 종목별 잔고
@@ -1307,11 +1300,10 @@ class KIS_API:
         }
         """
         # 1. 미체결 주문 조회
-        print("\n=== 미체결 주문 조회 중... ===")
         unfilled_orders = self.get_unfilled_orders(start_date, end_date)
         
         if not unfilled_orders:
-            print("미체결 주문이 없습니다.")
+            # print("미체결 주문이 없습니다.")
             return {
                 'total': 0,
                 'success': 0,
@@ -1320,28 +1312,29 @@ class KIS_API:
                 'failed_list': []
             }
         
-        print(f"미체결 주문 {len(unfilled_orders)}건 발견")
+        # print(f"미체결 주문 {len(unfilled_orders)}건 발견")
         
         # 모드 출력
-        if auto_retry:
-            print("자동 재시도 모드: 정규장 → 주간거래 TR_ID 순차 시도")
-        else:
-            market_type = "주간거래 (Pre-market/After-hours)" if is_daytime else "정규장 (Regular Market)"
-            print(f"수동 모드: {market_type} TR_ID만 사용")
+        # if auto_retry:
+        #     print("자동 재시도 모드: 정규장 → 주간거래 TR_ID 순차 시도")
+        # else:
+        #     market_type = "주간거래 (Pre-market/After-hours)" if is_daytime else "정규장 (Regular Market)"
+        #     print(f"수동 모드: {market_type} TR_ID만 사용")
         
         # 2. 각 주문 취소
         success_list = []
         failed_list = []
         
-        for i, order in enumerate(unfilled_orders, 1):
-            print(f"\n{'='*60}")
-            print(f"[{i}/{len(unfilled_orders)}] 취소 진행: {order['name']} ({order['ticker']})")
-            print(f"주문번호: {order['order_number']}")
-            print(f"미체결 수량: {order['unfilled_qty']}주")
-            print(f"{'='*60}")
+        for order in enumerate(unfilled_orders, 1):
+        # for i, order in enumerate(unfilled_orders, 1):
+            # print(f"\n{'='*60}")
+            # print(f"[{i}/{len(unfilled_orders)}] 취소 진행: {order['name']} ({order['ticker']})")
+            # print(f"주문번호: {order['order_number']}")
+            # print(f"미체결 수량: {order['unfilled_qty']}주")
+            # print(f"{'='*60}")
             
             if auto_retry:
-                # ✅ 자동 재시도 방식
+                # 자동 재시도 방식
                 result = self.cancel_US_order_auto(
                     order_number=order['order_number'],
                     ticker=order['ticker'],
@@ -1349,7 +1342,7 @@ class KIS_API:
                     exchange=order['exchange']
                 )
             else:
-                # ✅ 수동 지정 방식 (is_daytime 파라미터 사용)
+                # 수동 지정 방식 (is_daytime 파라미터 사용)
                 result = self.cancel_US_order(
                     order_number=order['order_number'],
                     ticker=order['ticker'],
@@ -1388,24 +1381,20 @@ class KIS_API:
         }
         
         # 4. 결과 출력
-        print("\n" + "="*60)
-        print("미체결 주문 취소 최종 결과")
-        print("="*60)
-        print(f"전체 미체결: {summary['total']}건")
-        print(f"취소 성공: {summary['success']}건")
-        print(f"취소 실패: {summary['failed']}건")
+        KA.SendMessage(f"전체 미체결: {summary['total']}건 \n취소 성공: {summary['success']}건 \n취소 실패: {summary['failed']}건")
+
         
-        if success_list:
-            print(f"\n취소 성공 목록:")
-            for item in success_list:
-                print(f"  - {item['name']} ({item['ticker']}): {item['unfilled_qty']}주")
+        # if success_list:
+        #     print(f"\n취소 성공 목록:")
+        #     for item in success_list:
+        #         print(f"  - {item['name']} ({item['ticker']}): {item['unfilled_qty']}주")
         
-        if failed_list:
-            print(f"\n취소 실패 목록:")
-            for item in failed_list:
-                print(f"  - {item['name']} ({item['ticker']}): {item['error']}")
+        # if failed_list:
+        #     print(f"\n취소 실패 목록:")
+        #     for item in failed_list:
+        #         print(f"  - {item['name']} ({item['ticker']}): {item['error']}")
         
-        print("="*60)
+        # print("="*60)
         
         return summary
 

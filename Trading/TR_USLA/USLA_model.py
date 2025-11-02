@@ -14,8 +14,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
         super().__init__(key_file_path, token_file_path, cano, acnt_prdt_cd)  # 부모 생성자 호출
         self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
         self.all_tickers = self.etf_tickers + ['CASH']
-        self.USLA_data_path = "/var/autobot/TR_KIS/USLA_data.json"
-        self.KIS_TR_path = "/var/autobot/TR_KIS/KIS_TR.json"
+        self.USLA_data_path = "/var/autobot/TR_USLA/USLA_data.json"
+        self.USLA_TR_path = "/var/autobot/TR_USLA/USLA_TR.json"
         self.fee = self.SELL_FEE_RATE  # 매도 수수료 0.09%
 
     def get_month_end_date(self, year, month): # run_strategy함수에 종속되어 월말일 계산
@@ -46,7 +46,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                                  interval='1mo', progress=False, multi_level_index=False)['Close']
             
             if len(agg_data) < 4:
-                KA.SendMessage("USAA 경고: AGG 데이터가 충분하지 않습니다.")
+                KA.SendMessage("USLA 경고: AGG 데이터가 충분하지 않습니다.")
                 return 0
                 
             current_price = agg_data.iloc[-1]  # 최신 가격
@@ -57,7 +57,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             return regime
             
         except Exception as e:
-            KA.SendMessage(f"USAA Regime 계산 오류: {e}")
+            KA.SendMessage(f"USLA Regime 계산 오류: {e}")
             return 0
     
     def calculate_momentum(self, target_month, target_year): # run_strategy함수에 종속되어 모멘텀점수 계산
@@ -76,7 +76,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                                    interval='1mo', progress=False, multi_level_index=False)['Close']
             
             if len(price_data) < 13:
-                KA.SendMessage("USAA 경고: LA모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
+                KA.SendMessage("USLA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
                 return pd.DataFrame()
                 
             momentum_scores = []
@@ -111,7 +111,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     })
                     
                 except Exception as e:
-                    KA.SendMessage(f"USAA LA {ticker} 모멘텀 계산 오류: {e}")
+                    KA.SendMessage(f"USLA {ticker} 모멘텀 계산 오류: {e}")
                     continue
             
             if not momentum_scores:
@@ -124,7 +124,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             return momentum_df
             
         except Exception as e:
-            KA.SendMessage(f"USAA LA모멘텀 점수 계산 오류: {e}")
+            KA.SendMessage(f"USLA 모멘텀 점수 계산 오류: {e}")
             return pd.DataFrame()
     
     def calculate_portfolio_weights(self, top_tickers): # run_strategy함수에 종속되어 최소분산 포트폴리오 가중치 계산
@@ -189,7 +189,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 weights = port.optimization(model=model, rm=rm, obj=obj, rf=rf, l=l, hist=hist)
                 
                 if weights is None or weights.empty:
-                    print("최적화 실패: 동일가중으로 설정")
+                    KA.SendMessage(f"USLA 최적화 실패: 동일가중으로 설정")
                     return {ticker: 1.0/len(top_tickers) for ticker in top_tickers}
                 
                 weight_dict = {}
@@ -199,7 +199,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 return weight_dict
                 
             except Exception as e:
-                print(f"포트폴리오 최적화 오류: {e}")
+                KA.SendMessage(f"USLA 포트폴리오 최적화 오류: {e}")
                 # 동일가중으로 폴백
                 equal_weight = 0.99 / len(top_tickers)
                 return {ticker: equal_weight for ticker in top_tickers}
@@ -231,11 +231,11 @@ class USLA_Model(KIS_US.KIS_API): #상속
         momentum_df = self.calculate_momentum(target_month, target_year)
         
         if momentum_df.empty:
-            KA.SendMessage("USAA 경고: LA모멘텀 데이터가 비어 계산할 수 없습니다.")
+            KA.SendMessage("USLA 경고: LA모멘텀 데이터가 비어 계산할 수 없습니다.")
             return None
         
         momentum = momentum_df.head(5)
-        lines = [f"Regime: {regime:.2f}", "모멘텀 순위:"]
+        lines = [f"USLA Regime: {regime:.2f}", "모멘텀 순위:"]
         for i in range(5):
             ticker = momentum.iloc[i]['ticker']
             score = momentum.iloc[i]['momentum']
@@ -245,7 +245,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             
         # 3. 투자 전략 결정
         if regime < 0: # < 0으로 변경, 테스트 후엔
-            KA.SendMessage(f"Regime: {regime:.2f} < 0 → 100% CASH")
+            KA.SendMessage(f"USLA Regime: {regime:.2f} < 0 → 100% CASH")
             allocation = {ticker: 0.0 for ticker in self.etf_tickers}
             allocation['CASH'] = 1.0
 
@@ -268,7 +268,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         # 4. 결과 출력
         for ticker in self.all_tickers:
             if allocation.get(ticker, 0) > 0:
-                KA.SendMessage(f"{ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
+                KA.SendMessage(f"USLA {ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
         
         return {
             'regime': regime,
@@ -431,18 +431,18 @@ class USLA_Model(KIS_US.KIS_API): #상속
             return USLA_data
 
         except Exception as e:
-            KA.SendMessage(f"JSON 파일 오류: {e}")
+            KA.SendMessage(f"USLA_data JSON 파일 오류: {e}")
             exit()
 
-    def load_KIS_TR(self): # Kis_TR data 불러오기
-        """KIS_TR 불러오기"""   
+    def load_USLA_TR(self): # Kis_TR data 불러오기
+        """SLA_TR 불러오기"""   
         try:
-            with open(self.KIS_TR_path, 'r', encoding='utf-8') as f:
+            with open(self.USLA_TR_path, 'r', encoding='utf-8') as f:
                 TR_data = json.load(f)
             return TR_data
 
         except Exception as e:
-            print(f"JSON 파일 오류: {e}")
+            KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
             exit()
 
     def save_USLA_data_json(self, USLA_data):
@@ -450,21 +450,19 @@ class USLA_Model(KIS_US.KIS_API): #상속
         try:
             with open(self.USLA_data_path, 'w', encoding='utf-8') as f:
                 json.dump(USLA_data, f, ensure_ascii=False, indent=4)
-            print(f"\n USLA_data.json 파일 저장 완료")
             return True
         except Exception as e:
-            print(f"\n JSON 파일 저장 오류: {e}")
+            KA.SendMessage(f"\n USLA_data JSON 파일 저장 오류: {e}")
             return False
 
-    def save_KIS_TR_json(self, TR_data):
-        """Kis_TR_data를 JSON 파일로 저장"""     
+    def save_USLA_TR_json(self, TR_data):
+        """USLA_TR_data를 JSON 파일로 저장"""     
         try:
-            with open(self.KIS_TR_path, 'w', encoding='utf-8') as f:
+            with open(self.USLA_TR_path, 'w', encoding='utf-8') as f:
                 json.dump(TR_data, f, ensure_ascii=False, indent=4)
-            print(f"\n Kis_TR.json 파일 저장 완료")
             return True
         except Exception as e:
-            print(f"\n JSON 파일 저장 오류: {e}")
+            KA.SendMessage(f"\n USLA_TR JSON 파일 저장 오류: {e}")
             return False
         
     def calculate_sell_summary(self, Sell_order):

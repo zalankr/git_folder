@@ -15,8 +15,8 @@ crontab 설정
 """
 
 # USLA모델 instance 생성
-key_file_path = "/var/autobot/TR_KIS/kis63721147nkr.txt"
-token_file_path = "/var/autobot/TR_KIS/kis63721147_token.json"
+key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt"
+token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json"
 cano = "63721147"  # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 USLA_ticker = ["UPRO", "TQQQ", "EDC", "TMF", "TMV"]
@@ -81,7 +81,7 @@ def Selling(Sell, sell_split, is_daytime: bool = False):
     
     # 매도할 종목이 없으면 빈 리스트 반환
     if len(Sell.keys()) == 0:
-        # print("매도할 종목이 없습니다.") 
+        KA.SendMessage("매도할 종목이 없습니다.") 
         return Sell_order
     
     # 매도 주문 실행
@@ -91,7 +91,7 @@ def Selling(Sell, sell_split, is_daytime: bool = False):
 
         # 가격 조회 실패 시 스킵
         if not isinstance(current_price, (int, float)) or current_price <= 0:
-            KA.SendMessage(f"{ticker} 가격 조회 실패 - 매도 주문 스킵")
+            KA.SendMessage(f"USLA {ticker} 가격 조회 실패 - 매도 주문 스킵")
             continue        
         
         for i in range(sell_split[0]):
@@ -116,9 +116,8 @@ def Selling(Sell, sell_split, is_daytime: bool = False):
             
             if result:
                 Sell_order.append(result)
-                print(f"{i+1}회차 분할 매도: {ticker} {quantity}주 @ ${price}")
             else:
-                print(f"{i+1}회차 분할 매도 실패: {ticker} {quantity}주 @ ${price}")
+                pass
             
             time_module.sleep(0.2)
     
@@ -138,7 +137,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보�
             Buy_value[ticker] = Buy[ticker] * price
             total_Buy_value += Buy_value[ticker]
         else:
-            print(f"{ticker} 가격 조회 실패")
+            # KA.SendMessage(f"{ticker} 가격 조회 실패")
             Buy_value[ticker] = 0
             ticker_prices[ticker] = 0
 
@@ -147,12 +146,12 @@ def calculate_Buy_qty(Buy, Hold, target_usd): # USD현재보유량과 목표보�
     TR_usd = Hold['CASH'] - target_usd # USD현재보유량에서 목표보유량을 뺀 매수 가능 USD 산출
     if TR_usd < 0: # 거래 가능 usd가 음수인경우 0으로 변환
         TR_usd = 0
-        print(f"매수 가능 USD 부족: ${Hold['CASH']:.2f} (목표: ${target_usd:.2f})")
+        # KA.SendMessage(f"매수 가능 USD 부족: ${Hold['CASH']:.2f} (목표: ${target_usd:.2f})")
 
     Buy_qty = dict() # 금회 티커별 매수거래 수량
 
     if total_Buy_value == 0:
-        print("매수 가능한 종목이 없습니다.")
+        # KA.SendMessage("매수 가능한 종목이 없습니다.")
         return Buy_qty, TR_usd
 
     for ticker in Buy_value.keys():
@@ -189,11 +188,11 @@ def Buying(Buy_qty, buy_split, TR_usd, is_daytime: bool = False):
     # 매수 가능 USD 계산
     if TR_usd < 0:
         TR_usd = 0
-        print("매수 가능 USD 부족")
+        # print("매수 가능 USD 부족")
     
     # 매수할 종목이 없으면 조기 반환
     if len(Buy_qty.keys()) == 0:
-        print("매수할 종목이 없습니다.")
+        KA.SendMessage("매수할 종목이 없습니다.")
         return Buy_order, TR_usd
     
     # 매수 주문 실행
@@ -207,7 +206,7 @@ def Buying(Buy_qty, buy_split, TR_usd, is_daytime: bool = False):
         
         # 가격 조회 실패 시 스킵
         if not isinstance(current_price, (int, float)) or current_price <= 0:
-            print(f"{ticker} 가격 조회 실패 - 주문 스킵")
+            KA.SendMessage(f"{ticker} 가격 조회 실패 - 주문 스킵")
             continue
         
         for i in range(buy_split[0]):
@@ -226,7 +225,7 @@ def Buying(Buy_qty, buy_split, TR_usd, is_daytime: bool = False):
             # USD 잔액 체크
             order_cost = quantity * price
             if TR_usd < order_cost:
-                print(f"USD 부족 - {ticker} {quantity}주 주문 스킵 (필요: ${order_cost:.2f}, 잔액: ${TR_usd:.2f})")
+                KA.SendMessage(f"USD 부족 - {ticker} {quantity}주 주문 스킵 (필요: ${order_cost:.2f}, 잔액: ${TR_usd:.2f})")
                 continue
             
             # 시장 시간대에 따라 주문
@@ -238,9 +237,8 @@ def Buying(Buy_qty, buy_split, TR_usd, is_daytime: bool = False):
             if result:
                 Buy_order.append(result)
                 TR_usd -= order_cost
-                print(f"{i+1}회차 분할 매수: {ticker} {quantity}주 @ ${price:.2f} (잔액: ${TR_usd:.2f})")
             else:
-                print(f"{i+1}회차 분할 매수 실패: {ticker} {quantity}주 @ ${price:.2f}")
+                pass
             
             time_module.sleep(0.2)
     
@@ -272,7 +270,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
         'CASH': Hold['CASH'], # 체결 전 포함 모든 usd
         'TR_usd': TR_usd # 모든거래 후 예상 매수잔액
     } 
-    USLA.save_KIS_TR_json(TR_data) # json 파일로 저장
+    USLA.save_USLA_TR_json(TR_data) # json 파일로 저장
     print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료")
     return TR_data
 
@@ -287,20 +285,20 @@ def health_check():
     # 2. JSON 파일 존재
     import os
     files = [
-        "/var/autobot/TR_KIS/USAA_rebalancing_day.json",
-        "/var/autobot/TR_KIS/USLA_data.json",
-        "/var/autobot/TR_KIS/KIS_TR.json"
+        "/var/autobot/TR_USLA/USLA_rebalancing_day.json",
+        "/var/autobot/TR_USLA/USLA_data.json",
+        "/var/autobot/TR_USLA/USLA_TR.json"
     ]
     for f in files:
         if not os.path.exists(f):
-            checks.append(f"USAA 체크: json 파일 없음: {f}")
+            checks.append(f"USLA 체크: json 파일 없음: {f}")
     
     # 3. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("USAA 체크: KIS API 서버 접속 불가")
+        checks.append("USLA 체크: KIS API 서버 접속 불가")
     
     if checks:
         KA.SendMessage("\n".join(checks))
@@ -311,13 +309,13 @@ def health_check():
 # 확인
 order_time = KIS_Calender.check_order_time()
 
-if order_time['season'] == "USAA_not_rebalancing":
-    KA.SendMessage(f"USAA 리밸런싱일이 아닙니다. \n{order_time['date']}가 USAA_rebalancing_day.json에 없습니다.")
+if order_time['season'] == "USLA_not_rebalancing":
+    KA.SendMessage(f"USLA 리밸런싱일이 아닙니다. \n{order_time['date']}가 USLA_rebalancing_day 리스트에 없습니다.")
     sys.exit(0)
 
 # 메인 로직 시작 전 시스템 상태 확인
 health_check()
-KA.SendMessage(f"USAA {order_time['date']}, 리밸런싱 {order_time['market']} \n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
+KA.SendMessage(f"USLA {order_time['date']}, 리밸런싱 {order_time['market']} \n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-market round 1회에만 Trading qty를 구하기
     # 목표 데이터 만들기
@@ -378,19 +376,19 @@ elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12
     try:
         cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=False, is_daytime = True)
     except Exception as e:
-        print(f"주문 취소 오류: {e}")    
+        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
 
     # 지난 라운드 TR_data 불러오기
     try:
-        TR_data = USLA.load_KIS_TR()
+        TR_data = USLA.load_USLA_TR()
         Sell_order = TR_data['Sell_order']
         Buy_order = TR_data['Buy_order']
         Hold_usd = TR_data['CASH']
         target_weight = TR_data['target_weight']
         is_daytime = True
     except Exception as e:
-        print(f"JSON 파일 오류: {e}")
-        exit()
+        KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
+        sys.exit(0)
 
     # 매수 매도 체결결과 반영 금액 산출
     sell_summary = USLA.calculate_sell_summary(Sell_order)
@@ -418,19 +416,19 @@ elif order_time['market'] == "Regular" and order_time['round'] in range(1, 14): 
     try:
         cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=True)
     except Exception as e:
-        print(f"주문 취소 오류: {e}")
+        KA.SendMessage(f"USLA 주문취소 오류: {e}")
 
     # 지난 라운드 TR_data 불러오기
     try:
-        TR_data = USLA.load_KIS_TR()
+        TR_data = USLA.load_USLA_TR()
         Sell_order = TR_data['Sell_order']
         Buy_order = TR_data['Buy_order']
         Hold_usd = TR_data['CASH']
         target_weight = TR_data['target_weight']
         is_daytime = False
     except Exception as e:
-        print(f"JSON 파일 오류: {e}")
-        exit()
+        print(f"USLA_TR JSON 파일 오류: {e}")
+        sys.exit(0)
 
     # 매수 매도 체결결과 반영 금액 산출
     sell_summary = USLA.calculate_sell_summary(Sell_order)
@@ -458,17 +456,17 @@ elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular 
     try:
         cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=True)
     except Exception as e:
-        print(f"주문 취소 오류: {e}")
+        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
 
     # 지난 라운드 TR_data 불러오기
     try:
-        TR_data = USLA.load_KIS_TR()
+        TR_data = USLA.load_USLA_TR()
         Sell_order = TR_data['Sell_order']
         Buy_order = TR_data['Buy_order']
         Hold_usd = TR_data['CASH']
     except Exception as e:
-        print(f"JSON 파일 오류: {e}")
-        exit()
+        print(f"USLA_TR JSON 파일 오류: {e}")
+        sys.exit(0)
 
     # 매수 매도 체결결과 반영 금액 산출
     sell_summary = USLA.calculate_sell_summary(Sell_order)
@@ -527,19 +525,16 @@ elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular 
     USLA.save_USLA_data_json(USLA_data) # 일단 저장 수익률과 일간 월간 연간 변화는 다른 일일 기록 코드로(카톡, 수익 기록용)
 
 # 카톡 리밸 종료 결과 보내기 최초 홀딩 잔고 티커2 + 현금 > 최후 잔고티커2 + 현금변화 기록
-print(f"KIS USLA {order_time['date']} \n당월 리벨런싱 완료")
-print(f"KIS USLA regime_signal: {USLA_data['regime_signal']} \ntarget1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']} \ntarget2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}")
-print(f"KIS USLA balance: {balance} \nUPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}")
+KA.SendMessage(f"KIS USLA {order_time['date']} \n당월 리벨런싱 완료")
+KA.SendMessage(f"KIS USLA regime_signal: {USLA_data['regime_signal']} \ntarget1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']} \ntarget2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}")
+KA.SendMessage(f"KIS USLA balance: {balance} \nUPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}")
 
 
-
-# 투자결과는 다른 코드로 현금에 배당 등으로 변화 생긴 경우 변경 시 코드 수정할 부분 알림 메세지도 add_usd = 0,  usd += add_usd
-# 카톡 메세지 정리 하기
 # 3차 오류 테스트 AWS ec2 실제 서버 오류잡기 &  필요한 것만 & crontab 테스트
 # 투자결과는 다른 코드로 현금에 배당 등으로 변화 생긴 경우 변경 시 코드 수정할 부분 알림 메세지도 add_usd = 0,  usd += add_usd
-# 실제 투자겱과는 daily spreas sheet로 기록
+# 실제 투자결과는 daily spreas sheet로 기록
 # 신한>한투 이체 실제 진행 11월 중
 
-# US HAA전략도 합치는 방법 연구 후 테스트 실제화 12월 중
+# US HAA전략도 합치는 방법 연구 후 테스트 실제화 11월 중
 
 # QT도 코딩...... 1~2월 중

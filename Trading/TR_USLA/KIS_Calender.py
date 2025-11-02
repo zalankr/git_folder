@@ -18,39 +18,39 @@ def get_current():
     }
     return now
 
-def check_USAA_rebalancing(current_date):
+def check_USLA_rebalancing(current_date):
     '''오늘이 USAA 리밸런싱일인지 확인'''
-    USAA_rebalancing_day_path = '/var/autobot/TR_KIS/USAA_rebalancing_day.json'
+    USLA_rebalancing_day_path = '/var/autobot/TR_KIS/USLA_rebalancing_day.json'
     
     try:
-        with open(USAA_rebalancing_day_path, 'r', encoding='utf-8') as f:
-            USAA_rebalancing_day = json.load(f)
+        with open(USLA_rebalancing_day_path, 'r', encoding='utf-8') as f:
+            USLA_rebalancing_day = json.load(f)
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
 
-    if str(current_date) in USAA_rebalancing_day["summer_dst"]:
-        return "USAA_summer"
-    elif str(current_date) in USAA_rebalancing_day["winter_standard"]:
-        return "USAA_winter"
+    if str(current_date) in USLA_rebalancing_day["summer_dst"]:
+        return "USLA_summer"
+    elif str(current_date) in USLA_rebalancing_day["winter_standard"]:
+        return "USLA_winter"
     else:
-        return "USAA_not_rebalancing"
+        return "USLA_not_rebalancing"
 
 def check_order_time():
-    """USAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
+    """USLA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
     # 현재 날짜와 시간 확인 UTC시간대
     now = datetime.now()
     current_date = now.date()
     current_time = now.time()
 
-    # USAA 리밸런싱일 확인
-    check_USAA = check_USAA_rebalancing(current_date)
+    # USLA 리밸런싱일 확인
+    check_USLA = check_USLA_rebalancing(current_date)
     # order_time 딕셔너리 생성: season, date, time, market, round, total_round, USAA리밸런싱일 확인
     order_time = dict()
-    order_time['season'] = check_USAA
+    order_time['season'] = check_USLA
     order_time['date'] = current_date
     order_time['time'] = current_time
 
-    if check_USAA == "USAA_winter":
+    if check_USLA == "USLA_winter":
         current = time_obj(current_time.hour, current_time.minute) # current_time
         Pre_market_start = time_obj(9, 0)   # 09:00
         Pre_market_end = time_obj(14, 30)   # 14:29
@@ -67,7 +67,7 @@ def check_order_time():
             order_time['round'] = (current.hour - 14) * 2 + (current.minute // 30)
             order_time['total_round'] = 14  # Regular 총 14회차
 
-    elif check_USAA == "USAA_summer":
+    elif check_USLA == "USLA_summer":
         current = time_obj(current_time.hour, current_time.minute) # current_time
         Pre_market_start = time_obj(8, 0)   # 08:00
         Pre_market_end = time_obj(13, 30)   # 13:29
