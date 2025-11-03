@@ -12,13 +12,6 @@ except singleton.SingleInstanceException:
     KA.SendMessage("USLA: 이미 실행 중입니다.")
     sys.exit(0)
 
-"""
-crontab 설정
-30분 단위 > 전회 주문 데이터 불러오기 주문취소 후 매수 매도 체결금액 usd에 더하기 빼기 할 것 > 비중 계산 주문
-0,30 9-21 1 11 * python3 /TR_KIS/KIS_Trading.py 일반 시간대 UTC 21시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
-0,30 8-20 1 4 * python3 /TR_KIS/KIS_Trading.py 서머타임 시간대 UTC 20시 정규장 종료 > 장종류 time.sleep하고 난 후주문 취소 체결확인 기록 등 시행 
-"""
-
 # USLA모델 instance 생성
 key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt"
 token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json"
