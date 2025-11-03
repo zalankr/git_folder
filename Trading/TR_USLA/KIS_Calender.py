@@ -59,12 +59,14 @@ def check_order_time():
         
         if Pre_market_start <= current < Pre_market_end: # 프리마켓 30분 단위 총 11회
             order_time['market'] = "Pre-market"            
-            order_time['round'] = 1 + (current.hour - 9) * 2 + (current.minute // 30)
+            order_time['round'] = 1+(current.hour - 14) * 2 + (current.minute // 30) # debug test #### 20시 46분 실행 #################################################
+            # order_time['round'] = 1 + (current.hour - 9) * 2 + (current.minute // 30)
             order_time['total_round'] = 11  # Pre-market 총 11회차
             
         elif Regular_start <= current < Regular_end: # 정규시장 30분 단위 총 14회
             order_time['market'] = "Regular"
-            order_time['round'] = (current.hour - 14) * 2 + (current.minute // 30)
+            order_time['round'] = (current.hour - 17) * 2 + (current.minute // 30)
+            # order_time['round'] = (current.hour - 14) * 2 + (current.minute // 30)
             order_time['total_round'] = 14  # Regular 총 14회차
 
     elif check_USLA == "USLA_summer":

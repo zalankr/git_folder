@@ -4,6 +4,7 @@ import json
 import sys
 import KIS_Calender
 import USLA_model
+import USLA_caculate as CC
 from tendo import singleton
 
 try:
@@ -22,7 +23,13 @@ USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
     real_balance = USLA.get_US_stock_balance()
-    Hold = dict()
+    Hold = {
+        "UPRO": 0,
+        "TQQQ": 0,
+        "EDC": 0,
+        "TMF": 0,
+        "TMV": 0
+    }
     for i in range(len(real_balance)):
         ticker = real_balance[i]['ticker']
         if real_balance[i]['ticker'] in USLA_ticker:
@@ -249,7 +256,7 @@ def round_TR_data(Hold_usd, target_weight): # 이번 라운드 실제 잔고 dic
     # 목표 수량, 달러화 산출 후 현재 잔고와 비교 조정한 매수 매도 수량 있는 Buy와 Sell dict 만들기
     target_qty, target_usd = make_target_data(Hold, target_weight)
     Buy, Sell = make_Buy_Sell(target_weight, target_qty, Hold)
-    KA.SendMessage(f"USLA 매매목표 수량 \nBuy: {Buy} \nSell: {Sell}")
+    KA.SendMessage(f"USLA 매매목표 수량 \nBuy {Buy} \nSell {Sell}")
 
     # order splits 데이터 산출
     round_split =USLA.make_split_data(order_time['market'], order_time['round'])
@@ -269,7 +276,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
         'TR_usd': TR_usd # 모든거래 후 예상 매수잔액
     } 
     USLA.save_USLA_TR_json(TR_data) # json 파일로 저장
-    print(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료")
+    KA.SendMessage(f"{order_time['date']}, {order_time['season']} 리밸런싱 {order_time['market']} \n{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래완료")
     return TR_data
 
 def health_check():
@@ -302,7 +309,7 @@ def health_check():
         KA.SendMessage("\n".join(checks))
         sys.exit(1)
     
-    # KA.SendMessage("USAA 체크: 이상없슴")
+    # KA.SendMessage("USLA 체크: 이상없슴")
 
 # 확인
 order_time = KIS_Calender.check_order_time()
@@ -317,7 +324,7 @@ KA.SendMessage(f"USLA {order_time['date']}, 리밸런싱 {order_time['market']} 
 
 if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-market round 1회에만 Trading qty를 구하기
     # 목표 데이터 만들기
-    target_weight, regime_signal = USLA.target_ticker_weight() # 목표 티커 비중 반환
+    target_weight, regime_signal = CC.target_ticker_weight() # 목표 티커 비중 반환
     USLA_data = USLA.load_USLA_data() # 1회차는 지난 리밸런싱 후의 USLA model usd 불러오기
     Hold_usd = USLA_data['CASH']
     target_ticker = list(target_weight.keys())
@@ -356,7 +363,7 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-mark
         'yearly_return_KRW': USLA_data['yearly_return_KRW']
     }
 
-    USLA.save_USLA_data_json(USLA_data)
+    USLA.save_USLA_data_json(USLA_data) # debug data ###################################################################################
 
     # Sell Pre market 주문, Sell주문데이터
     Sell_order = Selling(Sell, sell_split, is_daytime) ############# 카톡주문 체크 ############
@@ -366,7 +373,7 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-mark
     Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd, is_daytime)
 
     # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd) # debug data ###################################################################################
     sys.exit(0)
     
 elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12): # Pre-market Round 2~11회차
