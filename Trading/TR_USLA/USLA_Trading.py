@@ -20,6 +20,12 @@ cano = "63721147"  # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 USLA_ticker = ["UPRO", "TQQQ", "EDC", "TMF", "TMV"]
 USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
+CC.initialize_kis_api(
+    key_file_path=key_file_path,
+    token_file_path=token_file_path,
+    cano=cano,
+    acnt_prdt_cd=acnt_prdt_cd
+)
 
 def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
     real_balance = USLA.get_US_stock_balance()
