@@ -1,10 +1,12 @@
 {
     "market": "Pre-market",
-    "round": 1,
+    "round": 2,
     "Sell_order": [],
     "Buy_order": [],
-    "Hold": {},
+    "Hold": {
+        "CASH": 0.0
+    },
     "target_weight": {},
-    "CASH": 0,
-    "TR_usd": 0
+    "CASH": 0.0,
+    "TR_usd": 0.0
 }
