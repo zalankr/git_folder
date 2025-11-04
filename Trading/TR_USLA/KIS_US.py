@@ -10,10 +10,6 @@ import time
 class KIS_API:
     """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
     
-    # 수수료율
-    SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
-    BUY_FEE_RATE = 0.0  # 매수 수수료는 체결단가에 포함
-
     def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
         self.key_file_path = key_file_path
         self.token_file_path = token_file_path
@@ -23,6 +19,17 @@ class KIS_API:
         
         self._load_api_keys()
         self.access_token = self.get_access_token()
+        
+        self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
+        self.BUY_FEE_RATE = 0.0  # 매수 수수료는 체결단가에 포함
+        self.TICKER_EXCHANGE_MAP = {
+        'UPRO': 'AMS',
+        'TQQQ': 'NAS',
+        'EDC': 'AMS',
+        'TMF': 'AMS',
+        'TMV': 'AMS',
+        'AGG': 'AMS'
+        }
     
     # API-Key 로드
     def _load_api_keys(self):
@@ -134,19 +141,18 @@ class KIS_API:
         
         ticker = ticker.upper()
         
-        # KIS API 조회 시도
-        price = self._get_price_from_kis(ticker, "NAS")
-        if isinstance(price, float):
-            return "NAS"
-        time.sleep(0.1)  # API 호출 간격 조절
-        price = self._get_price_from_kis(ticker, "NYS")
-        if isinstance(price, float):
-            return "NYS"
-        time.sleep(0.1)  # API 호출 간격 조절
-        price = self._get_price_from_kis(ticker, "AMS")
-        if isinstance(price, float):
-            return "AMS"
-        time.sleep(0.1)  # API 호출 간격 조절
+        # 1단계: 사전 정의된 매핑에서 찾기 (빠름)
+        if ticker in self.TICKER_EXCHANGE_MAP:
+            return self.TICKER_EXCHANGE_MAP[ticker]
+        
+        # 2단계: API로 찾기 (매핑에 없는 경우)
+        exchanges = ["NAS", "AMS", "NYS", "BAT", "ARC"]
+
+        for exchange in exchanges:
+            price = self._get_price_from_kis(ticker, exchange)
+            if isinstance(price, float):
+                return exchange
+            time.sleep(0.1)
 
         return "거래소 조회 실패"
 
@@ -164,20 +170,23 @@ class KIS_API:
             return "티커를 입력해주세요."
         
         ticker = ticker.upper()
+
+        # 1단계: 사전 정의된 매핑에서 찾기 (빠름)
+        if ticker in self.TICKER_EXCHANGE_MAP:
+            exchange = self.TICKER_EXCHANGE_MAP[ticker]
+            price = self._get_price_from_kis(ticker, exchange)
+            time.sleep(0.1)
+            return price
         
-        # KIS API 조회 시도
-        price = self._get_price_from_kis(ticker, "NAS")
-        if isinstance(price, float):
-            return price
-        time.sleep(0.1)  # API 호출 간격 조절
-        price = self._get_price_from_kis(ticker, "NYS")
-        if isinstance(price, float):
-            return price
-        time.sleep(0.1)  # API 호출 간격 조절
-        price = self._get_price_from_kis(ticker, "AMS")
-        if isinstance(price, float):
-            return price
-        time.sleep(0.1)  # API 호출 간격 조절
+        # 2단계: API로 찾기 (매핑에 없는 경우)
+        # 거래소 목록 정의
+        exchanges = ["NAS", "NYS", "AMS", "BAT", "ARC"]
+        
+        for exchange in exchanges:
+            price = self._get_price_from_kis(ticker, exchange)
+            if isinstance(price, float):
+                return price
+            time.sleep(0.1)
 
         return "현재가 조회 실패"
 

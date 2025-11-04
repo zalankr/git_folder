@@ -20,19 +20,6 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.USLA_TR_path = "/var/autobot/TR_USLA/USLA_TR.json"
         self.fee = self.SELL_FEE_RATE  # 매도 수수료 0.09%
     
-    def get_USLA_current_prices(self): # run_strategy함수에 종속되어 USLA model의 현재 가격 조회
-        """현재 가격 조회"""
-        try:
-            prices = {}
-            for ticker in self.etf_tickers:
-                data = yf.download(ticker, period='1d', interval='1d', progress=False, multi_level_index=False)['Close']
-                prices[ticker] = float(data.iloc[-1])
-            prices['CASH'] = 1.0
-            return prices
-        except Exception as e:
-            print(f"가격 조회 오류: {e}")
-            return {ticker: 100.0 for ticker in self.all_tickers}  # 기본값
-    
     def calculate_USD_value(self, hold): # make_trading_data함수에 종속되어 USD 환산 잔고 계산
         """USD 환산 잔고 계산"""
         hold_USD_value = 0
@@ -179,7 +166,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
             sys.exit(0)
 
     def load_USLA_TR(self): # Kis_TR data 불러오기
-        """SLA_TR 불러오기"""   
+        """USLA_TR 불러오기"""   
         try:
             with open(self.USLA_TR_path, 'r', encoding='utf-8') as f:
                 TR_data = json.load(f)
@@ -221,6 +208,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 order_type="01"
             )
             Sell_result.append(execution)
+            time.sleep(0.1)
         
         # 체결된 주문만 필터링
         filled = [r for r in Sell_result if r and r.get('success')]
