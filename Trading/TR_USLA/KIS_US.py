@@ -10,22 +10,6 @@ import time
 class KIS_API:
     """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
     
-    EXCHANGE_MAP = {
-        # 나스닥
-        "AAPL": "NAS", "MSFT": "NAS", "GOOGL": "NAS", "GOOG": "NAS",
-        "AMZN": "NAS", "TSLA": "NAS", "META": "NAS", "NVDA": "NAS",
-        "NFLX": "NAS", "AMD": "NAS", "INTC": "NAS", "CSCO": "NAS",
-        "ADBE": "NAS", "PYPL": "NAS", "QCOM": "NAS", "AVGO": "NAS",
-        "TQQQ": "NAS", "UPRO": "NAS", "TMF": "NAS", "TMV": "NAS",
-        "EDC": "NAS", "BIL": "NYS",
-        
-        # 뉴욕증권거래소
-        "BRK.B": "NYS", "JPM": "NYS", "JNJ": "NYS", "V": "NYS",
-        "WMT": "NYS", "PG": "NYS", "MA": "NYS", "DIS": "NYS",
-        "BAC": "NYS", "XOM": "NYS", "KO": "NYS", "PFE": "NYS",
-        "T": "NYS", "VZ": "NYS", "CVX": "NYS", "NKE": "NYS",
-    }
-    
     # 수수료율
     SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
     BUY_FEE_RATE = 0.0  # 매수 수수료는 체결단가에 포함
@@ -134,58 +118,44 @@ class KIS_API:
         }
         res = requests.post(url, headers=headers, data=json.dumps(datas))
         return res.json()["HASH"]
-    
-    # 티커별 거래소 찾기
-    def get_US_exchange(self, ticker: str) -> Optional[str]:
+
+    # Ticker로 거래소명 조회
+    def get_exchange_by_ticker(self, ticker: str) -> str:
+        """
+        미국 주식 거래소 조회       
+        Parameters:
+        ticker (str): 주식 티커 심볼        
+        Returns:
+        str: 거래소명
+        str: 에러 메시지
+        """
         if not ticker:
-            return None
+            return "티커를 입력해주세요."
         
         ticker = ticker.upper()
         
-        if ticker in self.EXCHANGE_MAP:
-            return self.EXCHANGE_MAP[ticker]
-        
-        exchanges = ["NAS", "NYS", "AMS"]
-        path = "uapi/overseas-price/v1/quotations/price"
-        url = f"{self.url_base}/{path}"
-        
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "HHDFS00000300"
-        }
-        
-        for exchange in exchanges:
-            params = {
-                "AUTH": "",
-                "EXCD": exchange,
-                "SYMB": ticker
-            }
-            
-            try:
-                response = requests.get(url, headers=headers, params=params)
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get('rt_cd') == '0':
-                        output = data.get('output', {})
-                        if any(output.get(field, '').strip() for field in ['rsym', 'base', 'last']):
-                            return exchange
-            except:
-                continue
-        
-        return None
-    
+        # KIS API 조회 시도
+        price = self._get_price_from_kis(ticker, "NAS")
+        if isinstance(price, float):
+            return "NAS"
+        time.sleep(0.1)  # API 호출 간격 조절
+        price = self._get_price_from_kis(ticker, "NYS")
+        if isinstance(price, float):
+            return "NYS"
+        time.sleep(0.1)  # API 호출 간격 조절
+        price = self._get_price_from_kis(ticker, "AMS")
+        if isinstance(price, float):
+            return "AMS"
+        time.sleep(0.1)  # API 호출 간격 조절
+
+        return "거래소 조회 실패"
+
     # 주식 현재가 조회
-    def get_US_current_price(self, ticker: str, exchange: Optional[str] = None) -> Union[float, str]:
+    def get_US_current_price(self, ticker: str) -> Union[float, str]:
         """
-        미국 주식 현재가 조회 (KIS API → yfinance 백업)
-        
+        미국 주식 현재가 조회       
         Parameters:
-        ticker (str): 주식 티커 심볼
-        exchange (str): 거래소 코드 (None이면 자동 검색)
-        
+        ticker (str): 주식 티커 심볼        
         Returns:
         float: 현재가
         str: 에러 메시지
@@ -195,18 +165,21 @@ class KIS_API:
         
         ticker = ticker.upper()
         
-        if exchange is None:
-            exchange = self.get_US_exchange(ticker)
-            if exchange is None:
-                return self._get_price_from_yfinance(ticker)
-        
         # KIS API 조회 시도
-        price = self._get_price_from_kis(ticker, exchange)
+        price = self._get_price_from_kis(ticker, "NAS")
         if isinstance(price, float):
             return price
-        
-        # yfinance 백업
-        return self._get_price_from_yfinance(ticker)
+        time.sleep(0.1)  # API 호출 간격 조절
+        price = self._get_price_from_kis(ticker, "NYS")
+        if isinstance(price, float):
+            return price
+        time.sleep(0.1)  # API 호출 간격 조절
+        price = self._get_price_from_kis(ticker, "AMS")
+        if isinstance(price, float):
+            return price
+        time.sleep(0.1)  # API 호출 간격 조절
+
+        return "현재가 조회 실패"
 
     # KIS API로 현재가 조회
     def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
@@ -293,39 +266,9 @@ class KIS_API:
         
         return "KIS API 조회 실패"
     
-    # yfinance로 현재가 조회
-    def _get_price_from_yfinance(self, ticker: str) -> Union[float, str]:
-        """yfinance로 현재가 조회 (백업)"""
-        try:
-            import yfinance as yf
-            
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            
-            # 현재가 조회
-            for field in ['currentPrice', 'regularMarketPrice', 'previousClose']:
-                if field in info and info[field]:
-                    price = info[field]
-                    if price > 0:
-                        return float(price)
-            
-            # 종가 조회
-            hist = stock.history(period='1d')
-            if not hist.empty and 'Close' in hist.columns:
-                price = float(hist['Close'].iloc[-1])
-                if price > 0:
-                    return price
-            
-            return "yfinance 조회 실패"
-            
-        except ImportError:
-            return "yfinance 미설치 (pip install yfinance)"
-        except Exception as e:
-            return f"yfinance 오류: {str(e)}"
-    
     # 미국 정규시장 주식 매도 주문
     def order_sell_US(self, ticker: str, quantity: int, price: float,
-                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
+                        exchange: Optional[str] = "NAS", ord_dvsn: str = "00") -> Optional[Dict]:
         """
         미국 주식 매도 주문 (Regular Market)
         
@@ -333,7 +276,7 @@ class KIS_API:
         ticker: 종목 코드
         quantity: 주문 수량
         price: 지정가
-        exchange: 거래소 코드 (None이면 자동 검색)
+        exchange: 거래소 코드 ("NAS" > "NYS" > "AMS" 순서)
         ord_dvsn: 주문구분 ("00": 지정가, "31": MOO, "32": LOO, "33": MOC, "34": LOC)
         
         Returns:
@@ -349,7 +292,7 @@ class KIS_API:
         }
         """
         if exchange is None:
-            exchange = self.get_US_exchange(ticker)
+            exchange = self.get_exchange_by_ticker(ticker)
         
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
@@ -444,7 +387,7 @@ class KIS_API:
         Dict 또는 None - 주문 정보 딕셔너리
         """
         if exchange is None:
-            exchange = self.get_US_exchange(ticker)
+            exchange = self.get_exchange_by_ticker(ticker)
         
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
@@ -539,7 +482,7 @@ class KIS_API:
         }
         """
         if exchange is None:
-            exchange = self.get_US_exchange(ticker)
+            exchange = self.get_exchange_by_ticker(ticker)
         
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
@@ -638,8 +581,8 @@ class KIS_API:
         }
         """
         if exchange is None:
-            exchange = self.get_US_exchange(ticker)
-        
+            exchange = self.get_exchange_by_ticker(ticker)
+            
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
@@ -1328,12 +1271,6 @@ class KIS_API:
         failed_list = []
         
         for i, order in enumerate(unfilled_orders, 1):
-            # print(f"\n{'='*60}")
-            # print(f"[{i}/{len(unfilled_orders)}] 취소 진행: {order['name']} ({order['ticker']})")
-            # print(f"주문번호: {order['order_number']}")
-            # print(f"미체결 수량: {order['unfilled_qty']}주")
-            # print(f"{'='*60}")
-            
             if auto_retry:
                 # 자동 재시도 방식
                 result = self.cancel_US_order_auto(
@@ -1369,8 +1306,8 @@ class KIS_API:
                     'error': result.get('error_message') if result else '알 수 없는 오류'
                 })
             
-            # API 호출 간격 (0.3초)
-            time.sleep(0.3)
+            # API 호출 간격 (0.2초)
+            time.sleep(0.2)
         
         # 3. 결과 요약
         summary = {
@@ -1399,57 +1336,30 @@ class KIS_API:
         
         return summary
 
-    # 서머타임(DST) 확인
-    def is_us_dst(self):
-        """
-        미국 동부 시간 기준 현재 서머타임(DST) 여부 확인
-        
-        미국 서머타임 규칙:
-        - 시작: 3월 두 번째 일요일 02:00
-        - 종료: 11월 첫 번째 일요일 02:00
-        
-        Returns:
-        bool: 서머타임이면 True, 아니면 False
-        """
-        # 현재 UTC 시간 가져오기 (timezone-naive)
-        utc_now = datetime.now()
-        
-        # 미국 동부 시간 계산 (일단 EST 기준 UTC-5로 계산)
-        us_eastern_time = utc_now - timedelta(hours=5)
-        year = us_eastern_time.year
-        
-        # 3월 두 번째 일요일 찾기
-        march_first = datetime(year, 3, 1)
-        days_to_sunday = (6 - march_first.weekday()) % 7
-        first_sunday_march = march_first + timedelta(days=days_to_sunday)
-        second_sunday_march = first_sunday_march + timedelta(days=7)
-        dst_start = second_sunday_march.replace(hour=2, minute=0, second=0, microsecond=0)
-        
-        # 11월 첫 번째 일요일 찾기
-        november_first = datetime(year, 11, 1)
-        days_to_sunday = (6 - november_first.weekday()) % 7
-        first_sunday_november = november_first + timedelta(days=days_to_sunday)
-        dst_end = first_sunday_november.replace(hour=2, minute=0, second=0, microsecond=0)
-        
-        # 서머타임 기간 확인
-        return dst_start <= us_eastern_time < dst_end
-
 # 사용 예시
 if __name__ == "__main__":
     # 계좌 정보 설정
     api = KIS_API(
-        key_file_path = "/var/autobot/TR_KIS/kis63721147nkr.txt",
-        token_file_path = "/var/autobot/TR_KIS/kis63721147_token.json",
+        key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt",
+        token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json",
         cano="63721147",
         acnt_prdt_cd="01"
     )
     get_US_stock_balance = api.get_US_stock_balance()
     get_US_dollar_balance = api.get_US_dollar_balance()
-    get_total_balance = api.get_total_balance()
-    print("\n=== 미국주식 주문 체결내역 추적 시스템 ===\n")
+    prices =[]
+    prices.append(api.get_US_current_price(ticker="TQQQ"))
+    prices.append(api.get_US_current_price(ticker="UPRO"))
+    prices.append(api.get_US_current_price(ticker="EDC"))
+    exchange = api.get_exchange_by_ticker("UPRO")
+    exchange2 = api.get_exchange_by_ticker("TMV")
     print(get_US_stock_balance)
     print(get_US_dollar_balance)
-    print(get_total_balance)
+    print(f"UPRO 거래소: {exchange}")
+    print(f"TMV 거래소: {exchange2}")
+    for i in prices:
+        print(i)
+
 
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]

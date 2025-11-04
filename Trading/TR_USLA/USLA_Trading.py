@@ -1,10 +1,8 @@
 import time as time_module  # time 모듈을 별칭으로 import
 import kakao_alert as KA
-import json
 import sys
 import KIS_Calender
 import USLA_model
-import USLA_caculate as CC
 from tendo import singleton
 
 try:
@@ -20,12 +18,6 @@ cano = "63721147"  # 종합계좌번호 (8자리)
 acnt_prdt_cd = "01"  # 계좌상품코드 (2자리)
 USLA_ticker = ["UPRO", "TQQQ", "EDC", "TMF", "TMV"]
 USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
-CC.initialize_kis_api(
-    key_file_path=key_file_path,
-    token_file_path=token_file_path,
-    cano=cano,
-    acnt_prdt_cd=acnt_prdt_cd
-)
 
 def real_Hold(): # 실제 잔고 확인 함수, Hold 반환
     real_balance = USLA.get_US_stock_balance()
@@ -330,7 +322,7 @@ KA.SendMessage(f"USLA {order_time['date']}, 리밸런싱 {order_time['market']} 
 
 if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-market round 1회에만 Trading qty를 구하기
     # 목표 데이터 만들기
-    target_weight, regime_signal = CC.target_ticker_weight() # 목표 티커 비중 반환
+    target_weight, regime_signal = USLA.target_ticker_weight() # 목표 티커 비중 반환
     USLA_data = USLA.load_USLA_data() # 1회차는 지난 리밸런싱 후의 USLA model usd 불러오기
     Hold_usd = USLA_data['CASH']
     target_ticker = list(target_weight.keys())
@@ -369,10 +361,10 @@ if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-mark
         'yearly_return_KRW': USLA_data['yearly_return_KRW']
     }
 
-    USLA.save_USLA_data_json(USLA_data) # debug data ###################################################################################
+    USLA.save_USLA_data_json(USLA_data)
 
     # Sell Pre market 주문, Sell주문데이터
-    Sell_order = Selling(Sell, sell_split, is_daytime) ############# 카톡주문 체크 ############
+    Sell_order = Selling(Sell, sell_split, is_daytime)
     # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
     # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
