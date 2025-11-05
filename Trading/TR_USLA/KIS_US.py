@@ -22,14 +22,6 @@ class KIS_API:
         
         self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
         self.BUY_FEE_RATE = 0.0  # 매수 수수료는 체결단가에 포함
-        self.TICKER_EXCHANGE_MAP = {
-        'UPRO': 'AMS',
-        'TQQQ': 'NAS',
-        'EDC': 'AMS',
-        'TMF': 'AMS',
-        'TMV': 'AMS',
-        'AGG': 'AMS'
-        }
     
     # API-Key 로드
     def _load_api_keys(self):
@@ -141,12 +133,7 @@ class KIS_API:
         
         ticker = ticker.upper()
         
-        # 1단계: 사전 정의된 매핑에서 찾기 (빠름)
-        if ticker in self.TICKER_EXCHANGE_MAP:
-            return self.TICKER_EXCHANGE_MAP[ticker]
-        
-        # 2단계: API로 찾기 (매핑에 없는 경우)
-        exchanges = ["NAS", "AMS", "NYS", "BAT", "ARC"]
+        exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
 
         for exchange in exchanges:
             price = self._get_price_from_kis(ticker, exchange)
@@ -171,16 +158,8 @@ class KIS_API:
         
         ticker = ticker.upper()
 
-        # 1단계: 사전 정의된 매핑에서 찾기 (빠름)
-        if ticker in self.TICKER_EXCHANGE_MAP:
-            exchange = self.TICKER_EXCHANGE_MAP[ticker]
-            price = self._get_price_from_kis(ticker, exchange)
-            time.sleep(0.1)
-            return price
-        
-        # 2단계: API로 찾기 (매핑에 없는 경우)
         # 거래소 목록 정의
-        exchanges = ["NAS", "NYS", "AMS", "BAT", "ARC"]
+        exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
         
         for exchange in exchanges:
             price = self._get_price_from_kis(ticker, exchange)
@@ -277,7 +256,7 @@ class KIS_API:
     
     # 미국 정규시장 주식 매도 주문
     def order_sell_US(self, ticker: str, quantity: int, price: float,
-                        exchange: Optional[str] = "NAS", ord_dvsn: str = "00") -> Optional[Dict]:
+                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
         """
         미국 주식 매도 주문 (Regular Market)
         
@@ -285,7 +264,7 @@ class KIS_API:
         ticker: 종목 코드
         quantity: 주문 수량
         price: 지정가
-        exchange: 거래소 코드 ("NAS" > "NYS" > "AMS" 순서)
+        exchange: 거래소 코드 ("NASD" > "NYSE" > "AMEX" > "BAT" > "ARC"순서)
         ord_dvsn: 주문구분 ("00": 지정가, "31": MOO, "32": LOO, "33": MOC, "34": LOC)
         
         Returns:
@@ -302,6 +281,14 @@ class KIS_API:
         """
         if exchange is None:
             exchange = self.get_exchange_by_ticker(ticker)
+            if exchange == "NAS" or exchange == "BAQ":
+                exchange = "NASD"
+            elif exchange == "AMS" or exchange == "BAA":
+                exchange = "AMEX"
+            elif exchange == "NYS" or exchange == "BAY":
+                exchange = "NYSE"
+            else:
+                exchange = None
         
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
@@ -397,6 +384,14 @@ class KIS_API:
         """
         if exchange is None:
             exchange = self.get_exchange_by_ticker(ticker)
+            if exchange == "NAS" or exchange == "BAQ":
+                exchange = "NASD"
+            elif exchange == "AMS" or exchange == "BAA":
+                exchange = "AMEX"
+            elif exchange == "NYS" or exchange == "BAY":
+                exchange = "NYSE"
+            else:
+                exchange = None
         
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
@@ -492,13 +487,17 @@ class KIS_API:
         """
         if exchange is None:
             exchange = self.get_exchange_by_ticker(ticker)
+            if exchange == "NAS" or exchange == "BAQ":
+                exchange = "NASD"
+            elif exchange == "AMS" or exchange == "BAA":
+                exchange = "AMEX"
+            elif exchange == "NYS" or exchange == "BAY":
+                exchange = "NYSE"
+            else:
+                exchange = None
         
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
-            return None
-        
-        if exchange not in ["NAS", "NYS", "AMS"]:
-            KA.SendMessage(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -591,13 +590,17 @@ class KIS_API:
         """
         if exchange is None:
             exchange = self.get_exchange_by_ticker(ticker)
-            
+            if exchange == "NAS" or exchange == "BAQ":
+                exchange = "NASD"
+            elif exchange == "AMS" or exchange == "BAA":
+                exchange = "AMEX"
+            elif exchange == "NYS" or exchange == "BAY":
+                exchange = "NYSE"
+            else:
+                exchange = None
+        
         if exchange is None:
             KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
-            return None
-        
-        if exchange not in ["NAS", "NYS", "AMS"]:
-            KA.SendMessage(f"주간거래는 나스닥(NAS), 뉴욕(NYS), 아멕스(AMS)만 가능합니다. (현재: {exchange})")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -892,9 +895,18 @@ class KIS_API:
         today = datetime.now().strftime('%Y%m%d')
         
         # 거래소 확인
-        exchange = self.get_US_exchange(ticker)
-        if not exchange:
-            print(f"{ticker}의 거래소를 찾을 수 없습니다.")
+        exchange = self.get_exchange_by_ticker(ticker)
+        if exchange == "NAS" or exchange == "BAQ":
+            exchange = "NASD"
+        elif exchange == "AMS" or exchange == "BAA":
+            exchange = "AMEX"
+        elif exchange == "NYS" or exchange == "BAY":
+            exchange = "NYSE"
+        else:
+            exchange = None
+        
+        if exchange is None:
+            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 체결 내역 조회
@@ -960,70 +972,10 @@ class KIS_API:
             print(f"체결 확인 중 오류: {e}")
             return None
 
-    # 주문 체결내역 추적
-    def track_order_execution(
-        self,
-        order_number: str,
-        ticker: str,
-        wait_seconds: int = 10,
-        max_attempts: int = 5
-    ) -> Optional[Dict]:
-        """
-        특정 주문번호의 체결 추적
-        
-        Parameters:
-        order_number: 추적할 주문번호
-        ticker: 종목코드
-        wait_seconds: 재시도 대기 시간
-        max_attempts: 최대 시도 횟수
-        
-        Returns:
-        Dict: 체결 정보 또는 None
-        """
-        today = datetime.now().strftime('%Y%m%d')
-        
-        for attempt in range(max_attempts):
-            print(f"\n[{attempt + 1}/{max_attempts}] 체결 확인 중... (주문번호: {order_number})")
-            
-            executions = self.get_order_executions_detailed(
-                start_date=today,
-                end_date=today,
-                ticker=ticker,
-                ccld_nccs_dvsn="01"  # 체결만
-            )
-            
-            if not executions.empty:
-                # 해당 주문번호 찾기
-                order = executions[executions['odno'] == order_number]
-                if not order.empty:
-                    row = order.iloc[0]
-                    detail = {
-                        'order_number': row['odno'],
-                        'ticker': row['pdno'],
-                        'name': row['prdt_name'],
-                        'order_type': row['sll_buy_dvsn_cd_name'],
-                        'quantity': int(row['ft_ccld_qty']),
-                        'price': float(row['ft_ccld_unpr3']),
-                        'amount_before_fee': float(row['ft_ccld_amt3']),
-                        'fee': float(row['fee']),
-                        'net_amount': float(row['net_amount']),
-                        'deposit_change': float(row['deposit_change']),
-                        'status': row['prcs_stat_name']
-                    }
-                    print(" 체결 확인 완료!")
-                    return detail
-            
-            if attempt < max_attempts - 1:
-                print(f"⏳ {wait_seconds}초 후 재시도...")
-                time.sleep(wait_seconds)
-        
-        print("체결 확인 실패")
-        return None
-
     # 미국 주식 주문 취소
     def cancel_US_order(self, order_number: str, ticker: str, 
                         quantity: int, exchange: Optional[str] = None,
-                        is_daytime: bool = False) -> Optional[Dict]:
+                        ) -> Optional[Dict]:
         """
         미국 주식 주문 취소
         
@@ -1032,20 +984,27 @@ class KIS_API:
         ticker (str): 종목코드
         quantity (int): 취소 수량 (전량 취소시 원주문 수량)
         exchange (str): 거래소 코드 (None이면 자동 검색)
-        is_daytime (bool): 주간거래 여부 (False: 정규장, True: 주간거래)
         
         Returns:
         Dict 또는 None - 취소 결과
         """
-        if exchange is None:
-            exchange = self.get_US_exchange(ticker)
+        # 거래소 확인
+        exchange = self.get_exchange_by_ticker(ticker)
+        if exchange == "NAS" or exchange == "BAQ":
+            exchange = "NASD"
+        elif exchange == "AMS" or exchange == "BAA":
+            exchange = "AMEX"
+        elif exchange == "NYS" or exchange == "BAY":
+            exchange = "NYSE"
+        else:
+            exchange = None
         
         if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
-        # 주간거래와 정규장 TR_ID 구분
-        tr_id = "TTTS6038U" if is_daytime else "TTTT1004U"
+        # 정규장 TR_ID
+        tr_id = "TTTT1004U"
         path = "uapi/overseas-stock/v1/trading/order-rvsecncl"
         url = f"{self.url_base}/{path}"
         
@@ -1181,67 +1140,16 @@ class KIS_API:
             print(f"미체결 조회 오류: {e}")
             return []
 
-    # 미국 주식 주문 취소 (자동 재시도)
-    def cancel_US_order_auto(self, order_number: str, ticker: str, 
-                            quantity: int, exchange: Optional[str] = None) -> Optional[Dict]:
-        """
-        미국 주식 주문 취소 (자동 재시도)
-        정규장 TR_ID로 시도 후 실패하면 주간거래 TR_ID로 재시도
-        
-        Parameters:
-        order_number (str): 취소할 주문번호
-        ticker (str): 종목코드
-        quantity (int): 취소 수량
-        exchange (str): 거래소 코드
-        
-        Returns:
-        Dict 또는 None - 취소 결과
-        """
-        # 1차 시도: 정규장 TR_ID (TTTT1004U)
-        result = self.cancel_US_order(
-            order_number=order_number,
-            ticker=ticker,
-            quantity=quantity,
-            exchange=exchange,
-            is_daytime=False
-        )
-        
-        if result and result.get('success'):
-            print(f"정규장 TR_ID로 취소 성공")
-            return result
-        
-        # 2차 시도: 주간거래 TR_ID (TTTS6038U)
-        print(f"정규장 취소 실패. 주간거래 TR_ID로 재시도...")
-        time.sleep(0.2)  # API 호출 간격
-        
-        result = self.cancel_US_order(
-            order_number=order_number,
-            ticker=ticker,
-            quantity=quantity,
-            exchange=exchange,
-            is_daytime=True
-        )
-        
-        if result and result.get('success'):
-            print(f"주간거래 TR_ID로 취소 성공")
-        else:
-            print(f"양쪽 TR_ID 모두 취소 실패")
-        
-        return result
-
     # 모든 미체결 주문 취소
     def cancel_all_unfilled_orders(self, start_date: Optional[str] = None,
-                                end_date: Optional[str] = None,
-                                auto_retry: bool = True,
-                                is_daytime: bool = False) -> Dict:
+                                   end_date: Optional[str] = None
+                                   ) -> Dict:
         """
-        모든 미체결 주문 일괄 취소 (자동 재시도 지원)
+        모든 미체결 주문 일괄 취소
         
         Parameters:
         start_date (str): 시작일 (YYYYMMDD) - None이면 오늘
         end_date (str): 종료일 (YYYYMMDD) - None이면 오늘
-        auto_retry (bool): True시 정규장/주간거래 TR_ID 자동 재시도 (기본값: True)
-        is_daytime (bool): auto_retry=False일 때 사용. True면 주간거래, False면 정규장 (기본값: False)
         
         Returns:
         Dict: 취소 결과 요약
@@ -1257,7 +1165,6 @@ class KIS_API:
         unfilled_orders = self.get_unfilled_orders(start_date, end_date)
         
         if not unfilled_orders:
-            # print("미체결 주문이 없습니다.")
             return {
                 'total': 0,
                 'success': 0,
@@ -1265,38 +1172,18 @@ class KIS_API:
                 'success_list': [],
                 'failed_list': []
             }
-        
-        # print(f"미체결 주문 {len(unfilled_orders)}건 발견")
-        
-        # 모드 출력
-        # if auto_retry:
-        #     print("자동 재시도 모드: 정규장 → 주간거래 TR_ID 순차 시도")
-        # else:
-        #     market_type = "주간거래 (Pre-market/After-hours)" if is_daytime else "정규장 (Regular Market)"
-        #     print(f"수동 모드: {market_type} TR_ID만 사용")
-        
+
         # 2. 각 주문 취소
         success_list = []
         failed_list = []
         
         for i, order in enumerate(unfilled_orders, 1):
-            if auto_retry:
-                # 자동 재시도 방식
-                result = self.cancel_US_order_auto(
-                    order_number=order['order_number'],
-                    ticker=order['ticker'],
-                    quantity=order['order_qty'],
-                    exchange=order['exchange']
-                )
-            else:
-                # 수동 지정 방식 (is_daytime 파라미터 사용)
-                result = self.cancel_US_order(
-                    order_number=order['order_number'],
-                    ticker=order['ticker'],
-                    quantity=order['order_qty'],
-                    exchange=order['exchange'],
-                    is_daytime=is_daytime  # ← 파라미터로 받은 값 사용
-                )
+            result = self.cancel_US_order(
+                order_number=order['order_number'],
+                ticker=order['ticker'],
+                quantity=order['order_qty'],
+                exchange=order['exchange']
+            )
             
             # 결과 처리
             if result and result.get('success'):
@@ -1328,47 +1215,8 @@ class KIS_API:
         }
         
         # 4. 결과 출력
-        KA.SendMessage(f"전체 미체결: {summary['total']}건 \n취소 성공: {summary['success']}건 \n취소 실패: {summary['failed']}건")
-
-        
-        # if success_list:
-        #     print(f"\n취소 성공 목록:")
-        #     for item in success_list:
-        #         print(f"  - {item['name']} ({item['ticker']}): {item['unfilled_qty']}주")
-        
-        # if failed_list:
-        #     print(f"\n취소 실패 목록:")
-        #     for item in failed_list:
-        #         print(f"  - {item['name']} ({item['ticker']}): {item['error']}")
-        
-        # print("="*60)
-        
+        KA.SendMessage(f"전체 미체결: {summary['total']}건 \n취소 성공: {summary['success']}건 \n취소 실패: {summary['failed']}건")       
         return summary
-
-# 사용 예시
-if __name__ == "__main__":
-    # 계좌 정보 설정
-    api = KIS_API(
-        key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt",
-        token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json",
-        cano="63721147",
-        acnt_prdt_cd="01"
-    )
-    get_US_stock_balance = api.get_US_stock_balance()
-    get_US_dollar_balance = api.get_US_dollar_balance()
-    prices =[]
-    prices.append(api.get_US_current_price(ticker="TQQQ"))
-    prices.append(api.get_US_current_price(ticker="UPRO"))
-    prices.append(api.get_US_current_price(ticker="EDC"))
-    exchange = api.get_exchange_by_ticker("UPRO")
-    exchange2 = api.get_exchange_by_ticker("TMV")
-    print(get_US_stock_balance)
-    print(get_US_dollar_balance)
-    print(f"UPRO 거래소: {exchange}")
-    print(f"TMV 거래소: {exchange2}")
-    for i in prices:
-        print(i)
-
 
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]

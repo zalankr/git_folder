@@ -26,11 +26,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
         for t in hold.keys():
             if t == "CASH":
                 # USLA_CASH도 float로 변환
-                hold_USD_value += float(hold["CASH"])
+                hold_USD_value += (hold["CASH"])
+
             else:
-                price = self.get_US_current_price(ticker=t)
+                price = self.get_US_current_price(t)
                 # hold[t]를 float로 변환
-                qty = float(hold[t])
+                qty = hold[t]
                 value = price * qty  # 시장 평가액 (수수료 제외)
                 hold_USD_value += value
 
@@ -401,6 +402,13 @@ class USLA_Model(KIS_US.KIS_API): #상속
         
         # 거래소 찾기 (수정된 매핑 사용)
         exchange = self.get_exchange_by_ticker(ticker)
+        if exchange == "거래소 조회 실패":
+            return pd.Series()
+        
+        # 거래소 코드
+        if exchange == "NASD": exchange = "NAS"
+        if exchange == "AMEX": exchange = "AMS"
+        if exchange == "NYSE": exchange = "NYS"
         
         # 날짜 형식 변환 (YYYYMMDD)
         end_date_formatted = end_date.replace('-', '')
@@ -633,7 +641,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 
                 allocation = {ticker: 0.0 for ticker in self.etf_tickers}
                 allocation.update(weights)
-                allocation['CASH'] = 0.02  # 2% 현금 보유
+                allocation['CASH'] = 0.03  # 3% 현금 보유
         
         # 4. 현재 가격 조회
         current_prices = self.get_prices()
@@ -719,18 +727,18 @@ class USLA_Model(KIS_US.KIS_API): #상속
             
             if weights is None or weights.empty:
                 KA.SendMessage(f"USLA 최적화 실패: 동일가중으로 설정")
-                return {ticker: 0.98/len(top_tickers) for ticker in top_tickers} # 98% 동일가중
+                return {ticker: 0.97/len(top_tickers) for ticker in top_tickers} # 98% 동일가중
             
             weight_dict = {}
             for i, ticker in enumerate(top_tickers):
-                weight_dict[ticker] = float(weights.iloc[i, 0]) * 0.98 # 98% 비중 할당
+                weight_dict[ticker] = float(weights.iloc[i, 0]) * 0.97 # 98% 비중 할당
                 
             return weight_dict
             
         except Exception as e:
             KA.SendMessage(f"USLA 포트폴리오 최적화 오류: {e}")
             # 동일가중으로 폴백
-            equal_weight = 0.98 / len(top_tickers) # 98% 동일가중
+            equal_weight = 0.97 / len(top_tickers) # 98% 동일가중
             return {ticker: equal_weight for ticker in top_tickers}
         
     def get_daily_prices_kis(self, tickers: list, days: int = 90) -> pd.DataFrame:
