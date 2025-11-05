@@ -63,89 +63,86 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         return target_qty
 
-    def make_split_data(self, market, round): # make_trading_data함수에 종속되어 시장과 시간대별 티커별 분할횟수와 분할당 가격 산출
-        if market == "Pre-market":
-            order_type = "order_daytime_US"
+    def make_split_data(self, round): # make_trading_data함수에 종속되어 시장과 시간대별 티커별 분할횟수와 분할당 가격 산출
+        if round in range(1, 12): # Pre-Market
             sell_splits = 4
             sell_price_adjust = [1.015, 1.03, 1.045, 1.06]
             buy_splits = 2
             buy_price_adjust = [0.995, 0.99]
 
-        elif market == "Regular":
-            order_type = "order_US"
+        elif round in range(12, 25): # Regular
             sell_splits = 5
             sell_price_adjust = [1.0025, 1.005, 1.0075, 1.01, 1.0125]
             buy_splits = 5
             buy_price_adjust = [0.9975, 0.995, 0.9925, 0.99, 0.9875]
 
-            if round == 1:
+            if round == 12:
                 pass
-            elif round == 2:
-                sell_price_adjust[0] = 0.99
-            elif round == 3:
-                sell_splits = 4
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_price_adjust[0] = 1.01
-            elif round == 4:
-                sell_splits = 4
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_splits = 4
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-            elif round == 5:
-                sell_splits = 4
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                sell_price_adjust[0] = 0.99
-                buy_splits = 4
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-            elif round == 6:
-                sell_splits = 3
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_splits = 4
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-                buy_price_adjust[0] = 1.01
-            elif round == 7:
-                sell_splits = 3
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_splits = 3
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-            elif round == 8:
-                sell_splits = 3
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                sell_price_adjust[0] = 0.99
-                buy_splits = 3
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-            elif round == 9:
-                sell_splits = 2
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_splits = 3
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-                buy_price_adjust[0] = 1.01
-            elif round == 10:
-                sell_splits = 2
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                buy_splits = 2
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-            elif round == 11:
-                sell_splits = 2
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                sell_price_adjust[0] = 0.99
-                buy_splits = 2
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-            elif round == 12:
-                sell_splits = 1
-                sell_price_adjust = sell_price_adjust[:sell_splits]
-                sell_price_adjust[0] = 0.97
-                buy_splits = 2
-                buy_price_adjust = buy_price_adjust[:buy_splits]
-                buy_price_adjust[0] = 1.01
             elif round == 13:
+                sell_price_adjust[0] = 0.99
+            elif round == 14:
+                sell_splits = 4
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_price_adjust[0] = 1.01
+            elif round == 15:
+                sell_splits = 4
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 4
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+            elif round == 16:
+                sell_splits = 4
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.99
+                buy_splits = 4
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+            elif round == 17:
+                sell_splits = 3
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 4
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+                buy_price_adjust[0] = 1.01
+            elif round == 18:
+                sell_splits = 3
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 3
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+            elif round == 19:
+                sell_splits = 3
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.99
+                buy_splits = 3
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+            elif round == 20:
+                sell_splits = 2
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 3
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+                buy_price_adjust[0] = 1.01
+            elif round == 21:
+                sell_splits = 2
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                buy_splits = 2
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+            elif round == 22:
+                sell_splits = 2
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.99
+                buy_splits = 2
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+            elif round == 23:
                 sell_splits = 1
-                sell_price_adjust = [0.97]
+                sell_price_adjust = sell_price_adjust[:sell_splits]
+                sell_price_adjust[0] = 0.98
+                buy_splits = 2
+                buy_price_adjust = buy_price_adjust[:buy_splits]
+                buy_price_adjust[0] = 1.01
+            elif round == 24:
+                sell_splits = 1
+                sell_price_adjust = [0.98]
                 buy_splits = 1
-                buy_price_adjust = [1.03]
+                buy_price_adjust = [1.02]
             
         round_split = {
-            "order_type": order_type,
             "sell_splits": sell_splits, 
             "sell_price_adjust": sell_price_adjust, 
             "buy_splits": buy_splits, 
@@ -636,7 +633,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 
                 allocation = {ticker: 0.0 for ticker in self.etf_tickers}
                 allocation.update(weights)
-                allocation['CASH'] = 0.01  # 1% 현금 보유
+                allocation['CASH'] = 0.02  # 2% 현금 보유
         
         # 4. 현재 가격 조회
         current_prices = self.get_prices()
@@ -722,18 +719,18 @@ class USLA_Model(KIS_US.KIS_API): #상속
             
             if weights is None or weights.empty:
                 KA.SendMessage(f"USLA 최적화 실패: 동일가중으로 설정")
-                return {ticker: 1.0/len(top_tickers) for ticker in top_tickers}
+                return {ticker: 0.98/len(top_tickers) for ticker in top_tickers} # 98% 동일가중
             
             weight_dict = {}
             for i, ticker in enumerate(top_tickers):
-                weight_dict[ticker] = float(weights.iloc[i, 0]) * 0.99
+                weight_dict[ticker] = float(weights.iloc[i, 0]) * 0.98 # 98% 비중 할당
                 
             return weight_dict
             
         except Exception as e:
             KA.SendMessage(f"USLA 포트폴리오 최적화 오류: {e}")
             # 동일가중으로 폴백
-            equal_weight = 0.99 / len(top_tickers)
+            equal_weight = 0.98 / len(top_tickers) # 98% 동일가중
             return {ticker: equal_weight for ticker in top_tickers}
         
     def get_daily_prices_kis(self, tickers: list, days: int = 90) -> pd.DataFrame:
