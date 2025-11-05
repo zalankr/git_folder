@@ -251,7 +251,7 @@ def round_TR_data(Hold_usd, target_weight): # 이번 라운드 실제 잔고 dic
     KA.SendMessage(f"USLA 매매목표 수량 \nBuy {Buy} \nSell {Sell}")
 
     # order splits 데이터 산출
-    round_split =USLA.make_split_data(order_time['market'], order_time['round'])
+    round_split =USLA.make_split_data(order_time['round'])
     sell_split = [round_split['sell_splits'], round_split['sell_price_adjust']]
     buy_split = [round_split['buy_splits'], round_split['buy_price_adjust']]
     return Hold, target_usd, Buy, Sell, sell_split, buy_split
