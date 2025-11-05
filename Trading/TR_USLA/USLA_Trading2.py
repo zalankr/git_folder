@@ -258,6 +258,7 @@ def round_TR_data(Hold_usd, target_weight): # 이번 라운드 실제 잔고 dic
 
 def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd): # 필요한 TR data 만들고 저장
     TR_data = {
+        'market': order_time['market'],
         'round': order_time['round'],
         'Sell_order': Sell_order, # 매도주문내역
         'Buy_order': Buy_order, # 매수주문내역
@@ -304,7 +305,6 @@ def health_check():
 
 # 확인
 order_time = KIS_Calender.check_order_time()
-order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
 if order_time['season'] == "USLA_not_rebalancing":
     KA.SendMessage(f"USLA 리밸런싱일이 아닙니다. \n{order_time['date']}가 USLA_rebalancing_day 리스트에 없습니다.")
@@ -312,9 +312,9 @@ if order_time['season'] == "USLA_not_rebalancing":
 
 # 메인 로직 시작 전 시스템 상태 확인
 health_check()
-KA.SendMessage(f"USLA {order_time['date']} 리밸런싱 \n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
+KA.SendMessage(f"USLA {order_time['date']}, 리밸런싱 {order_time['market']} \n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
-if order_time['round'] == 1: # round 1회에만 Trading qty를 구하기
+if order_time['market'] == "Pre-market" and order_time['round'] == 1: # Pre-market round 1회에만 Trading qty를 구하기
     # 목표 데이터 만들기
     target_weight, regime_signal = USLA.target_ticker_weight() # 목표 티커 비중 반환
     USLA_data = USLA.load_USLA_data() # 1회차는 지난 리밸런싱 후의 USLA model usd 불러오기
@@ -365,11 +365,11 @@ if order_time['round'] == 1: # round 1회에만 Trading qty를 구하기
     Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd)
 
     # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd) # debug data ###################################################################################
     sys.exit(0)
     
-elif order_time['round'] in range(2, 25): # Round 2~24회차
-    # 지난 주문 취소하기
+elif order_time['market'] == "Pre-market" and order_time['round'] in range(2, 12): # Pre-market Round 2~11회차
+    # Pre-market 지난 주문 취소하기
     try:
         cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=True)
     except Exception as e:
@@ -408,7 +408,47 @@ elif order_time['round'] in range(2, 25): # Round 2~24회차
     save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
     sys.exit(0)
 
-elif order_time['round'] == 25: # 25회차 최종기록
+elif order_time['market'] == "Regular" and order_time['round'] in range(1, 14): # Regular Round 1~13
+    # 지난 주문 취소하기
+    try:
+        cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=True)
+    except Exception as e:
+        KA.SendMessage(f"USLA 주문취소 오류: {e}")
+
+    # 지난 라운드 TR_data 불러오기
+    try:
+        TR_data = USLA.load_USLA_TR()
+        Sell_order = TR_data['Sell_order']
+        Buy_order = TR_data['Buy_order']
+        Hold_usd = TR_data['CASH']
+        target_weight = TR_data['target_weight']
+        is_daytime = False
+    except Exception as e:
+        print(f"USLA_TR JSON 파일 오류: {e}")
+        sys.exit(0)
+
+    # 매수 매도 체결결과 반영 금액 산출
+    sell_summary = USLA.calculate_sell_summary(Sell_order)
+    Hold_usd += sell_summary['net_amount']  # 입금 (수수료 차감됨)
+    buy_summary = USLA.calculate_buy_summary(Buy_order)
+    Hold_usd -= buy_summary['total_amount']  # 출금 (수수료 포함됨)
+
+    # 목표 비중 만들기
+    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
+
+    # Sell Pre market 주문, Sell주문데이터
+    Sell_order = Selling(Sell, sell_split, is_daytime)
+
+    # USD현재보유량과 목표보유량 비교 매수량과 매수 비중 매수금액 산출
+    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+    # Buy Pre market 주문, Buy주문데이터+TR_usd주문한 usd
+    Buy_order, TR_usd = Buying(Buy_qty, buy_split, TR_usd)
+
+    # 데이터 저장
+    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, TR_usd)
+    sys.exit(0)
+
+elif order_time['market'] == "Regular" and order_time['round'] == 14: # Regular Round 14 최종 기록
     # 지난 주문 취소하기
     try:
         cancle_result = USLA.cancel_all_unfilled_orders(auto_retry=True)
