@@ -870,7 +870,6 @@ class KIS_API:
 
     # 체결내역 확인
     def check_order_execution(self, order_number, ticker, order_type="00"):       
-
         """
         주문 체결 확인 함수
         

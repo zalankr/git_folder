@@ -322,7 +322,6 @@ if order_time['season'] == "USLA_not_rebalancing" or order_time['round'] == 0:
 
 # 메인 로직 시작 전 시스템 상태 확인
 health_check()
-print(f"USLA {order_time['date']} 리밸런싱 \n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작") ###
 KA.SendMessage(f"USLA {order_time['date']} 리밸런싱 \n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['round'] == 1: # round 1회에만 Trading qty를 구하기
