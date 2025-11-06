@@ -1,9 +1,11 @@
-import time as time_module  # time 모듈을 별칭으로 import
+import time as time_module
 import kakao_alert as KA
 import sys
 import KIS_Calender
 import USLA_model
 from tendo import singleton
+import json
+from datetime import datetime
 
 try:
     me = singleton.SingleInstance()
@@ -41,7 +43,7 @@ def make_target_data(Hold, target_weight): # target qty, target usd 만들기 ##
     # USLA USD 잔고 X 티커별 비중 = target qty
     target_usd_value = {ticker: target_weight[ticker] * hold_usd_value for ticker in target_weight.keys()} # target_ticker별 USD 배정 dict, 반환X
     target_qty = USLA.calculate_target_qty(target_weight, target_usd_value) # target_ticker별 quantity 반환O
-    target_usd = target_qty["CASH"] # 반환O
+    target_usd = target_qty["CASH"]
 
     return target_qty, target_usd
 
@@ -100,8 +102,20 @@ def Selling(Sell, sell_split):
 
         # 가격 조회 실패 시 스킵
         if not isinstance(current_price, (int, float)) or current_price <= 0:
-            KA.SendMessage(f"USLA {ticker} 가격 조회 실패 - 매도 주문 스킵")
-            continue        
+            error_msg = f"USLA {ticker} 가격 조회 실패 - 매도 주문 스킵"
+            KA.SendMessage(error_msg)
+            # 실패 정보도 저장 (추적을 위해)
+            Sell_order.append({
+                'success': False,
+                'ticker': ticker,
+                'quantity': Sell[ticker],
+                'price': 0,
+                'order_number': '',
+                'order_time': datetime.now().strftime('%H%M%S'),
+                'error_message': error_msg,
+                'split_index': -1
+            })
+            continue
         
         for i in range(sell_split[0]):
             # 마지막 분할은 남은 수량 전부
