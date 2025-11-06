@@ -1,0 +1,86 @@
+# USLA_model.py의 calculate_sell_summary 함수에서 수정이 필요한 부분
+# 256-265번 줄 부근을 다음과 같이 수정하세요:
+
+                # 체결 내역 조회
+                execution = self.check_order_execution(
+                    order_number=order['order_number'],
+                    ticker=order['ticker'],
+                    order_type="01"  # 매도
+                )
+                
+                # ⭐⭐⭐ 핵심 수정 1: execution이 None인 경우 처리 추가 ⭐⭐⭐
+                if execution is None:
+                    KA.SendMessage(f"매도 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
+                    unfilled_orders += 1
+                    order_qty = order.get('quantity', 0)
+                    total_order_qty += order_qty
+                    
+                    # 미체결 내역 기록
+                    detail = {
+                        'ticker': order['ticker'],
+                        'order_number': order['order_number'],
+                        'order_qty': order_qty,
+                        'filled_qty': 0,
+                        'avg_price': 0.0,
+                        'gross_amount': 0.0,
+                        'fee': 0.0,
+                        'net_amount': 0.0,
+                        'status': 'unfilled'
+                    }
+                    Sell_result.append(detail)
+                    continue  # ⭐ 다음 주문으로 넘어감
+                
+                # ⭐⭐⭐ 핵심 수정 2: 키 이름 변경 ⭐⭐⭐
+                order_qty = order.get('quantity', 0)
+                # 'filled_quantity' → 'qty'로 변경
+                filled_qty = int(execution.get('qty', 0)) if execution.get('qty') else 0
+                # 'average_price' → 'price'로 변경  
+                avg_price = float(execution.get('price', 0)) if execution.get('price') else 0.0
+                
+                # 주문 수량 누적
+                total_order_qty += order_qty
+                
+                # ... (이후 코드는 동일)
+
+
+# 동일한 방식으로 calculate_buy_summary 함수도 수정
+# 440-449번 줄 부근을 다음과 같이 수정하세요:
+
+                # 체결 내역 조회
+                execution = self.check_order_execution(
+                    order_number=order['order_number'],
+                    ticker=order['ticker'],
+                    order_type="02"  # 매수
+                )
+                
+                # ⭐⭐⭐ 핵심 수정 1: execution이 None인 경우 처리 추가 ⭐⭐⭐
+                if execution is None:
+                    KA.SendMessage(f"매수 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
+                    unfilled_orders += 1
+                    order_qty = order.get('quantity', 0)
+                    total_order_qty += order_qty
+                    
+                    # 미체결 내역 기록
+                    detail = {
+                        'ticker': order['ticker'],
+                        'order_number': order['order_number'],
+                        'order_qty': order_qty,
+                        'filled_qty': 0,
+                        'avg_price': 0.0,
+                        'total_amount': 0.0,
+                        'status': 'unfilled'
+                    }
+                    Buy_result.append(detail)
+                    continue  # ⭐ 다음 주문으로 넘어감
+                
+                # ⭐⭐⭐ 핵심 수정 2: 키 이름 변경 ⭐⭐⭐
+                order_qty = order.get('quantity', 0)
+                # 'filled_quantity' → 'qty'로 변경
+                filled_qty = int(execution.get('qty', 0)) if execution.get('qty') else 0
+                # 'average_price' → 'price'로 변경
+                avg_price = float(execution.get('price', 0)) if execution.get('price') else 0.0
+                
+                # 주문 수량 누적
+                total_order_qty += order_qty
+                
+                # ... (이후 코드는 동일)

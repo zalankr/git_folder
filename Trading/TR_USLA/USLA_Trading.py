@@ -76,7 +76,7 @@ def make_Buy_Sell(target_weight, target_qty, Hold):
 
 def Selling(Sell, sell_split):
     """
-    매도 주문 실행 함수 - 개선버전
+    매도 주문 실행 함수 - 개선버전 (메시지 통합)
     
     Parameters:
     - Sell: 매도할 종목과 수량 딕셔너리 {ticker: quantity}
@@ -86,14 +86,20 @@ def Selling(Sell, sell_split):
     - Sell_order: 주문 결과 리스트 (성공/실패 모두 포함)
     """
     Sell_order = []
+    order_messages = []  # ⭐ 주문 메시지를 모을 리스트
     
     if len(Sell.keys()) == 0:
         KA.SendMessage("매도할 종목이 없습니다.")
         return Sell_order
     
+    # ⭐ 현재 라운드 정보 가져오기
+    order_time = KIS_Calender.check_order_time()
+    round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
+    order_messages.append(round_info)
+    
     for ticker in Sell.keys():
         if Sell[ticker] == 0:
-            KA.SendMessage(f"{ticker} 매도 수량 0")
+            order_messages.append(f"{ticker} 매도 수량 0")
             continue
 
         qty_per_split = int(Sell[ticker] // sell_split[0])
@@ -101,9 +107,8 @@ def Selling(Sell, sell_split):
 
         # 가격 조회 실패 시 기록하고 스킵
         if not isinstance(current_price, (int, float)) or current_price <= 0:
-            error_msg = f"USLA {ticker} 가격 조회 실패 - 매도 주문 스킵"
-            KA.SendMessage(error_msg)
-            # ⭐ 실패 정보도 저장 (추적을 위해)
+            error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
+            order_messages.append(error_msg)  # ⭐ 메시지 누적
             Sell_order.append({
                 'success': False,
                 'ticker': ticker,
@@ -133,7 +138,6 @@ def Selling(Sell, sell_split):
                 # 주문
                 result = USLA.order_sell_US(ticker, quantity, price)
                 
-                # ⭐ 성공/실패 관계없이 모두 저장
                 if result and result.get('success') == True:
                     order_info = {
                         'success': True,
@@ -147,10 +151,11 @@ def Selling(Sell, sell_split):
                         'split_index': i
                     }
                     Sell_order.append(order_info)
+                    order_messages.append(f"✅ {ticker} {quantity}주 @${price} (분할{i+1})")  # ⭐ 메시지 누적
                 else:
                     # 실패한 주문도 기록
                     error_msg = result.get('error_message', 'Unknown error') if result else 'API 호출 실패'
-                    KA.SendMessage(f"{ticker} 매도 주문 실패: {error_msg}")
+                    order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")  # ⭐ 메시지 누적
                     Sell_order.append({
                         'success': False,
                         'ticker': ticker,
@@ -164,7 +169,7 @@ def Selling(Sell, sell_split):
             except Exception as e:
                 # 예외 발생 시에도 기록
                 error_msg = f"Exception: {str(e)}"
-                KA.SendMessage(f"{ticker} 매도 주문 예외: {error_msg}")
+                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")  # ⭐ 메시지 누적
                 Sell_order.append({
                     'success': False,
                     'ticker': ticker,
@@ -178,10 +183,13 @@ def Selling(Sell, sell_split):
             
             time_module.sleep(0.2)
     
-    # ⭐ 매도 주문 요약 출력
+    # ⭐ 모든 매도 주문을 한 메시지로 전송
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
-    KA.SendMessage(f"매도 주문 완료: {success_count}/{total_count} 성공")
+    order_messages.append(f"매도 완료: {success_count}/{total_count} 성공")
+    
+    # ⭐ 한 번에 전송 (주요 변경점!)
+    KA.SendMessage("\n".join(order_messages))
     
     return Sell_order
 
@@ -233,7 +241,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd):
 
 def Buying(Buy_qty, buy_split, TR_usd):
     """
-    매수 주문 실행 함수 - 개선버전
+    매수 주문 실행 함수 - 개선버전 (메시지 통합)
     
     Parameters:
     - Buy_qty: 매수할 종목과 수량 딕셔너리 {ticker: quantity}
@@ -244,6 +252,7 @@ def Buying(Buy_qty, buy_split, TR_usd):
     - Buy_order: 주문 결과 리스트 (성공/실패 모두 포함)
     """
     Buy_order = []
+    order_messages = []  # ⭐ 주문 메시지를 모을 리스트
     
     if TR_usd < 0:
         TR_usd = 0
@@ -253,9 +262,14 @@ def Buying(Buy_qty, buy_split, TR_usd):
         KA.SendMessage("매수할 종목이 없습니다.")
         return Buy_order
     
+    # ⭐ 현재 라운드 정보 가져오기
+    order_time = KIS_Calender.check_order_time()
+    round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
+    order_messages.append(round_info)
+    
     for ticker in Buy_qty.keys():
         if Buy_qty[ticker] == 0:
-            KA.SendMessage(f"{ticker} 매수 수량 0")
+            order_messages.append(f"{ticker} 매수 수량 0")
             continue
         
         qty_per_split = int(Buy_qty[ticker] // buy_split[0])
@@ -264,8 +278,7 @@ def Buying(Buy_qty, buy_split, TR_usd):
         # 가격 조회 실패 시 기록하고 스킵
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 주문 스킵"
-            KA.SendMessage(error_msg)
-            # ⭐ 실패 정보도 저장
+            order_messages.append(error_msg)  # ⭐ 메시지 누적
             Buy_order.append({
                 'success': False,
                 'ticker': ticker,
@@ -295,7 +308,6 @@ def Buying(Buy_qty, buy_split, TR_usd):
                 # 주문
                 result = USLA.order_buy_US(ticker, quantity, price)
                 
-                # ⭐ 성공/실패 관계없이 모두 저장
                 if result and result.get('success') == True:
                     order_info = {
                         'success': True,
@@ -309,10 +321,11 @@ def Buying(Buy_qty, buy_split, TR_usd):
                         'split_index': i
                     }
                     Buy_order.append(order_info)
+                    order_messages.append(f"✅ {ticker} {quantity}주 @${price} (분할{i+1})")  # ⭐ 메시지 누적
                 else:
                     # 실패한 주문도 기록
                     error_msg = result.get('error_message', 'Unknown error') if result else 'API 호출 실패'
-                    KA.SendMessage(f"{ticker} 매수 주문 실패: {error_msg}")
+                    order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")  # ⭐ 메시지 누적
                     Buy_order.append({
                         'success': False,
                         'ticker': ticker,
@@ -326,7 +339,7 @@ def Buying(Buy_qty, buy_split, TR_usd):
             except Exception as e:
                 # 예외 발생 시에도 기록
                 error_msg = f"Exception: {str(e)}"
-                KA.SendMessage(f"{ticker} 매수 주문 예외: {error_msg}")
+                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")  # ⭐ 메시지 누적
                 Buy_order.append({
                     'success': False,
                     'ticker': ticker,
@@ -340,10 +353,13 @@ def Buying(Buy_qty, buy_split, TR_usd):
             
             time_module.sleep(0.2)
     
-    # ⭐ 매수 주문 요약 출력
+    # ⭐ 모든 매수 주문을 한 메시지로 전송
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
-    KA.SendMessage(f"매수 주문 완료: {success_count}/{total_count} 성공")
+    order_messages.append(f"매수 완료: {success_count}/{total_count} 성공")
+    
+    # ⭐ 한 번에 전송 (주요 변경점!)
+    KA.SendMessage("\n".join(order_messages))
     
     return Buy_order
 

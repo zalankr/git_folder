@@ -346,7 +346,7 @@ class KIS_API:
                     'response': response
                 }
                 
-                KA.SendMessage(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
+                # KA.SendMessage(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 
                 return order_info
             else:
@@ -448,7 +448,7 @@ class KIS_API:
                     'response': response
                 }
                 
-                KA.SendMessage(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
+                # KA.SendMessage(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 return order_info
             else:
                 KA.SendMessage(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
