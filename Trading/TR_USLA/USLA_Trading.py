@@ -367,16 +367,16 @@ def round_TR_data(Hold_usd, target_weight):
 def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight):
     """
     거래 데이터 저장 - 개선버전
-    ⭐ 저장 실패 시에도 백업 파일 생성
+    저장 실패 시에도 백업 파일 생성
     """
     TR_data = {
         "round": order_time['round'],
-        "timestamp": datetime.now().isoformat(),  # ⭐ 타임스탬프 추가
+        "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
         "Sell_order": Sell_order,
         "Buy_order": Buy_order,
         "CASH": Hold['CASH'],
         "target_weight": target_weight,
-        # ⭐ 주문 성공률 추가
+        # 주문 성공률 추가
         "sell_success_rate": f"{sum(1 for o in Sell_order if o['success'])}/{len(Sell_order)}",
         "buy_success_rate": f"{sum(1 for o in Buy_order if o['success'])}/{len(Buy_order)}"
     }
@@ -395,7 +395,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight):
         )
         
     except Exception as e:
-        # ⭐ 저장 실패 시 백업 파일 생성
+        # 저장 실패 시 백업 파일 생성
         error_msg = f"TR 데이터 저장 실패: {e}"
         KA.SendMessage(error_msg)
         
@@ -406,14 +406,14 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight):
             KA.SendMessage(f"백업 파일 생성: {backup_path}")
         except Exception as backup_error:
             KA.SendMessage(f"백업 파일 생성도 실패: {backup_error}")
-            # ⭐ 최후의 수단: 카카오로 데이터 전송
+            # 최후의 수단: 카카오로 데이터 전송
             KA.SendMessage(f"TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
     
     return TR_data
 
 def validate_usd_balance(Hold_usd, expected_usd, tolerance=10.0):
     """
-    ⭐ USD 예수금 검증 함수
+    USD 예수금 검증 함수
     
     Parameters:
     - Hold_usd: 현재 계산된 USD 예수금
@@ -429,7 +429,7 @@ def validate_usd_balance(Hold_usd, expected_usd, tolerance=10.0):
     
     if not is_valid:
         KA.SendMessage(
-            f"⚠️ USD 예수금 불일치 감지\n"
+            f"USD 예수금 불일치 감지\n"
             f"계산값: ${Hold_usd:.2f}\n"
             f"예상값: ${expected_usd:.2f}\n"
             f"차이: ${diff:.2f}"
