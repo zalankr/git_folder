@@ -73,9 +73,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
         elif round in range(12, 25): # Regular
             sell_splits = 5
-            sell_price_adjust = [1.0025, 1.005, 1.0075, 1.01, 1.0125]
+            sell_price_adjust = [1.004, 1.008, 1.012, 1.016, 1.02]
             buy_splits = 5
-            buy_price_adjust = [0.9975, 0.995, 0.9925, 0.99, 0.9875]
+            buy_price_adjust = [0.996, 0.992, 0.988, 0.984, 0.98]
 
             if round == 12:
                 pass

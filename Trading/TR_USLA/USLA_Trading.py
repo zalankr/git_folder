@@ -459,7 +459,19 @@ def calculate_expected_usd_from_api():
     """
     try:
         balance = USLA.get_total_balance()
-        return balance['cash_usd']
+        if balance is None:
+            KA.SendMessage("USD 예수금 조회 실패: get_total_balance returned None")
+            return None
+        
+        # ⭐⭐⭐ 핵심 수정: 'cash_usd' → 'usd_deposit' 로 변경 ⭐⭐⭐
+        usd_deposit = balance.get('usd_deposit')
+        
+        if usd_deposit is None:
+            KA.SendMessage("USD 예수금 조회 실패: 'usd_deposit' 키가 없습니다")
+            return None
+        
+        return float(usd_deposit)
+        
     except Exception as e:
         KA.SendMessage(f"USD 예수금 조회 실패: {e}")
         return None
