@@ -1,76 +1,26 @@
 {
-    "round": 12,
-    "timestamp": "2025-11-06T14:30:14.080691",
-    "Sell_order": [],
-    "Buy_order": [
+    "round": 13,
+    "timestamp": "2025-11-07T15:00:08.254252",
+    "Sell_order": [
         {
             "success": true,
             "ticker": "TQQQ",
-            "quantity": 3,
-            "price": 111.96,
-            "order_number": "0031449729",
-            "order_time": "233010",
+            "quantity": 1,
+            "price": 105.0,
+            "order_number": "0031879757",
+            "order_time": "000007",
             "org_number": "01790",
             "message": "주문 전송 완료 되었습니다.",
-            "split_index": 0
-        },
-        {
-            "success": false,
-            "ticker": "TQQQ",
-            "quantity": 3,
-            "price": 111.68,
-            "order_number": "",
-            "order_time": "143010",
-            "error_message": "주문가능금액을 초과 했습니다",
-            "split_index": 1
-        },
-        {
-            "success": false,
-            "ticker": "TQQQ",
-            "quantity": 3,
-            "price": 111.4,
-            "order_number": "",
-            "order_time": "143011",
-            "error_message": "주문가능금액을 초과 했습니다",
-            "split_index": 2
-        },
-        {
-            "success": false,
-            "ticker": "TQQQ",
-            "quantity": 3,
-            "price": 111.12,
-            "order_number": "",
-            "order_time": "143011",
-            "error_message": "주문가능금액을 초과 했습니다",
-            "split_index": 3
-        },
-        {
-            "success": false,
-            "ticker": "TQQQ",
-            "quantity": 3,
-            "price": 110.84,
-            "order_number": "",
-            "order_time": "143012",
-            "error_message": "주문가능금액을 초과 했습니다",
-            "split_index": 4
-        },
-        {
-            "success": false,
-            "ticker": "EDC",
-            "quantity": 4,
-            "price": 54.0,
-            "order_number": "",
-            "order_time": "143013",
-            "error_message": "주문가능금액을 초과 했습니다",
             "split_index": 4
         }
     ],
-    "CASH": 2222.5,
+    "Buy_order": [],
+    "CASH": 102.06000000000009,
     "target_weight": {
-        "TQQQ": 0.6914116098390395,
-        "EDC": 0.27858839016096043,
+        "TQQQ": 0.5708185512084952,
+        "EDC": 0.39918144879150486,
         "CASH": 0.03
     },
-    "sell_success_rate": "0/0",
-    "buy_success_rate": "1/6"
+    "sell_success_rate": "1/1",
+    "buy_success_rate": "0/0"
 }
