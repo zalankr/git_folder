@@ -578,19 +578,13 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
 
     # 데이터 저장
     save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
-
     sys.exit(0)
 
-elif order_time['round'] in range(2, 25):  # Round 2~24회차
-    # 지난 주문 취소하기
-    try:
-        cancel_result = USLA.cancel_all_unfilled_orders()
-        if cancel_result['total'] > 0:
-            KA.SendMessage(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
-    except Exception as e:
-        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
 
-    # 지난 라운드 TR_data 불러오기
+elif order_time['round'] in range(2, 25):  # Round 2~24회차
+    # ============================================
+    # 1단계: 지난 라운드 TR_data 불러오기
+    # ============================================
     try:
         TR_data = USLA.load_USLA_TR()
         Sell_order = TR_data['Sell_order']
@@ -605,16 +599,20 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
         sys.exit(0)
 
+    # ============================================
+    # 2단계: 체결 내역 확인 (주문 취소 전!)
+    # ============================================
     # 성공한 주문만 필터링하여 체결 확인
     successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
     successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
 
-    # 매수 매도 체결결과 반영 금액 산출
+    # 매도 체결결과 반영
     if len(successful_sell_orders) > 0:
         sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
         Hold_usd += sell_summary['net_amount']
         KA.SendMessage(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
     
+    # 매수 체결결과 반영
     if len(successful_buy_orders) > 0:
         buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
         Hold_usd -= buy_summary['total_amount']
@@ -624,6 +622,19 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     usd_change = Hold_usd - prev_round_usd
     KA.SendMessage(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
 
+    # ============================================
+    # 3단계: 미체결 주문 취소 (체결 확인 후!)
+    # ============================================
+    try:
+        cancel_result = USLA.cancel_all_unfilled_orders()
+        if cancel_result['total'] > 0:
+            KA.SendMessage(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+    except Exception as e:
+        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
+
+    # ============================================
+    # 4단계: 새로운 주문 준비 및 실행
+    # ============================================
     # 목표 비중 만들기
     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
 
@@ -632,6 +643,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
     # Buy 수량 계산
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+    
     # Buy 주문
     Buy_order = Buying(Buy_qty, buy_split, TR_usd)
 
@@ -641,15 +653,9 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     sys.exit(0)
 
 elif order_time['round'] == 25:  # 25회차 최종기록
-    # 지난 주문 취소하기
-    try:
-        cancel_result = USLA.cancel_all_unfilled_orders()
-        if cancel_result['total'] > 0:
-            KA.SendMessage(f"최종 미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
-    except Exception as e:
-        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
-
-    # 지난 라운드 TR_data 불러오기
+    # ============================================
+    # 1단계: 지난 라운드 TR_data 불러오기
+    # ============================================
     try:
         TR_data = USLA.load_USLA_TR()
         Sell_order = TR_data['Sell_order']
@@ -659,20 +665,36 @@ elif order_time['round'] == 25:  # 25회차 최종기록
         print(f"USLA_TR JSON 파일 오류: {e}")
         sys.exit(0)
 
+    # ============================================
+    # 2단계: 최종 체결 내역 확인 (주문 취소 전!)
+    # ============================================
     # 성공한 주문만 필터링
     successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
     successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
 
-    # 매수 매도 체결결과 반영 금액 산출
+    # 매도 체결결과 반영
     if len(successful_sell_orders) > 0:
         sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
         Hold_usd += sell_summary['net_amount']
     
+    # 매수 체결결과 반영
     if len(successful_buy_orders) > 0:
         buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
         Hold_usd -= buy_summary['total_amount']
 
-    # 실제 API로 최종 잔고 확인
+    # ============================================
+    # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
+    # ============================================
+    try:
+        cancel_result = USLA.cancel_all_unfilled_orders()
+        if cancel_result['total'] > 0:
+            KA.SendMessage(f"최종 미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+    except Exception as e:
+        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
+
+    # ============================================
+    # 4단계: 실제 API로 최종 잔고 확인 및 검증
+    # ============================================
     api_usd = calculate_expected_usd_from_api()
     if api_usd is not None:
         is_valid, diff = validate_usd_balance(Hold_usd, api_usd, tolerance=100.0)
@@ -680,7 +702,9 @@ elif order_time['round'] == 25:  # 25회차 최종기록
             KA.SendMessage(f"⚠️ 최종 USD 검증 실패! API 값({api_usd})으로 보정합니다.")
             Hold_usd = api_usd
 
-    # USLA_data(월 리벨런싱 데이터)로 json저장
+    # ============================================
+    # 5단계: 최종 데이터 저장 (USLA_data.json)
+    # ============================================
     USLA_data = USLA.load_USLA_data()
 
     Hold = USLA.get_total_balance()
