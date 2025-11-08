@@ -786,6 +786,90 @@ class KIS_API:
             }
         except:
             return None
+    
+    # 전체 계좌 잔고 - 문제가 많은 에러가 있는 코드 쓰지 말 것
+    def get_total_balance(self) -> Optional[Dict]: # 
+        """전체 계좌 잔고 조회"""
+        path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
+        url = f"{self.url_base}/{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "CTRP6504R"
+        }
+        
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "WCRC_FRCR_DVSN_CD": "02",
+            "NATN_CD": "840",
+            "TR_MKET_CD": "00",
+            "INQR_DVSN_CD": "00"
+        }
+        
+        def safe_float(value, default=0.0):
+            if value is None or value == '':
+                return default
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get('rt_cd') != '0':
+                return None
+            
+            # 보유 종목 정보
+            stocks = []
+            for stock in data.get('output1', []):
+                quantity = int(safe_float(stock.get('cblc_qty13', 0)))
+                if quantity <= 0:
+                    continue
+                    
+                stocks.append({
+                    'ticker': stock.get('pdno', ''),
+                    'name': stock.get('prdt_name', ''),
+                    'quantity': quantity,
+                    'avg_price': safe_float(stock.get('avg_unpr3', 0)),
+                    'current_price': safe_float(stock.get('ovrs_now_pric1', 0)),
+                    'eval_amt': safe_float(stock.get('frcr_evlu_amt2', 0)),
+                    'profit_loss': safe_float(stock.get('evlu_pfls_amt2', 0)),
+                    'profit_loss_rate': safe_float(stock.get('evlu_pfls_rt1', 0)),
+                    'exchange': stock.get('tr_mket_name', '')
+                })
+            
+            # 예수금 정보
+            output2 = data.get('output2', [])
+            usd_deposit = safe_float(output2[0].get('frcr_dncl_amt_2', 0)) if output2 else 0
+            exchange_rate = safe_float(output2[0].get('frst_bltn_exrt', 0)) if output2 else 0
+            
+            # 계좌 요약 정보
+            output3 = data.get('output3', {})
+            stock_eval_usd = safe_float(output3.get('evlu_amt_smtl', 0))
+            
+            return {
+                'stocks': stocks,
+                'stock_count': len(stocks),
+                'stock_eval_usd': stock_eval_usd,
+                'stock_eval_krw': safe_float(output3.get('evlu_amt_smtl_amt', 0)),
+                'usd_deposit': usd_deposit,
+                'usd_deposit_krw': usd_deposit * exchange_rate,
+                'total_usd': stock_eval_usd + usd_deposit,
+                'total_krw': safe_float(output3.get('tot_asst_amt', 0)),
+                'total_profit_loss_usd': safe_float(output3.get('evlu_pfls_amt_smtl', 0)),
+                'total_profit_loss_krw': safe_float(output3.get('tot_evlu_pfls_amt', 0)),
+                'profit_rate': safe_float(output3.get('evlu_erng_rt1', 0)),
+                'exchange_rate': exchange_rate
+            }
+        except:
+            return None
 
     # 체결내역 확인
     def check_order_execution(self, order_number, ticker, order_type="00"):       

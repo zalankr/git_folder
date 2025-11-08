@@ -2,6 +2,7 @@ import USLA_model
 import kakao_alert as KA
 from datetime import datetime
 import gspread_updater as GU
+import time
 
 # USLA모델 instance 생성
 key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt"
@@ -21,8 +22,8 @@ try:
     current_date = current.date()
 
     # 전일, 월초, 연초 전월말, 전년말 잔고 업데이트
-    last_day_balance = USLA_data['balance']
-    last_day_balance_KRW = USLA_data['balance_KRW']
+    last_day_balance = float("{:.2f}".format(USLA_data['balance'])) # USLA_data['balance']
+    last_day_balance_KRW = int(USLA_data['balance_KRW'])
 
     if current.day == 1: # 월초 전월 잔고 데이터 변경
         last_month_balance = last_day_balance
@@ -41,24 +42,26 @@ try:
         last_year_balance_KRW = USLA_data['last_year_balance_KRW']
 
     # 당일 평가잔고 산출
-    Hold = USLA.get_total_balance()
+    result = USLA.get_US_stock_balance()
     Hold_tickers = {}
-    if len(Hold['stocks']) > 0:
-        for stock in Hold['stocks']:
-            ticker = stock['ticker']
-            qty = stock['quantity']
+    if len(result) > 0:
+        for i in range(len(result)):
+            ticker = result[i]['ticker']
+            qty = result[i]['quantity']
             Hold_tickers[ticker] = qty
     else:
         pass
 
-    exchange_rate = Hold['exchange_rate']
+    result = USLA.get_US_dollar_balance()
+    exchange_rate = result['exchange_rate']
 
     UPRO = Hold_tickers.get('UPRO', 0)
     TQQQ = Hold_tickers.get('TQQQ', 0)
     EDC = Hold_tickers.get('EDC', 0)
     TMF = Hold_tickers.get('TMF', 0)
     TMV = Hold_tickers.get('TMV', 0)
-    CASH = USLA_data['CASH'] + USD_adjust
+    CASH = USLA_data['CASH'] + USD_adjust # 확인 필요
+    time.sleep(0.2)
 
     # 당일 티커별 평가금 산출
     UPRO_eval = UPRO * (USLA.get_US_current_price('UPRO') * (1-0.0009))
@@ -69,7 +72,9 @@ try:
 
     # 데이터 조정
     today_eval = UPRO_eval + TQQQ_eval + EDC_eval + TMF_eval + TMV_eval + CASH
-    today_eval_KRW = today_eval * exchange_rate
+    today_eval_KRW = int(today_eval * exchange_rate)
+    today_eval = float("{:.2f}".format(today_eval))
+    
 
     # 일, 월, 연 수익률 #
     daily_return = (today_eval - last_day_balance) / last_day_balance * 100

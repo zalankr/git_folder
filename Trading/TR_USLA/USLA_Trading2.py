@@ -363,10 +363,11 @@ def Buying(Buy_qty, buy_split, TR_usd):
     
     return Buy_order
 
-def round_TR_data(Hold_usd, target_weight):
+def round_TR_data(Hold_usd, target_weight): #test 수정
     """라운드별 거래 데이터 생성"""
-    order_time = KIS_Calender.check_order_time()
-    round = order_time['round']
+    # order_time = KIS_Calender.check_order_time() #test 복원
+    # round = order_time['round'] #test 복원
+    round = 12 #test 후 삭제
     
     round_split = USLA.make_split_data(round)
     sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
@@ -513,256 +514,256 @@ def health_check():
 order_time = KIS_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
-if order_time['season'] == "USLA_not_rebalancing" or order_time['round'] == 0:
-    KA.SendMessage(f"USLA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USLA_rebalancing_day 리스트에 없습니다.")
-    sys.exit(0)
+# if order_time['season'] == "USLA_not_rebalancing" or order_time['round'] == 0:
+#     KA.SendMessage(f"USLA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USLA_rebalancing_day 리스트에 없습니다.")
+#     sys.exit(0)
 
 # 메인 로직 시작 전 시스템 상태 확인
 health_check()
-KA.SendMessage(f"USLA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
+# KA.SendMessage(f"USLA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
-if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
-    # 목표 데이터 만들기
-    target_weight, regime_signal = USLA.target_ticker_weight()
-    USLA_data = USLA.load_USLA_data()
-    Hold_usd = USLA_data['CASH']
-    target_ticker = list(target_weight.keys())
+# if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
+# 목표 데이터 만들기
+target_weight, regime_signal = USLA.target_ticker_weight()
+USLA_data = USLA.load_USLA_data()
+Hold_usd = USLA_data['CASH']
+target_ticker = list(target_weight.keys())
 
-    # 실제 API에서 USD 예수금 확인 (선택적)
-    api_usd = calculate_expected_usd_from_api()
-    if api_usd is not None:
-        validate_usd_balance(Hold_usd, api_usd, tolerance=50.0)
+# 실제 API에서 USD 예수금 확인 (선택적)
+api_usd = calculate_expected_usd_from_api()
+if api_usd is not None:
+    validate_usd_balance(Hold_usd, api_usd, tolerance=50.0)
 
-    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
+Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
 
-    # USLA_data update 1차
-    USLA_data = {
-        'date': str(order_time['date']),
-        'regime_signal': regime_signal,
-        'target_ticker1': target_ticker[0],
-        'target_weight1': target_weight[target_ticker[0]],
-        'target_ticker2': target_ticker[1],
-        'target_weight2': target_weight[target_ticker[1]],
-        'UPRO': Hold['UPRO'],
-        'TQQQ': Hold['TQQQ'],
-        'EDC': Hold['EDC'],
-        'TMF': Hold['TMF'],
-        'TMV': Hold['TMV'],
-        'CASH': Hold['CASH'],
-        'balance': USLA_data['balance'],
-        'last_day_balance': USLA_data['last_day_balance'],
-        'last_month_balance': USLA_data['last_month_balance'],
-        'last_year_balance': USLA_data['last_year_balance'],
-        'daily_return': USLA_data['daily_return'],
-        'monthly_return': USLA_data['monthly_return'],
-        'yearly_return': USLA_data['yearly_return'],
-        'exchange_rate': USLA_data['exchange_rate'],
-        'balance_KRW': USLA_data['balance_KRW'],
-        'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
-        'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
-        'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
-        'daily_return_KRW': USLA_data['daily_return_KRW'],
-        'monthly_return_KRW': USLA_data['monthly_return_KRW'],
-        'yearly_return_KRW': USLA_data['yearly_return_KRW']
-    }
+#     # USLA_data update 1차
+#     USLA_data = {
+#         'date': str(order_time['date']),
+#         'regime_signal': regime_signal,
+#         'target_ticker1': target_ticker[0],
+#         'target_weight1': target_weight[target_ticker[0]],
+#         'target_ticker2': target_ticker[1],
+#         'target_weight2': target_weight[target_ticker[1]],
+#         'UPRO': Hold['UPRO'],
+#         'TQQQ': Hold['TQQQ'],
+#         'EDC': Hold['EDC'],
+#         'TMF': Hold['TMF'],
+#         'TMV': Hold['TMV'],
+#         'CASH': Hold['CASH'],
+#         'balance': USLA_data['balance'],
+#         'last_day_balance': USLA_data['last_day_balance'],
+#         'last_month_balance': USLA_data['last_month_balance'],
+#         'last_year_balance': USLA_data['last_year_balance'],
+#         'daily_return': USLA_data['daily_return'],
+#         'monthly_return': USLA_data['monthly_return'],
+#         'yearly_return': USLA_data['yearly_return'],
+#         'exchange_rate': USLA_data['exchange_rate'],
+#         'balance_KRW': USLA_data['balance_KRW'],
+#         'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
+#         'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
+#         'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
+#         'daily_return_KRW': USLA_data['daily_return_KRW'],
+#         'monthly_return_KRW': USLA_data['monthly_return_KRW'],
+#         'yearly_return_KRW': USLA_data['yearly_return_KRW']
+#     }
 
-    USLA.save_USLA_data_json(USLA_data)
+#     USLA.save_USLA_data_json(USLA_data)
 
-    # Sell주문
-    Sell_order = Selling(Sell, sell_split)
-    # Buy 수량 계산
-    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
-    # Buy주문
-    Buy_order = Buying(Buy_qty, buy_split, TR_usd)
+#     # Sell주문
+#     Sell_order = Selling(Sell, sell_split)
+#     # Buy 수량 계산
+#     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+#     # Buy주문
+#     Buy_order = Buying(Buy_qty, buy_split, TR_usd)
 
-    # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
-    sys.exit(0)
+#     # 데이터 저장
+#     save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
+#     sys.exit(0)
 
 
-elif order_time['round'] in range(2, 25):  # Round 2~24회차
-    # ============================================
-    # 1단계: 지난 라운드 TR_data 불러오기
-    # ============================================
-    try:
-        TR_data = USLA.load_USLA_TR()
-        Sell_order = TR_data['Sell_order']
-        Buy_order = TR_data['Buy_order']
-        Hold_usd = TR_data['CASH']
-        target_weight = TR_data['target_weight']
+# elif order_time['round'] in range(2, 25):  # Round 2~24회차
+#     # ============================================
+#     # 1단계: 지난 라운드 TR_data 불러오기
+#     # ============================================
+#     try:
+#         TR_data = USLA.load_USLA_TR()
+#         Sell_order = TR_data['Sell_order']
+#         Buy_order = TR_data['Buy_order']
+#         Hold_usd = TR_data['CASH']
+#         target_weight = TR_data['target_weight']
         
-        # 이전 라운드 USD 저장 (검증용)
-        prev_round_usd = Hold_usd
+#         # 이전 라운드 USD 저장 (검증용)
+#         prev_round_usd = Hold_usd
         
-    except Exception as e:
-        KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
-        sys.exit(0)
+#     except Exception as e:
+#         KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
+#         sys.exit(0)
 
-    # ============================================
-    # 2단계: 체결 내역 확인 (주문 취소 전!)
-    # ============================================
-    # 성공한 주문만 필터링하여 체결 확인
-    successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
-    successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
+#     # ============================================
+#     # 2단계: 체결 내역 확인 (주문 취소 전!)
+#     # ============================================
+#     # 성공한 주문만 필터링하여 체결 확인
+#     successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
+#     successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
 
-    # 매도 체결결과 반영
-    if len(successful_sell_orders) > 0:
-        sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
-        Hold_usd += sell_summary['net_amount']
-        KA.SendMessage(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
+#     # 매도 체결결과 반영
+#     if len(successful_sell_orders) > 0:
+#         sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
+#         Hold_usd += sell_summary['net_amount']
+#         KA.SendMessage(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
     
-    # 매수 체결결과 반영
-    if len(successful_buy_orders) > 0:
-        buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
-        Hold_usd -= buy_summary['total_amount']
-        KA.SendMessage(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
+#     # 매수 체결결과 반영
+#     if len(successful_buy_orders) > 0:
+#         buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
+#         Hold_usd -= buy_summary['total_amount']
+#         KA.SendMessage(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
 
-    # USD 잔고 변화 로깅
-    usd_change = Hold_usd - prev_round_usd
-    KA.SendMessage(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
+#     # USD 잔고 변화 로깅
+#     usd_change = Hold_usd - prev_round_usd
+#     KA.SendMessage(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
 
-    # ============================================
-    # 3단계: 미체결 주문 취소 (체결 확인 후!)
-    # ============================================
-    try:
-        cancel_result = USLA.cancel_all_unfilled_orders()
-        if cancel_result['total'] > 0:
-            KA.SendMessage(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
-    except Exception as e:
-        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
+#     # ============================================
+#     # 3단계: 미체결 주문 취소 (체결 확인 후!)
+#     # ============================================
+#     try:
+#         cancel_result = USLA.cancel_all_unfilled_orders()
+#         if cancel_result['total'] > 0:
+#             KA.SendMessage(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+#     except Exception as e:
+#         KA.SendMessage(f"USLA 주문 취소 오류: {e}")
 
-    # ============================================
-    # 4단계: 새로운 주문 준비 및 실행
-    # ============================================
-    # 목표 비중 만들기
-    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
+#     # ============================================
+#     # 4단계: 새로운 주문 준비 및 실행
+#     # ============================================
+#     # 목표 비중 만들기
+#     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
 
-    # Sell 주문
-    Sell_order = Selling(Sell, sell_split)
+#     # Sell 주문
+#     Sell_order = Selling(Sell, sell_split)
 
-    # Buy 수량 계산
-    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+#     # Buy 수량 계산
+#     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
     
-    # Buy 주문
-    Buy_order = Buying(Buy_qty, buy_split, TR_usd)
+#     # Buy 주문
+#     Buy_order = Buying(Buy_qty, buy_split, TR_usd)
 
-    # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
+#     # 데이터 저장
+#     save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
 
-    sys.exit(0)
+#     sys.exit(0)
 
-elif order_time['round'] == 25:  # 25회차 최종기록
-    # ============================================
-    # 1단계: 지난 라운드 TR_data 불러오기
-    # ============================================
-    try:
-        TR_data = USLA.load_USLA_TR()
-        Sell_order = TR_data['Sell_order']
-        Buy_order = TR_data['Buy_order']
-        Hold_usd = TR_data['CASH']
-    except Exception as e:
-        print(f"USLA_TR JSON 파일 오류: {e}")
-        sys.exit(0)
+# elif order_time['round'] == 25:  # 25회차 최종기록
+#     # ============================================
+#     # 1단계: 지난 라운드 TR_data 불러오기
+#     # ============================================
+#     try:
+#         TR_data = USLA.load_USLA_TR()
+#         Sell_order = TR_data['Sell_order']
+#         Buy_order = TR_data['Buy_order']
+#         Hold_usd = TR_data['CASH']
+#     except Exception as e:
+#         print(f"USLA_TR JSON 파일 오류: {e}")
+#         sys.exit(0)
 
-    # ============================================
-    # 2단계: 최종 체결 내역 확인 (주문 취소 전!)
-    # ============================================
-    # 성공한 주문만 필터링
-    successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
-    successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
+#     # ============================================
+#     # 2단계: 최종 체결 내역 확인 (주문 취소 전!)
+#     # ============================================
+#     # 성공한 주문만 필터링
+#     successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
+#     successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
 
-    # 매도 체결결과 반영
-    if len(successful_sell_orders) > 0:
-        sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
-        Hold_usd += sell_summary['net_amount']
+#     # 매도 체결결과 반영
+#     if len(successful_sell_orders) > 0:
+#         sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
+#         Hold_usd += sell_summary['net_amount']
     
-    # 매수 체결결과 반영
-    if len(successful_buy_orders) > 0:
-        buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
-        Hold_usd -= buy_summary['total_amount']
+#     # 매수 체결결과 반영
+#     if len(successful_buy_orders) > 0:
+#         buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
+#         Hold_usd -= buy_summary['total_amount']
 
-    # ============================================
-    # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
-    # ============================================
-    try:
-        cancel_result = USLA.cancel_all_unfilled_orders()
-        if cancel_result['total'] > 0:
-            KA.SendMessage(f"최종 미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
-    except Exception as e:
-        KA.SendMessage(f"USLA 주문 취소 오류: {e}")
+#     # ============================================
+#     # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
+#     # ============================================
+#     try:
+#         cancel_result = USLA.cancel_all_unfilled_orders()
+#         if cancel_result['total'] > 0:
+#             KA.SendMessage(f"최종 미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+#     except Exception as e:
+#         KA.SendMessage(f"USLA 주문 취소 오류: {e}")
 
-    # ============================================
-    # 4단계: 실제 API로 최종 잔고 확인 및 검증
-    # ============================================
-    api_usd = calculate_expected_usd_from_api()
-    if api_usd is not None:
-        is_valid, diff = validate_usd_balance(Hold_usd, api_usd, tolerance=100.0)
-        if not is_valid:
-            KA.SendMessage(f"⚠️ 최종 USD 검증 실패! API 값({api_usd})으로 보정합니다.")
-            Hold_usd = api_usd
+#     # ============================================
+#     # 4단계: 실제 API로 최종 잔고 확인 및 검증
+#     # ============================================
+#     api_usd = calculate_expected_usd_from_api()
+#     if api_usd is not None:
+#         is_valid, diff = validate_usd_balance(Hold_usd, api_usd, tolerance=100.0)
+#         if not is_valid:
+#             KA.SendMessage(f"⚠️ 최종 USD 검증 실패! API 값({api_usd})으로 보정합니다.")
+#             Hold_usd = api_usd
 
-    # ============================================
-    # 5단계: 최종 데이터 저장 (USLA_data.json)
-    # ============================================
-    USLA_data = USLA.load_USLA_data()
+#     # ============================================
+#     # 5단계: 최종 데이터 저장 (USLA_data.json)
+#     # ============================================
+#     USLA_data = USLA.load_USLA_data()
 
-    Hold = USLA.get_total_balance()
-    Hold_tickers = {}
-    if len(Hold['stocks']) > 0:
-        for stock in Hold['stocks']:
-            ticker = stock['ticker']
-            qty = stock['quantity']
-            Hold_tickers[ticker] = qty
-    else:
-        pass
+#     Hold = USLA.get_total_balance()
+#     Hold_tickers = {}
+#     if len(Hold['stocks']) > 0:
+#         for stock in Hold['stocks']:
+#             ticker = stock['ticker']
+#             qty = stock['quantity']
+#             Hold_tickers[ticker] = qty
+#     else:
+#         pass
 
-    UPRO = Hold_tickers.get('UPRO', 0)
-    TQQQ = Hold_tickers.get('TQQQ', 0)
-    EDC = Hold_tickers.get('EDC', 0)
-    TMF = Hold_tickers.get('TMF', 0)
-    TMV = Hold_tickers.get('TMV', 0)
-    balance = Hold['stock_eval_usd'] + Hold_usd
+#     UPRO = Hold_tickers.get('UPRO', 0)
+#     TQQQ = Hold_tickers.get('TQQQ', 0)
+#     EDC = Hold_tickers.get('EDC', 0)
+#     TMF = Hold_tickers.get('TMF', 0)
+#     TMV = Hold_tickers.get('TMV', 0)
+#     balance = Hold['stock_eval_usd'] + Hold_usd
     
-    USLA_data = {
-        'date': str(order_time['date']),
-        'regime_signal': USLA_data['regime_signal'],
-        'target_ticker1': USLA_data['target_ticker1'],
-        'target_weight1': USLA_data['target_weight1'],
-        'target_ticker2': USLA_data['target_ticker2'],
-        'target_weight2': USLA_data['target_weight2'],
-        'UPRO': UPRO,
-        'TQQQ': TQQQ,
-        'EDC': EDC,
-        'TMF': TMF,
-        'TMV': TMV,
-        'CASH': Hold_usd,
-        'balance': balance,
-        'last_day_balance': USLA_data['last_day_balance'],
-        'last_month_balance': USLA_data['last_month_balance'],
-        'last_year_balance': USLA_data['last_year_balance'],
-        'daily_return': USLA_data['daily_return'],
-        'monthly_return': USLA_data['monthly_return'],
-        'yearly_return': USLA_data['yearly_return'],
-        'exchange_rate': Hold['exchange_rate'],
-        'balance_KRW': Hold['stock_eval_krw'] + (Hold_usd * Hold['exchange_rate']),
-        'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
-        'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
-        'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
-        'daily_return_KRW': USLA_data['daily_return_KRW'],
-        'monthly_return_KRW': USLA_data['monthly_return_KRW'],
-        'yearly_return_KRW': USLA_data['yearly_return_KRW']
-    }
-    USLA.save_USLA_data_json(USLA_data)
+#     USLA_data = {
+#         'date': str(order_time['date']),
+#         'regime_signal': USLA_data['regime_signal'],
+#         'target_ticker1': USLA_data['target_ticker1'],
+#         'target_weight1': USLA_data['target_weight1'],
+#         'target_ticker2': USLA_data['target_ticker2'],
+#         'target_weight2': USLA_data['target_weight2'],
+#         'UPRO': UPRO,
+#         'TQQQ': TQQQ,
+#         'EDC': EDC,
+#         'TMF': TMF,
+#         'TMV': TMV,
+#         'CASH': Hold_usd,
+#         'balance': balance,
+#         'last_day_balance': USLA_data['last_day_balance'],
+#         'last_month_balance': USLA_data['last_month_balance'],
+#         'last_year_balance': USLA_data['last_year_balance'],
+#         'daily_return': USLA_data['daily_return'],
+#         'monthly_return': USLA_data['monthly_return'],
+#         'yearly_return': USLA_data['yearly_return'],
+#         'exchange_rate': Hold['exchange_rate'],
+#         'balance_KRW': Hold['stock_eval_krw'] + (Hold_usd * Hold['exchange_rate']),
+#         'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
+#         'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
+#         'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
+#         'daily_return_KRW': USLA_data['daily_return_KRW'],
+#         'monthly_return_KRW': USLA_data['monthly_return_KRW'],
+#         'yearly_return_KRW': USLA_data['yearly_return_KRW']
+#     }
+#     USLA.save_USLA_data_json(USLA_data)
 
-# 카톡 리밸 종료 결과 보내기
-KA.SendMessage(f"KIS USLA {order_time['date']}\n당월 리벨런싱 완료")
-KA.SendMessage(
-    f"KIS USLA regime_signal: {USLA_data['regime_signal']}\n"
-    f"target1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']}\n"
-    f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}"
-)
-KA.SendMessage(
-    f"KIS USLA balance: {balance}\n"
-    f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
-    f"CASH: ${Hold_usd:.2f}"
-)
+# # 카톡 리밸 종료 결과 보내기
+# KA.SendMessage(f"KIS USLA {order_time['date']}\n당월 리벨런싱 완료")
+# KA.SendMessage(
+#     f"KIS USLA regime_signal: {USLA_data['regime_signal']}\n"
+#     f"target1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']}\n"
+#     f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}"
+# )
+# KA.SendMessage(
+#     f"KIS USLA balance: {balance}\n"
+#     f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
+#     f"CASH: ${Hold_usd:.2f}"
+# )
