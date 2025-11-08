@@ -1,19 +1,7 @@
 {
-    "round": 13,
-    "timestamp": "2025-11-07T15:00:08.254252",
-    "Sell_order": [
-        {
-            "success": true,
-            "ticker": "TQQQ",
-            "quantity": 1,
-            "price": 105.0,
-            "order_number": "0031879757",
-            "order_time": "000007",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 4
-        }
-    ],
+    "round": 14,
+    "timestamp": "2025-11-07T15:30:08.228602",
+    "Sell_order": [],
     "Buy_order": [],
     "CASH": 102.06000000000009,
     "target_weight": {
@@ -21,6 +9,6 @@
         "EDC": 0.39918144879150486,
         "CASH": 0.03
     },
-    "sell_success_rate": "1/1",
+    "sell_success_rate": "0/0",
     "buy_success_rate": "0/0"
 }
