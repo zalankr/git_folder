@@ -20,7 +20,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.USLA_TR_path = "/var/autobot/TR_USLA/USLA_TR.json"
         self.fee = self.SELL_FEE_RATE  # 매도 수수료 0.09%
     
-    def calculate_USD_value(self, hold): # make_trading_data함수에 종속되어 USD 환산 잔고 계산
+    def calculate_USD_value(self, hold): # make_trading_data함수에 종속되어 USD 환산 잔고 계산 - 수수료 포함
         """USD 환산 잔고 계산"""
         hold_USD_value = 0
         for t in hold.keys():
@@ -32,12 +32,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 price = self.get_US_current_price(t)
                 # hold[t]를 float로 변환
                 qty = hold[t]
-                value = price * qty  # 시장 평가액 (수수료 제외)
+                value = price * qty * (1 - self.fee)  # 시장 평가액 (수수료 포함)
                 hold_USD_value += value
 
         return hold_USD_value
 
-    def calculate_target_qty(self, target, target_usd_value): # make_trading_data함수에 종속되어 target 티커별 목표 quantity 산출
+    def calculate_target_qty(self, target, target_usd_value): # make_trading_data함수에 종속, target 티커별 목표 quantity 산출 - 수수료 포함
         # 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
         target_qty = {}
         target_stock_value = 0
@@ -48,7 +48,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                     
                     # 타입 체크 추가
                     if isinstance(price, (int, float)) and price > 0:
-                        target_qty[ticker] = int(target_usd_value[ticker] / price)  
+                        target_qty[ticker] = int(target_usd_value[ticker] / (price*(1 + self.fee))) # 수수료 포함
                         target_stock_value += target_qty[ticker] * price
                         
                     else:

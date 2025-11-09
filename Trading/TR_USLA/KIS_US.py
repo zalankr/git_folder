@@ -19,8 +19,8 @@ class KIS_API:
         
         self._load_api_keys()
         self.access_token = self.get_access_token()
-        
-        self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
+        self.SELL_FEE_RATE = 0.0025  # test 매도 수수료 0.25% 수수료 할인 안 된 테스트 계좌 ##########################################     
+        # self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
         self.BUY_FEE_RATE = 0.0  # 매수 수수료는 체결단가에 포함
     
     # API-Key 로드
@@ -279,6 +279,8 @@ class KIS_API:
             'response': requests.Response
         }
         """
+        order_sell_message = []
+
         if exchange is None:
             exchange = self.get_exchange_by_ticker(ticker)
             if exchange == "NAS" or exchange == "BAQ":
@@ -291,8 +293,9 @@ class KIS_API:
                 exchange = None
         
         if exchange is None:
-            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
-            return None
+            order_sell_message.append(f"{ticker} 거래소를 찾을 수 없습니다.")
+            order_info = None
+            return order_info, order_sell_message
         
         # 가격을 소수점 2자리로 반올림
         price = round(price, 2)
@@ -346,12 +349,11 @@ class KIS_API:
                     'response': response
                 }
                 
-                # KA.SendMessage(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
-                
-                return order_info
+                order_sell_message.append(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")                
+                return order_info, order_sell_message
             else:
-                KA.SendMessage(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
-                return {
+                order_sell_message.append(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                order_info = {
                     'success': False,
                     'ticker': ticker,
                     'quantity': quantity,
@@ -361,10 +363,17 @@ class KIS_API:
                     'error_message': result.get('msg1', ''),
                     'response': response
                 }
+                return order_info, order_sell_message
+                
+        except requests.exceptions.RequestException as e:
+            order_sell_message.append(f"정규매도 주문 오류: {e}")
+            order_info = None
+            return order_info, order_sell_message
                 
         except Exception as e:
-            KA.SendMessage(f"정규매도 주문 오류: {e}")
-            return None
+            order_sell_message.append(f"정규매도 주문 오류: {e}")
+            order_info = None
+            return order_info, order_sell_message
 
     # 미국 정규시장 주식 매수 주문
     def order_buy_US(self, ticker: str, quantity: int, price: float, 
@@ -382,6 +391,9 @@ class KIS_API:
         Returns:
         Dict 또는 None - 주문 정보 딕셔너리
         """
+
+        order_buy_message = []
+
         if exchange is None:
             exchange = self.get_exchange_by_ticker(ticker)
             if exchange == "NAS" or exchange == "BAQ":
@@ -394,8 +406,9 @@ class KIS_API:
                 exchange = None
         
         if exchange is None:
-            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
-            return None
+            order_buy_message.append(f"{ticker} 거래소를 찾을 수 없습니다.")
+            order_info = None
+            return order_info, order_buy_message
         
         # 가격을 소수점 2자리로 반올림
         price = round(price, 2)
@@ -448,10 +461,10 @@ class KIS_API:
                     'response': response
                 }
                 
-                # KA.SendMessage(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
-                return order_info
+                order_buy_message.append(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
+                return order_info, order_buy_message
             else:
-                KA.SendMessage(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                order_buy_message.append(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -464,8 +477,9 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            KA.SendMessage(f"정규매수 주문 오류: {e}")
-            return None
+            order_buy_message.append(f"정규매수 주문 오류: {e}")
+            order_info = None
+            return order_info, order_buy_message
     
     # 미국 주간거래 매수 주문 (Pre-market/After-hours)
     def order_daytime_buy_US(self, ticker: str, quantity: int, price: float,
@@ -740,7 +754,7 @@ class KIS_API:
             traceback.print_exc()
             return None
 
-    # 미국 달러 예수금 # 오류 클로드 정상화 이후 확인 에러 # 삭제예정
+    # 미국 달러 예수금
     def get_US_dollar_balance(self) -> Optional[Dict]:
         """미국 달러 예수금"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
