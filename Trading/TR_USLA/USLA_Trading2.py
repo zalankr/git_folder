@@ -625,37 +625,40 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
         sys.exit(0)
 
-#     # ============================================
-#     # 2단계: 체결 내역 확인 (주문 취소 전!)
-#       여기서부터 다시 검증을 철저하게
-#       체결내역 확인을 메세지 하나로 묶기 & claude에게 체결확인 안 되는 것 운영에 문제 없는 지 문의하고 메세지 발생 시키지 말 것
-#       TR_data.json에서 목표 수량 불러오기, real_Hold에서 실제 잔고를 불러와 비교 금번 라운드의 매수량과 매도량을 계산
-#       최종 목표 달성 시 거래 중단 다만 매수 시 가격 인상으로 USD부족 시엔 if문 써서 TR_usd와 목표매수 시 실제필요 usd계산 후 매수량 조절 주문
-#       TR_data의 target_qty의 usd도 이 계산에 따라 변동 기록
-#     # ============================================
-#     # 성공한 주문만 필터링하여 체결 확인
-#     successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
-#     successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
+    # ============================================
+    # 2단계: 체결 내역 확인 (주문 취소 전!)
+    #   여기서부터 다시 검증을 철저하게
+    #   체결내역 확인을 메세지 하나로 묶기 & 
+    #   TR_data.json에서 목표 수량 불러오기, real_Hold에서 실제 잔고를 불러와 비교 금번 라운드의 매수량과 매도량을 계산
+    #   최종 목표 달성 시 거래 중단 다만 매수 시 가격 인상으로 USD부족 시엔 if문 써서 TR_usd와 목표매수 시 실제필요 usd계산 후 매수량 조절 주문
+    #   TR_data의 target_qty의 usd도 이 계산에 따라 변동 기록
+    #   2) claude에게 체결확인 안 되는 것 운영에 문제 없는 지 문의하고 메세지 발생 시키지 말 것
+    # ============================================
+    # 성공한 주문만 필터링하여 체결 확인
+    successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
+    successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
 
-#     # 매도 체결결과 반영
-#     if len(successful_sell_orders) > 0:
-#         sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
-#         Hold_usd += sell_summary['net_amount']
-#         KA.SendMessage(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
+    success_message = [] # 출력메세지 모으기
+
+    # 매도 체결결과 반영
+    if len(successful_sell_orders) > 0:
+        sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
+        Hold_usd += sell_summary['net_amount']
+        success_message.append(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
     
-#     # 매수 체결결과 반영
-#     if len(successful_buy_orders) > 0:
-#         buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
-#         Hold_usd -= buy_summary['total_amount']
-#         KA.SendMessage(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
+    # 매수 체결결과 반영
+    if len(successful_buy_orders) > 0:
+        buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
+        Hold_usd -= buy_summary['total_amount']
+        success_message.append(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
 
-#     # USD 잔고 변화 로깅
-#     usd_change = Hold_usd - prev_round_usd
-#     KA.SendMessage(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
+    # USD 잔고 변화 로깅
+    usd_change = Hold_usd - prev_round_usd
+    success_message.append(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
 
-#     # ============================================
-#     # 3단계: 미체결 주문 취소 (체결 확인 후!)
-#     # ============================================
+    # ============================================
+    # 3단계: 미체결 주문 취소 (체결 확인 후!)
+    # ============================================
 #     try:
 #         cancel_result = USLA.cancel_all_unfilled_orders()
 #         if cancel_result['total'] > 0:
