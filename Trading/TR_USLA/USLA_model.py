@@ -233,11 +233,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
         total_fee = 0.0
         
         # 각 주문의 체결 내역 조회
+        message = []
         for order in Sell_order:
             try:
                 # 주문 번호가 없는 경우 스킵 (주문 실패)
                 if not order.get('order_number'):
-                    KA.SendMessage(f"매도 체결 확인 스킵: {order.get('ticker')} (주문번호 없음)")
+                    message.append(f"매도 체결 확인 스킵: {order.get('ticker')} (주문번호 없음)")
                     continue
                 
                 # 체결 내역 조회
@@ -249,7 +250,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
                 # execution이 None인 경우 처리 추가
                 if execution is None:
-                    KA.SendMessage(f"매도 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
+                    message.append(f"매도 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
                     unfilled_orders += 1
                     order_qty = order.get('quantity', 0)
                     total_order_qty += order_qty
@@ -302,7 +303,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         status = 'partial_filled'
                     else:
                         # 체결 수량 > 주문 수량 (이론적으로 불가능하지만 체크)
-                        KA.SendMessage(f"⚠️ 매도 체결 이상: {order['ticker']} (체결:{filled_qty} > 주문:{order_qty})")
+                        message.append(f"⚠️ 매도 체결 이상: {order['ticker']} (체결:{filled_qty} > 주문:{order_qty})")
                         filled_orders += 1
                         status = 'overfilled'
                     
@@ -342,7 +343,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 time.sleep(0.1)
                 
             except Exception as e:
-                KA.SendMessage(f"매도 체결 확인 오류 ({order.get('ticker', 'Unknown')}): {e}")
+                message.append(f"매도 체결 확인 오류 ({order.get('ticker', 'Unknown')}): {e}")
                 unfilled_orders += 1
                 continue
         
@@ -361,7 +362,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         }
         
         # 상세 로깅
-        KA.SendMessage(
+        message.append(
             f"📤 매도 체결 요약:\n"
             f"주문: {total_orders}건 (완전체결:{filled_orders}, 부분:{partial_filled}, 미체결:{unfilled_orders})\n"
             f"수량: {total_filled_qty}/{total_order_qty}\n"
@@ -389,9 +390,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
             ticker_msg = "티커별 매도:\n"
             for ticker, data in ticker_summary.items():
                 ticker_msg += f"{ticker}: {data['filled_qty']}/{data['total_qty']}주, ${data['net_amount']:.2f}\n"
-            KA.SendMessage(ticker_msg.strip())
+            message.append(ticker_msg.strip())
         
-        return summary
+        return summary, message
 
     def calculate_buy_summary(self, Buy_order):
         """
@@ -429,11 +430,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
         total_amount = 0.0  # 매수는 체결가에 이미 수수료 포함됨
         
         # 각 주문의 체결 내역 조회
+        message = []
         for order in Buy_order:
             try:
                 # 주문 번호가 없는 경우 스킵 (주문 실패)
                 if not order.get('order_number'):
-                    KA.SendMessage(f"매수 체결 확인 스킵: {order.get('ticker')} (주문번호 없음)")
+                    message.append(f"매수 체결 확인 스킵: {order.get('ticker')} (주문번호 없음)")
                     continue
                 
                 # 체결 내역 조회
@@ -445,7 +447,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 
                 # execution이 None인 경우 처리 추가
                 if execution is None:
-                    KA.SendMessage(f"매수 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
+                    message.append(f"매수 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
                     unfilled_orders += 1
                     order_qty = order.get('quantity', 0)
                     total_order_qty += order_qty
@@ -474,8 +476,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 # 체결 수량이 있는 경우
                 if filled_qty > 0 and avg_price > 0:
                     # 매수 금액 계산
-                    # ⭐ 중요: KIS API는 매수 체결가에 이미 수수료가 포함되어 있음
-                    # 따라서 별도 수수료 계산 불필요
+                    # 수수료 포함 따라서 별도 수수료 계산 불필요 >>> 추후 검증 필요
                     amount = filled_qty * avg_price
                     
                     # 집계
@@ -491,7 +492,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         status = 'partial_filled'
                     else:
                         # 체결 수량 > 주문 수량 (이론적으로 불가능하지만 체크)
-                        KA.SendMessage(f"매수 체결 이상: {order['ticker']} (체결:{filled_qty} > 주문:{order_qty})")
+                        message.append(f"매수 체결 이상: {order['ticker']} (체결:{filled_qty} > 주문:{order_qty})")
                         filled_orders += 1
                         status = 'overfilled'
                     
@@ -527,7 +528,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 time.sleep(0.1)
                 
             except Exception as e:
-                KA.SendMessage(f"매수 체결 확인 오류 ({order.get('ticker', 'Unknown')}): {e}")
+                message.append(f"매수 체결 확인 오류 ({order.get('ticker', 'Unknown')}): {e}")
                 unfilled_orders += 1
                 continue
         
@@ -544,7 +545,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         }
         
         # 상세 로깅
-        KA.SendMessage(
+        message.append(
             f"📥 매수 체결 요약:\n"
             f"주문: {total_orders}건 (완전체결:{filled_orders}, 부분:{partial_filled}, 미체결:{unfilled_orders})\n"
             f"수량: {total_filled_qty}/{total_order_qty}\n"
@@ -570,9 +571,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
             ticker_msg = "티커별 매수:\n"
             for ticker, data in ticker_summary.items():
                 ticker_msg += f"{ticker}: {data['filled_qty']}/{data['total_qty']}주, ${data['total_amount']:.2f}\n"
-            KA.SendMessage(ticker_msg.strip())
+            message.append(ticker_msg.strip())
         
-        return summary
+        return summary, message
 
     def target_ticker_weight(self):
         """target 티커별 목표 비중 산출"""

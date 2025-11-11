@@ -838,7 +838,7 @@ class KIS_API:
             exchange = None
         
         if exchange is None:
-            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 체결 내역 조회
@@ -920,6 +920,7 @@ class KIS_API:
         Returns:
         Dict 또는 None - 취소 결과
         """
+        message = []
         # 거래소 확인
         exchange = self.get_exchange_by_ticker(ticker)
         if exchange == "NAS" or exchange == "BAQ":
@@ -972,7 +973,7 @@ class KIS_API:
             result = response.json()
             
             if result.get('rt_cd') == '0':
-                print(f"주문 취소 성공: {ticker} (주문번호: {order_number})")
+                # print(f"주문 취소 성공: {ticker} (주문번호: {order_number})")
                 return {
                     'success': True,
                     'ticker': ticker,
@@ -981,7 +982,7 @@ class KIS_API:
                     'response': response
                 }
             else:
-                print(f"주문 취소 실패: {result.get('msg1', '알 수 없는 오류')}")
+                # print(f"주문 취소 실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -991,7 +992,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            print(f"주문 취소 오류: {e}")
+            KA.SendMessage(f"주문 취소 오류: {e}")
             return None
 
     # 미체결 주문 조회
@@ -1147,8 +1148,9 @@ class KIS_API:
         }
         
         # 4. 결과 출력
-        KA.SendMessage(f"전체 미체결: {summary['total']}건 \n취소 성공: {summary['success']}건 \n취소 실패: {summary['failed']}건")       
-        return summary
+        message = []
+        message.append(f"전체 미체결: {summary['total']}건 \n취소 성공: {summary['success']}건 \n취소 실패: {summary['failed']}건")       
+        return summary, message
 
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]

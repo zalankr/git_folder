@@ -388,10 +388,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, target_
         "Buy_order": Buy_order,
         "CASH": Hold['CASH'],
         "target_weight": target_weight,
-        "target_qty": target_qty,
-        # 주문 성공률 추가
-        "sell_success_rate": f"{sum(1 for o in Sell_order if o['success'])}/{len(Sell_order)}",
-        "buy_success_rate": f"{sum(1 for o in Buy_order if o['success'])}/{len(Buy_order)}"
+        "target_qty": target_qty
     }
     
     try:
@@ -423,54 +420,6 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, target_
             KA.SendMessage(f"TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
     
     return TR_data
-
-def validate_usd_balance(Hold_usd, expected_usd, tolerance=10.0):
-    """
-    USD 예수금 검증 함수
-    
-    Parameters:
-    - Hold_usd: 현재 계산된 USD 예수금
-    - expected_usd: 예상 USD 예수금
-    - tolerance: 허용 오차 (달러)
-    
-    Returns:
-    - is_valid: 검증 통과 여부
-    - diff: 차이 금액
-    """
-    diff = abs(Hold_usd - expected_usd)
-    is_valid = diff <= tolerance
-    
-    if not is_valid:
-        KA.SendMessage(
-            f"USD 예수금 불일치 감지\n"
-            f"계산값: ${Hold_usd:.2f}\n"
-            f"예상값: ${expected_usd:.2f}\n"
-            f"차이: ${diff:.2f}"
-        )
-    
-    return is_valid, diff
-
-def calculate_expected_usd_from_api(): # 수정함 실행테스트
-    """
-    API에서 실제 사용가능한 withdrawable USD 예수금 조회
-    """
-    try:
-        balance = USLA.get_US_dollar_balance()
-        if balance is None:
-            KA.SendMessage("USD 예수금 조회 실패: get_total_balance returned None")
-            return None
-        
-        withdrawable = balance.get('withdrawable')
-        
-        if withdrawable is None:
-            KA.SendMessage("USD 예수금 조회 실패: 'withdrawable usd'가 없습니다")
-            return None
-        
-        return float(withdrawable)
-        
-    except Exception as e:
-        KA.SendMessage(f"USD 예수금 조회 실패: {e}")
-        return None
 
 def health_check():
     """시스템 상태 확인"""
@@ -524,11 +473,6 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     USLA_data = USLA.load_USLA_data()
     Hold_usd = USLA_data['CASH']
     target_ticker = list(target_weight.keys())
-
-    # 실제 API에서 USD 예수금 확인 (선택적)
-    api_usd = calculate_expected_usd_from_api()
-    if api_usd is not None:
-        validate_usd_balance(Hold_usd, api_usd, tolerance=50.0)
 
     Hold = real_Hold()
     Hold['CASH'] = Hold_usd
@@ -599,7 +543,7 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     # Sell주문
     Sell_order = Selling(Sell, sell_split) 
     # Buy 수량 계산
-    Buy_qty, TR_usd, order_messages = calculate_Buy_qty(Buy, Hold, target_usd)
+    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
     # Buy주문
     Buy_order = Buying(Buy_qty, buy_split, TR_usd)
 
@@ -638,53 +582,84 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
     successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
 
-    success_message = [] # 출력메세지 모으기
+    report_message = [] # 출력메세지 모으기
 
     # 매도 체결결과 반영
     if len(successful_sell_orders) > 0:
-        sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
+        sell_summary, message = USLA.calculate_sell_summary(successful_sell_orders)
         Hold_usd += sell_summary['net_amount']
-        success_message.append(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
+        for i in message:
+            report_message.append(i)
+        report_message.append(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
     
     # 매수 체결결과 반영
     if len(successful_buy_orders) > 0:
-        buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
+        buy_summary, message = USLA.calculate_buy_summary(successful_buy_orders)
         Hold_usd -= buy_summary['total_amount']
-        success_message.append(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
+        for i in message:
+            report_message.append(i)
+        report_message.append(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
 
     # USD 잔고 변화 로깅
     usd_change = Hold_usd - prev_round_usd
-    success_message.append(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
-
+    report_message.append(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
+    
     # ============================================
     # 3단계: 미체결 주문 취소 (체결 확인 후!)
     # ============================================
-#     try:
-#         cancel_result = USLA.cancel_all_unfilled_orders()
-#         if cancel_result['total'] > 0:
-#             KA.SendMessage(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
-#     except Exception as e:
-#         KA.SendMessage(f"USLA 주문 취소 오류: {e}")
+    try:
+        cancel_result, message = USLA.cancel_all_unfilled_orders()
+        report_message.append(message)
+        if cancel_result['total'] > 0:
+            report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+    except Exception as e:
+        report_message.append(f"USLA 주문 취소 오류: {e}")
+        
+    # 출력
+    KA.SendMessage("\n".join(report_message))
 
-#     # ============================================
-#     # 4단계: 새로운 주문 준비 및 실행
-#     # ============================================
-#     # 목표 비중 만들기
-#     Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
-
-#     # Sell 주문
-#     Sell_order = Selling(Sell, sell_split)
-
-#     # Buy 수량 계산
-#     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+    # ============================================
+    # 4단계: 새로운 주문 준비 및 실행
+    # ============================================
+    # 목표 비중 만들기
+    Hold = real_Hold() #실제보유
     
-#     # Buy 주문
-#     Buy_order = Buying(Buy_qty, buy_split, TR_usd)
+    Buy = dict()
+    Sell = dict()
+    # target에 있는 종목 처리
+    for ticker in target_qty.keys():
+        hold_qty = Hold.get(ticker, 0)
+        target = target_qty[ticker]
+        if target > hold_qty:
+            Buy[ticker] = target - hold_qty
+        elif target < hold_qty:
+            Sell[ticker] = hold_qty - target
+    # Hold에만 있고 target에 없는 종목 처리 (전량 매도)
+    for ticker in Hold.keys():
+        if ticker == "CASH":
+            continue
+        if ticker not in target_qty.keys():
+            if Hold[ticker] > 0:
+                Sell[ticker] = Hold[ticker]
+    
+    # Buy USD환산총액이 현재 Hold['CASH']보다 클 경우 매수수량 조정
+    
+    
+    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
 
-#     # 데이터 저장
-#     save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
+    # Sell 주문
+    Sell_order = Selling(Sell, sell_split)
 
-#     sys.exit(0)
+    # Buy 수량 계산
+    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
+    
+    # Buy 주문
+    Buy_order = Buying(Buy_qty, buy_split, TR_usd)
+
+    # 데이터 저장
+    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
+
+    sys.exit(0)
 
 # elif order_time['round'] == 25:  # 25회차 최종기록
 #     # ============================================
