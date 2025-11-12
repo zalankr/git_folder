@@ -588,7 +588,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         target = {
             ticker: weight 
             for ticker, weight in result['allocation'].items() 
-            if weight >= 0.01
+            if weight >= 0.001
         }
         regime_signal = result['regime']
         return target, regime_signal

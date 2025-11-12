@@ -376,7 +376,7 @@ def Buying(Buy_qty, buy_split, TR_usd):
     
     return Buy_order
 
-def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, target_qty):
+def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, target_qty):
     """
     거래 데이터 저장 - 개선버전
     저장 실패 시에도 백업 파일 생성
@@ -386,7 +386,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, target_
         "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
         "Sell_order": Sell_order,
         "Buy_order": Buy_order,
-        "CASH": Hold['CASH'],
+        "CASH": Hold_usd,
         "target_weight": target_weight,
         "target_qty": target_qty
     }
@@ -548,7 +548,7 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     Buy_order = Buying(Buy_qty, buy_split, TR_usd)
 
     # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight, target_qty)
+    save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, target_qty)
     sys.exit(0)
 
 elif order_time['round'] in range(2, 25):  # Round 2~24회차
@@ -562,6 +562,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         Hold_usd = TR_data['CASH']
         target_weight = TR_data['target_weight']
         target_qty = TR_data['target_qty']
+        target_usd = target_qty['CASH']
         # 이전 라운드 USD 저장 (검증용)
         prev_round_usd = Hold_usd
     
@@ -630,6 +631,8 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     for ticker in target_qty.keys():
         hold_qty = Hold.get(ticker, 0)
         target = target_qty[ticker]
+        if ticker == "CASH":
+            continue
         if target > hold_qty:
             Buy[ticker] = target - hold_qty
         elif target < hold_qty:
@@ -643,21 +646,36 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
                 Sell[ticker] = Hold[ticker]
     
     # Buy USD환산총액이 현재 Hold['CASH']보다 클 경우 매수수량 조정
+    TR_usd = Hold_usd - target_usd  # 매수가능 USD
+    needs_usd = 0
+    for ticker in Buy.keys(): # Buy USD환산총액 계산
+        price = USLA.get_US_current_price(ticker)
+        if isinstance(price, (int, float)) and price > 0:
+            needs_usd += Buy[ticker] * (price * (1 + USLA.fee))
+        else:
+            needs_usd += 0
+        time_module.sleep(0.1)
+    Buy_qty = dict()
+    ratio = TR_usd / needs_usd if needs_usd > 0 else 0
+    if ratio < 1.0:
+        for ticker in Buy.keys():
+            original_qty = Buy[ticker]
+            adjusted_qty = int(original_qty * ratio)
+            Buy_qty[ticker] = adjusted_qty
     
+    # split 데이터 만들기      
+    round_split = USLA.make_split_data(order_time['round'])
+    sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
+    buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
     
-    Hold, target_usd, Buy, Sell, sell_split, buy_split = round_TR_data(Hold_usd, target_weight)
-
     # Sell 주문
     Sell_order = Selling(Sell, sell_split)
-
-    # Buy 수량 계산
-    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
     
     # Buy 주문
     Buy_order = Buying(Buy_qty, buy_split, TR_usd)
 
     # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold, target_weight)
+    save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, target_qty)
 
     sys.exit(0)
 
