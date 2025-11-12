@@ -679,39 +679,63 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
     sys.exit(0)
 
-# elif order_time['round'] == 25:  # 25회차 최종기록
-#     # ============================================
-#     # 1단계: 지난 라운드 TR_data 불러오기
-#     # ============================================
-#     try:
-#         TR_data = USLA.load_USLA_TR()
-#         Sell_order = TR_data['Sell_order']
-#         Buy_order = TR_data['Buy_order']
-#         Hold_usd = TR_data['CASH']
-#     except Exception as e:
-#         print(f"USLA_TR JSON 파일 오류: {e}")
-#         sys.exit(0)
-
-#     # ============================================
-#     # 2단계: 최종 체결 내역 확인 (주문 취소 전!)
-#     # ============================================
-#     # 성공한 주문만 필터링
-#     successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
-#     successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
-
-#     # 매도 체결결과 반영
-#     if len(successful_sell_orders) > 0:
-#         sell_summary = USLA.calculate_sell_summary(successful_sell_orders)
-#         Hold_usd += sell_summary['net_amount']
+elif order_time['round'] == 25:  # 25회차 최종기록
+    # ============================================
+    # 1단계: 지난 라운드 TR_data 불러오기
+    # ============================================
+    try:
+        TR_data = USLA.load_USLA_TR()
+        Sell_order = TR_data['Sell_order']
+        Buy_order = TR_data['Buy_order']
+        Hold_usd = TR_data['CASH']
+        target_weight = TR_data['target_weight']
+        target_qty = TR_data['target_qty']
+        target_usd = target_qty['CASH']
+        # 이전 라운드 USD 저장 (검증용)
+        prev_round_usd = Hold_usd
     
-#     # 매수 체결결과 반영
-#     if len(successful_buy_orders) > 0:
-#         buy_summary = USLA.calculate_buy_summary(successful_buy_orders)
-#         Hold_usd -= buy_summary['total_amount']
+    except Exception as e:
+        KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
+        sys.exit(0)    
 
-#     # ============================================
-#     # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
-#     # ============================================
+    # ============================================
+    # 2단계: 최종 체결 내역 확인 (주문 취소 전!)
+    # ============================================
+    # 성공한 주문만 필터링
+    successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
+    successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
+
+    report_message = [] # 출력메세지 모으기
+
+    # 매도 체결결과 반영
+    if len(successful_sell_orders) > 0:
+        sell_summary, message = USLA.calculate_sell_summary(successful_sell_orders)
+        Hold_usd += sell_summary['net_amount']
+        for i in message:
+            report_message.append(i)
+        report_message.append(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
+    
+    # 매수 체결결과 반영
+    if len(successful_buy_orders) > 0:
+        buy_summary, message = USLA.calculate_buy_summary(successful_buy_orders)
+        Hold_usd -= buy_summary['total_amount']
+        for i in message:
+            report_message.append(i)
+        report_message.append(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
+
+    # USD 잔고 변화 로깅
+    usd_change = Hold_usd - prev_round_usd
+    report_message.append(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
+
+    # ============================================
+    # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
+    # ============================================
+    
+    
+    
+    
+    
+    
 #     try:
 #         cancel_result = USLA.cancel_all_unfilled_orders()
 #         if cancel_result['total'] > 0:
