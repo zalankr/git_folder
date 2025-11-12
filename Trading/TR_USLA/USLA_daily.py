@@ -60,16 +60,15 @@ try:
     EDC = Hold_tickers.get('EDC', 0)
     TMF = Hold_tickers.get('TMF', 0)
     TMV = Hold_tickers.get('TMV', 0)
-    CASH = USLA_data['CASH'] + USD_adjust # 확인 필요
+    CASH = USLA_data['CASH'] + USD_adjust
     time.sleep(0.2)
 
     # 당일 티커별 평가금 산출
-    UPRO_eval = UPRO * (USLA.get_US_current_price('UPRO') * (1-0.0009))
-    TQQQ_eval = TQQQ * (USLA.get_US_current_price('TQQQ') * (1-0.0009))
-    EDC_eval = EDC * (USLA.get_US_current_price('EDC') * (1-0.0009))
-    TMF_eval = TMF * (USLA.get_US_current_price('TMF') * (1-0.0009))
-    TMV_eval = TMV * (USLA.get_US_current_price('TMV') * (1-0.0009))
-
+    UPRO_eval = UPRO * (USLA.get_US_current_price('UPRO') * (1-USLA.fee))
+    TQQQ_eval = TQQQ * (USLA.get_US_current_price('TQQQ') * (1-USLA.fee))
+    EDC_eval = EDC * (USLA.get_US_current_price('EDC') * (1-USLA.fee))
+    TMF_eval = TMF * (USLA.get_US_current_price('TMF') * (1-USLA.fee))
+    TMV_eval = TMV * (USLA.get_US_current_price('TMV') * (1-USLA.fee))
     # 데이터 조정
     today_eval = UPRO_eval + TQQQ_eval + EDC_eval + TMF_eval + TMV_eval + CASH
     today_eval_KRW = int(today_eval * exchange_rate)
@@ -97,15 +96,17 @@ try:
     target_weight1 = float("{:.2f}".format(target_weight1))
     target_weight2 = USLA_data['target_weight2']    
     target_weight2 = float("{:.2f}".format(target_weight2))
-
+    
     # USLA data
     USLA_data = {
         'date': str(current_date),
         'regime_signal': regime_signal,
         'target_ticker1': USLA_data['target_ticker1'],
         'target_weight1': target_weight1,
+        'target_ticker1_qty': USLA_data['target_ticker1_qty'],
         'target_ticker2': USLA_data['target_ticker2'],
         'target_weight2': target_weight2,
+        'target_ticker2_qty': USLA_data['target_ticker2_qty'],
         'UPRO': UPRO,
         'TQQQ': TQQQ,
         'EDC': EDC,

@@ -730,91 +730,85 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     # ============================================
     # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
     # ============================================
-    
-    
-    
-    
-    
-    
-#     try:
-#         cancel_result = USLA.cancel_all_unfilled_orders()
-#         if cancel_result['total'] > 0:
-#             KA.SendMessage(f"최종 미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
-#     except Exception as e:
-#         KA.SendMessage(f"USLA 주문 취소 오류: {e}")
+    try:
+        cancel_result, message = USLA.cancel_all_unfilled_orders()
+        report_message.append(message)
+        if cancel_result['total'] > 0:
+            report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+    except Exception as e:
+        report_message.append(f"USLA 주문 취소 오류: {e}")
+        
+    # 출력
+    KA.SendMessage("\n".join(report_message))    
 
-#     # ============================================
-#     # 4단계: 실제 API로 최종 잔고 확인 및 검증
-#     # ============================================
-#     api_usd = calculate_expected_usd_from_api()
-#     if api_usd is not None:
-#         is_valid, diff = validate_usd_balance(Hold_usd, api_usd, tolerance=100.0)
-#         if not is_valid:
-#             KA.SendMessage(f"⚠️ 최종 USD 검증 실패! API 값({api_usd})으로 보정합니다.")
-#             Hold_usd = api_usd
-
-#     # ============================================
-#     # 5단계: 최종 데이터 저장 (USLA_data.json)
-#     # ============================================
-#     USLA_data = USLA.load_USLA_data()
-
-#     Hold = USLA.get_total_balance()
-#     Hold_tickers = {}
-#     if len(Hold['stocks']) > 0:
-#         for stock in Hold['stocks']:
-#             ticker = stock['ticker']
-#             qty = stock['quantity']
-#             Hold_tickers[ticker] = qty
-#     else:
-#         pass
-
-#     UPRO = Hold_tickers.get('UPRO', 0)
-#     TQQQ = Hold_tickers.get('TQQQ', 0)
-#     EDC = Hold_tickers.get('EDC', 0)
-#     TMF = Hold_tickers.get('TMF', 0)
-#     TMV = Hold_tickers.get('TMV', 0)
-#     balance = Hold['stock_eval_usd'] + Hold_usd
+    # ============================================
+    # 4단계: 최종 데이터 저장 (USLA_data.json)
+    # ============================================
+    USLA_data = USLA.load_USLA_data()
     
-#     USLA_data = {
-#         'date': str(order_time['date']),
-#         'regime_signal': USLA_data['regime_signal'],
-#         'target_ticker1': USLA_data['target_ticker1'],
-#         'target_weight1': USLA_data['target_weight1'],
-#         'target_ticker2': USLA_data['target_ticker2'],
-#         'target_weight2': USLA_data['target_weight2'],
-#         'UPRO': UPRO,
-#         'TQQQ': TQQQ,
-#         'EDC': EDC,
-#         'TMF': TMF,
-#         'TMV': TMV,
-#         'CASH': Hold_usd,
-#         'balance': balance,
-#         'last_day_balance': USLA_data['last_day_balance'],
-#         'last_month_balance': USLA_data['last_month_balance'],
-#         'last_year_balance': USLA_data['last_year_balance'],
-#         'daily_return': USLA_data['daily_return'],
-#         'monthly_return': USLA_data['monthly_return'],
-#         'yearly_return': USLA_data['yearly_return'],
-#         'exchange_rate': Hold['exchange_rate'],
-#         'balance_KRW': Hold['stock_eval_krw'] + (Hold_usd * Hold['exchange_rate']),
-#         'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
-#         'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
-#         'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
-#         'daily_return_KRW': USLA_data['daily_return_KRW'],
-#         'monthly_return_KRW': USLA_data['monthly_return_KRW'],
-#         'yearly_return_KRW': USLA_data['yearly_return_KRW']
-#     }
-#     USLA.save_USLA_data_json(USLA_data)
+    Hold = real_Hold()
+    
+    UPRO = Hold.get('UPRO', 0)
+    TQQQ = Hold.get('TQQQ', 0)
+    EDC = Hold.get('EDC', 0)
+    TMF = Hold.get('TMF', 0)
+    TMV = Hold.get('TMV', 0)
+    CASH = Hold_usd
+    
+    # 당일 티커별 평가금 산출 - 수수료 포함
+    UPRO_eval = Hold['UPRO'] * (USLA.get_US_current_price('UPRO') * (1-USLA.fee))
+    TQQQ_eval = Hold['TQQQ'] * (USLA.get_US_current_price('TQQQ') * (1-USLA.fee))
+    EDC_eval = Hold['EDC'] * (USLA.get_US_current_price('EDC') * (1-USLA.fee))
+    TMF_eval = Hold['TMF'] * (USLA.get_US_current_price('TMF') * (1-USLA.fee))
+    TMV_eval = Hold['TMV'] * (USLA.get_US_current_price('TMV') * (1-USLA.fee))
+    stocks_eval_usd = UPRO_eval + TQQQ_eval + EDC_eval + TMF_eval + TMV_eval    
+    balance = stocks_eval_usd + Hold_usd
+    balanceKRW = int(balance * USLA.get_US_dollar_balance()['exchange_rate'])
+    
+    #data 조정
+    USLA_data = {
+        'date': str(order_time['date']),
+        'regime_signal': USLA_data['regime_signal'],
+        'target_ticker1': USLA_data['target_ticker1'],
+        'target_weight1': USLA_data['target_weight1'],
+        'target_ticker1_qty': USLA_data['target_ticker1_qty'],
+        'target_ticker2': USLA_data['target_ticker2'],
+        'target_weight2': USLA_data['target_weight2'],
+        'target_ticker2_qty': USLA_data['target_ticker2_qty'],
+        'UPRO': UPRO,
+        'TQQQ': TQQQ,
+        'EDC': EDC,
+        'TMF': TMF,
+        'TMV': TMV,
+        'CASH': CASH,
+        'balance': balance,
+        'last_day_balance': USLA_data['last_day_balance'],
+        'last_month_balance': USLA_data['last_month_balance'],
+        'last_year_balance': USLA_data['last_year_balance'],
+        'daily_return': USLA_data['daily_return'],
+        'monthly_return': USLA_data['monthly_return'],
+        'yearly_return': USLA_data['yearly_return'],
+        'exchange_rate': USLA_data['exchange_rate'],
+        'balance_KRW': balanceKRW,
+        'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
+        'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
+        'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
+        'daily_return_KRW': USLA_data['daily_return_KRW'],
+        'monthly_return_KRW': USLA_data['monthly_return_KRW'],
+        'yearly_return_KRW': USLA_data['yearly_return_KRW']
+    }    
+    
+    USLA.save_USLA_data_json(USLA_data)
 
-# # 카톡 리밸 종료 결과 보내기
-# KA.SendMessage(f"KIS USLA {order_time['date']}\n당월 리벨런싱 완료")
-# KA.SendMessage(
-#     f"KIS USLA regime_signal: {USLA_data['regime_signal']}\n"
-#     f"target1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']}\n"
-#     f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}"
-# )
-# KA.SendMessage(
-#     f"KIS USLA balance: {balance}\n"
-#     f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
-#     f"CASH: ${Hold_usd:.2f}"
-# )
+# 카톡 리밸 종료 결과 보내기
+KA.SendMessage(f"KIS USLA {order_time['date']}\n당월 리벨런싱 완료")
+KA.SendMessage(
+    f"KIS USLA regime_signal: {USLA_data['regime_signal']}\n"
+    f"target1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']}\n"
+    f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}"
+)
+KA.SendMessage(
+    f"KIS USLA balance: {balance}\n"
+    f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
+    f"CASH: ${Hold_usd:.2f}"
+)
