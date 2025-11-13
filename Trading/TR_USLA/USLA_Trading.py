@@ -93,7 +93,7 @@ def Selling(Sell, sell_split):
         return Sell_order
     
     # 현재 라운드 정보 가져오기
-    # order_time = KIS_Calender.check_order_time() 불필요
+    order_time = KIS_Calender.check_order_time()
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
     order_messages.append(round_info)
     
@@ -271,7 +271,7 @@ def Buying(Buy_qty, buy_split, TR_usd):
         return Buy_order
     
     # 현재 라운드 정보 가져오기
-    # order_time = KIS_Calender.check_order_time() # 불필요
+    order_time = KIS_Calender.check_order_time() # 불필요
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
     order_messages.append(round_info)
     
@@ -662,6 +662,8 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             original_qty = Buy[ticker]
             adjusted_qty = int(original_qty * ratio)
             Buy_qty[ticker] = adjusted_qty
+    else:
+        Buy_qty = Buy
     
     # split 데이터 만들기      
     round_split = USLA.make_split_data(order_time['round'])

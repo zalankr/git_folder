@@ -21,7 +21,8 @@ class KIS_API:
         self.access_token = self.get_access_token()
         self.SELL_FEE_RATE = 0.0025  # test 매도 수수료 0.25% 수수료 할인 안 된 테스트 계좌 ##########################################     
         # self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
-        self.BUY_FEE_RATE = 0.0  # 매수 수수료는 체결단가에 포함
+        self.BUY_FEE_RATE = 0.0009  # test 매수 수수료는 0.25% 수수료 할인 안 된 테스트 계좌 #######################################
+        # self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09%
     
     # API-Key 로드
     def _load_api_keys(self):

@@ -477,11 +477,12 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 if filled_qty > 0 and avg_price > 0:
                     # 매수 금액 계산
                     # 수수료 포함 따라서 별도 수수료 계산 불필요 >>> 추후 검증 필요
-                    amount = filled_qty * avg_price
+                    gross_amount = filled_qty * avg_price  # 체결금액
+                    fee = gross_amount * self.fee  # 수수료 0.25%
+                    total_amount = gross_amount + fee  # 실제 USD 출금액
                     
-                    # 집계
                     total_filled_qty += filled_qty
-                    total_amount += amount
+                    total_amount_sum += total_amount  # ← 변수명 주의
                     
                     # 체결 상태 판단
                     if filled_qty == order_qty:
@@ -503,7 +504,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         'order_qty': order_qty,
                         'filled_qty': filled_qty,
                         'avg_price': avg_price,
-                        'total_amount': amount,
+                        'gross_amount': gross_amount,
+                        'fee': fee,
+                        'total_amount': total_amount,
                         'status': status
                     }
                     Buy_result.append(detail)
