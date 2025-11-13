@@ -587,8 +587,8 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     # 3단계: 미체결 주문 취소 (체결 확인 후!)
     # ============================================
     try:
-        cancel_result, message = USLA.cancel_all_unfilled_orders()
-        report_message.append(message)
+        cancel_result, cancel_messages = USLA.cancel_all_unfilled_orders()
+        report_message.extend(cancel_messages)
         if cancel_result['total'] > 0:
             report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
     except Exception as e:
@@ -711,8 +711,8 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
     # ============================================
     try:
-        cancel_result, message = USLA.cancel_all_unfilled_orders()
-        report_message.append(message)
+        cancel_result, cancel_messages = USLA.cancel_all_unfilled_orders()
+        report_message.extend(cancel_messages)
         if cancel_result['total'] > 0:
             report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
     except Exception as e:

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import kakao_alert as KA
 import sys
 import os
-from typing import Union, Optional, Dict, List
+from typing import Union, Optional, Dict, List, Tuple
 import time
 
 class KIS_API:
@@ -1074,10 +1074,10 @@ class KIS_API:
             print(f"미체결 조회 오류: {e}")
             return []
 
-    # 모든 미체결 주문 취소
+    # 모든 미체결 주문 취소 >>> 오류수정
     def cancel_all_unfilled_orders(self, start_date: Optional[str] = None,
-                                   end_date: Optional[str] = None
-                                   ) -> Dict:
+                                end_date: Optional[str] = None
+                                ) -> Tuple[Dict, List[str]]:
         """
         모든 미체결 주문 일괄 취소
         
@@ -1099,13 +1099,15 @@ class KIS_API:
         unfilled_orders = self.get_unfilled_orders(start_date, end_date)
         
         if not unfilled_orders:
-            return {
+            summary = {
                 'total': 0,
                 'success': 0,
                 'failed': 0,
                 'success_list': [],
                 'failed_list': []
             }
+            message = ["미체결 주문 없음"]
+            return summary, message
 
         # 2. 각 주문 취소
         success_list = []
@@ -1150,7 +1152,9 @@ class KIS_API:
         
         # 4. 결과 출력
         message = []
-        message.append(f"전체 미체결: {summary['total']}건 \n취소 성공: {summary['success']}건 \n취소 실패: {summary['failed']}건")       
+        message.append(f"전체 미체결: {summary['total']}건")
+        message.append(f"취소 성공: {summary['success']}건")
+        message.append(f"취소 실패: {summary['failed']}건")
         return summary, message
 
 """
