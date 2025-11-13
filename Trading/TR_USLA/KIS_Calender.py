@@ -19,7 +19,7 @@ def get_current():
     return now
 
 def check_USLA_rebalancing(current_date):
-    '''오늘이 USAA 리밸런싱일인지 확인'''
+    '''오늘이 USLA 리밸런싱일인지 확인'''
     USLA_rebalancing_day_path = '/var/autobot/TR_USLA/USLA_rebalancing_day.json'
     
     try:
@@ -27,6 +27,13 @@ def check_USLA_rebalancing(current_date):
             USLA_rebalancing_day = json.load(f)
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
+        # ✅ 추가: 안전하게 종료
+        try:
+            import kakao_alert as KA
+            KA.SendMessage(f"USLA_rebalancing_day.json 로드 실패: {e}")
+        except:
+            pass
+        return "USLA_not_rebalancing"
 
     if str(current_date) in USLA_rebalancing_day["summer_dst"]:
         return "USLA_summer"
@@ -44,33 +51,35 @@ def check_order_time():
 
     # USLA 리밸런싱일 확인
     check_USLA = check_USLA_rebalancing(current_date)
-    # order_time 딕셔너리 생성: season, date, time, market, round, total_round, USAA리밸런싱일 확인
-    order_time = dict()
-    order_time['season'] = check_USLA
-    order_time['date'] = current_date
-    order_time['time'] = current_time
+    
+    # ✅ 수정: 모든 키를 미리 초기화
+    order_time = {
+        'season': check_USLA,
+        'date': current_date,
+        'time': current_time,
+        'round': 0,         # ✅ 기본값
+        'total_round': 0    # ✅ 기본값
+    }
 
     if check_USLA == "USLA_winter":
-        current = time_obj(current_time.hour, current_time.minute) # current_time
+        current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(9, 0)   # 09:00
-        end = time_obj(21, 5)    # 21:01
+        end = time_obj(21, 5)    # 21:05
         
-        if start <= current < end: # 30분 단위 총25회      
+        if start <= current < end:
             order_time['round'] = 1 + (current.hour - 9) * 2 + (current.minute // 30)
-            order_time['total_round'] = 25  # 총 25회차
+            order_time['total_round'] = 25
 
     elif check_USLA == "USLA_summer":
-        current = time_obj(current_time.hour, current_time.minute) # current_time
+        current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(8, 0)   # 08:00
-        end = time_obj(20, 5)    # 20:01
+        end = time_obj(20, 5)    # 20:05
 
-        if start <= current < end: # 30분 단위 총 25회           
+        if start <= current < end:
             order_time['round'] = 1 + (current.hour - 8) * 2 + (current.minute // 30)
-            order_time['total_round'] = 25  # 총 25회차
+            order_time['total_round'] = 25
 
-    else:
-        order_time['round'] = 0
-        order_time['total_round'] = 0
+    # ✅ else 블록 제거 (이미 초기화됨)
 
     return order_time
     

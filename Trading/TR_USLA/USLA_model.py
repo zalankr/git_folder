@@ -427,7 +427,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
         unfilled_orders = 0
         total_order_qty = 0
         total_filled_qty = 0
-        total_amount = 0.0  # 매수는 체결가에 이미 수수료 포함됨
+        total_amount_sum = 0.0  # 총 USD 출금액 집계용
+        total_fee_sum = 0.0  # 총 수수료 집계용
         
         # 각 주문의 체결 내역 조회
         message = []
@@ -459,6 +460,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         'order_qty': order_qty,
                         'filled_qty': 0,
                         'avg_price': 0.0,
+                        'gross_amount': 0.0,  # ✅ 추가
+                        'fee': 0.0,  # ✅ 추가
                         'total_amount': 0.0,
                         'status': 'unfilled'
                     }
@@ -475,14 +478,15 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 
                 # 체결 수량이 있는 경우
                 if filled_qty > 0 and avg_price > 0:
-                    # 매수 금액 계산
-                    # 수수료 포함 따라서 별도 수수료 계산 불필요 >>> 추후 검증 필요
-                    gross_amount = filled_qty * avg_price  # 체결금액
-                    fee = gross_amount * self.fee  # 수수료 0.25%
-                    total_amount = gross_amount + fee  # 실제 USD 출금액
+                    # ✅ 매수 금액 계산 (수수료 포함)
+                    gross_amount = filled_qty * avg_price  # 체결금액 (KIS API에서 받은 값)
+                    fee = gross_amount * self.fee  # 매수 수수료 0.25%
+                    total_amount_this = gross_amount + fee  # 실제 USD 출금액
                     
+                    # 집계 - ✅ 변수명 수정
                     total_filled_qty += filled_qty
-                    total_amount_sum += total_amount  # ← 변수명 주의
+                    total_amount_sum += total_amount_this  # ✅ 수정
+                    total_fee_sum += fee  # ✅ 추가
                     
                     # 체결 상태 판단
                     if filled_qty == order_qty:
@@ -504,9 +508,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         'order_qty': order_qty,
                         'filled_qty': filled_qty,
                         'avg_price': avg_price,
-                        'gross_amount': gross_amount,
-                        'fee': fee,
-                        'total_amount': total_amount,
+                        'gross_amount': gross_amount,  # ✅ 추가
+                        'fee': fee,  # ✅ 추가
+                        'total_amount': total_amount_this,  # ✅ 수정
                         'status': status
                     }
                     Buy_result.append(detail)
@@ -522,6 +526,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
                         'order_qty': order_qty,
                         'filled_qty': 0,
                         'avg_price': 0.0,
+                        'gross_amount': 0.0,  # ✅ 추가
+                        'fee': 0.0,  # ✅ 추가
                         'total_amount': 0.0,
                         'status': 'unfilled'
                     }
@@ -543,7 +549,8 @@ class USLA_Model(KIS_US.KIS_API): #상속
             'unfilled_orders': unfilled_orders,
             'total_quantity': total_order_qty,
             'filled_quantity': total_filled_qty,
-            'total_amount': total_amount,
+            'total_amount': total_amount_sum,  # ✅ 수정
+            'total_fee': total_fee_sum,  # ✅ 추가
             'details': Buy_result
         }
         
@@ -552,7 +559,9 @@ class USLA_Model(KIS_US.KIS_API): #상속
             f"📥 매수 체결 요약:\n"
             f"주문: {total_orders}건 (완전체결:{filled_orders}, 부분:{partial_filled}, 미체결:{unfilled_orders})\n"
             f"수량: {total_filled_qty}/{total_order_qty}\n"
-            f"매수금액: ${total_amount:.2f} (수수료 포함)"
+            f"체결금액: ${total_amount_sum - total_fee_sum:.2f}\n"  # ✅ 추가
+            f"수수료: ${total_fee_sum:.2f}\n"  # ✅ 추가
+            f"총 출금액: ${total_amount_sum:.2f}"  # ✅ 수정
         )
         
         # 티커별 집계 (선택적)
@@ -563,19 +572,24 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 ticker_summary[ticker] = {
                     'total_qty': 0,
                     'filled_qty': 0,
+                    'gross_amount': 0,  # ✅ 추가
+                    'fee': 0,  # ✅ 추가
                     'total_amount': 0
                 }
             ticker_summary[ticker]['total_qty'] += detail['order_qty']
             ticker_summary[ticker]['filled_qty'] += detail['filled_qty']
+            ticker_summary[ticker]['gross_amount'] += detail['gross_amount']  # ✅ 추가
+            ticker_summary[ticker]['fee'] += detail['fee']  # ✅ 추가
             ticker_summary[ticker]['total_amount'] += detail['total_amount']
-        
+
         # 티커별 요약 로깅
         if ticker_summary:
             ticker_msg = "티커별 매수:\n"
             for ticker, data in ticker_summary.items():
-                ticker_msg += f"{ticker}: {data['filled_qty']}/{data['total_qty']}주, ${data['total_amount']:.2f}\n"
+                # ✅ 수정: 수수료 정보 추가
+                ticker_msg += f"{ticker}: {data['filled_qty']}/{data['total_qty']}주, ${data['total_amount']:.2f} (수수료: ${data['fee']:.2f})\n"
             message.append(ticker_msg.strip())
-        
+
         return summary, message
 
     def target_ticker_weight(self):
