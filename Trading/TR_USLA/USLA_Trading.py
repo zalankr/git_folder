@@ -364,7 +364,6 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
 
 def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, target_qty):
     """
-    거래 데이터 저장 - 개선버전
     저장 실패 시에도 백업 파일 생성
     """
     TR_data = {
@@ -387,7 +386,6 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, tar
         KA.SendMessage(
             f"{order_time['date']}, {order_time['season']} 리밸런싱\n"
             f"{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래저장완료\n"
-            f"매도: {TR_data['sell_success_rate']}, 매수: {TR_data['buy_success_rate']}"
         )
         
     except Exception as e:
