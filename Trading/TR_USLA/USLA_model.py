@@ -250,7 +250,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
 
                 # execution이 None인 경우 처리 추가
                 if execution is None:
-                    message.append(f"매도 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
+                    message.append(f"매도 체결 확인 대기중: {order.get('ticker')} (주문번호: {order.get('order_number')})")
                     unfilled_orders += 1
                     order_qty = order.get('quantity', 0)
                     total_order_qty += order_qty
@@ -448,7 +448,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
                 
                 # execution이 None인 경우 처리 추가
                 if execution is None:
-                    message.append(f"매수 체결 확인 실패: {order.get('ticker')} (주문번호: {order.get('order_number')})")
+                    message.append(f"매수 체결 확인 대기중: {order.get('ticker')} (주문번호: {order.get('order_number')})")
                     unfilled_orders += 1
                     order_qty = order.get('quantity', 0)
                     total_order_qty += order_qty
