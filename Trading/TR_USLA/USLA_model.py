@@ -18,7 +18,7 @@ class USLA_Model(KIS_US.KIS_API): #상속
         self.all_tickers = self.etf_tickers + ['CASH']
         self.USLA_data_path = "/var/autobot/TR_USLA/USLA_data.json"
         self.USLA_TR_path = "/var/autobot/TR_USLA/USLA_TR.json"
-        self.fee = self.SELL_FEE_RATE  # 매도 수수료 0.09%
+        self.fee = self.SELL_FEE_RATE  # 수수료 0.25%
     
     def calculate_USD_value(self, hold): # make_trading_data함수에 종속되어 USD 환산 잔고 계산 - 수수료 포함
         """USD 환산 잔고 계산"""
