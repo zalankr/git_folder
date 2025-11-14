@@ -785,10 +785,8 @@ KA.SendMessage(f"KIS USLA {order_time['date']}\n당월 리벨런싱 완료")
 KA.SendMessage(
     f"KIS USLA regime_signal: {USLA_data['regime_signal']}\n"
     f"target1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']}\n"
-    f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}"
-)
-KA.SendMessage(
+    f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}\n"
     f"KIS USLA balance: {balance}\n"
     f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
-    f"CASH: ${Hold_usd:.2f}"
+    f"CASH: ${Hold_usd:.2f}"    
 )
