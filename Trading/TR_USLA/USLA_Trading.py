@@ -185,7 +185,7 @@ def Selling(Sell, sell_split, order_time):  # ✅ order_time 매개변수 추가
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
-    order_messages.append(f"매도 완료: {success_count}/{total_count} 성공")
+    order_messages.append(f"매도 주문: {success_count}/{total_count} 완료")
     
     KA.SendMessage("\n".join(order_messages))
     
@@ -356,7 +356,7 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
     
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
-    order_messages.append(f"매수 완료: {success_count}/{total_count} 성공")
+    order_messages.append(f"매수 주문: {success_count}/{total_count} 완료")
     
     KA.SendMessage("\n".join(order_messages))
     
@@ -785,10 +785,8 @@ KA.SendMessage(f"KIS USLA {order_time['date']}\n당월 리벨런싱 완료")
 KA.SendMessage(
     f"KIS USLA regime_signal: {USLA_data['regime_signal']}\n"
     f"target1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']}\n"
-    f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}"
-)
-KA.SendMessage(
+    f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}\n"
     f"KIS USLA balance: {balance}\n"
     f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
-    f"CASH: ${Hold_usd:.2f}"
+    f"CASH: ${Hold_usd:.2f}, Risk regime USD RP 월말일까지 투자"
 )
