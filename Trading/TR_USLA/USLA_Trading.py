@@ -185,7 +185,7 @@ def Selling(Sell, sell_split, order_time):  # ✅ order_time 매개변수 추가
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
-    order_messages.append(f"매도 완료: {success_count}/{total_count} 성공")
+    order_messages.append(f"매도 주문: {success_count}/{total_count} 완료")
     
     KA.SendMessage("\n".join(order_messages))
     
@@ -356,7 +356,7 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
     
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
-    order_messages.append(f"매수 완료: {success_count}/{total_count} 성공")
+    order_messages.append(f"매수 주문: {success_count}/{total_count} 완료")
     
     KA.SendMessage("\n".join(order_messages))
     
