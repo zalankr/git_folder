@@ -788,5 +788,5 @@ KA.SendMessage(
     f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}\n"
     f"KIS USLA balance: {balance}\n"
     f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
-    f"CASH: ${Hold_usd:.2f}"    
+    f"CASH: ${Hold_usd:.2f}, Risk regime USD RP 월말일까지 투자"
 )
