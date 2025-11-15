@@ -2,7 +2,7 @@ import time as time_module
 import kakao_alert as KA
 import sys
 import HAA_Calender
-import USLA_model
+import HAA_model
 from tendo import singleton
 import json
 from datetime import datetime
@@ -10,7 +10,7 @@ from datetime import datetime
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    KA.SendMessage("USLA: 이미 실행 중입니다.")
+    KA.SendMessage("HAA: 이미 실행 중입니다.")
     sys.exit(0)
 
 # USLA모델 instance 생성
@@ -18,8 +18,8 @@ key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt"
 token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json"
 cano = "63721147"
 acnt_prdt_cd = "01"
-USLA_ticker = ["UPRO", "TQQQ", "EDC", "TMF", "TMV"]
-USLA = USLA_model.USLA_Model(key_file_path, token_file_path, cano, acnt_prdt_cd)
+HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
+HAA = HAA_model.HAA(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 def real_Hold():
     """실제 잔고 확인 함수, Hold 반환"""
@@ -410,26 +410,26 @@ def health_check():
     checks = []
     
     # 1. API 토큰 유효성
-    if not USLA.access_token:
+    if not HAA.access_token:
         checks.append("USLA 체크: API 토큰 없음")
     
     # 2. JSON 파일 존재
     import os
     files = [
-        "/var/autobot/TR_USLA/USLA_rebalancing_day.json",
-        "/var/autobot/TR_USLA/USLA_data.json",
-        "/var/autobot/TR_USLA/USLA_TR.json"
+        "/var/autobot/TR_HAA/HAA_day.json",
+        "/var/autobot/TR_HAA/HAA_data.json",
+        "/var/autobot/TR_HAA/HAA_TR.json"
     ]
     for f in files:
         if not os.path.exists(f):
-            checks.append(f"USLA 체크: json 파일 없음: {f}")
+            checks.append(f"HAA 체크: json 파일 없음: {f}")
     
     # 3. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("USLA 체크: KIS API 서버 접속 불가")
+        checks.append("HAA 체크: KIS API 서버 접속 불가")
     
     if checks:
         KA.SendMessage("\n".join(checks))
@@ -443,19 +443,19 @@ def health_check():
 order_time = HAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
-if order_time['season'] == "USLA_not_rebalancing" or order_time['round'] == 0:
-    KA.SendMessage(f"USLA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USLA_rebalancing_day 리스트에 없습니다.")
+if order_time['season'] == "HAA_not_rebalancing" or order_time['round'] == 0:
+    KA.SendMessage(f"HAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 HAA_day 리스트에 없습니다.")
     sys.exit(0)
 
 # 메인로직 시작 전 시스템 상태 확인
 health_check()
-KA.SendMessage(f"USLA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
+KA.SendMessage(f"HAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
-if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
+if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기 ############################################
     # 목표 데이터 만들기
-    target_weight, regime_signal = USLA.target_ticker_weight()
-    USLA_data = USLA.load_USLA_data()
-    Hold_usd = USLA_data['CASH']
+    target_weight, regime_signal = HAA.target_ticker_weight()
+    HAA_data = HAA.load_HAA_data()
+    Hold_usd = HAA_data['CASH']
     target_ticker = list(target_weight.keys())
 
     Hold = real_Hold()

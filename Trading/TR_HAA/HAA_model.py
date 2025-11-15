@@ -11,13 +11,13 @@ from datetime import date, datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
-class USLA_Model(KIS_US.KIS_API): #상속
+class HAA(KIS_US.KIS_API): #상속
     def __init__(self, key_file_path, token_file_path, cano, acnt_prdt_cd):
         super().__init__(key_file_path, token_file_path, cano, acnt_prdt_cd)  # 부모 생성자 호출
-        self.etf_tickers = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV']
+        self.etf_tickers = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
         self.all_tickers = self.etf_tickers + ['CASH']
-        self.USLA_data_path = "/var/autobot/TR_USLA/USLA_data.json"
-        self.USLA_TR_path = "/var/autobot/TR_USLA/USLA_TR.json"
+        self.HAA_data_path = "/var/autobot/TR_HAA/HAA_data.json"
+        self.HAA_TR_path = "/var/autobot/TR_HAA/HAA_TR.json"
         self.fee = self.SELL_FEE_RATE  # 수수료 0.25%
     
     def calculate_USD_value(self, hold): # make_trading_data함수에 종속되어 USD 환산 잔고 계산 - 수수료 포함
@@ -698,37 +698,39 @@ class USLA_Model(KIS_US.KIS_API): #상속
             KA.SendMessage(f"{ticker} 월간 가격 조회 오류: {e}")
 
     def calculate_regime(self):
-        """AGG 채권 ETF의 Regime 신호 계산 (KIS API 사용)"""
+        """TIP 채권 ETF의 Regime 신호 계산 (KIS API 사용)"""
         try:
             today = date.today()
             target_month = today.month
             target_year = today.year
 
-            # 4개월 전 시작일 계산
-            start_month = target_month - 4
-            start_year = target_year
+            # 13개월 데이터 필요 (현재 + 12개월)
+            start_year = target_year - 2
 
-            if start_month <= 0:
-                start_month = 12 + start_month
-                start_year = target_year - 1
-                
-            # 전월 말일 계산    
             prev_month = target_month - 1 if target_month > 1 else 12
             prev_year = target_year if target_month > 1 else target_year - 1
-
-            start_date = f'{start_year}-{start_month:02d}-01'
+            
+            start_date = f'{start_year}-{target_month:02d}-01'
             end_date = self.get_month_end_date(prev_year, prev_month)
 
             # KIS API로 AGG 월간 데이터 조회
-            agg_data = self.get_monthly_prices_kis('AGG', start_date, end_date)
-            time.sleep(0.1) # API 호출 간격
+            TIP_data = {}
+            TIP_price = self.get_monthly_prices_kis('TIP', start_date, end_date)
+            TIP_data['TIP'] = TIP_price
 
-            if len(agg_data) < 4:
-                KA.SendMessage("USLA 경고: AGG 데이터가 충분하지 않습니다.")
-                return 0    
+            if len(TIP_data) < 13:
+                KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 TIP 데이터가 충분하지 않습니다.")
+                return 0 
 
-            current_price = agg_data.iloc[-1]  # 최신 가격
-            avg_price = agg_data.mean()  # 4개월 평균
+            # TIP의 모멘텀 점수 산출
+            TIP_df = pd.DataFrame(TIP_data)
+
+
+
+
+
+            current_price = TIP_data.iloc[-1]  # 최신 가격 ####################333
+            avg_price = TIP_data.mean()  # 4개월 평균
 
             regime = current_price - avg_price
 
@@ -737,6 +739,11 @@ class USLA_Model(KIS_US.KIS_API): #상속
         except Exception as e:
             KA.SendMessage(f"USLA Regime 계산 오류: {e}")
             return 0
+
+
+    def HAA_momentum(self): ###################################################3
+        """HAA 모멘텀 점수 계산 (KIS API 사용)""" 
+
 
     def calculate_momentum(self):
         """모멘텀 점수 계산 (KIS API 사용)"""

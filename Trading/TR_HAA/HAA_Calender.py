@@ -18,50 +18,50 @@ def get_current():
     }
     return now
 
-def check_USLA_rebalancing(current_date):
-    '''오늘이 USLA 리밸런싱일인지 확인'''
-    USLA_rebalancing_day_path = '/var/autobot/TR_USLA/USLA_rebalancing_day.json'
+def check_HAA_rebalancing(current_date):
+    '''오늘이 HAA 리밸런싱일인지 확인'''
+    HAA_day_path = '/var/autobot/TR_HAA/HAA_day.json'
     
     try:
-        with open(USLA_rebalancing_day_path, 'r', encoding='utf-8') as f:
-            USLA_rebalancing_day = json.load(f)
+        with open(HAA_day_path, 'r', encoding='utf-8') as f:
+            HAA_day = json.load(f)
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
-        # ✅ 추가: 안전하게 종료
+        # 추가: 안전하게 종료
         try:
             import kakao_alert as KA
-            KA.SendMessage(f"USLA_rebalancing_day.json 로드 실패: {e}")
+            KA.SendMessage(f"HAA_day.json 로드 실패: {e}")
         except:
             pass
-        return "USLA_not_rebalancing"
+        return "HAA_not_rebalancing"
 
-    if str(current_date) in USLA_rebalancing_day["summer_dst"]:
-        return "USLA_summer"
-    elif str(current_date) in USLA_rebalancing_day["winter_standard"]:
-        return "USLA_winter"
+    if str(current_date) in HAA_day["summer_dst"]:
+        return "HAA_summer"
+    elif str(current_date) in HAA_day["winter_standard"]:
+        return "HAA_winter"
     else:
-        return "USLA_not_rebalancing"
+        return "HAA_not_rebalancing"
 
 def check_order_time():
-    """USLA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
+    """HAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
     # 현재 날짜와 시간 확인 UTC시간대
     now = datetime.now()
     current_date = now.date()
     current_time = now.time()
 
     # USLA 리밸런싱일 확인
-    check_USLA = check_USLA_rebalancing(current_date)
+    check_HAA = check_HAA_rebalancing(current_date)
     
-    # ✅ 수정: 모든 키를 미리 초기화
+    # 수정: 모든 키를 미리 초기화
     order_time = {
-        'season': check_USLA,
+        'season': check_HAA,
         'date': current_date,
         'time': current_time,
-        'round': 0,         # ✅ 기본값
-        'total_round': 0    # ✅ 기본값
+        'round': 0,         # 기본값
+        'total_round': 0    # 기본값
     }
 
-    if check_USLA == "USLA_winter":
+    if check_HAA == "HAA_winter":
         current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(9, 0)   # 09:00
         end = time_obj(21, 5)    # 21:05
@@ -70,7 +70,7 @@ def check_order_time():
             order_time['round'] = 1 + (current.hour - 9) * 2 + (current.minute // 30)
             order_time['total_round'] = 25
 
-    elif check_USLA == "USLA_summer":
+    elif check_HAA == "USLA_summer":
         current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(8, 0)   # 08:00
         end = time_obj(20, 5)    # 20:05
@@ -79,7 +79,7 @@ def check_order_time():
             order_time['round'] = 1 + (current.hour - 8) * 2 + (current.minute // 30)
             order_time['total_round'] = 25
 
-    # ✅ else 블록 제거 (이미 초기화됨)
+    # else 블록 제거 (이미 초기화됨)
 
     return order_time
     
