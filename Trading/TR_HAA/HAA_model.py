@@ -697,8 +697,18 @@ class HAA(KIS_US.KIS_API): #상속
         except Exception as e:
             KA.SendMessage(f"{ticker} 월간 가격 조회 오류: {e}")
 
-    def calculate_regime(self):
+    def calculate_regime(self): #
         """TIP 채권 ETF의 Regime 신호 계산 (KIS API 사용)"""
+
+
+
+    def HAA_momentum(self): ###################################################3
+        """HAA 모멘텀 점수 계산 (KIS API 사용)"""
+        etf_tickers = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
+        Aggresive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
+        Defensive_ETF = ['IEF', 'BIL']
+        Regime_ETF = 'TIP'
+
         try:
             today = date.today()
             target_month = today.month
@@ -706,43 +716,110 @@ class HAA(KIS_US.KIS_API): #상속
 
             # 13개월 데이터 필요 (현재 + 12개월)
             start_year = target_year - 2
-
             prev_month = target_month - 1 if target_month > 1 else 12
             prev_year = target_year if target_month > 1 else target_year - 1
             
             start_date = f'{start_year}-{target_month:02d}-01'
             end_date = self.get_month_end_date(prev_year, prev_month)
+            
+            # 각 ETF의 월간 가격 데이터 수집
+            price_data = {}
+            
+            for ticker in self.etf_tickers:
+                try:
+                    # KIS API로 월간 데이터 조회
+                    prices = self.get_monthly_prices_kis(ticker, start_date, end_date)
+                    price_data[ticker] = prices
+                    time.sleep(0.1)  # API 호출 간격
+                    
+                except Exception as e:
+                    KA.SendMessage(f"HAA {ticker} 월간 데이터 조회 오류: {e}")
+                    continue
+            
+            if not price_data:
+                KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터를 가져올 수 없습니다.")
+                return pd.DataFrame()
+            
+            # DataFrame으로 변환
+            price_df = pd.DataFrame(price_data)
+            
+            if len(price_df) < 13:
+                KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
+                return pd.DataFrame()
+                
+            momentum_scores = []
+            
+            for ticker in self.etf_tickers:
+                try:
+                    if ticker not in price_df.columns:
+                        continue
+                        
+                    prices = price_df[ticker].dropna()
+                    
+                    if len(prices) < 13:
+                        continue
+                        
+                    # 현재가 기준 수익률 계산
+                    current = prices.iloc[-1]
+                    returns = {
+                        '1m': (current / prices.iloc[-2] - 1) if len(prices) >= 2 else 0,
+                        '3m': (current / prices.iloc[-4] - 1) if len(prices) >= 4 else 0,
+                        '6m': (current / prices.iloc[-7] - 1) if len(prices) >= 7 else 0,
+                        '9m': (current / prices.iloc[-10] - 1) if len(prices) >= 10 else 0,
+                        '12m': (current / prices.iloc[-13] - 1) if len(prices) >= 13 else 0
+                    }
+                    # 모멘텀 점수 계산 (가중평균)
+                    score = (returns['1m'] * 20 + returns['3m'] * 20 + 
+                            returns['6m'] * 20 + returns['9m'] * 20 + 
+                            returns['12m'] * 20) / 100
+                    momentum_scores.append((ticker, score))
+                except Exception as e:
+                    KA.SendMessage(f"HAA {ticker} 모멘텀 계산 오류: {e}")
+                    continue
+            
+            momentum_df = pd.DataFrame(momentum_scores, columns=['ticker', 'momentum'])
 
-            # KIS API로 AGG 월간 데이터 조회
-            TIP_data = {}
-            TIP_price = self.get_monthly_prices_kis('TIP', start_date, end_date)
-            TIP_data['TIP'] = TIP_price
+            # Regime ETF의 모멘텀 점수 구하기
+            momentum_dict = dict(momentum_scores)
+            regime_score = momentum_dict.get(Regime_ETF, None)
 
-            if len(TIP_data) < 13:
-                KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 TIP 데이터가 충분하지 않습니다.")
-                return 0 
+            if regime_score is None:
+                KA.SendMessage(f"HAA 경고: {Regime_ETF} 모멘텀 데이터를 찾을 수 없습니다.")
+            else:
+                KA.SendMessage(f"HAA: {Regime_ETF} 모멘텀 = {regime_score:.4f}")
 
-            # TIP의 모멘텀 점수 산출
-            TIP_df = pd.DataFrame(TIP_data)
-
-
-
+            # Aggresive ETF의 모멘텀 점수 구하기
+            aggresive_rows = momentum_df[momentum_df['ticker'].isin(Aggresive_ETF)]
+##################################################################################################3
 
 
-            current_price = TIP_data.iloc[-1]  # 최신 가격 ####################333
-            avg_price = TIP_data.mean()  # 4개월 평균
 
-            regime = current_price - avg_price
 
-            return regime
+
+            
+            # ✅ 수정 3: 두 값 모두 반환
+            return momentum_df, regime_score
+        
+
+
+
+
             
         except Exception as e:
-            KA.SendMessage(f"USLA Regime 계산 오류: {e}")
-            return 0
+            KA.SendMessage(f"HAA_momentum 전체 오류: {e}")
+            return pd.DataFrame(), None
 
 
-    def HAA_momentum(self): ###################################################3
-        """HAA 모멘텀 점수 계산 (KIS API 사용)""" 
+
+
+
+            momentum_df = momentum_df.sort_values(by='momentum', ascending=False).reset_index(drop=True)
+            
+            return momentum_df
+            
+        except Exception as e:
+            KA.SendMessage(f"HAA 모멘텀 계산 오류: {e}")
+            return pd.DataFrame()
 
 
     def calculate_momentum(self):
