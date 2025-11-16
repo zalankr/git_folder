@@ -453,7 +453,14 @@ KA.SendMessage(f"HAA {order_time['date']} 리밸런싱\n{order_time['time']}, {o
 
 if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기 ############################################
     # 목표 데이터 만들기
-    target_weight, regime_signal = HAA.target_ticker_weight()
+    result = HAA.HAA_momentum()
+    target_weight = result['target_weight']  # target_weight
+    regime_signal = result['regime']
+
+
+
+
+
     HAA_data = HAA.load_HAA_data()
     Hold_usd = HAA_data['CASH']
     target_ticker = list(target_weight.keys())

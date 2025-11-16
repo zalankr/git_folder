@@ -697,17 +697,18 @@ class HAA(KIS_US.KIS_API): #상속
         except Exception as e:
             KA.SendMessage(f"{ticker} 월간 가격 조회 오류: {e}")
 
-    def calculate_regime(self): #
-        """TIP 채권 ETF의 Regime 신호 계산 (KIS API 사용)"""
-
-
-
     def HAA_momentum(self): ###################################################3
         """HAA 모멘텀 점수 계산 (KIS API 사용)"""
         etf_tickers = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
         Aggresive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
         Defensive_ETF = ['IEF', 'BIL']
         Regime_ETF = 'TIP'
+        messages = []
+        # 결과값 초기화 실패 시'CASH' 100%로 대기
+        result = {
+            'target weight': {'CASH': 1.0},
+            'regime': -1
+        }
 
         try:
             today = date.today()
@@ -738,14 +739,14 @@ class HAA(KIS_US.KIS_API): #상속
             
             if not price_data:
                 KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터를 가져올 수 없습니다.")
-                return pd.DataFrame()
+                return result
             
             # DataFrame으로 변환
             price_df = pd.DataFrame(price_data)
             
             if len(price_df) < 13:
                 KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
-                return pd.DataFrame()
+                return result
                 
             momentum_scores = []
             
@@ -765,31 +766,84 @@ class HAA(KIS_US.KIS_API): #상속
                         '1m': (current / prices.iloc[-2] - 1) if len(prices) >= 2 else 0,
                         '3m': (current / prices.iloc[-4] - 1) if len(prices) >= 4 else 0,
                         '6m': (current / prices.iloc[-7] - 1) if len(prices) >= 7 else 0,
-                        '9m': (current / prices.iloc[-10] - 1) if len(prices) >= 10 else 0,
                         '12m': (current / prices.iloc[-13] - 1) if len(prices) >= 13 else 0
                     }
                     # 모멘텀 점수 계산 (가중평균)
-                    score = (returns['1m'] * 20 + returns['3m'] * 20 + 
-                            returns['6m'] * 20 + returns['9m'] * 20 + 
-                            returns['12m'] * 20) / 100
-                    momentum_scores.append((ticker, score))
+                    score = (returns['1m']+returns['3m']+returns['6m']+returns['12m'])*100
+                    
+                    momentum_scores.append({
+                        'ticker': ticker,
+                        'momentum': score
+                    })
+                
                 except Exception as e:
-                    KA.SendMessage(f"HAA {ticker} 모멘텀 계산 오류: {e}")
+                    messages.append(f"HAA {ticker} 모멘텀 계산 오류: {e}")
                     continue
             
-            momentum_df = pd.DataFrame(momentum_scores, columns=['ticker', 'momentum'])
-
-            # Regime ETF의 모멘텀 점수 구하기
-            momentum_dict = dict(momentum_scores)
-            regime_score = momentum_dict.get(Regime_ETF, None)
-
-            if regime_score is None:
-                KA.SendMessage(f"HAA 경고: {Regime_ETF} 모멘텀 데이터를 찾을 수 없습니다.")
+            if not momentum_scores:
+                messages.append("HAA 경고: 계산된 모멘텀 데이터를 찾을 수 없습니다.")
+                return result
+            
+            # Regime구하기
+            regime = momentum_scores['TIP']
+            if regime is None:
+                messages.append(f"HAA 경고: {Regime_ETF} 모멘텀 데이터를 찾을 수 없습니다.")
+                return result
             else:
-                KA.SendMessage(f"HAA: {Regime_ETF} 모멘텀 = {regime_score:.4f}")
+                messages.append(f"HAA: {Regime_ETF} 모멘텀 = {regime:.2f}")
 
-            # Aggresive ETF의 모멘텀 점수 구하기
-            aggresive_rows = momentum_df[momentum_df['ticker'].isin(Aggresive_ETF)]
+            # 데이터프레임 만들기
+            momentum_df = pd.DataFrame(momentum_scores)
+            if momentum_df is None:
+                messages.append(f"HAA 경고: momentum_df를 찾을 수 없습니다.")
+                return result
+            else:
+                messages.append(f"HAA: momentum_df 생성 성공")
+
+            # regime 양수일 때 Aggresive ETF의 모멘텀 점수 구하기
+            if regime >= 0:
+                aggresive_df = momentum_df[momentum_df['ticker'].isin(Aggresive_ETF)]
+                aggresive_df['rank'] = aggresive_df['momentum'].rank(ascending=False)
+                aggresive_df = aggresive_df.sort_values('rank').reset_index(drop=True)
+
+                # 모멘텀 상위 종목 출력 (최대 8개 또는 실제 데이터 개수 중 적은 것)
+                num_tickers = min(8, len(momentum_df))
+                momentum = momentum_df.head(num_tickers)
+
+                messages.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
+                for i in range(num_tickers):
+                    ticker = momentum.iloc[i]['ticker']
+                    score = momentum.iloc[i]['momentum']
+                    messages.append(f"{i+1}위: {ticker} ({score:.4f})")
+
+                # 상위 4개 ETF 선택
+                if len(momentum_df) < 4:
+                    messages.append(f"HAA 경고: 모멘텀 데이터가 4개 미만입니다. CASH로 대기합니다.")
+                    return result
+                else:
+                    top_tickers = momentum_df.head(4)['ticker'].tolist()
+                    
+                    # 포트폴리오 가중치 계산
+                    weights = 0.2425 # 97%의 25%씩 할당
+                    
+                    allocation = {ticker: weights for ticker in top_tickers}
+                    allocation['CASH'] = 0.03  # 3% 현금 보유
+
+                
+
+
+
+
+
+
+
+
+
+
+
+        
+        
+
 ##################################################################################################3
 
 
@@ -820,6 +874,8 @@ class HAA(KIS_US.KIS_API): #상속
         except Exception as e:
             KA.SendMessage(f"HAA 모멘텀 계산 오류: {e}")
             return pd.DataFrame()
+        
+        KA.SendMessage("\n".join(messages))
 
 
     def calculate_momentum(self):
