@@ -19,21 +19,22 @@ token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json"
 cano = "63721147"
 acnt_prdt_cd = "01"
 HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
+HAA_ticker2 = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
 HAA = HAA_model.HAA(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 def real_Hold():
     """실제 잔고 확인 함수, Hold 반환"""
-    real_balance = USLA.get_US_stock_balance()
+    real_balance = HAA.get_US_stock_balance()
     Hold = {
-        "UPRO": 0,
-        "TQQQ": 0,
+        "SPY": 0,
+        "IWM": 0, ####################################3
         "EDC": 0,
         "TMF": 0,
         "TMV": 0
     }
     for i in range(len(real_balance)):
         ticker = real_balance[i]['ticker']
-        if real_balance[i]['ticker'] in USLA_ticker:
+        if real_balance[i]['ticker'] in HAA_ticker:
             Hold[ticker] = real_balance[i]['quantity']
     Hold['CASH'] = 0  # 기본값 초기값
     return Hold
@@ -460,7 +461,6 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     Hold_usd = HAA_data['CASH']
     target_ticker = list(target_weight.keys())
 ##################################################################
-
 
 
     Hold = real_Hold()
