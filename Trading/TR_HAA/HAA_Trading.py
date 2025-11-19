@@ -27,25 +27,28 @@ def real_Hold():
     real_balance = HAA.get_US_stock_balance()
     Hold = {
         "SPY": 0,
-        "IWM": 0, ####################################3
-        "EDC": 0,
-        "TMF": 0,
-        "TMV": 0
+        "IWM": 0,
+        "VEA": 0,
+        "VWO": 0,
+        "PDBC": 0,
+        "VNQ": 0,
+        "TLT": 0,
+        "IEF": 0
     }
     for i in range(len(real_balance)):
         ticker = real_balance[i]['ticker']
-        if real_balance[i]['ticker'] in HAA_ticker:
+        if real_balance[i]['ticker'] in HAA_ticker2:
             Hold[ticker] = real_balance[i]['quantity']
     Hold['CASH'] = 0  # 기본값 초기값
     return Hold
 
 def make_target_data(Hold, target_weight): #수수료 포함
     """target qty, target usd 만들기"""
-    # 현재 USD환산 USLA 잔고
-    hold_usd_value = USLA.calculate_USD_value(Hold)
-    # USLA USD 잔고 X 티커별 비중 = target qty
+    # 현재 USD환산 HAA 잔고
+    hold_usd_value = HAA.calculate_USD_value(Hold)
+    # HAA USD 잔고 X 티커별 비중 = target qty
     target_usd_value = {ticker: target_weight[ticker] * hold_usd_value for ticker in target_weight.keys()}
-    target_qty = USLA.calculate_target_qty(target_weight, target_usd_value)
+    target_qty = HAA.calculate_target_qty(target_weight, target_usd_value)
     target_usd = target_qty["CASH"]
 
     return target_qty, target_usd
@@ -460,15 +463,13 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     HAA_data = HAA.load_HAA_data()
     Hold_usd = HAA_data['CASH']
     target_ticker = list(target_weight.keys())
-##################################################################
-
 
     Hold = real_Hold()
     Hold['CASH'] = Hold_usd
     target_qty, target_usd = make_target_data(Hold, target_weight)
     Buy, Sell = make_Buy_Sell(target_weight, target_qty, Hold)
 
-    round_split = USLA.make_split_data(order_time['round'])
+    round_split = HAA.make_split_data(order_time['round']) ########################
     sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
     buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
 

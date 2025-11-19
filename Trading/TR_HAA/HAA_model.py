@@ -20,7 +20,7 @@ class HAA(KIS_US.KIS_API): #상속
         self.HAA_TR_path = "/var/autobot/TR_HAA/HAA_TR.json"
         self.fee = self.SELL_FEE_RATE  # 수수료 0.25%
     
-    def calculate_USD_value(self, hold): # make_trading_data함수에 종속되어 USD 환산 잔고 계산 - 수수료 포함
+    def calculate_USD_value(self, hold): # USD 환산 잔고 계산 - 수수료 포함
         """USD 환산 잔고 계산"""
         hold_USD_value = 0
         for t in hold.keys():
@@ -37,11 +37,11 @@ class HAA(KIS_US.KIS_API): #상속
 
         return hold_USD_value
 
-    def calculate_target_qty(self, target, target_usd_value): # make_trading_data함수에 종속, target 티커별 목표 quantity 산출 - 수수료 포함
-        # 보유 $기준 잔고를 바탕으로 목표 비중에 맞춰 ticker별 quantity 계산
-        target_qty = {}
+    def calculate_target_qty(self, target_weight, target_usd_value): # 보유 $기준 잔고를 바탕으로 target 티커별 목표 quantity 산출 - 수수료 포함
         target_stock_value = 0
-        for ticker in target.keys():
+        target_qty = {}
+
+        for ticker in target_weight.keys():
             if ticker != "CASH":
                 try:
                     price = self.get_US_current_price(ticker)
@@ -64,7 +64,7 @@ class HAA(KIS_US.KIS_API): #상속
 
         return target_qty
 
-    def make_split_data(self, round): # make_trading_data함수에 종속되어 시장과 시간대별 티커별 분할횟수와 분할당 가격 산출
+    def make_split_data(self, round): # 시장과 시간대별 티커별 분할횟수와 분할당 가격 산출
         if round in range(1, 12): # Pre-Market
             sell_splits = 4
             sell_price_adjust = [1.015, 1.03, 1.045, 1.06]
