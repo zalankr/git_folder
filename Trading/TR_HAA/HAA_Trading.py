@@ -458,7 +458,7 @@ KA.SendMessage(f"HAA {order_time['date']} 리밸런싱\n{order_time['time']}, {o
 if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     result = HAA.HAA_momentum()
     target_weight = result['target_weight']  # target_weight
-    regime_signal = result['regime_score']
+    regime_score = result['regime_score']
 
     HAA_data = HAA.load_HAA_data()
     Hold_usd = HAA_data['CASH']
@@ -469,12 +469,22 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     target_qty, target_usd = make_target_data(Hold, target_weight)
     Buy, Sell = make_Buy_Sell(target_weight, target_qty, Hold)
 
-    round_split = HAA.make_split_data(order_time['round']) ########################
+    round_split = HAA.make_split_data(order_time['round'])
     sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
     buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
 
-    # USLA_data update 1차
-    regime_signal = float("{:.2f}".format(regime_signal))
+    # HAA_data update 1차
+    regime_score = float("{:.2f}".format(regime_score))
+    
+    # ticker 수별로 ticker명 뱐수 생성
+    for i in len(target_weight):
+        
+    
+    
+    #####################################################
+    
+    
+    weight_per_ticker = float("{:.4f}".format((1 - HAA_data['weight_per_CASH']) / 2))
     target_weight1 = float("{:.2f}".format(target_weight[target_ticker[0]]))
     target_ticker1_qty = target_qty[target_ticker[0]]
     target_weight2 = float("{:.2f}".format(target_weight[target_ticker[1]]))

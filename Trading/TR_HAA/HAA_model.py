@@ -67,15 +67,15 @@ class HAA(KIS_US.KIS_API): #상속
     def make_split_data(self, round): # 시장과 시간대별 티커별 분할횟수와 분할당 가격 산출
         if round in range(1, 12): # Pre-Market
             sell_splits = 4
-            sell_price_adjust = [1.015, 1.03, 1.045, 1.06]
+            sell_price_adjust = [1.0075, 1.0150, 1.0225, 1.0300]
             buy_splits = 2
-            buy_price_adjust = [0.995, 0.99]
+            buy_price_adjust = [0.9975, 0.9950]
 
         elif round in range(12, 25): # Regular
             sell_splits = 5
-            sell_price_adjust = [1.004, 1.008, 1.012, 1.016, 1.02]
+            sell_price_adjust = [1.002, 1.004, 1.006, 1.008, 1.01]
             buy_splits = 5
-            buy_price_adjust = [0.996, 0.992, 0.988, 0.984, 0.98]
+            buy_price_adjust = [0.998, 0.996, 0.994, 0.992, 0.99]
 
             if round == 12:
                 pass
@@ -133,7 +133,7 @@ class HAA(KIS_US.KIS_API): #상속
             elif round == 23:
                 sell_splits = 1
                 sell_price_adjust = sell_price_adjust[:sell_splits]
-                sell_price_adjust[0] = 0.98
+                sell_price_adjust[0] = 0.99
                 buy_splits = 2
                 buy_price_adjust = buy_price_adjust[:buy_splits]
                 buy_price_adjust[0] = 1.01
