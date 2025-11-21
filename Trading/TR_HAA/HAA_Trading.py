@@ -472,7 +472,7 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     round_split = HAA.make_split_data(order_time['round'])
     sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
     buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
-
+###################################################################################
     # HAA_data update 1차
     data = {}
     
@@ -504,7 +504,17 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     USLA_data = {
         'date': str(order_time['date']),
         'regime_score': regime_score,
-        'ticker1': data["target1"],
+        'SPY_hold': 0,
+        'SPY_weight': 0,
+        'SPY_target_qty': 0,
+        
+        
+        
+        
+        
+        
+        
+        ''
         'target_weight1': target_weight1,
         'target_ticker1_qty': target_ticker1_qty,
         'target_ticker2': target_ticker[1],
