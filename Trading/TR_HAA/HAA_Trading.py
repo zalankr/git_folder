@@ -474,41 +474,37 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
 
     # HAA_data update 1차
-    regime_score = float("{:.2f}".format(regime_score))
+    data = {}
+    data["regime_score"] = float("{:.2f}".format(regime_score))
     
-    # ticker 수별로 ticker명 뱐수 생성
-    for i in len(target_weight):
-        
+    if len(target_weight) == 5:
+        for i, ticker in enumerate(target_weight.keys()):
+            data[f"target{1+i}"] = ticker
+            data[f"target{1+i}_weight"] = float("{:.2f}".format(target_weight[ticker]*100))
+            data[f"target{1+i}_qty"] = float("{:.2f}".format(target_qty[ticker]))
     
-    
-    #####################################################
-    
-    
-    weight_per_ticker = float("{:.4f}".format((1 - HAA_data['weight_per_CASH']) / 2))
-    target_weight1 = float("{:.2f}".format(target_weight[target_ticker[0]]))
-    target_ticker1_qty = target_qty[target_ticker[0]]
-    target_weight2 = float("{:.2f}".format(target_weight[target_ticker[1]]))
-    target_ticker2_qty = target_qty[target_ticker[1]]
-
     # 당일 티커별 평가금 산출 - 수수료 포함
-    UPRO_eval = Hold['UPRO'] * (USLA.get_US_current_price('UPRO') * (1-USLA.fee))
-    TQQQ_eval = Hold['TQQQ'] * (USLA.get_US_current_price('TQQQ') * (1-USLA.fee))
-    EDC_eval = Hold['EDC'] * (USLA.get_US_current_price('EDC') * (1-USLA.fee))
-    TMF_eval = Hold['TMF'] * (USLA.get_US_current_price('TMF') * (1-USLA.fee))
-    TMV_eval = Hold['TMV'] * (USLA.get_US_current_price('TMV') * (1-USLA.fee))
+    SPY_eval = Hold['SPY'] * (HAA.get_US_current_price('SPY') * (1-HAA.fee))
+    IWM_eval = Hold['IWM'] * (HAA.get_US_current_price('IWM') * (1-HAA.fee))
+    VEA_eval = Hold['VEA'] * (HAA.get_US_current_price('VEA') * (1-HAA.fee))
+    VWO_eval = Hold['VWO'] * (HAA.get_US_current_price('VWO') * (1-HAA.fee))
+    PDBC_eval = Hold['PDBC'] * (HAA.get_US_current_price('PDBC') * (1-HAA.fee))
+    VNQ_eval = Hold['VNQ'] * (HAA.get_US_current_price('VNQ') * (1-HAA.fee))
+    TLT_eval = Hold['TLT'] * (HAA.get_US_current_price('TLT') * (1-HAA.fee))
+    IEF_eval = Hold['IEF'] * (HAA.get_US_current_price('IEF') * (1-HAA.fee))
 
-    result = USLA.get_US_dollar_balance()
+    result = HAA.get_US_dollar_balance()
     exchange_rate = result['exchange_rate']
     time_module.sleep(0.2)
 
     # 데이터 조정
-    today_eval = UPRO_eval + TQQQ_eval + EDC_eval + TMF_eval + TMV_eval + Hold['CASH']
+    today_eval = SPY_eval + IWM_eval + VEA_eval + VWO_eval + PDBC_eval + VNQ_eval + TLT_eval + IEF_eval + Hold['CASH']
     today_eval_KRW = int(today_eval * exchange_rate)
     today_eval = float("{:.2f}".format(today_eval))
-
+######################################################################################
     USLA_data = {
         'date': str(order_time['date']),
-        'regime_signal': regime_signal,
+        'regime_score': regime_score,
         'target_ticker1': target_ticker[0],
         'target_weight1': target_weight1,
         'target_ticker1_qty': target_ticker1_qty,
