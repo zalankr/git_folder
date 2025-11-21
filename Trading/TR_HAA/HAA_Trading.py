@@ -475,7 +475,6 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
 
     # HAA_data update 1차
     data = {}
-    data["regime_score"] = float("{:.2f}".format(regime_score))
     
     if len(target_weight) == 5:
         for i, ticker in enumerate(target_weight.keys()):
@@ -505,7 +504,7 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     USLA_data = {
         'date': str(order_time['date']),
         'regime_score': regime_score,
-        'target_ticker1': target_ticker[0],
+        'ticker1': data["target1"],
         'target_weight1': target_weight1,
         'target_ticker1_qty': target_ticker1_qty,
         'target_ticker2': target_ticker[1],
