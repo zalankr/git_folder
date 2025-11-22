@@ -163,35 +163,35 @@ class HAA(KIS_US.KIS_API): #상속
             KA.SendMessage(f"HAA_data JSON 파일 오류: {e}")
             sys.exit(0)
 
-    def load_USLA_TR(self): # Kis_TR data 불러오기
-        """USLA_TR 불러오기"""   
+    def load_HAA_TR(self): # Kis_TR data 불러오기
+        """HAA_TR 불러오기"""   
         try:
-            with open(self.USLA_TR_path, 'r', encoding='utf-8') as f:
+            with open(self.HAA_TR_path, 'r', encoding='utf-8') as f:
                 TR_data = json.load(f)
             return TR_data
 
         except Exception as e:
-            KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
+            KA.SendMessage(f"HAA_TR JSON 파일 오류: {e}")
             exit()
 
-    def save_USLA_data_json(self, USLA_data):
-        """Kis_TR_data를 JSON 파일로 저장"""     
+    def save_HAA_data_json(self, HAA_data):
+        """HAA_data를 JSON 파일로 저장"""     
         try:
-            with open(self.USLA_data_path, 'w', encoding='utf-8') as f:
-                json.dump(USLA_data, f, ensure_ascii=False, indent=4)
+            with open(self.HAA_data_path, 'w', encoding='utf-8') as f:
+                json.dump(HAA_data, f, ensure_ascii=False, indent=4)
             return True
         except Exception as e:
-            KA.SendMessage(f"\n USLA_data JSON 파일 저장 오류: {e}")
+            KA.SendMessage(f"\n HAA_data JSON 파일 저장 오류: {e}")
             return False
 
-    def save_USLA_TR_json(self, TR_data):
-        """USLA_TR_data를 JSON 파일로 저장"""     
+    def save_HAA_TR_json(self, TR_data):
+        """HAA_TR_data를 JSON 파일로 저장"""     
         try:
-            with open(self.USLA_TR_path, 'w', encoding='utf-8') as f:
+            with open(self.HAA_TR_path, 'w', encoding='utf-8') as f:
                 json.dump(TR_data, f, ensure_ascii=False, indent=4)
             return True
         except Exception as e:
-            KA.SendMessage(f"\n USLA_TR JSON 파일 저장 오류: {e}")
+            KA.SendMessage(f"\n HAA_TR JSON 파일 저장 오류: {e}")
             return False
         
     def calculate_sell_summary(self, Sell_order):

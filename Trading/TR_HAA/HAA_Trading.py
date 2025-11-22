@@ -472,15 +472,6 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     round_split = HAA.make_split_data(order_time['round'])
     sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
     buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
-###################################################################################
-    # HAA_data update 1차
-    data = {}
-    
-    if len(target_weight) == 5:
-        for i, ticker in enumerate(target_weight.keys()):
-            data[f"target{1+i}"] = ticker
-            data[f"target{1+i}_weight"] = float("{:.2f}".format(target_weight[ticker]*100))
-            data[f"target{1+i}_qty"] = float("{:.2f}".format(target_qty[ticker]))
     
     # 당일 티커별 평가금 산출 - 수수료 포함
     SPY_eval = Hold['SPY'] * (HAA.get_US_current_price('SPY') * (1-HAA.fee))
@@ -500,51 +491,56 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     today_eval = SPY_eval + IWM_eval + VEA_eval + VWO_eval + PDBC_eval + VNQ_eval + TLT_eval + IEF_eval + Hold['CASH']
     today_eval_KRW = int(today_eval * exchange_rate)
     today_eval = float("{:.2f}".format(today_eval))
-######################################################################################
-    USLA_data = {
+
+    HAA_data = {
         'date': str(order_time['date']),
         'regime_score': regime_score,
-        'SPY_hold': 0,
-        'SPY_weight': 0,
-        'SPY_target_qty': 0,
-        
-        
-        
-        
-        
-        
-        
-        ''
-        'target_weight1': target_weight1,
-        'target_ticker1_qty': target_ticker1_qty,
-        'target_ticker2': target_ticker[1],
-        'target_weight2': target_weight2,
-        'target_ticker2_qty': target_ticker2_qty,
-        'UPRO': Hold['UPRO'],
-        'TQQQ': Hold['TQQQ'],
-        'EDC': Hold['EDC'],
-        'TMF': Hold['TMF'],
-        'TMV': Hold['TMV'],
-        'CASH': Hold['CASH'],
+        'SPY_hold': Hold['SPY'],
+        'SPY_weight': target_weight.get('SPY', 0),
+        'SPY_target_qty': target_qty.get('SPY', 0),
+        'IWM_hold': Hold['IWM'],
+        'IWM_weight': target_weight.get('IWM', 0),
+        'IWM_target_qty': target_qty.get('IWM', 0),
+        'VEA_hold': Hold['VEA'],
+        'VEA_weight': target_weight.get('VEA', 0),
+        'VEA_target_qty': target_qty.get('VEA', 0),
+        'VWO_hold': Hold['VWO'],
+        'VWO_weight': target_weight.get('VWO', 0),
+        'VWO_target_qty': target_qty.get('VWO', 0),
+        'PDBC_hold': Hold['PDBC'],
+        'PDBC_weight': target_weight.get('PDBC', 0),
+        'PDBC_target_qty': target_qty.get('PDBC', 0),
+        'VNQ_hold': Hold['VNQ'],
+        'VNQ_weight': target_weight.get('VNQ', 0),
+        'VNQ_target_qty': target_qty.get('VNQ', 0),
+        'TLT_hold': Hold['TLT'],
+        'TLT_weight': target_weight.get('TLT', 0),
+        'TLT_target_qty': target_qty.get('TLT', 0),
+        'IEF_hold': Hold['IEF'],
+        'IEF_weight': target_weight.get('IEF', 0),
+        'IEF_target_qty': target_qty.get('IEF', 0),
+        'CASH_hold': Hold['CASH'],
+        'CASH_weight': target_weight.get('CASH', 0),
+        'CASH_target_qty': target_qty.get('CASH', 0),
         'balance': today_eval,
-        'last_day_balance': USLA_data['last_day_balance'],
-        'last_month_balance': USLA_data['last_month_balance'],
-        'last_year_balance': USLA_data['last_year_balance'],
-        'daily_return': USLA_data['daily_return'],
-        'monthly_return': USLA_data['monthly_return'],
-        'yearly_return': USLA_data['yearly_return'],
-        'exchange_rate': USLA_data['exchange_rate'],
+        'last_day_balance': HAA_data['last_day_balance'],
+        'last_month_balance': HAA_data['last_month_balance'],
+        'last_year_balance': HAA_data['last_year_balance'],
+        'daily_return': HAA_data['daily_return'],
+        'monthly_return': HAA_data['monthly_return'],
+        'yearly_return': HAA_data['yearly_return'],
+        'exchange_rate': HAA_data['exchange_rate'],
         'balance_KRW': today_eval_KRW,
-        'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
-        'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
-        'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
-        'daily_return_KRW': USLA_data['daily_return_KRW'],
-        'monthly_return_KRW': USLA_data['monthly_return_KRW'],
-        'yearly_return_KRW': USLA_data['yearly_return_KRW']
+        'last_day_balance_KRW': HAA_data['last_day_balance_KRW'],
+        'last_month_balance_KRW': HAA_data['last_month_balance_KRW'],
+        'last_year_balance_KRW': HAA_data['last_year_balance_KRW'],
+        'daily_return_KRW': HAA_data['daily_return_KRW'],
+        'monthly_return_KRW': HAA_data['monthly_return_KRW'],
+        'yearly_return_KRW': HAA_data['yearly_return_KRW']
     }
 
-    USLA.save_USLA_data_json(USLA_data)
-
+    HAA.save_HAA_data_json(HAA_data)
+#########################################################################
     # Sell주문
     Sell_order = Selling(Sell, sell_split, order_time) 
     # Buy 수량 계산
