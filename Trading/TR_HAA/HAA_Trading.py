@@ -78,14 +78,14 @@ def make_Buy_Sell(target_weight, target_qty, Hold):
                 Sell[ticker] = Hold[ticker]
     return Buy, Sell
 
-def Selling(Sell, sell_split, order_time):  # ✅ order_time 매개변수 추가
+def Selling(Sell, sell_split, order_time):  # order_time 매개변수 추가
     """
     매도 주문 실행 함수 - 개선버전 (메시지 통합)
     
     Parameters:
     - Sell: 매도할 종목과 수량 딕셔너리 {ticker: quantity}
     - sell_split: [분할횟수, [가격조정비율 리스트]]
-    - order_time: 현재 주문 시간 정보 딕셔너리  # ✅ 추가
+    - order_time: 현재 주문 시간 정보 딕셔너리  # 추가
     
     Returns:
     - Sell_order: 주문 결과 리스트 (성공/실패 모두 포함)
@@ -97,7 +97,7 @@ def Selling(Sell, sell_split, order_time):  # ✅ order_time 매개변수 추가
         KA.SendMessage("매도할 종목이 없습니다.")
         return Sell_order
     
-    # ✅ 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
+    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
     order_messages.append(round_info)
     
@@ -107,7 +107,7 @@ def Selling(Sell, sell_split, order_time):  # ✅ order_time 매개변수 추가
             continue
 
         qty_per_split = int(Sell[ticker] // sell_split[0])
-        current_price = USLA.get_US_current_price(ticker)
+        current_price = HAA.get_US_current_price(ticker)
 
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
@@ -136,7 +136,7 @@ def Selling(Sell, sell_split, order_time):  # ✅ order_time 매개변수 추가
             price = round(current_price * sell_split[1][i], 2)
             
             try:
-                order_info, order_sell_message = USLA.order_sell_US(ticker, quantity, price)
+                order_info, order_sell_message = HAA.order_sell_US(ticker, quantity, price)
                 
                 if order_info and order_info.get('success') == True:
                     order_info = {
@@ -152,14 +152,14 @@ def Selling(Sell, sell_split, order_time):  # ✅ order_time 매개변수 추가
                     }
                     Sell_order.append(order_info)
                     
-                    # ✅ 수정: 변수명 변경 (i → j) 또는 extend 사용
+                    # 수정: 변수명 변경 (i → j) 또는 extend 사용
                     if order_sell_message and len(order_sell_message) > 0:
-                        order_messages.extend(order_sell_message)  # ✅ extend 사용
+                        order_messages.extend(order_sell_message)  # extend 사용
                     order_messages.append(f"✅ {ticker} {quantity}주 @${price} (분할{i+1})")
                 else:
                     error_msg = order_info.get('error_message', 'Unknown error') if order_info else 'API 호출 실패'
                     if order_sell_message and len(order_sell_message) > 0:
-                        order_messages.extend(order_sell_message)  # ✅ extend 사용
+                        order_messages.extend(order_sell_message)  # extend 사용
                     order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                     Sell_order.append({
                         'success': False,
@@ -203,11 +203,11 @@ def calculate_Buy_qty(Buy, Hold, target_usd):
     order_messages = []  # 주문 메시지를 모을 리스트
 
     for ticker in Buy.keys():
-        price = USLA.get_US_current_price(ticker)
+        price = HAA.get_US_current_price(ticker)
 
         if isinstance(price, (int, float)) and price > 0:
             ticker_prices[ticker] = price
-            Buy_value[ticker] = Buy[ticker] * (price * (1 + USLA.fee))
+            Buy_value[ticker] = Buy[ticker] * (price * (1 + HAA.fee))
             total_Buy_value += Buy_value[ticker]
         else:
             order_messages.append(f"❌ {ticker} 가격 조회 실패")
@@ -234,7 +234,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd):
         price = ticker_prices[ticker]
         
         if price > 0:
-            Buy_qty[ticker] = int(Buy_usd / (price * (1 + USLA.fee)))  # 수수료 포함
+            Buy_qty[ticker] = int(Buy_usd / (price * (1 + HAA.fee)))  # 수수료 포함
         else:
             Buy_qty[ticker] = 0
         
@@ -244,7 +244,7 @@ def calculate_Buy_qty(Buy, Hold, target_usd):
     KA.SendMessage("\n".join(order_messages))
     return Buy_qty, TR_usd
 
-def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변수 추가
+def Buying(Buy_qty, buy_split, TR_usd, order_time):  # order_time 매개변수 추가
     """
     매수 주문 실행 함수 - 개선버전 (메시지 통합)
     
@@ -252,7 +252,7 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
     - Buy_qty: 매수할 종목과 수량 딕셔너리 {ticker: quantity}
     - buy_split: [분할횟수, [가격조정비율 리스트]]
     - TR_usd: 매수가능 금액
-    - order_time: 현재 주문 시간 정보 딕셔너리  # ✅ 추가
+    - order_time: 현재 주문 시간 정보 딕셔너리  # 추가
     
     Returns:
     - Buy_order: 주문 결과 리스트 (성공/실패 모두 포함)
@@ -268,7 +268,7 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
         KA.SendMessage("매수할 종목이 없습니다.")
         return Buy_order
     
-    # ✅ 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
+    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
     order_messages.append(round_info)
     
@@ -278,7 +278,7 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
             continue
         
         qty_per_split = int(Buy_qty[ticker] // buy_split[0])
-        current_price = USLA.get_US_current_price(ticker)
+        current_price = HAA.get_US_current_price(ticker)
         
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 주문 스킵"
@@ -307,7 +307,7 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
             price = round(current_price * buy_split[1][i], 2)
             
             try:
-                order_info, order_buy_message = USLA.order_buy_US(ticker, quantity, price)
+                order_info, order_buy_message = HAA.order_buy_US(ticker, quantity, price)
                 
                 if order_info and order_info.get('success') == True:
                     order_info = {
@@ -323,14 +323,14 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # ✅ order_time 매개변�
                     }
                     Buy_order.append(order_info)
 
-                    # ✅ 수정: 변수명 변경 (i → j) 또는 extend 사용
+                    # 수정: 변수명 변경 (i → j) 또는 extend 사용
                     if order_buy_message and len(order_buy_message) > 0:
-                        order_messages.extend(order_buy_message)  # ✅ extend 사용
+                        order_messages.extend(order_buy_message)  # extend 사용
                     order_messages.append(f"✅ {ticker} {quantity}주 @${price} (분할{i+1})")
                 else:
                     error_msg = order_info.get('error_message', 'Unknown error') if order_info else 'API 호출 실패'
                     if order_buy_message and len(order_buy_message) > 0:
-                        order_messages.extend(order_buy_message)  # ✅ extend 사용
+                        order_messages.extend(order_buy_message)  # extend 사용
                     order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                     Buy_order.append({
                         'success': False,
@@ -382,10 +382,10 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, tar
     
     try:
         # 정상 저장
-        save_result = USLA.save_USLA_TR_json(TR_data)
+        save_result = HAA.save_HAA_TR_json(TR_data)
         
         if not save_result:
-            raise Exception("save_USLA_TR_json returned False")
+            raise Exception("save_HAA_TR_json returned False")
         
         KA.SendMessage(
             f"{order_time['date']}, {order_time['season']} 리밸런싱\n"
@@ -397,7 +397,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, tar
         error_msg = f"TR 데이터 저장 실패: {e}"
         KA.SendMessage(error_msg)
         
-        backup_path = f"/var/autobot/TR_USLA/USLA_TR_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        backup_path = f"/var/autobot/TR_HAA/HAA_TR_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         try:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(TR_data, f, ensure_ascii=False, indent=4)
@@ -415,7 +415,7 @@ def health_check():
     
     # 1. API 토큰 유효성
     if not HAA.access_token:
-        checks.append("USLA 체크: API 토큰 없음")
+        checks.append("HAA 체크: API 토큰 없음")
     
     # 2. JSON 파일 존재
     import os
@@ -540,10 +540,10 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     }
 
     HAA.save_HAA_data_json(HAA_data)
-#########################################################################
+
     # Sell주문
     Sell_order = Selling(Sell, sell_split, order_time) 
-    # Buy 수량 계산
+    # Buy 수량 계산 #############################################3
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
     # Buy주문
     Buy_order = Buying(Buy_qty, buy_split, TR_usd, order_time)
