@@ -455,7 +455,7 @@ if order_time['season'] == "HAA_not_rebalancing" or order_time['round'] == 0:
 health_check()
 KA.SendMessage(f"HAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
-if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
+if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기 + +++++ Leverage add
     result = HAA.HAA_momentum()
     target_weight = result['target_weight']  # target_weight
     regime_score = result['regime_score']
@@ -543,7 +543,7 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
 
     # Sell주문
     Sell_order = Selling(Sell, sell_split, order_time) 
-    # Buy 수량 계산 #############################################3
+    # Buy 수량 계산
     Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
     # Buy주문
     Buy_order = Buying(Buy_qty, buy_split, TR_usd, order_time)
@@ -553,11 +553,11 @@ if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
     sys.exit(0)
 
 elif order_time['round'] in range(2, 25):  # Round 2~24회차
-    # ============================================
+    # ====================================
     # 1단계: 지난 라운드 TR_data 불러오기
-    # ============================================
+    # ====================================
     try:
-        TR_data = USLA.load_USLA_TR()
+        TR_data =HAA.load_HAA_TR()
         Sell_order = TR_data['Sell_order']
         Buy_order = TR_data['Buy_order']
         Hold_usd = TR_data['CASH']
@@ -568,7 +568,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         prev_round_usd = Hold_usd
     
     except Exception as e:
-        KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
+        KA.SendMessage(f"HAA_TR JSON 파일 오류: {e}")
         sys.exit(0)
 
     # ============================================
@@ -582,7 +582,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
     # 매도 체결결과 반영
     if len(successful_sell_orders) > 0:
-        sell_summary, message = USLA.calculate_sell_summary(successful_sell_orders)
+        sell_summary, message = HAA.calculate_sell_summary(successful_sell_orders)
         Hold_usd += sell_summary['net_amount']
         for i in message:
             report_message.append(i)
@@ -590,7 +590,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     
     # 매수 체결결과 반영
     if len(successful_buy_orders) > 0:
-        buy_summary, message = USLA.calculate_buy_summary(successful_buy_orders)
+        buy_summary, message = HAA.calculate_buy_summary(successful_buy_orders)
         Hold_usd -= buy_summary['total_amount']
         for i in message:
             report_message.append(i)
@@ -604,7 +604,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     # 3단계: 미체결 주문 취소 (체결 확인 후!)
     # ============================================
     try:
-        cancel_result, cancel_messages = USLA.cancel_all_unfilled_orders()
+        cancel_result, cancel_messages = HAA.cancel_all_unfilled_orders()
         report_message.extend(cancel_messages)
         if cancel_result['total'] > 0:
             report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
@@ -644,9 +644,9 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     TR_usd = Hold_usd - target_usd  # 매수가능 USD
     needs_usd = 0
     for ticker in Buy.keys(): # Buy USD환산총액 계산
-        price = USLA.get_US_current_price(ticker)
+        price = HAA.get_US_current_price(ticker)
         if isinstance(price, (int, float)) and price > 0:
-            needs_usd += Buy[ticker] * (price * (1 + USLA.fee))
+            needs_usd += Buy[ticker] * (price * (1 + HAA.fee))
         else:
             needs_usd += 0
         time_module.sleep(0.1)
@@ -661,7 +661,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         Buy_qty = Buy
     
     # split 데이터 만들기      
-    round_split = USLA.make_split_data(order_time['round'])
+    round_split = HAA.make_split_data(order_time['round'])
     sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
     buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
     
@@ -681,7 +681,7 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     # 1단계: 지난 라운드 TR_data 불러오기
     # ============================================
     try:
-        TR_data = USLA.load_USLA_TR()
+        TR_data = HAA.load_HAA_TR()
         Sell_order = TR_data['Sell_order']
         Buy_order = TR_data['Buy_order']
         Hold_usd = TR_data['CASH']
@@ -692,7 +692,7 @@ elif order_time['round'] == 25:  # 25회차 최종기록
         prev_round_usd = Hold_usd
     
     except Exception as e:
-        KA.SendMessage(f"USLA_TR JSON 파일 오류: {e}")
+        KA.SendMessage(f"HAA_TR JSON 파일 오류: {e}")
         sys.exit(0)    
 
     # ============================================
@@ -706,7 +706,7 @@ elif order_time['round'] == 25:  # 25회차 최종기록
 
     # 매도 체결결과 반영
     if len(successful_sell_orders) > 0:
-        sell_summary, message = USLA.calculate_sell_summary(successful_sell_orders)
+        sell_summary, message = HAA.calculate_sell_summary(successful_sell_orders)
         Hold_usd += sell_summary['net_amount']
         for i in message:
             report_message.append(i)
@@ -714,7 +714,7 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     
     # 매수 체결결과 반영
     if len(successful_buy_orders) > 0:
-        buy_summary, message = USLA.calculate_buy_summary(successful_buy_orders)
+        buy_summary, message = HAA.calculate_buy_summary(successful_buy_orders)
         Hold_usd -= buy_summary['total_amount']
         for i in message:
             report_message.append(i)
@@ -728,7 +728,7 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
     # ============================================
     try:
-        cancel_result, cancel_messages = USLA.cancel_all_unfilled_orders()
+        cancel_result, cancel_messages = HAA.cancel_all_unfilled_orders()
         report_message.extend(cancel_messages)
         if cancel_result['total'] > 0:
             report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
@@ -741,29 +741,38 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     # ============================================
     # 4단계: 최종 데이터 저장 (USLA_data.json)
     # ============================================
-    USLA_data = USLA.load_USLA_data()
+    USLA_data = HAA.load_HAA_data()
     
     Hold = real_Hold()
-    
-    UPRO = Hold.get('UPRO', 0)
-    TQQQ = Hold.get('TQQQ', 0)
-    EDC = Hold.get('EDC', 0)
-    TMF = Hold.get('TMF', 0)
-    TMV = Hold.get('TMV', 0)
+
+    SPY = Hold.get('SPY', 0)    
+    IWM = Hold.get('IWM', 0)
+    VEA = Hold.get('VEA', 0)
+    VWO = Hold.get('VWO', 0)
+    PDBC = Hold.get('PDBC', 0)
+    VNQ = Hold.get('VNQ', 0)
+    TLT = Hold.get('TLT', 0)
+    IEF = Hold.get('IEF', 0)
     CASH = Hold_usd
-    
+
     # 당일 티커별 평가금 산출 - 수수료 포함
-    UPRO_eval = Hold['UPRO'] * (USLA.get_US_current_price('UPRO') * (1-USLA.fee))
-    TQQQ_eval = Hold['TQQQ'] * (USLA.get_US_current_price('TQQQ') * (1-USLA.fee))
-    EDC_eval = Hold['EDC'] * (USLA.get_US_current_price('EDC') * (1-USLA.fee))
-    TMF_eval = Hold['TMF'] * (USLA.get_US_current_price('TMF') * (1-USLA.fee))
-    TMV_eval = Hold['TMV'] * (USLA.get_US_current_price('TMV') * (1-USLA.fee))
-    stocks_eval_usd = UPRO_eval + TQQQ_eval + EDC_eval + TMF_eval + TMV_eval    
-    balance = stocks_eval_usd + Hold_usd
-    balanceKRW = int(balance * USLA.get_US_dollar_balance()['exchange_rate'])
+    SPY_eval = SPY * (HAA.get_US_current_price('SPY') * (1-HAA.fee))
+    IWM_eval = IWM * (HAA.get_US_current_price('IWM') * (1-HAA.fee))
+    VEA_eval = VEA * (HAA.get_US_current_price('VEA') * (1-HAA.fee))
+    VWO_eval = VWO * (HAA.get_US_current_price('VWO') * (1-HAA.fee))
+    PDBC_eval = PDBC * (HAA.get_US_current_price('PDBC') * (1-HAA.fee))
+    VNQ_eval = VNQ * (HAA.get_US_current_price('VNQ') * (1-HAA.fee))
+    TLT_eval = TLT * (HAA.get_US_current_price('TLT') * (1-HAA.fee))
+    IEF_eval = IEF * (HAA.get_US_current_price('IEF') * (1-HAA.fee))
+    stocks_eval_usd = SPY_eval + IWM_eval + VEA_eval + VWO_eval + PDBC_eval + VNQ_eval + TLT_eval + IEF_eval
+    balance = stocks_eval_usd + CASH
+    balanceKRW = int(balance * HAA.get_US_dollar_balance()['exchange_rate'])
+
+
+###########################################################################################################
     
     #data 조정
-    USLA_data = {
+    HAA_data = {
         'date': str(order_time['date']),
         'regime_signal': USLA_data['regime_signal'],
         'target_ticker1': USLA_data['target_ticker1'],

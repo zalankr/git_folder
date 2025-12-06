@@ -681,7 +681,6 @@ class HAA(KIS_US.KIS_API): #상속
 
     def HAA_momentum(self):
         """HAA 모멘텀 점수 계산 (KIS API 사용)"""
-        etf_tickers = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
         Aggresive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
         Defensive_ETF = ['IEF', 'BIL']
         Regime_ETF = 'TIP'
