@@ -741,7 +741,7 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     # ============================================
     # 4단계: 최종 데이터 저장 (USLA_data.json)
     # ============================================
-    USLA_data = HAA.load_HAA_data()
+    HAA_data = HAA.load_HAA_data()
     
     Hold = real_Hold()
 
@@ -767,52 +767,70 @@ elif order_time['round'] == 25:  # 25회차 최종기록
     stocks_eval_usd = SPY_eval + IWM_eval + VEA_eval + VWO_eval + PDBC_eval + VNQ_eval + TLT_eval + IEF_eval
     balance = stocks_eval_usd + CASH
     balanceKRW = int(balance * HAA.get_US_dollar_balance()['exchange_rate'])
-
-
-###########################################################################################################
-    
+   
     #data 조정
     HAA_data = {
         'date': str(order_time['date']),
-        'regime_signal': USLA_data['regime_signal'],
-        'target_ticker1': USLA_data['target_ticker1'],
-        'target_weight1': USLA_data['target_weight1'],
-        'target_ticker1_qty': USLA_data['target_ticker1_qty'],
-        'target_ticker2': USLA_data['target_ticker2'],
-        'target_weight2': USLA_data['target_weight2'],
-        'target_ticker2_qty': USLA_data['target_ticker2_qty'],
-        'UPRO': UPRO,
-        'TQQQ': TQQQ,
-        'EDC': EDC,
-        'TMF': TMF,
-        'TMV': TMV,
-        'CASH': CASH,
+        'regime_score': HAA_data['regime_signal'],
+        'SPY_hold': SPY,
+        'SPY_weight': HAA_data['SPY_weight'],
+        'SPY_target_qty': HAA_data['SPY_target_qty'],
+        'IWM_hold': IWM,
+        'IWM_weight': HAA_data['IWM_weight'],
+        'IWM_target_qty': HAA_data['IWM_target_qty'],
+        'VEA_hold': VEA,
+        'VEA_weight': HAA_data['VEA_weight'],
+        'VEA_target_qty': HAA_data['VEA_target_qty'],
+        'VWO_hold': VWO,
+        'VWO_weight': HAA_data['VWO_weight'],
+        'VWO_target_qty': HAA_data['VWO_target_qty'],
+        'PDBC_hold': PDBC,
+        'PDBC_weight': HAA_data['PDBC_weight'],
+        'PDBC_target_qty': HAA_data['PDBC_target_qty'],
+        'VNQ_hold': VNQ,
+        'VNQ_weight': HAA_data['VNQ_weight'],
+        'VNQ_target_qty': HAA_data['VNQ_target_qty'],
+        'TLT_hold': TLT,
+        'TLT_weight': HAA_data['TLT_weight'],
+        'TLT_target_qty': HAA_data['TLT_target_qty'],
+        'IEF_hold': IEF,
+        'IEF_weight': HAA_data['IEF_weight'],
+        'IEF_target_qty': HAA_data['IEF_target_qty'],
+        'CASH_hold': CASH,
+        'CASH_weight': HAA_data['CASH_weight'],
+        'CASH_target_qty': HAA_data['CASH_target_qty'],
         'balance': balance,
-        'last_day_balance': USLA_data['last_day_balance'],
-        'last_month_balance': USLA_data['last_month_balance'],
-        'last_year_balance': USLA_data['last_year_balance'],
-        'daily_return': USLA_data['daily_return'],
-        'monthly_return': USLA_data['monthly_return'],
-        'yearly_return': USLA_data['yearly_return'],
-        'exchange_rate': USLA_data['exchange_rate'],
+        'last_day_balance': HAA_data['last_day_balance'],
+        'last_month_balance': HAA_data['last_month_balance'],
+        'last_year_balance': HAA_data['last_year_balance'],
+        'daily_return': HAA_data['daily_return'],
+        'monthly_return': HAA_data['monthly_return'],
+        'yearly_return': HAA_data['yearly_return'],
+        'exchange_rate': HAA_data['exchange_rate'],
         'balance_KRW': balanceKRW,
-        'last_day_balance_KRW': USLA_data['last_day_balance_KRW'],
-        'last_month_balance_KRW': USLA_data['last_month_balance_KRW'],
-        'last_year_balance_KRW': USLA_data['last_year_balance_KRW'],
-        'daily_return_KRW': USLA_data['daily_return_KRW'],
-        'monthly_return_KRW': USLA_data['monthly_return_KRW'],
-        'yearly_return_KRW': USLA_data['yearly_return_KRW']
-    }    
-    
-    USLA.save_USLA_data_json(USLA_data)
+        'last_day_balance_KRW': HAA_data['last_day_balance_KRW'],
+        'last_month_balance_KRW': HAA_data['last_month_balance_KRW'],
+        'last_year_balance_KRW': HAA_data['last_year_balance_KRW'],
+        'daily_return_KRW': HAA_data['daily_return_KRW'],
+        'monthly_return_KRW': HAA_data['monthly_return_KRW'],
+        'yearly_return_KRW': HAA_data['yearly_return_KRW']
+    }
+
+    HAA.save_HAA_data_json(HAA_data)
 
 # 카톡 리밸 종료 결과 보내기
-KA.SendMessage(f"KIS USLA {order_time['date']}\n당월 리벨런싱 완료")
+KA.SendMessage(f"KIS HAA {order_time['date']}\n당월 리벨런싱 완료")
 KA.SendMessage(
-    f"KIS USLA regime_signal: {USLA_data['regime_signal']}\n"
-    f"target1: {USLA_data['target_ticker1']}, {USLA_data['target_weight1']}\n"
-    f"target2: {USLA_data['target_ticker2']}, {USLA_data['target_weight2']}\n"
-    f"KIS USLA balance: {balance}\n"
-    f"UPRO: {UPRO}, TQQQ: {TQQQ}, EDC: {EDC}, TMF: {TMF}, TMV: {TMV}\n"
-    f"CASH: ${Hold_usd:.2f}, Risk regime USD RP 월말일까지 투자"
+    f"KIS HAA regime_signal: {HAA_data['regime_signal']}\n"
+    f"SPY: {SPY}, weight: {HAA_data['SPY_weight']}\n"
+    f"IWM: {IWM}, weight: {HAA_data['IWM_weight']}\n"
+    f"VEA: {VEA}, weight: {HAA_data['VEA_weight']}\n"
+    f"VWO: {VWO}, weight: {HAA_data['VWO_weight']}\n"
+    f"PDBC: {PDBC}, weight: {HAA_data['PDBC_weight']}\n"
+    f"VNQ: {VNQ}, weight: {HAA_data['VNQ_weight']}\n"
+    f"TLT: {TLT}, weight: {HAA_data['TLT_weight']}\n"
+    f"IEF: {IEF}, weight: {HAA_data['IEF_weight']}\n"
+    f"CASH: {CASH}, weight: {HAA_data['CASH_weight']}\n"
+    f"KIS HAA balance: {balance}\n"
+    f"CASH: ${Hold_usd:.2f}, Risk regime인 경우 USD RP 월말일까지 투자"
 )
