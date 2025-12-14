@@ -1157,6 +1157,106 @@ class KIS_API:
         message.append(f"취소 실패: {summary['failed']}건")
         return summary, message
 
+    # SPY ETF 60개월 전고가 분석
+    def get_spy_60month_analysis(self, ticker: str = "SPY") -> Union[Dict, str]:
+        """
+        SPY ETF의 최근 60개월(약 1260 영업일) 동안의 일별 종가를 조회하여
+        전고가 대비 현재가 위치를 분석
+        
+        Parameters:
+        ticker (str): 주식 티커 심볼 (기본값: SPY)
+        
+        Returns:
+        Dict: {
+            'current_price': float,      # 현재가
+            'all_time_high': float,      # 전고가
+            'percentage_from_ath': float # 전고가 대비 현재가 비율 (%)
+        }
+        str: 에러 메시지
+        """
+        if not ticker:
+            return "티커를 입력해주세요."
+        
+        ticker = ticker.upper()
+        
+        # 1. 거래소 조회
+        exchange = self.get_exchange_by_ticker(ticker)
+        if not isinstance(exchange, str) or exchange == "거래소 조회 실패":
+            return f"{ticker} 거래소 조회 실패"
+        
+        # 2. 60개월 전 날짜 계산 (약 1260 영업일)
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=60*31)  # 약 60개월
+        
+        # 3. 일별 종가 데이터 조회
+        path = "uapi/overseas-price/v1/quotations/dailyprice"
+        url = f"{self.url_base}/{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "HHDFS76240000"
+        }
+        
+        params = {
+            "AUTH": "",
+            "EXCD": exchange,
+            "SYMB": ticker,
+            "GUBN": "0",  # 0: 일봉
+            "BYMD": start_date.strftime('%Y%m%d'),
+            "MODP": "1"
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get('rt_cd') == '0':
+                output2 = result.get('output2', [])
+                
+                if not output2:
+                    return f"{ticker} 과거 데이터 조회 실패"
+                
+                # 4. 종가 데이터 추출 (최대 100개까지만 조회됨)
+                closing_prices = []
+                for data in output2:
+                    close_price = data.get('clos', '')
+                    if close_price and close_price != '0':
+                        try:
+                            closing_prices.append(float(close_price))
+                        except:
+                            continue
+                
+                if not closing_prices:
+                    return f"{ticker} 종가 데이터 추출 실패"
+                
+                # 5. 전고가 계산
+                all_time_high = max(closing_prices)
+                
+                # 6. 현재가 조회
+                current_price = self.get_US_current_price(ticker)
+                if not isinstance(current_price, float):
+                    return f"{ticker} 현재가 조회 실패"
+                
+                # 7. 전고가 대비 현재가 비율 계산
+                percentage_from_ath = (current_price / all_time_high) * 100
+                
+                return {
+                    'current_price': current_price,
+                    'all_time_high': all_time_high,
+                    'percentage_from_ath': round(percentage_from_ath, 2)
+                }
+            else:
+                return f"{ticker} 데이터 조회 실패: {result.get('msg1', '알 수 없는 오류')}"
+                
+        except Exception as e:
+            return f"{ticker} 분석 중 오류 발생: {str(e)}"
+
+
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]
 00 : 지정가
