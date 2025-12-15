@@ -455,15 +455,20 @@ if order_time['season'] == "HAA_not_rebalancing" or order_time['round'] == 0:
 health_check()
 KA.SendMessage(f"HAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
-if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기 + +++++ Leverage add
+if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
+    # Leverage mode check
+    HAA_data = HAA.load_HAA_data()
+    modedata = HAA.check_mode(HAA_data)
+    #####################################
+
+
+    # HAA regime_signal & Momentum
     result = HAA.HAA_momentum()
     target_weight = result['target_weight']  # target_weight
     regime_score = result['regime_score']
-
-    HAA_data = HAA.load_HAA_data()
-    Hold_usd = HAA_data['CASH']
     target_ticker = list(target_weight.keys())
 
+    Hold_usd = HAA_data['CASH']
     Hold = real_Hold()
     Hold['CASH'] = Hold_usd
     target_qty, target_usd = make_target_data(Hold, target_weight)

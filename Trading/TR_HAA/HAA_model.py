@@ -965,3 +965,45 @@ class HAA(KIS_US.KIS_API): #상속
         except Exception as e:
             KA.SendMessage(f"USLA 가격 조회 전체 오류: {e}")
             return {ticker: 100.0 for ticker in self.all_tickers}
+        
+    def check_mode(self, HAA_data):
+        exLev_mode = HAA_data['Lev_mode']
+        exLev_month = HAA_data['Lev_month']
+        exHAA_weight = HAA_data['HAA_weight']
+        exSPXL_weight = HAA_data['SPXL_weight']
+        exCASH_weight = HAA_data['CASH_weight']
+
+        spy_analysis = self.get_spy_60month_analysis()
+        price = spy_analysis['current_price']
+        all_time_high = spy_analysis['all_time_high']
+        percentage_from_ath = spy_analysis['percentage_from_ath']
+
+        if exLev_mode == "HAA":
+            if percentage_from_ath >= 75:
+                return {
+                    "Lev_mode": "HAA",
+                    "Lev_month": "NA",
+                    "exHAA_weight": exHAA_weight,
+                    "exSPXL_weight": exSPXL_weight,
+                    "exCASH_weight": exCASH_weight,
+                    "HAA_weight": 0.980,
+                    "SPXL_weight": 0.000,
+                    "CASH_weight": 0.020
+                }
+            
+            else:
+                return {
+                    "Lev_mode": "Lev_1",
+                    "Lev_month": 1,
+                    "exHAA_weight": exHAA_weight,
+                    "exSPXL_weight": exSPXL_weight,
+                    "exCASH_weight": exCASH_weight,
+                    "HAA_weight": 0.939,
+                    "SPXL_weight": 0.041,
+                    "CASH_weight": 0.020
+                }
+        
+
+
+
+

@@ -1,7 +1,7 @@
 {
     "date": "2025-11-22",
-    "Lev_mode": "HAA_full",
-    "Lev_month": 0,
+    "Lev_mode": "HAA",
+    "Lev_month": "NA",
     "HAA_weight": 0.98,
     "SPXL_weight": 0.00,
     "CASH_hold": 0,
