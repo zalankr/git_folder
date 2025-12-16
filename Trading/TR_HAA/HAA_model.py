@@ -974,10 +974,14 @@ class HAA(KIS_US.KIS_API): #상속
         exCASH_weight = HAA_data['CASH_weight']
 
         spy_analysis = self.get_spy_60month_analysis()
-        price = spy_analysis['current_price']
-        all_time_high = spy_analysis['all_time_high']
-        percentage_from_ath = spy_analysis['percentage_from_ath']
 
+        ath_60to1months = spy_analysis['ath_60to1months']
+        high_1month = spy_analysis['high_1month']
+        current_price = spy_analysis['current_price']
+        high_1month_percentage = spy_analysis['high_1month_percentage']
+        current_percentage = spy_analysis['current_percentage']
+
+##########################################################################3
         if exLev_mode == "HAA":
             if percentage_from_ath >= 75:
                 return {
