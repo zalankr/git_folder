@@ -1157,20 +1157,26 @@ class KIS_API:
         message.append(f"취소 실패: {summary['failed']}건")
         return summary, message
 
-    # SPY ETF 60개월 전고가 분석
+    # SPY ETF 60개월 전고가 분석 (수정 버전)
     def get_spy_60month_analysis(self, ticker: str = "SPY") -> Union[Dict, str]:
         """
-        SPY ETF의 최근 60개월(약 1260 영업일) 동안의 일별 종가를 조회하여
-        전고가 대비 현재가 위치를 분석
+        SPY ETF 분석:
+        1. 60개월전~1개월전까지의 일별 종가 전고가
+        2. 최근 1개월간의 일별 종가 최고가
+        3. 현재가
+        4. 전고가 대비 1개월 최고가 비율
+        5. 전고가 대비 현재가 비율
         
         Parameters:
         ticker (str): 주식 티커 심볼 (기본값: SPY)
         
         Returns:
         Dict: {
-            'current_price': float,      # 현재가
-            'all_time_high': float,      # 전고가
-            'percentage_from_ath': float # 전고가 대비 현재가 비율 (%)
+            'ath_60to1months': float,           # 60개월~1개월전 전고가
+            'high_1month': float,               # 최근 1개월 최고가
+            'current_price': float,             # 현재가
+            'high_1month_percentage': float,    # 전고가 대비 1개월 최고가 비율(%)
+            'current_percentage': float         # 전고가 대비 현재가 비율(%)
         }
         str: 에러 메시지
         """
@@ -1184,14 +1190,12 @@ class KIS_API:
         if not isinstance(exchange, str) or exchange == "거래소 조회 실패":
             return f"{ticker} 거래소 조회 실패"
         
-        # 2. 60개월 전 날짜 계산 (약 1260 영업일)
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=60*31)  # 약 60개월
+        # 2. 날짜 계산
+        today = datetime.now()
+        date_60months_ago = today - timedelta(days=60*31)  # 60개월 전
+        date_1month_ago = today - timedelta(days=1*31)     # 1개월 전
         
-        # 3. 일별 종가 데이터 조회
-        path = "uapi/overseas-price/v1/quotations/dailyprice"
-        url = f"{self.url_base}/{path}"
-        
+        # 3. API 헤더 설정
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
@@ -1200,16 +1204,84 @@ class KIS_API:
             "tr_id": "HHDFS76240000"
         }
         
-        params = {
-            "AUTH": "",
-            "EXCD": exchange,
-            "SYMB": ticker,
-            "GUBN": "0",  # 0: 일봉
-            "BYMD": start_date.strftime('%Y%m%d'),
-            "MODP": "1"
-        }
-        
         try:
+            # 4. 60개월전~1개월전 데이터 조회 (전고가 계산용)
+            closing_prices_60to1 = []
+            
+            # 한국투자증권 API는 한 번에 100개 데이터만 조회되므로 여러 번 호출 필요
+            current_date = date_1month_ago
+            while current_date >= date_60months_ago:
+                params = {
+                    "AUTH": "",
+                    "EXCD": exchange,
+                    "SYMB": ticker,
+                    "GUBN": "0",  # 0: 일봉
+                    "BYMD": current_date.strftime('%Y%m%d'),
+                    "MODP": "1"
+                }
+                
+                path = "uapi/overseas-price/v1/quotations/dailyprice"
+                url = f"{self.url_base}/{path}"
+                
+                response = requests.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                if result.get('rt_cd') == '0':
+                    output2 = result.get('output2', [])
+                    
+                    for data in output2:
+                        # 날짜 필터링: 60개월전 ~ 1개월전
+                        data_date_str = data.get('xymd', '')
+                        if data_date_str:
+                            try:
+                                data_date = datetime.strptime(data_date_str, '%Y%m%d')
+                                if date_60months_ago <= data_date <= date_1month_ago:
+                                    close_price = data.get('clos', '')
+                                    if close_price and close_price != '0':
+                                        closing_prices_60to1.append(float(close_price))
+                            except:
+                                continue
+                    
+                    # 더 이상 데이터가 없으면 중단
+                    if len(output2) < 100:
+                        break
+                    
+                    # 다음 조회를 위한 날짜 업데이트 (100일 이전)
+                    if output2:
+                        last_date_str = output2[-1].get('xymd', '')
+                        if last_date_str:
+                            current_date = datetime.strptime(last_date_str, '%Y%m%d') - timedelta(days=1)
+                        else:
+                            break
+                else:
+                    break
+                
+                # API 호출 제한을 위한 대기
+                time.sleep(0.2)
+            
+            if not closing_prices_60to1:
+                return f"{ticker} 60개월~1개월전 데이터 조회 실패"
+            
+            # 5. 60개월~1개월전 전고가 계산
+            ath_60to1months = max(closing_prices_60to1)
+            
+            # 6. 최근 1개월 데이터 조회 (최고가 계산용)
+            closing_prices_1month = []
+            
+            params = {
+                "AUTH": "",
+                "EXCD": exchange,
+                "SYMB": ticker,
+                "GUBN": "0",  # 0: 일봉
+                "BYMD": date_1month_ago.strftime('%Y%m%d'),
+                "MODP": "1"
+            }
+            
+            path = "uapi/overseas-price/v1/quotations/dailyprice"
+            url = f"{self.url_base}/{path}"
+            
             response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()
             
@@ -1218,41 +1290,42 @@ class KIS_API:
             if result.get('rt_cd') == '0':
                 output2 = result.get('output2', [])
                 
-                if not output2:
-                    return f"{ticker} 과거 데이터 조회 실패"
-                
-                # 4. 종가 데이터 추출 (최대 100개까지만 조회됨)
-                closing_prices = []
                 for data in output2:
-                    close_price = data.get('clos', '')
-                    if close_price and close_price != '0':
+                    # 날짜 필터링: 최근 1개월
+                    data_date_str = data.get('xymd', '')
+                    if data_date_str:
                         try:
-                            closing_prices.append(float(close_price))
+                            data_date = datetime.strptime(data_date_str, '%Y%m%d')
+                            if data_date >= date_1month_ago:
+                                close_price = data.get('clos', '')
+                                if close_price and close_price != '0':
+                                    closing_prices_1month.append(float(close_price))
                         except:
                             continue
-                
-                if not closing_prices:
-                    return f"{ticker} 종가 데이터 추출 실패"
-                
-                # 5. 전고가 계산
-                all_time_high = max(closing_prices)
-                
-                # 6. 현재가 조회
-                current_price = self.get_US_current_price(ticker)
-                if not isinstance(current_price, float):
-                    return f"{ticker} 현재가 조회 실패"
-                
-                # 7. 전고가 대비 현재가 비율 계산
-                percentage_from_ath = (current_price / all_time_high) * 100
-                
-                return {
-                    'current_price': current_price,
-                    'all_time_high': all_time_high,
-                    'percentage_from_ath': round(percentage_from_ath, 2)
-                }
-            else:
-                return f"{ticker} 데이터 조회 실패: {result.get('msg1', '알 수 없는 오류')}"
-                
+            
+            if not closing_prices_1month:
+                return f"{ticker} 최근 1개월 데이터 조회 실패"
+            
+            # 7. 최근 1개월 최고가 계산
+            high_1month = max(closing_prices_1month)
+            
+            # 8. 현재가 조회
+            current_price = self.get_US_current_price(ticker)
+            if not isinstance(current_price, float):
+                return f"{ticker} 현재가 조회 실패"
+            
+            # 9. 비율 계산
+            high_1month_percentage = (high_1month / ath_60to1months) * 100
+            current_percentage = (current_price / ath_60to1months) * 100
+            
+            return {
+                'ath_60to1months': ath_60to1months,
+                'high_1month': high_1month,
+                'current_price': current_price,
+                'high_1month_percentage': round(high_1month_percentage, 2),
+                'current_percentage': round(current_percentage, 2)
+            }
+            
         except Exception as e:
             return f"{ticker} 분석 중 오류 발생: {str(e)}"
 
