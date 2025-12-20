@@ -975,13 +975,13 @@ class HAA(KIS_US.KIS_API): #상속
 
         spy_analysis = self.get_spy_60month_analysis()
 
-        ath_60to1months = spy_analysis['ath_60to1months']
-        high_1month = spy_analysis['high_1month']
-        current_price = spy_analysis['current_price']
-        high_1month_percentage = spy_analysis['high_1month_percentage']
-        current_percentage = spy_analysis['current_percentage']
+        ath_60to1months = spy_analysis['ath_60to1months'] # 60개월~1개월전 전고가
+        high_1month = spy_analysis['high_1month'] # 최근 1개월 최고가
+        current_price = spy_analysis['current_price'] # 현재가
+        high_1month_percentage = spy_analysis['high_1month_percentage'] # 전고가 대비 1개월 최고가 비율(%)
+        current_percentage = spy_analysis['current_percentage'] # 전고가 대비 현재가 비율(%)
 
-##########################################################################3
+###############################################################
         if exLev_mode == "HAA":
             if percentage_from_ath >= 75:
                 return {
