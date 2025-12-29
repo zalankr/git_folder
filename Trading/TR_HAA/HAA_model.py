@@ -967,45 +967,129 @@ class HAA(KIS_US.KIS_API): #상속
             return {ticker: 100.0 for ticker in self.all_tickers}
         
     def check_mode(self, HAA_data):
-        exLev_mode = HAA_data['Lev_mode']
-        exLev_month = HAA_data['Lev_month']
+        exmode = HAA_data['mode']
+        exmonth = HAA_data['month']
         exHAA_weight = HAA_data['HAA_weight']
         exSPXL_weight = HAA_data['SPXL_weight']
-        exCASH_weight = HAA_data['CASH_weight']
+        RAA_minus_per_split = 0
+        LF_start_SPXL_weight = 0
+        LF_start_HAA_weight = 0
+        sell_base_SPXLqty = 0
+        sell_split_SPXLqty = 0
+        sell_remain_SPXLqty = 0
 
         spy_analysis = self.get_spy_60month_analysis()
 
         ath_60to1months = spy_analysis['ath_60to1months'] # 60개월~1개월전 전고가
-        high_1month = spy_analysis['high_1month'] # 최근 1개월 최고가
+        # high_1month = spy_analysis['high_1month'] # 최근 1개월 최고가
         current_price = spy_analysis['current_price'] # 현재가
-        high_1month_percentage = spy_analysis['high_1month_percentage'] # 전고가 대비 1개월 최고가 비율(%)
+        # high_1month_percentage = spy_analysis['high_1month_percentage'] # 전고가 대비 1개월 최고가 비율(%)
         current_percentage = spy_analysis['current_percentage'] # 전고가 대비 현재가 비율(%)
 
-###############################################################
-        if exLev_mode == "HAA":
-            if percentage_from_ath >= 75:
-                return {
-                    "Lev_mode": "HAA",
-                    "Lev_month": "NA",
-                    "exHAA_weight": exHAA_weight,
-                    "exSPXL_weight": exSPXL_weight,
-                    "exCASH_weight": exCASH_weight,
-                    "HAA_weight": 0.980,
-                    "SPXL_weight": 0.000,
-                    "CASH_weight": 0.020
-                }
-            
+        if exmode == "HAA":
+            if current_percentage >= 75:
+                mode = "HAA"
+                month = "NA"
+                SPXL_weight = 0
+            elif 50 < current_percentage < 75:
+                mode = "LAA_H"
+                month = 1
+                SPXL_weight = 0.049 * month
+            elif current_percentage <= 50:
+                mode = "LAA_F"
+                month = 1
+                LF_start_SPXL_weight = exSPXL_weight
+                LF_start_HAA_weight = exHAA_weight
+                SPXL_weight = LF_start_SPXL_weight + (LF_start_HAA_weight / 10) * month
             else:
-                return {
-                    "Lev_mode": "Lev_1",
-                    "Lev_month": 1,
-                    "exHAA_weight": exHAA_weight,
-                    "exSPXL_weight": exSPXL_weight,
-                    "exCASH_weight": exCASH_weight,
-                    "HAA_weight": 0.939,
-                    "SPXL_weight": 0.041,
-                    "CASH_weight": 0.020
-                }
+                return f"{exmode} 모드체크 실패"
+            
+        elif exmode == "LAA_H":
+            if 50 < current_percentage < 100:
+                if exmonth == 10 or exmonth == "Full":
+                    mode = "LAA_H"
+                    month = "Full"
+                    SPXL_weight = 0.049
+                elif exmonth < 10:
+                    mode = "LAA_H"
+                    month = exmonth + 1
+                    SPXL_weight = 0.049 * month
+            elif current_percentage <= 50:
+                mode = "LAA_F"
+                month = 1
+                LF_start_SPXL_weight = exSPXL_weight
+                LF_start_HAA_weight = exHAA_weight
+                SPXL_weight = LF_start_SPXL_weight + (LF_start_HAA_weight / 10) * month
+            elif current_percentage >= 100:
+                mode = "RAA"
+                month = exmonth
+                RAA_minus_per_split = exSPXL_weight / month
+                SPXL_weight = exSPXL_weight - RAA_minus_per_split
+                sell_base_SPXLqty = self.get_ticker_balance("SPXL")
+                sell_split_SPXLqty = sell_base_SPXLqty / month
+                sell_remain_SPXLqty = sell_base_SPXLqty - sell_split_SPXLqty
+            else:
+                return f"{exmode} 모드체크 실패"
+
+        elif exmode == "LAA_F":
+            if current_percentage < 100:
+                if exmonth == 10 or exmonth == "Full":
+                    mode = "LAA_F"
+                    month = "Full"
+                    SPXL_weight = 0.098
+                elif exmonth < 10:
+                    mode = "LAA_F"
+                    month = exmonth + 1
+                    LF_start_SPXL_weight = HAA_data['LF_start_SPXL_weight']
+                    LF_start_HAA_weight = HAA_data['LF_start_HAA_weight']
+                    SPXL_weight = LF_start_SPXL_weight + (LF_start_HAA_weight / 10) * month
+            elif current_percentage >= 100:
+                mode = "RAA"
+                month = exmonth
+                RAA_minus_per_split = exSPXL_weight / month
+                SPXL_weight = exSPXL_weight - RAA_minus_per_split
+                sell_base_SPXLqty = self.get_ticker_balance("SPXL")
+                sell_split_SPXLqty = sell_base_SPXLqty / month
+                sell_remain_SPXLqty = sell_base_SPXLqty - sell_split_SPXLqty
+            else:
+                return f"{exmode} 모드체크 실패"
+##########################################################################
+        elif exmode == "RAA":
+            if current_percentage >= 75:
+                if exmonth == 1:
+                    mode = "HAA"
+                    month = "NA"
+                    SPXL_weight = 0
+                elif exmonth > 1:
+                    mode = "RAA"
+                    month = exmonth - 1
+                    SPXL_weight = exSPXL_weight - HAA_data['RAA_minus_per_split']
+                    SPXLqty = self.get_ticker_balance("SPXL")
+                    sell_remain_SPXLqty = SPXLqty - HAA_data['sell_split_SPXLqty']
+            elif 50 < current_percentage < 75:
+                pass
+            elif current_percentage <= 50:
+                pass
+            else:
+                return f"{exmode} 모드체크 실패"
+
+# RAA 작성 후 눈으로 검증 + Claude로 검증  >>> 이후 Trading 코드 수정, Claude 검증 >>> 실제 운용  
+##########################################################################
+
+
+
+        return {
+            "mode": mode,
+            "month": month,
+            "HAA_weight": 0.98 - SPXL_weight,
+            "SPXL_weight": SPXL_weight,
+            "RAA_minus_per_split": RAA_minus_per_split,
+            "LF_start_SPXL_weight": LF_start_SPXL_weight,
+            "LF_start_HAA_weight": LF_start_HAA_weight,
+            "sell_split_SPXLqty": sell_split_SPXLqty,
+            "sell_remain_SPXLqty": sell_remain_SPXLqty,
+            "sell_base_SPXLqty": sell_base_SPXLqty
+        }
         
 
 

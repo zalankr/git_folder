@@ -1329,7 +1329,107 @@ class KIS_API:
         except Exception as e:
             return f"{ticker} 분석 중 오류 발생: {str(e)}"
 
-
+    # 특정 ticker의 보유 잔고 조회
+    def get_ticker_balance(self, ticker: str) -> Union[Dict, str]:
+        """
+        특정 ticker의 계좌 내 보유 잔고 조회
+        
+        Parameters:
+        ticker (str): 주식 티커 심볼
+        
+        Returns:
+        Dict: {
+            'ticker': str,              # 티커 심볼
+            'holding_qty': float,       # 보유 수량
+            'avg_price': float,         # 매입 평균가
+            'current_price': float,     # 현재가
+            'eval_amount': float,       # 평가금액
+            'profit_loss': float,       # 평가손익금액
+            'profit_rate': float,       # 평가손익율(%)
+            'currency': str,            # 거래통화코드
+            'exchange': str             # 거래소코드
+        }
+        str: 에러 메시지 또는 "보유 잔고 없음"
+        """
+        if not ticker:
+            return "티커를 입력해주세요."
+        
+        ticker = ticker.upper()
+        
+        # 1. 거래소 조회
+        exchange = self.get_exchange_by_ticker(ticker)
+        if not isinstance(exchange, str) or exchange == "거래소 조회 실패":
+            return f"{ticker} 거래소 조회 실패"
+        
+        # 2. 거래소 코드에 따른 통화 코드 설정
+        currency_map = {
+            "NAS": "USD", "NASD": "USD", "NYS": "USD", "NYSE": "USD", 
+            "AMS": "USD", "AMEX": "USD", "BAY": "USD", "BAQ": "USD", "BAA": "USD",
+            "SEHK": "HKD",
+            "SHAA": "CNY", "SZAA": "CNY",
+            "TKSE": "JPY",
+            "HASE": "VND", "VNSE": "VND"
+        }
+        
+        tr_crcy_cd = currency_map.get(exchange, "USD")
+        
+        # 3. 해외주식 잔고 조회 API 호출
+        path = "uapi/overseas-stock/v1/trading/inquire-balance"
+        url = f"{self.url_base}/{path}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTS3012R"
+        }
+        
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "OVRS_EXCG_CD": exchange,
+            "TR_CRCY_CD": tr_crcy_cd,
+            "CTX_AREA_FK200": "",
+            "CTX_AREA_NK200": ""
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get('rt_cd') != '0':
+                return f"{ticker} 잔고 조회 실패: {result.get('msg1', '알 수 없는 오류')}"
+            
+            # output2에서 해당 ticker 찾기
+            output2 = result.get('output2', [])
+            
+            for item in output2:
+                # ovrs_pdno는 ticker를 의미
+                if item.get('ovrs_pdno', '').upper() == ticker:
+                    holding_qty = float(item.get('ovrs_cblc_qty', '0'))
+                    
+                    return holding_qty
+                    
+                    # return {
+                    #     'ticker': ticker,
+                    #     'holding_qty': holding_qty,
+                    #     'avg_price': float(item.get('pchs_avg_pric', '0')),
+                    #     'current_price': float(item.get('now_pric2', '0')),
+                    #     'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')),
+                    #     'profit_loss': float(item.get('frcr_evlu_pfls_amt', '0')),
+                    #     'profit_rate': float(item.get('evlu_pfls_rt', '0')),
+                    #     'currency': item.get('tr_crcy_cd', tr_crcy_cd),
+                    #     'exchange': item.get('ovrs_excg_cd', exchange)
+                    # }
+            
+            return "보유 잔고 없음"
+            
+        except Exception as e:
+            return f"{ticker} 잔고 조회 중 오류 발생: {str(e)}"
+        
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]
 00 : 지정가

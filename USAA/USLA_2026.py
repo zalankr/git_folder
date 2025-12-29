@@ -6,7 +6,7 @@ import riskfolio as rp
 import calendar
 
 # 날짜 인풋 받기
-year = '2025' ##################
+year = '2026'
 month = input('month?:')
 mon = int(month)
 
@@ -30,27 +30,25 @@ elif B1month < 10 and B1month >= 1 :
 else:
     B1year = year
 
-# Google spread account 연결 및 오픈 ######################## 회사에서 깃으로 json파일
+# Google spread account 연결 및 오픈 ### 회사에서 깃으로 json파일
 gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
-url = 'https://docs.google.com/spreadsheets/d/19KCxCqF32emisAEO1zT0XEDgD_Ye4n2-R3-0jzbZ-zs/edit?gid=1963431369#gid=1963431369'
-# 기 작성 URL기입
+# url = 'https://docs.google.com/spreadsheets/d/19KCxCqF32emisAEO1zT0XEDgD_Ye4n2-R3-0jzbZ-zs/edit?gid=1963431369#gid=1963431369' # 2025년
+url = 'https://docs.google.com/spreadsheets/d/1Z9ikKslqSFTup6-b_jf-wkHozIh0eJIQVb-3vx4NWDg/edit?gid=403260769#gid=403260769' # 2026년
+
 # 기 작성된 연도별 USLA gspread URL 기입
 sh = gc.open_by_url(url) # 스프레드시트 url주소로 연결
      
 # 워크시트 가져오기
 worksheet0 = sh.get_worksheet(mon-1)
 
-
 # 티커
 All_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMF', 'TMV', 'CASH'] # 예수금 포함
-
 
 col = ['전월수량', '전월주가', '전월평가금']
 dic = worksheet0.get("Q2:S7")
 
 TR = pd.DataFrame(data=dic, index=None, dtype=float, columns=col, copy=True)
 TR.insert(loc=0, column='티커', value=All_ticker)
-
 
 # 호출 날짜
 B4month = mon - 4
