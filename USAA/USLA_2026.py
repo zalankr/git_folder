@@ -32,7 +32,6 @@ else:
 
 # Google spread account 연결 및 오픈 ### 회사에서 깃으로 json파일
 gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
-# url = 'https://docs.google.com/spreadsheets/d/19KCxCqF32emisAEO1zT0XEDgD_Ye4n2-R3-0jzbZ-zs/edit?gid=1963431369#gid=1963431369' # 2025년
 url = 'https://docs.google.com/spreadsheets/d/1Z9ikKslqSFTup6-b_jf-wkHozIh0eJIQVb-3vx4NWDg/edit?gid=403260769#gid=403260769' # 2026년
 
 # 기 작성된 연도별 USLA gspread URL 기입

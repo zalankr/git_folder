@@ -34,7 +34,6 @@ B12year = str(int(B1year)-1)
 
 # Google spread account 연결 및 오픈 ###
 gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")
-# url = 'https://docs.google.com/spreadsheets/d/16IAqsD_1MEP7tGumz66y4c9hXZ_uAVJEmMQJKYZudck/edit?gid=1303568032#gid=1303568032' # 2025년
 url = 'https://docs.google.com/spreadsheets/d/1wTj13h9qewapuB_i5xBTtDsGweyqjsZXw8SU4BvYcqw/edit?gid=334995921#gid=334995921'
 # 기 작성된 연도별 USLA gspread URL 기입
 sh = gc.open_by_url(url) # 스프레드시트 url주소로 연결
