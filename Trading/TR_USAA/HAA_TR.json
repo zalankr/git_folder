@@ -1,0 +1,62 @@
+{
+    "round": 1,
+    "timestamp": "2025-11-13T09:00:13.949718",
+    "Sell_order": [],
+    "Buy_order": [
+        {
+            "success": true,
+            "ticker": "TQQQ",
+            "quantity": 4,
+            "price": 111.66,
+            "order_number": "0030999685",
+            "order_time": "180012",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
+            "split_index": 0
+        },
+        {
+            "success": true,
+            "ticker": "TQQQ",
+            "quantity": 4,
+            "price": 111.1,
+            "order_number": "0030999699",
+            "order_time": "180012",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
+            "split_index": 1
+        },
+        {
+            "success": true,
+            "ticker": "EDC",
+            "quantity": 9,
+            "price": 55.67,
+            "order_number": "0030999727",
+            "order_time": "180013",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
+            "split_index": 0
+        },
+        {
+            "success": true,
+            "ticker": "EDC",
+            "quantity": 10,
+            "price": 55.39,
+            "order_number": "0030999754",
+            "order_time": "180013",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
+            "split_index": 1
+        }
+    ],
+    "CASH": 2249.25,
+    "target_weight": {
+        "TQQQ": 0.45885752094467386,
+        "EDC": 0.5111424790553261,
+        "CASH": 0.03
+    },
+    "target_qty": {
+        "TQQQ": 9,
+        "EDC": 20,
+        "CASH": 120.26999999999998
+    }
+}
