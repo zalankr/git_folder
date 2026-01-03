@@ -1,7 +1,7 @@
 import time as time_module
 import kakao_alert as KA
 import sys
-import HAA_Calender
+import Trading.TR_USAA.USAA_Calender as USAA_Calender
 import HAA_model
 from tendo import singleton
 import json
@@ -444,7 +444,7 @@ def health_check():
 # ============================================
 
 # 날짜 체크
-order_time = HAA_Calender.check_order_time()
+order_time = USAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
 if order_time['season'] == "HAA_not_rebalancing" or order_time['round'] == 0:
