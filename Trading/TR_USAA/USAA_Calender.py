@@ -18,30 +18,30 @@ def get_current():
     }
     return now
 
-def check_HAA_rebalancing(current_date):
-    '''오늘이 HAA 리밸런싱일인지 확인'''
-    HAA_day_path = '/var/autobot/TR_HAA/HAA_day.json'
+def check_USAA_rebalancing(current_date):
+    '''오늘이 USAA 리밸런싱일인지 확인'''
+    USAA_day_path = '/var/autobot/TR_USAA/USAA_day.json'
     
     try:
-        with open(HAA_day_path, 'r', encoding='utf-8') as f:
-            HAA_day = json.load(f)
+        with open(USAA_day_path, 'r', encoding='utf-8') as f:
+            USAA_day = json.load(f)
     except Exception as e:
         print(f"JSON 파일 오류: {e}")
         # 추가: 안전하게 종료
         try:
             import kakao_alert as KA
-            KA.SendMessage(f"HAA_day.json 로드 실패: {e}")
+            KA.SendMessage(f"USAA_day.json 로드 실패: {e}")
         except:
             pass
-        return "HAA_not_rebalancing"
+        return "USAA_not_rebalancing"
 
-    if str(current_date) in HAA_day["summer_dst"]:
-        return "HAA_summer"
-    elif str(current_date) in HAA_day["winter_standard"]:
-        return "HAA_winter"
+    if str(current_date) in USAA_day["summer_dst"]:
+        return "USAA_summer"
+    elif str(current_date) in USAA_day["winter_standard"]:
+        return "USAA_winter"
     else:
-        return "HAA_not_rebalancing"
-
+        return "USAA_not_rebalancing"
+#############################################################
 def check_order_time():
     """HAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
     # 현재 날짜와 시간 확인 UTC시간대
