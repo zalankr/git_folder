@@ -19,10 +19,8 @@ class KIS_API:
         
         self._load_api_keys()
         self.access_token = self.get_access_token()
-        self.SELL_FEE_RATE = 0.0025  # test매도수수료 0.25% 수수료 할인 안 된 테스트 계좌/외부 코드에는 FEE는 이걸로 단일화 처리 중 
-        # self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
-        self.BUY_FEE_RATE = 0.0025  # test매수수수료 0.25% 수수료 할인 안 된 테스트 계좌
-        # self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09%
+        self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09% 이벤트 계좌
+        self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09% 이벤트 계좌
     
     # API-Key 로드
     def _load_api_keys(self):
@@ -137,7 +135,7 @@ class KIS_API:
         exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
 
         for exchange in exchanges:
-            price = self._get_price_from_kis(ticker, exchange)
+            price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
                 return exchange
             time.sleep(0.1)
@@ -163,7 +161,7 @@ class KIS_API:
         exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
         
         for exchange in exchanges:
-            price = self._get_price_from_kis(ticker, exchange)
+            price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
                 return price
             time.sleep(0.1)
@@ -171,7 +169,7 @@ class KIS_API:
         return "현재가 조회 실패"
 
     # KIS API로 현재가 조회
-    def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
+    def get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
         """KIS API로 현재가 조회 (3단계)"""
         
         # 1단계: 현재체결가 API
@@ -482,11 +480,11 @@ class KIS_API:
             order_info = None
             return order_info, order_buy_message
     
-    # 미국 주간거래 매수 주문 (Pre-market/After-hours)
+    # 미국 주간거래 매수 주문 (국내 증권사지원 주간거래)
     def order_daytime_buy_US(self, ticker: str, quantity: int, price: float,
                             exchange: Optional[str] = None) -> Optional[Dict]:
         """
-        미국 주간거래 매수 주문 (Pre-market/After-hours)
+        미국 국내 증권사지원 주간거래 매수주문
         
         Returns:
         Dict 또는 None - 주문 정보 딕셔너리
@@ -585,11 +583,11 @@ class KIS_API:
             KA.SendMessage(f"주간매수 주문 오류: {e}")
             return None
 
-    # 미국 주간거래 매도 주문 (Pre-market/After-hours)
+    # 미국 주간거래 매도 주문 (국내 증권사지원 주간거래)
     def order_daytime_sell_US(self, ticker: str, quantity: int, price: float,
                             exchange: Optional[str] = None) -> Optional[Dict]:
         """
-        미국 주간거래 매도 주문 (Pre-market/After-hours)
+        미국 국내 증권사지원 주간거래 매도주문
         
         Returns:
         Dict 또는 None - 주문 정보 딕셔너리

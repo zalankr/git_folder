@@ -1,19 +1,25 @@
-import time as time_module
-import kakao_alert as KA
 import sys
-import Trading.TR_USAA.USAA_Calender as USAA_Calender
-import HAA_model
-from tendo import singleton
 import json
-from datetime import datetime
+import kakao_alert as KA
+from datetime import date, datetime, timedelta
+import riskfolio as rp
+import requests
+import calendar
+import time as time_module
+from tendo import singleton
+import KIS_US
+import USAA_Calender
 
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    KA.SendMessage("HAA: 이미 실행 중입니다.")
+    KA.SendMessage("USAA: 이미 실행 중입니다.")
     sys.exit(0)
 
-# USLA모델 instance 생성
+
+###################################################################
+
+# KIS instance 생성
 key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt"
 token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json"
 cano = "63721147"
@@ -21,6 +27,8 @@ acnt_prdt_cd = "01"
 HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
 HAA_ticker2 = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
 HAA = HAA_model.HAA(key_file_path, token_file_path, cano, acnt_prdt_cd)
+
+# USAA instance 생성
 
 def real_Hold():
     """실제 잔고 확인 함수, Hold 반환"""

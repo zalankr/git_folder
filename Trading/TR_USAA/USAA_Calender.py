@@ -33,53 +33,49 @@ def check_USAA_rebalancing(current_date):
             KA.SendMessage(f"USAA_day.json 로드 실패: {e}")
         except:
             pass
-        return "USAA_not_rebalancing"
+        return "USAA_not_rebalancing_day"
 
     if str(current_date) in USAA_day["summer_dst"]:
         return "USAA_summer"
     elif str(current_date) in USAA_day["winter_standard"]:
         return "USAA_winter"
     else:
-        return "USAA_not_rebalancing"
-#############################################################
+        return "USAA_not_rebalancing_day"
+
 def check_order_time():
-    """HAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
+    """USAA 리밸런싱일인지, 써머타임 시간대인지 그리고 장전, 장중거래 시간대인지, 거래회차는 몇회차인지 확인""" 
     # 현재 날짜와 시간 확인 UTC시간대
     now = datetime.now()
     current_date = now.date()
     current_time = now.time()
 
-    # USLA 리밸런싱일 확인
-    check_HAA = check_HAA_rebalancing(current_date)
+    # USAA 리밸런싱일 확인
+    check_USAA = check_USAA_rebalancing(current_date)
     
     # 수정: 모든 키를 미리 초기화
     order_time = {
-        'season': check_HAA,
+        'season': check_USAA,
         'date': current_date,
         'time': current_time,
         'round': 0,         # 기본값
-        'total_round': 0    # 기본값
+        'total_round': 25    # 기본값
     }
 
-    if check_HAA == "HAA_winter":
+    if check_USAA == "USAA_winter":
         current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(9, 0)   # 09:00
         end = time_obj(21, 5)    # 21:05
         
         if start <= current < end:
             order_time['round'] = 1 + (current.hour - 9) * 2 + (current.minute // 30)
-            order_time['total_round'] = 25
 
-    elif check_HAA == "USLA_summer":
+    elif check_USAA == "USAA_summer":
         current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(8, 0)   # 08:00
         end = time_obj(20, 5)    # 20:05
 
         if start <= current < end:
             order_time['round'] = 1 + (current.hour - 8) * 2 + (current.minute // 30)
-            order_time['total_round'] = 25
-
-    # else 블록 제거 (이미 초기화됨)
 
     return order_time
     
