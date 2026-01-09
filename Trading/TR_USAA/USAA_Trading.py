@@ -16,23 +16,23 @@ except singleton.SingleInstanceException:
     KA.SendMessage("USAA: 이미 실행 중입니다.")
     sys.exit(0)
 
-
-###################################################################
-
 # KIS instance 생성
-key_file_path = "/var/autobot/TR_USLA/kis63721147nkr.txt"
-token_file_path = "/var/autobot/TR_USLA/kis63721147_token.json"
-cano = "63721147"
+key_file_path = "/var/autobot/TR_USAA/kis63604155nkr.txt"
+token_file_path = "/var/autobot/TR_USAA/kis63604155_token.json"
+cano = "63604155"
 acnt_prdt_cd = "01"
-HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
-HAA_ticker2 = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
-HAA = HAA_model.HAA(key_file_path, token_file_path, cano, acnt_prdt_cd)
+KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
-# USAA instance 생성
+USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
+HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
+all_tickers = USLA_ticker + HAA_ticker + ['CASH']
+fee_rate = 0.0009 # 수수료 이벤트 계좌 0.09%
+USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
+USAA_TR_path = "/var/autobot/TR_USAA/USAA_TR.json"
 
 def real_Hold():
     """실제 잔고 확인 함수, Hold 반환"""
-    real_balance = HAA.get_US_stock_balance()
+    real_balance = KIS.get_US_stock_balance()
     Hold = {
         "SPY": 0,
         "IWM": 0,
@@ -41,14 +41,26 @@ def real_Hold():
         "PDBC": 0,
         "VNQ": 0,
         "TLT": 0,
-        "IEF": 0
+        "IEF": 0,
+        "SPXL": 0,
+        "UPRO": 0,
+        "TQQQ": 0,
+        "EDC": 0,
+        "TMV": 0,
+        "TMF": 0
     }
     for i in range(len(real_balance)):
         ticker = real_balance[i]['ticker']
-        if real_balance[i]['ticker'] in HAA_ticker2:
+        if real_balance[i]['ticker'] in all_tickers:
             Hold[ticker] = real_balance[i]['quantity']
-    Hold['CASH'] = 0  # 기본값 초기값
+    usd = KIS.get_US_dollar_balance()  # withdrawabl_usd
+    if usd:
+        Hold['CASH'] = usd.get('withdrawable', 0) # 키가 없을 경우 0 반환
+    else:
+        Hold['CASH'] = 0 # API 호출 실패 시 처리
     return Hold
+
+########################################################################################
 
 def make_target_data(Hold, target_weight): #수수료 포함
     """target qty, target usd 만들기"""
