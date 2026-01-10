@@ -30,7 +30,7 @@ fee_rate = 0.0009 # 수수료 이벤트 계좌 0.09%
 USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
 USAA_TR_path = "/var/autobot/TR_USAA/USAA_TR.json"
 
-def real_Hold():
+def real_Hold(): # Edit완료
     """실제 잔고 확인 함수, Hold 반환"""
     real_balance = KIS.get_US_stock_balance()
     Hold = {
@@ -59,8 +59,6 @@ def real_Hold():
     else:
         Hold['CASH'] = 0 # API 호출 실패 시 처리
     return Hold
-
-########################################################################################
 
 def make_target_data(Hold, target_weight): #수수료 포함
     """target qty, target usd 만들기"""
@@ -429,60 +427,78 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, tar
     
     return TR_data
 
-def health_check():
+def health_check(): # Edit완료
     """시스템 상태 확인"""
     checks = []
     
     # 1. API 토큰 유효성
-    if not HAA.access_token:
-        checks.append("HAA 체크: API 토큰 없음")
+    if not KIS.access_token:
+        checks.append("USAA 체크: API 토큰 없음")
     
     # 2. JSON 파일 존재
     import os
     files = [
-        "/var/autobot/TR_HAA/HAA_day.json",
-        "/var/autobot/TR_HAA/HAA_data.json",
-        "/var/autobot/TR_HAA/HAA_TR.json"
+        "/var/autobot/TR_USAA/USAA_day.json",
+        "/var/autobot/TR_USAA/USAA_data.json",
+        "/var/autobot/TR_USAA/USAA_TR.json"
     ]
     for f in files:
         if not os.path.exists(f):
-            checks.append(f"HAA 체크: json 파일 없음: {f}")
+            checks.append(f"USAA 체크: json 파일 없음: {f}")
     
     # 3. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("HAA 체크: KIS API 서버 접속 불가")
+        checks.append("USAA 체크: KIS API 서버 접속 불가")
     
     if checks:
         KA.SendMessage("\n".join(checks))
         sys.exit(1)
 
+def load_USAA_data(self): # Edit완료
+    """USAA data 불러오기"""   
+    try:
+        with open(USAA_data_path, 'r', encoding='utf-8') as f:
+            USAA_data = json.load(f)
+        return USAA_data
+
+    except Exception as e:
+        KA.SendMessage(f"USAA_data JSON 파일 오류: {e}")
+        sys.exit(0)
+
+
+
+
+
+
 # ============================================
-# 메인 로직
+# 메인 로직 # 연단위 모델간 리밸런싱
 # ============================================
 
 # 날짜 체크
 order_time = USAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
-if order_time['season'] == "HAA_not_rebalancing" or order_time['round'] == 0:
-    KA.SendMessage(f"HAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 HAA_day 리스트에 없습니다.")
+if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
+    KA.SendMessage(f"USAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USAA_day 리스트에 없습니다.")
     sys.exit(0)
 
 # 메인로직 시작 전 시스템 상태 확인
 health_check()
-KA.SendMessage(f"HAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
+KA.SendMessage(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
-if order_time['round'] == 1:  # round 1회에만 Trading qty를 구하기
-    # Leverage mode check
-    HAA_data = HAA.load_HAA_data()
-    modedata = HAA.check_mode(HAA_data)
-    #####################################
+if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
+    USAA_data = load_USAA_data()
+    # USLA regime체크 및 거래 목표 데이터 만들기
+    target_weight, regime_signal = USLA.target_ticker_weight()
 
 
-    # HAA regime_signal & Momentum
+
+
+
+    # HAA regime_signal & Momentum #######
     result = HAA.HAA_momentum()
     target_weight = result['target_weight']  # target_weight
     regime_score = result['regime_score']
