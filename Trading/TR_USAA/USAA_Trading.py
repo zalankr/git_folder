@@ -470,36 +470,34 @@ def load_USAA_data(): # Edit완료
         KA.SendMessage(f"USAA_data JSON 파일 오류: {e}")
         sys.exit(0)
 
-def get_prices(): ###################################################################
+def get_prices(): # Edit완료
     """현재 가격 조회 (KIS API 사용)"""
     try:
         prices = {}            
         for ticker in all_ticker:
             try:   
                 # KIS API로 현재가 조회
-                price = self.get_US_current_price(ticker)
+                price = KIS.get_US_current_price(ticker)
                 
                 # 가격이 float 타입인지 확인
                 if isinstance(price, float) and price > 0:
                     prices[ticker] = price
                 else:
-                    KA.SendMessage(f"USLA {ticker} 가격 조회 실패")
+                    KA.SendMessage(f"USAA {ticker} 가격 조회 실패")
                     prices[ticker] = 100.0
                 
-                time.sleep(0.1)  # API 호출 간격
+                time_module.sleep(0.1)  # API 호출 간격
                 
             except Exception as e:
-                KA.SendMessage(f"USLA {ticker} 가격 조회 오류: {e}")
+                KA.SendMessage(f"USAA {ticker} 가격 조회 오류: {e}")
                 prices[ticker] = 100.0
         
         prices['CASH'] = 1.0
         return prices
         
     except Exception as e:
-        KA.SendMessage(f"USLA 가격 조회 전체 오류: {e}")
-        return {ticker: 100.0 for ticker in self.all_tickers}
-
-
+        KA.SendMessage(f"USAA 가격 조회 전체 오류: {e}")
+        return {ticker: 100.0 for ticker in all_ticker}
 
 def get_monthly_prices_kis(ticker: str, start_date: str, end_date: str) -> pd.Series: # Edit완료
     """
@@ -869,10 +867,7 @@ def USLA_portfolio_weights(top_tickers): # Edit완료
         equal_weight = 0.97 / len(top_tickers) # 98% 동일가중
         return {ticker: equal_weight for ticker in top_tickers}
 
-
-
-
-def USLA_strategy(regime, momentum_df):
+def USLA_strategy(regime, momentum_df): # Edit완료
     """전략 실행"""
     if momentum_df.empty:
         KA.SendMessage("USLA 경고: 모멘텀 데이터가 비어 계산할 수 없습니다.")
@@ -914,11 +909,11 @@ def USLA_strategy(regime, momentum_df):
             allocation['CASH'] = 0.0  # 여유 현금은 최종 합산 단계에서 현금 보유 비중 결정
     
     # 4. 현재 가격 조회
-    current_prices = self.get_prices() ##################################################
+    current_prices = get_prices()
     
     # 4. 결과 출력
     message = []
-    for ticker in self.all_tickers:
+    for ticker in USLA_ticker:
         if allocation.get(ticker, 0) > 0:
             message.append(f"USLA {ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
 
@@ -931,9 +926,7 @@ def USLA_strategy(regime, momentum_df):
         'current_prices': current_prices
     }
 
-
-
-def USLA_target_regime():
+def USLA_target_regime(): # Edit완료
     """target 티커별 목표 비중 산출"""
     regime = AGG_regime()
     momentum_df = USLA_momentum()
@@ -943,7 +936,7 @@ def USLA_target_regime():
         KA.SendMessage("USLA 경고: 전략 실행 실패, CASH로 대기합니다.")
         return {'CASH': 1.0}, 0
     
-    target = {
+    USLA_target = {
         ticker: weight 
         for ticker, weight in result['allocation'].items() 
         if weight >= 0.001
@@ -972,6 +965,7 @@ if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
     USAA_data = load_USAA_data()
     # USAA regime체크 및 거래 목표 데이터 만들기
     USLA_target, USLA_regime = USLA_target_regime()
+    
 
 
 
