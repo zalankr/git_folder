@@ -26,6 +26,9 @@ KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
 HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
+Aggresive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
+Defensive_ETF = ['IEF', 'BIL']
+Regime_ETF = 'TIP'
 all_ticker = USLA_ticker + HAA_ticker
 all_ticker_with_cash = all_ticker + ['CASH']
 fee_rate = 0.0009 # 수수료 이벤트 계좌 0.09%
@@ -944,6 +947,190 @@ def USLA_target_regime(): # Edit완료
     USLA_regime = result['regime']
     return USLA_target, USLA_regime
 
+def HAA_target_regime(): # Edit완료
+    """HAA 모멘텀 점수 계산 (KIS API 사용)"""
+    
+    # 결과값 초기화 실패 시'CASH' 100%로 대기
+    result = {
+        'target_weight': {'CASH': 1.0},
+        'regime_score': -1
+    }
+
+    try:
+        today = date.today()
+        target_month = today.month
+        target_year = today.year
+
+        # 13개월 데이터 필요 (현재 + 12개월)
+        start_year = target_year - 2
+        prev_month = target_month - 1 if target_month > 1 else 12
+        prev_year = target_year if target_month > 1 else target_year - 1
+        
+        start_date = f'{start_year}-{target_month:02d}-01'
+        last_day = calendar.monthrange(prev_year, prev_month)[1] # 월말일 반환
+        end_date = f'{prev_year}-{prev_month:02d}-{last_day}'
+        
+        # 각 ETF의 월간 가격 데이터 수집
+        price_data = {}
+        
+        for ticker in HAA_ticker:
+            try:
+                # KIS API로 월간 데이터 조회
+                prices = get_monthly_prices_kis(ticker, start_date, end_date)
+                price_data[ticker] = prices
+                time_module.sleep(0.1)  # API 호출 간격
+                
+            except Exception as e:
+                KA.SendMessage(f"HAA {ticker} 월간 데이터 조회 오류: {e}")
+                continue
+        
+        if not price_data:
+            KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터를 가져올 수 없습니다.")
+            return result
+        
+        # DataFrame으로 변환
+        price_df = pd.DataFrame(price_data)
+        
+        if len(price_df) < 13:
+            KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
+            return result
+            
+        momentum_scores = []
+        messages = []
+        
+        for ticker in HAA_ticker:
+            try:
+                if ticker not in price_df.columns:
+                    continue
+                    
+                prices = price_df[ticker].dropna()
+                
+                if len(prices) < 13:
+                    continue
+                    
+                # 현재가 기준 수익률 계산
+                current = prices.iloc[-1]
+                returns = {
+                    '1m': (current / prices.iloc[-2] - 1) if len(prices) >= 2 else 0,
+                    '3m': (current / prices.iloc[-4] - 1) if len(prices) >= 4 else 0,
+                    '6m': (current / prices.iloc[-7] - 1) if len(prices) >= 7 else 0,
+                    '12m': (current / prices.iloc[-13] - 1) if len(prices) >= 13 else 0
+                }
+                # 모멘텀 점수 계산 (가중평균)
+                score = (returns['1m']+returns['3m']+returns['6m']+returns['12m'])*100
+                
+                momentum_scores.append({
+                    'ticker': ticker,
+                    'momentum': score
+                })
+            
+            except Exception as e:
+                messages.append(f"HAA {ticker} 모멘텀 계산 오류: {e}")
+                continue
+        
+        if not momentum_scores:
+            KA.SendMessage("HAA 경고: 계산된 모멘텀 데이터를 찾을 수 없습니다.")
+            return result
+        
+        # Regime구하기
+        regime = momentum_scores['TIP']
+        if regime is None:
+            KA.SendMessage(f"HAA 경고: {Regime_ETF} 모멘텀 데이터를 찾을 수 없습니다.")
+            return result
+        else:
+            messages.append(f"HAA: {Regime_ETF} 모멘텀 = {regime:.2f}")
+
+        # 데이터프레임 만들기
+        momentum_df = pd.DataFrame(momentum_scores)
+        if momentum_df is None:
+            KA.SendMessage(f"HAA 경고: momentum_df를 찾을 수 없습니다.")
+            return result
+        else:
+            messages.append(f"HAA: momentum_df 생성 성공")
+
+        # regime 양수일 때 Aggresive ETF의 모멘텀 점수 구하기
+        if regime >= 0:
+            aggresive_df = momentum_df[momentum_df['ticker'].isin(Aggresive_ETF)]
+            aggresive_df['rank'] = aggresive_df['momentum'].rank(ascending=False)
+            aggresive_df = aggresive_df.sort_values('rank').reset_index(drop=True)
+
+            # 모멘텀 상위 종목 출력 (최대 8개 또는 실제 데이터 개수 중 적은 것)
+            num_tickers = min(8, len(momentum_df))
+            momentum = momentum_df.head(num_tickers)
+
+            messages.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
+            for i in range(num_tickers):
+                ticker = momentum.iloc[i]['ticker']
+                score = momentum.iloc[i]['momentum']
+                messages.append(f"{i+1}위: {ticker} ({score:.4f})")
+
+            # 상위 4개 ETF 선택
+            if len(momentum_df) < 4:
+                KA.SendMessage(f"HAA 경고: 모멘텀 데이터가 4개 미만입니다. CASH로 대기합니다.")
+                return result
+            else:
+                top_tickers = momentum_df.head(4)['ticker'].tolist()
+                
+                # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
+                weights = 0.25 # 25%씩 할당
+                target_weight = {ticker: weights for ticker in top_tickers}
+                target_weight['CASH'] = 0 # 0% 현금 보유
+
+                result = {
+                    'target_weight': target_weight,
+                    'regime_score': regime
+                }
+                for ticker, weight in target_weight.items():
+                    messages.append(f"{ticker}: {weight:.2%}")
+
+                KA.SendMessage("\n".join(messages))
+                return result
+
+        # regime 음수일 때 defensive ETF의 모멘텀 점수 구하기    
+        elif regime < 0:
+            defensive_df = momentum_df[momentum_df['ticker'].isin(Defensive_ETF)]
+            defensive_df['rank'] = defensive_df['momentum'].rank(ascending=False)
+            defensive_df = defensive_df.sort_values('rank').reset_index(drop=True)
+
+            # 모멘텀 상위 종목 출력 (최대 2개 또는 실제 데이터 개수 중 적은 것)
+            num_tickers = min(2, len(momentum_df))
+            momentum = momentum_df.head(num_tickers)
+
+            messages.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
+            for i in range(num_tickers):
+                ticker = momentum.iloc[i]['ticker']
+                score = momentum.iloc[i]['momentum']
+                messages.append(f"{i+1}위: {ticker} ({score:.4f})")
+
+            # 상위 1개 ETF 선택
+            if len(momentum_df) < 1:
+                KA.SendMessage(f"HAA 경고: 모멘텀 데이터가 1개 미만입니다. CASH로 대기합니다.")
+                return result
+            else:
+                top_tickers = momentum_df.head(1)['ticker'].tolist()
+                
+                # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
+                if top_tickers == ['IEF']:
+                    target_weight['IEF'] = 0.97  # 97%
+                    target_weight['CASH'] = 0.03  # 3% 현금 보유
+
+                elif top_tickers == ['BIL']:
+                    target_weight['CASH'] = 1.0  # 100% 현금 보유
+
+                result = {
+                    'target_weight': target_weight, 
+                    'regime_score': regime
+                }
+
+                for ticker, weight in target_weight.items():
+                    messages.append(f"{ticker}: {weight:.2%}")
+
+                KA.SendMessage("\n".join(messages))
+                return result
+
+    except Exception as e:
+        KA.SendMessage(f"HAA_momentum 전체 오류: {e}")
+        return result
 
 # ============================================
 # 메인 로직 # 연단위 모델간 리밸런싱
@@ -961,21 +1148,37 @@ if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
 health_check()
 KA.SendMessage(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
-if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
-    USAA_data = load_USAA_data()
+if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기   
     # USAA regime체크 및 거래 목표 데이터 만들기
     USLA_target, USLA_regime = USLA_target_regime()
+    USLA_target_ticker = list(USLA_target.keys())
+    
+    # HAA regime체크 및 거래 목표 데이터 만들기
+    result = HAA_target_regime()
+    HAA_target = result['target_weight']
+    HAA_regime = result['regime_score']    
+    HAA_target_ticker = list(HAA_target.keys())
+    
+    # 현재의 종합잔고를 USLA,HAA,CASH별로 산출
+    
+    
+    
+    
+    
+    
+    
+    
+    # 1월인지 확인 후 만약 1월이면 먼저 리밸런싱 비율 
     
 
 
 
+    
+    
+    USAA_data = load_USAA_data()
 
 
-    # HAA regime_signal & Momentum #######
-    result = HAA.HAA_momentum()
-    target_weight = result['target_weight']  # target_weight
-    regime_score = result['regime_score']
-    target_ticker = list(target_weight.keys())
+
 
     Hold_usd = HAA_data['CASH']
     Hold = real_Hold()
