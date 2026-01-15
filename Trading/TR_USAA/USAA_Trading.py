@@ -1153,7 +1153,7 @@ if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
     HAA_target_ticker = list(HAA_target.keys())
     
     # 현재의 종합잔고를 USLA, HAA, CASH별로 산출
-    
+    KIS.get_ticker_balance()
     
     # 월별 모델별 비중 계산
 
