@@ -1149,6 +1149,9 @@ health_check()
 KA.SendMessage(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기   
+    # 1월인지 체크
+    is_rebalancing = order_time['is_rebalancing']
+    
     # USAA regime체크 및 거래 목표 데이터 만들기
     USLA_target, USLA_regime = USLA_target_regime()
     USLA_target_ticker = list(USLA_target.keys())
