@@ -793,7 +793,7 @@ class KIS_API:
             return {
                 'currency': usd_info.get('crcy_cd', 'USD'),
                 'deposit': float(usd_info.get('frcr_dncl_amt_2', 0)),
-                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)),
+                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)), # 출금가능액, 정확한 거래가능금액
                 'exchange_rate': float(usd_info.get('frst_bltn_exrt', 0)),
                 'krw_value': float(usd_info.get('frcr_evlu_amt2', 0))
             }
@@ -1409,19 +1409,18 @@ class KIS_API:
                 if item.get('ovrs_pdno', '').upper() == ticker:
                     holding_qty = float(item.get('ovrs_cblc_qty', '0'))
                     
-                    return holding_qty
-                    
-                    # return {
-                    #     'ticker': ticker,
-                    #     'holding_qty': holding_qty,
-                    #     'avg_price': float(item.get('pchs_avg_pric', '0')),
-                    #     'current_price': float(item.get('now_pric2', '0')),
-                    #     'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')),
-                    #     'profit_loss': float(item.get('frcr_evlu_pfls_amt', '0')),
-                    #     'profit_rate': float(item.get('evlu_pfls_rt', '0')),
-                    #     'currency': item.get('tr_crcy_cd', tr_crcy_cd),
-                    #     'exchange': item.get('ovrs_excg_cd', exchange)
-                    # }
+                    # return holding_qty                    
+                    return {
+                        'ticker': ticker, # 종목코드
+                        'holding_qty': holding_qty, # 보유수량
+                        'avg_price': float(item.get('pchs_avg_pric', '0')), # 매입평균가격
+                        'current_price': float(item.get('now_pric2', '0')), # 현재가격
+                        'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')), # 해외주식평가금액
+                        'profit_loss': float(item.get('frcr_evlu_pfls_amt', '0')), # 외화평가손익금액
+                        'profit_rate': float(item.get('evlu_pfls_rt', '0')), # 평가손익율 (%)
+                        'currency': item.get('tr_crcy_cd', tr_crcy_cd), # 거래통화코드 (USD, JPY 등)
+                        'exchange': item.get('ovrs_excg_cd', exchange) # 해외거래소코드 (NASDAQ, NYSE 등)
+                    }
             
             return "보유 잔고 없음"
             

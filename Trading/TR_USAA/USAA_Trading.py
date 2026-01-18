@@ -1141,8 +1141,6 @@ health_check()
 KA.SendMessage(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기   
-
-    
     # USAA regime체크 및 거래 목표 데이터 만들기
     USLA_target, USLA_regime = USLA_target_regime()
     USLA_target_ticker = list(USLA_target.keys())
@@ -1151,15 +1149,53 @@ if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
     HAA_target, HAA_regime = HAA_target_regime()   
     HAA_target_ticker = list(HAA_target.keys())
     
-    # 현재의 종합잔고를 USLA, HAA, CASH별로 산출
-    KIS.get_ticker_balance()
+    # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
+    USLA_balance = 0
+    for ticker in USLA_ticker:
+        balance = KIS.get_ticker_balance(ticker)
+        if balance:
+            eval_amount = balance.get('eval_amount', 0)
+        else:
+            eval_amount = 0  # API 호출 실패 시 처리
+        USLA_balance += eval_amount
+        time_module.sleep(0.1)
+     
+    HAA_balance = 0
+    for ticker in HAA_ticker:
+        if ticker == 'TIP':
+            continue
+        balance = KIS.get_ticker_balance(ticker)
+        if balance:
+            eval_amount = balance.get('eval_amount', 0)
+        else:
+            eval_amount = 0  # API 호출 실패 시 처리
+        HAA_balance += eval_amount
+        time_module.sleep(0.1)
+
+    USD_account = KIS.get_US_dollar_balance()
+    if USD_account:
+        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
+    else:
+        USD = 0  # API 호출 실패 시 처리
+    time_module.sleep(0.1)
+
+    Total_balance = USLA_balance + HAA_balance + USD
     
-    # 월별 모델별 비중 계산
+    # 월별 모델별 비중 계산 ################################################
     
     
+    
+
+
+
     
     # 1월인지 체크
-    is_rebalancing = order_time['is_rebalancing']
+    if order_time['month'] == 1:
+        USAA_month_weight = {
+            'USLA': 0.60,
+            'HAA': 0.30,
+            'CASH': 0.10
+        }
 
 
 

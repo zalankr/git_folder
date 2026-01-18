@@ -62,6 +62,7 @@ def check_order_time():
         'season': check_USAA,
         'date': current_date,
         'time': current_time,
+        'month': current_date.month,
         'round': 0,         # 기본값
         'total_round': 25    # 기본값
     }
