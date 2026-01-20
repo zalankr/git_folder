@@ -1150,17 +1150,27 @@ if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
     HAA_target_ticker = list(HAA_target.keys())
     
     # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
+    USD_account = KIS.get_US_dollar_balance()
+    if USD_account:
+        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
+    else:
+        USD = 0  # API 호출 실패 시 처리
+    time_module.sleep(0.1)
+
     USLA_balance = 0
+    USLA_qty = []
     for ticker in USLA_ticker:
         balance = KIS.get_ticker_balance(ticker)
         if balance:
             eval_amount = balance.get('eval_amount', 0)
+            USLA_qty.append(balance.get('holding_qty', 0))
         else:
             eval_amount = 0  # API 호출 실패 시 처리
         USLA_balance += eval_amount
-        time_module.sleep(0.1)
-     
+        time_module.sleep(0.05)
+    
     HAA_balance = 0
+    HAA_qty = []
     for ticker in HAA_ticker:
         if ticker == 'TIP':
             continue
@@ -1170,45 +1180,37 @@ if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
         else:
             eval_amount = 0  # API 호출 실패 시 처리
         HAA_balance += eval_amount
-        time_module.sleep(0.1)
-
-    USD_account = KIS.get_US_dollar_balance()
-    if USD_account:
-        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
-    else:
-        USD = 0  # API 호출 실패 시 처리
-    time_module.sleep(0.1)
+        time_module.sleep(0.05)
 
     Total_balance = USLA_balance + HAA_balance + USD
     
-    # 월별 모델별 비중 계산 ################################################
-    
-    
-    
+    # 월별 모델별 비중 계산
+    ## 헷징 모드 확인 후 USD 재조정
+    if USLA_qty == [] and HAA_qty == []: # USLA와 HAA 모두에 ETF 잔고 없음 (전액 현금 헷징)
+        USLA_qty = Total_balance * 0.67 # USLA모델에 USD 예수금의 67% 할당
+        HAA_qty = Total_balance * 0.33       # HAA모델에 USD 예수금의 33% 할당
+    elif USLA_qty == [] and HAA_qty != []: # USLA에만 ETF 잔고 없음 (USLA모델 현금 헷징)
+        USLA_qty = USD * 67 / 68
+        HAA_qty = HAA_balance + USD / 68
+    elif USLA_qty != [] and HAA_qty == []: # HAA에만 ETF 잔고 없음 (HAA모델 현금 헷징)
+        USLA_qty = USLA_balance + USD * 2 / 35
+        HAA_qty = USD * 33 / 35
+    else: # 두 모델 모두에 ETF 잔고 있음 (정상 운용)
+        USLA_balance = USLA_balance + (USD * 0.67)  # 달러의 67%는 USLA모델에 할당
+        HAA_balance = HAA_balance + (USD * 0.33)  # 달러의 33%는 HAA모델에 할당
 
-
-
-    
-    # 1월인지 체크
+    ## 만약 1월에는 비중 리밸런싱
     if order_time['month'] == 1:
-        USAA_month_weight = {
-            'USLA': 0.60,
-            'HAA': 0.30,
-            'CASH': 0.10
-        }
+        USAA_balance = Total_balance * 0.67
+        HAA_balance = Total_balance * 0.33
 
+    
+    #################################################################################
 
 
     
     
-    USAA_data = load_USAA_data()
 
-
-
-
-    Hold_usd = HAA_data['CASH']
-    Hold = real_Hold()
-    Hold['CASH'] = Hold_usd
     target_qty, target_usd = make_target_data(Hold, target_weight)
     Buy, Sell = make_Buy_Sell(target_weight, target_qty, Hold)
 
