@@ -1204,7 +1204,6 @@ if order_time['round'] == 1:  # round 1회에서 목표 Trading qty 구하기
         USAA_balance = Total_balance * 0.67
         HAA_balance = Total_balance * 0.33
 
-    
     #################################################################################
 
 
