@@ -1,41 +1,84 @@
 {
-    "date": "2026-01-10",
-    "HAA_weight": 0.98,
-    "SPXL_weight": 0.00,
-    "RAA_minus_per_split": 0,
-    "LF_start_SPXL_weight": 0,
-    "LF_start_HAA_weight": 0,
-    "sell_split_SPXLqty": 0,
-    "sell_remain_SPXLqty": 0,
-    "sell_base_SPXLqty": 0,
-    "CASH_hold": 0,
-    "CASH_weight": 0,
-    "CASH_target_qty": 0,
-    "regime_score": 0,   
-    "SPY_hold": 0,
-    "SPY_weight": 0,
-    "SPY_target_qty": 0,
-    "IWM_hold": 0,
-    "IWM_weight": 0,
-    "IWM_target_qty": 0,
-    "VEA_hold": 0,
-    "VEA_weight": 0,
-    "VEA_target_qty": 0,
-    "VWO_hold": 0,
-    "VWO_weight": 0,
-    "VWO_target_qty": 0,    
-    "PDBC_hold": 0,
-    "PDBC_weight": 0,
-    "PDBC_target_qty": 0,
-    "VNQ_hold": 0,
-    "VNQ_weight": 0,
-    "VNQ_target_qty": 0,
-    "TLT_hold": 0,
-    "TLT_weight": 0,
-    "TLT_target_qty": 0,
-    "IEF_hold": 0,
-    "IEF_weight": 0,
-    "IEF_target_qty": 0,
+    "date": "2026-01-25",
+    "USLA": {
+        "Regime": 1,
+        "Weight": 0.65,
+        "UPRO": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "TQQQ": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "EDC": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "TMF": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "TMV": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        }
+    },
+    "HAA": {
+        "Regime": 1,
+        "Weight": 0.32,
+        "SPY": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "IWM": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "VEA": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "VWO": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "PDBC": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "VNQ": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "TLT": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        },
+        "IEF": {
+            "hold_qty": 0,
+            "target_weight": 0,
+            "target_qty": 0
+        }
+    },
+    "CASH": {
+        "Weight": 0.03,
+        "hold_qty": 0,
+        "target_weight": 0.03,
+        "target_qty": 0
+    },
     "balance": 0,
     "last_day_balance": 0,
     "last_month_balance": 0,
