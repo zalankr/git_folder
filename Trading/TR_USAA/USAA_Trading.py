@@ -104,7 +104,7 @@ def get_balance(): # 신규 생성 사용
         HAA_balance += eval_amount
         time_module.sleep(0.05)
 
-    Total_balance = USLA_total_balance + HAA_total_balance + USD # 전체 잔고
+    Total_balance = USLA_balance + HAA_balance + USD # 전체 잔고
 
     return USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance
 
@@ -144,14 +144,15 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # order_ti
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
     order_messages.append(round_info)
 
-    for USLA_ticker in Sell_USLA.keys():
-        if Sell_USLA[USLA_ticker] == 0:
-            order_messages.append(f"{USLA_ticker} 매도 수량 0")
+    for ticker in Sell_USLA.keys():
+        if Sell_USLA[ticker] == 0:
+            order_messages.append(f"{ticker} 매도 수량 0")
             continue
-#1/25 19:03 ##################################################################################
-        qty_per_split = int(Sell[USLA_ticker] // sell_split_USLA[0]) # 소숫점 아래 삭제 나누기
-        current_price = HAA.get_US_current_price(USLA_ticker)
-
+        qty_per_split = int(Sell[ticker] // sell_split_USLA[0]) # 소숫점 아래 삭제 나누기
+        current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 점증필요
+        
+#1/26 13:00 ##################################################################################        
+        
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
             order_messages.append(error_msg)
@@ -463,11 +464,11 @@ def load_USAA_data(): # Edit 사용
         KA.SendMessage(f"USAA_data JSON 파일 오류: {e}")
         sys.exit(0)
 
-def get_prices(): # Edit사용
+def get_prices(tickers): # Edit사용
     """현재 가격 조회 (KIS API 사용)"""
     try:
         prices = {}            
-        for ticker in all_ticker:
+        for ticker in tickers:
             try:   
                 # KIS API로 현재가 조회
                 price = KIS.get_US_current_price(ticker)
@@ -902,7 +903,7 @@ def USLA_strategy(regime, momentum_df): # Edit사용
             allocation['CASH'] = 0.0  # 여유 현금은 최종 합산 단계에서 현금 보유 비중 결정
     
     # 4. 현재 가격 조회
-    current_prices = get_prices()
+    current_prices = get_prices(USLA_ticker)
     
     # 4. 결과 출력
     message = []
@@ -1245,18 +1246,18 @@ if order_time['round'] == 1:
     elif USLA_qty == [] and HAA_qty != []: # USLA에만 ETF 잔고 없음 (USLA모델 현금 헷징)
         USLA_target_balance = USD * (67 / 68)
         USLA_target_weight = (USD * (67 / 68)) / Total_balance
-        HAA_target_balance = HAA_total_balance + (USD / 68)
-        HAA_target_weight = (HAA_total_balance + (USD / 68)) / Total_balance
+        HAA_target_balance = HAA_balance + (USD / 68)
+        HAA_target_weight = (HAA_balance + (USD / 68)) / Total_balance
     elif USLA_qty != [] and HAA_qty == []: # HAA에만 ETF 잔고 없음 (HAA모델 현금 헷징)
-        USLA_target_balance = USLA_total_balance + (USD * 2 / 35)
-        USLA_target_weight = (USLA_total_balance + (USD * 2 / 35)) / Total_balance
+        USLA_target_balance = USLA_balance + (USD * 2 / 35)
+        USLA_target_weight = (USLA_balance + (USD * 2 / 35)) / Total_balance
         HAA_target_balance = USD * (33 / 35)
         HAA_target_weight = (USD * (33 / 35)) / Total_balance
     else: # 두 모델 모두에 ETF 잔고 있음 (정상 운용)
-        USLA_target_balance = USLA_total_balance + (USD * 0.67)  # 달러의 67%는 USLA모델에 할당
-        USLA_target_weight = (USLA_total_balance + (USD * 0.67)) / Total_balance
-        HAA_target_balance = HAA_total_balance + (USD * 0.33)  # 달러의 33%는 HAA모델에 할당
-        HAA_target_weight = (HAA_total_balance + (USD * 0.33)) / Total_balance
+        USLA_target_balance = USLA_balance + (USD * 0.67)  # 달러의 67%는 USLA모델에 할당
+        USLA_target_weight = (USLA_balance + (USD * 0.67)) / Total_balance
+        HAA_target_balance = HAA_balance + (USD * 0.33)  # 달러의 33%는 HAA모델에 할당
+        HAA_target_weight = (HAA_balance + (USD * 0.33)) / Total_balance
 
     ## 만약 1월에는 비중 리밸런싱
     if order_time['month'] == 1:
