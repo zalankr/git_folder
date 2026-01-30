@@ -149,9 +149,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # order_ti
             order_messages.append(f"{ticker} 매도 수량 0")
             continue
         qty_per_split = int(Sell[ticker] // sell_split_USLA[0]) # 소숫점 아래 삭제 나누기
-        current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 점증필요
-        
-#1/26 13:00 ##################################################################################        
+        current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 점증필요  
         
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
@@ -167,18 +165,18 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # order_ti
                 'split_index': -1
             })
             continue
-        
-        for i in range(sell_split[0]):
-            if i == sell_split[0] - 1:
-                quantity = Sell[ticker] - qty_per_split * (sell_split[0] - 1)
+
+        for i in range(sell_split_USLA[0]):
+            if i == sell_split_USLA[0] - 1:
+                quantity = Sell[ticker] - qty_per_split * (sell_split_USLA[0] - 1)
             else:
                 quantity = qty_per_split
             
             if quantity == 0:
                 continue
             
-            price = round(current_price * sell_split[1][i], 2)
-            
+            price = round(current_price * sell_split_USLA[1][i], 2)
+#1/30 13:00 ##################################################################################                  
             try:
                 order_info, order_sell_message = HAA.order_sell_US(ticker, quantity, price)
                 
