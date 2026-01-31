@@ -108,14 +108,15 @@ def get_balance(): # 신규 생성 사용
 
     return USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance
 
-def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # order_time 매개변수 추가
+def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사용
     """
     매도 주문 실행 함수 - 개선버전 (메시지 통합)
     
     Parameters:
     - USLA: USLA 모델 내 티커별 트레이딩 딕셔너리
     - HAA: HAA 모델 내 티커별 트레이딩 딕셔너리
-    - round_split: [분할횟수, [가격조정비율 리스트]]
+    - sell_split_USLA: USLA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
+    - sell_split_HAA: HAA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
     - order_time: 현재 주문 시간 정보 딕셔너리  # 추가
     
     Returns:
@@ -144,13 +145,17 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # order_ti
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
     order_messages.append(round_info)
 
-    for ticker in Sell_USLA.keys():
-        if Sell_USLA[ticker] == 0:
+    for ticker in Sell.keys():
+        if Sell[ticker] == 0:
             order_messages.append(f"{ticker} 매도 수량 0")
             continue
         qty_per_split = int(Sell[ticker] // sell_split_USLA[0]) # 소숫점 아래 삭제 나누기
-        current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 점증필요  
-        
+
+        if ticker in USLA_ticker:
+            current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 검증필요
+        else:
+            current_price = HAA[ticker].get("current_price", 0) # HAA 현재가 우선 사용, 검증필요
+
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
             order_messages.append(error_msg)
@@ -174,11 +179,14 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # order_ti
             
             if quantity == 0:
                 continue
-            
-            price = round(current_price * sell_split_USLA[1][i], 2)
-#1/30 13:00 ##################################################################################                  
+
+            if ticker in USLA_ticker:
+                price = round(current_price * sell_split_USLA[1][i], 2)
+            else:
+                price = round(current_price * sell_split_HAA[1][i], 2)
+                
             try:
-                order_info, order_sell_message = HAA.order_sell_US(ticker, quantity, price)
+                order_info, order_sell_message = KIS.order_sell_US(ticker, quantity, price)
                 
                 if order_info and order_info.get('success') == True:
                     order_info = {
@@ -237,63 +245,15 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # order_ti
     
     return Sell_order
 
-def calculate_Buy_qty(Buy, Hold, target_usd):
-    """USD현재보유량과 목표보유량 비교 매수 수량과 매수 비중 매수 금액 산출"""
-    Buy_value = {}
-    total_Buy_value = 0
-    ticker_prices = {}
-    order_messages = []  # 주문 메시지를 모을 리스트
-
-    for ticker in Buy.keys():
-        price = HAA.get_US_current_price(ticker)
-
-        if isinstance(price, (int, float)) and price > 0:
-            ticker_prices[ticker] = price
-            Buy_value[ticker] = Buy[ticker] * (price * (1 + HAA.fee))
-            total_Buy_value += Buy_value[ticker]
-        else:
-            order_messages.append(f"❌ {ticker} 가격 조회 실패")
-            Buy_value[ticker] = 0
-            ticker_prices[ticker] = 0
-
-        time_module.sleep(0.1)
-
-    TR_usd = Hold['CASH'] - target_usd
-    if TR_usd < 0:
-        TR_usd = 0
-        order_messages.append(f"⚠️ 매수 가능 USD 부족: ${Hold['CASH']:.2f} (목표: ${target_usd:.2f})")
-
-    Buy_qty = dict()
-
-    if total_Buy_value == 0:
-        order_messages.append("매수 가능한 종목이 없습니다.")
-        return Buy_qty, TR_usd
-
-    for ticker in Buy_value.keys():
-        Buy_weight = Buy_value[ticker] / total_Buy_value
-        Buy_usd = TR_usd * Buy_weight
-        
-        price = ticker_prices[ticker]
-        
-        if price > 0:
-            Buy_qty[ticker] = int(Buy_usd / (price * (1 + HAA.fee)))  # 수수료 포함
-        else:
-            Buy_qty[ticker] = 0
-        
-        time_module.sleep(0.1)
-    
-    # 한 번에 전송
-    KA.SendMessage("\n".join(order_messages))
-    return Buy_qty, TR_usd
-
-def Buying(Buy_qty, buy_split, TR_usd, order_time):  # order_time 매개변수 추가
+def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
     """
-    매수 주문 실행 함수 - 개선버전 (메시지 통합)
+    매수 주문 실행 함수
     
     Parameters:
-    - Buy_qty: 매수할 종목과 수량 딕셔너리 {ticker: quantity}
-    - buy_split: [분할횟수, [가격조정비율 리스트]]
-    - TR_usd: 매수가능 금액
+    - USLA: USLA 모델 내 티커별 트레이딩 딕셔너리
+    - HAA: HAA 모델 내 티커별 트레이딩 딕셔너리
+    - buy_split_USLA: USLA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
+    - buy_split_HAA: HAA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
     - order_time: 현재 주문 시간 정보 딕셔너리  # 추가
     
     Returns:
@@ -302,11 +262,23 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # order_time 매개변수 �
     Buy_order = []
     order_messages = []
     
-    if TR_usd < 0:
-        TR_usd = 0
+    Buy_USLA = {}
+    for ticker in USLA.keys():
+        if USLA[ticker]['buy_qty'] > 0:
+            Buy_USLA[ticker] = USLA[ticker]['buy_qty']
+
+    Buy_HAA = {}
+    for ticker in HAA.keys():
+        if HAA[ticker]['buy_qty'] > 0:
+            Buy_HAA[ticker] = HAA[ticker]['buy_qty']
+
+    Buy = {**Buy_USLA, **Buy_HAA}
+
+    if USD < 0:
+        USD = 0
         order_messages.append("매수 가능 USD 부족")
     
-    if len(Buy_qty.keys()) == 0:
+    if len(Buy.keys()) == 0:
         KA.SendMessage("매수할 종목이 없습니다.")
         return Buy_order
     
@@ -314,13 +286,16 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # order_time 매개변수 �
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
     order_messages.append(round_info)
     
-    for ticker in Buy_qty.keys():
-        if Buy_qty[ticker] == 0:
+    for ticker in Buy.keys():
+        if Buy[ticker] == 0:
             order_messages.append(f"{ticker} 매수 수량 0")
             continue
-        
-        qty_per_split = int(Buy_qty[ticker] // buy_split[0])
-        current_price = HAA.get_US_current_price(ticker)
+        qty_per_split = int(Buy[ticker] // buy_split_USLA[0]) # 소숫점 아래 삭제 나누기
+
+        if ticker in USLA_ticker:
+            current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 검증필요
+        else:
+            current_price = HAA[ticker].get("current_price", 0) # HAA 현재가 우선 사용, 검증필요
         
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 주문 스킵"
@@ -328,7 +303,7 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # order_time 매개변수 �
             Buy_order.append({
                 'success': False,
                 'ticker': ticker,
-                'quantity': Buy_qty[ticker],
+                'quantity': Buy[ticker],
                 'price': 0,
                 'order_number': '',
                 'order_time': datetime.now().strftime('%H%M%S'),
@@ -336,20 +311,23 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # order_time 매개변수 �
                 'split_index': -1
             })
             continue
-        
-        for i in range(buy_split[0]):
-            if i == buy_split[0] - 1:
-                quantity = Buy_qty[ticker] - qty_per_split * (buy_split[0] - 1)
+
+        for i in range(buy_split_USLA[0]):
+            if i == buy_split_USLA[0] - 1:
+                quantity = Buy[ticker] - qty_per_split * (buy_split_USLA[0] - 1)
             else:
                 quantity = qty_per_split
             
             if quantity == 0:
                 continue
-            
-            price = round(current_price * buy_split[1][i], 2)
-            
+
+            if ticker in USLA_ticker:
+                price = round(current_price * buy_split_USLA[1][i], 2)
+            else:
+                price = round(current_price * buy_split_HAA[1][i], 2)
+                
             try:
-                order_info, order_buy_message = HAA.order_buy_US(ticker, quantity, price)
+                order_info, order_buy_message = KIS.order_buy_US(ticker, quantity, price)
                 
                 if order_info and order_info.get('success') == True:
                     order_info = {
@@ -397,18 +375,18 @@ def Buying(Buy_qty, buy_split, TR_usd, order_time):  # order_time 매개변수 �
                     'error_message': error_msg,
                     'split_index': i
                 })
-            
+
             time_module.sleep(0.2)
-    
+
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
     order_messages.append(f"매수 주문: {success_count}/{total_count} 완료")
-    
+
     KA.SendMessage("\n".join(order_messages))
-    
+
     return Buy_order
 
-def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, target_qty):
+def save_TR_data(order_time, Sell_order, Buy_order, USLA_target, HAA_target, USLA, HAA): # Edit사용
     """
     저장 실패 시에도 백업 파일 생성
     """
@@ -417,17 +395,18 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, tar
         "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
         "Sell_order": Sell_order,
         "Buy_order": Buy_order,
-        "CASH": Hold_usd,
-        "target_weight": target_weight,
-        "target_qty": target_qty
+        "USLA_target_weight": USLA_target[0],
+        "USLA_target_balance": USLA_target[1],
+        "HAA_target_weight": HAA_target[0],
+        "HAA_target_balance": HAA_target[1],
+        "USLA": USLA,
+        "HAA": HAA
     }
     
     try:
-        # 정상 저장
-        save_result = HAA.save_HAA_TR_json(TR_data)
-        
-        if not save_result:
-            raise Exception("save_HAA_TR_json returned False")
+        # 정상 
+        with open(USAA_TR_path, 'w', encoding='utf-8') as f:
+            json.dump(TR_data, f, ensure_ascii=False, indent=4)
         
         KA.SendMessage(
             f"{order_time['date']}, {order_time['season']} 리밸런싱\n"
@@ -436,22 +415,22 @@ def save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, tar
         
     except Exception as e:
         # 저장 실패 시 백업 파일 생성
-        error_msg = f"TR 데이터 저장 실패: {e}"
+        error_msg = f"USAA_TR 데이터 저장 실패: {e}"
         KA.SendMessage(error_msg)
         
-        backup_path = f"/var/autobot/TR_HAA/HAA_TR_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        backup_path = f"/var/autobot/TR_USAA/USAA_TR_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         try:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(TR_data, f, ensure_ascii=False, indent=4)
-            KA.SendMessage(f"백업 파일 생성: {backup_path}")
+            KA.SendMessage(f"USAA 백업 파일 생성: {backup_path}")
         except Exception as backup_error:
-            KA.SendMessage(f"백업 파일 생성도 실패: {backup_error}")
+            KA.SendMessage(f"USAA 백업 파일 생성도 실패: {backup_error}")
             # 최후의 수단: 카카오로 데이터 전송
-            KA.SendMessage(f"TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
+            KA.SendMessage(f"USAA TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
     
     return TR_data
 
-def load_USAA_data(): # Edit 사용
+def load_USAA_data(): #
     """USAA data 불러오기"""   
     try:
         with open(USAA_data_path, 'r', encoding='utf-8') as f:
@@ -1264,6 +1243,9 @@ if order_time['round'] == 1:
         HAA_target_balance = Total_balance * 0.33
         HAA_target_weight = 0.33
 
+    USLA_target = [USLA_target_weight, USLA_target_balance]
+    HAA_target = [HAA_target_weight, HAA_target_balance]
+
     USLA = {}
     for ticker in USLA_ticker:
         if ticker not in USLA_target:
@@ -1319,102 +1301,15 @@ if order_time['round'] == 1:
     sell_split_HAA = [round_split["sell_splits"], round_split["sell_price_HAA"]]
     buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
 
-    # Sell주문
+    # 주문
     Sell_order = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
+    Buy_order = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
 
-
-
-#######################################################################################
-
-    
-    # Sell주문
-    Sell_order = Selling(Sell, sell_split, order_time) 
-    # Buy 수량 계산
-    Buy_qty, TR_usd = calculate_Buy_qty(Buy, Hold, target_usd)
-    # Buy주문
-    Buy_order = Buying(Buy_qty, buy_split, TR_usd, order_time)
-
-    # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, target_qty)
+    # 다음 order time으로 넘길 Trading data json 데이터 저장
+    save_TR_data(order_time, Sell_order, Buy_order, USLA_target, HAA_target, USLA, HAA)
     sys.exit(0)
 
-
-
-
-
-
-
-    # USLA_DATA 저장 ##############################################################
-    USAA_data = load_USAA_data()
-
-
-    SPY_eval = Hold['SPY'] * (HAA.get_US_current_price('SPY') * (1-HAA.fee))
-    IWM_eval = Hold['IWM'] * (HAA.get_US_current_price('IWM') * (1-HAA.fee))
-    VEA_eval = Hold['VEA'] * (HAA.get_US_current_price('VEA') * (1-HAA.fee))
-    VWO_eval = Hold['VWO'] * (HAA.get_US_current_price('VWO') * (1-HAA.fee))
-    PDBC_eval = Hold['PDBC'] * (HAA.get_US_current_price('PDBC') * (1-HAA.fee))
-    VNQ_eval = Hold['VNQ'] * (HAA.get_US_current_price('VNQ') * (1-HAA.fee))
-    TLT_eval = Hold['TLT'] * (HAA.get_US_current_price('TLT') * (1-HAA.fee))
-    IEF_eval = Hold['IEF'] * (HAA.get_US_current_price('IEF') * (1-HAA.fee))
-
-    result = HAA.get_US_dollar_balance()
-    exchange_rate = result['exchange_rate']
-    time_module.sleep(0.2)
-
-    # 데이터 조정
-    today_eval = SPY_eval + IWM_eval + VEA_eval + VWO_eval + PDBC_eval + VNQ_eval + TLT_eval + IEF_eval + Hold['CASH']
-    today_eval_KRW = int(today_eval * exchange_rate)
-    today_eval = float("{:.2f}".format(today_eval))
-
-    HAA_data = {
-        'date': str(order_time['date']),
-        'regime_score': regime_score,
-        'SPY_hold': Hold['SPY'],
-        'SPY_weight': target_weight.get('SPY', 0),
-        'SPY_target_qty': target_qty.get('SPY', 0),
-        'IWM_hold': Hold['IWM'],
-        'IWM_weight': target_weight.get('IWM', 0),
-        'IWM_target_qty': target_qty.get('IWM', 0),
-        'VEA_hold': Hold['VEA'],
-        'VEA_weight': target_weight.get('VEA', 0),
-        'VEA_target_qty': target_qty.get('VEA', 0),
-        'VWO_hold': Hold['VWO'],
-        'VWO_weight': target_weight.get('VWO', 0),
-        'VWO_target_qty': target_qty.get('VWO', 0),
-        'PDBC_hold': Hold['PDBC'],
-        'PDBC_weight': target_weight.get('PDBC', 0),
-        'PDBC_target_qty': target_qty.get('PDBC', 0),
-        'VNQ_hold': Hold['VNQ'],
-        'VNQ_weight': target_weight.get('VNQ', 0),
-        'VNQ_target_qty': target_qty.get('VNQ', 0),
-        'TLT_hold': Hold['TLT'],
-        'TLT_weight': target_weight.get('TLT', 0),
-        'TLT_target_qty': target_qty.get('TLT', 0),
-        'IEF_hold': Hold['IEF'],
-        'IEF_weight': target_weight.get('IEF', 0),
-        'IEF_target_qty': target_qty.get('IEF', 0),
-        'CASH_hold': Hold['CASH'],
-        'CASH_weight': target_weight.get('CASH', 0),
-        'CASH_target_qty': target_qty.get('CASH', 0),
-        'balance': today_eval,
-        'last_day_balance': HAA_data['last_day_balance'],
-        'last_month_balance': HAA_data['last_month_balance'],
-        'last_year_balance': HAA_data['last_year_balance'],
-        'daily_return': HAA_data['daily_return'],
-        'monthly_return': HAA_data['monthly_return'],
-        'yearly_return': HAA_data['yearly_return'],
-        'exchange_rate': HAA_data['exchange_rate'],
-        'balance_KRW': today_eval_KRW,
-        'last_day_balance_KRW': HAA_data['last_day_balance_KRW'],
-        'last_month_balance_KRW': HAA_data['last_month_balance_KRW'],
-        'last_year_balance_KRW': HAA_data['last_year_balance_KRW'],
-        'daily_return_KRW': HAA_data['daily_return_KRW'],
-        'monthly_return_KRW': HAA_data['monthly_return_KRW'],
-        'yearly_return_KRW': HAA_data['yearly_return_KRW']
-    }
-
-    HAA.save_HAA_data_json(HAA_data)
-
+################ 1/31 ##############################################
 
 
 elif order_time['round'] in range(2, 25):  # Round 2~24회차
