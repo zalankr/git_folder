@@ -34,6 +34,7 @@ all_ticker_with_cash = all_ticker + ['CASH']
 fee_rate = 0.0009 # 수수료 이벤트 계좌 0.09%
 USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
 USAA_TR_path = "/var/autobot/TR_USAA/USAA_TR.json"
+USAA_Message_path = "/var/autobot/TR_USAA/USAA_Message.json"
 
 def health_check(): # Edit사용
     """시스템 상태 확인"""
@@ -138,7 +139,6 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
     Sell = {**Sell_USLA, **Sell_HAA}
 
     if len(Sell.keys()) == 0:
-        KA.SendMessage("매도할 종목이 없습니다.")
         return Sell_order
     
     # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
@@ -147,7 +147,6 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
 
     for ticker in Sell.keys():
         if Sell[ticker] == 0:
-            order_messages.append(f"{ticker} 매도 수량 0")
             continue
         qty_per_split = int(Sell[ticker] // sell_split_USLA[0]) # 소숫점 아래 삭제 나누기
 
@@ -386,19 +385,16 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
 
     return Buy_order
 
-def save_TR_data(order_time, Sell_order, Buy_order, USLA_target, HAA_target, USLA, HAA): # Edit사용
+def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA): # Edit사용
     """
     저장 실패 시에도 백업 파일 생성
     """
+    message = []
     TR_data = {
         "round": order_time['round'],
         "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
         "Sell_order": Sell_order,
         "Buy_order": Buy_order,
-        "USLA_target_weight": USLA_target[0],
-        "USLA_target_balance": USLA_target[1],
-        "HAA_target_weight": HAA_target[0],
-        "HAA_target_balance": HAA_target[1],
         "USLA": USLA,
         "HAA": HAA
     }
@@ -408,27 +404,26 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA_target, HAA_target, USL
         with open(USAA_TR_path, 'w', encoding='utf-8') as f:
             json.dump(TR_data, f, ensure_ascii=False, indent=4)
         
-        KA.SendMessage(
+        message.append(
             f"{order_time['date']}, {order_time['season']} 리밸런싱\n"
             f"{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래저장완료\n"
         )
         
     except Exception as e:
         # 저장 실패 시 백업 파일 생성
-        error_msg = f"USAA_TR 데이터 저장 실패: {e}"
-        KA.SendMessage(error_msg)
+        message.append(f"USAA_TR 데이터 저장 실패: {e}")
         
         backup_path = f"/var/autobot/TR_USAA/USAA_TR_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         try:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(TR_data, f, ensure_ascii=False, indent=4)
-            KA.SendMessage(f"USAA 백업 파일 생성: {backup_path}")
+            message.append(f"USAA 백업 파일 생성: {backup_path}")
         except Exception as backup_error:
-            KA.SendMessage(f"USAA 백업 파일 생성도 실패: {backup_error}")
+            message.append(f"USAA 백업 파일 생성도 실패: {backup_error}")
             # 최후의 수단: 카카오로 데이터 전송
-            KA.SendMessage(f"USAA TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
-    
-    return TR_data
+            message.append(f"USAA TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
+
+    return message
 
 def load_USAA_data(): #
     """USAA data 불러오기"""   
@@ -625,6 +620,7 @@ def get_daily_prices_kis(self, tickers: list, days: int = 90) -> pd.DataFrame: #
 
 def AGG_regime(): # Edit사용
     """AGG 채권 ETF의 Regime 신호 계산 (KIS API 사용)"""
+    AGG_regime_message = []
     try:
         today = date.today()
         target_month = today.month
@@ -651,22 +647,23 @@ def AGG_regime(): # Edit사용
         time_module.sleep(0.1) # API 호출 간격
 
         if len(agg_data) < 4:
-            KA.SendMessage("USLA 경고: AGG 데이터가 충분하지 않습니다.")
-            return 0    
+            AGG_regime_message.append("USLA 경고: AGG 데이터가 충분하지 않습니다.")
+            return 0, AGG_regime_message
 
         current_price = agg_data.iloc[-1]  # 최신 가격
         avg_price = agg_data.mean()  # 4개월 평균
 
         regime = current_price - avg_price
 
-        return regime
+        return regime, AGG_regime_message
         
     except Exception as e:
-        KA.SendMessage(f"USLA Regime 계산 오류: {e}")
-        return 0
+        AGG_regime_message.append(f"USLA Regime 계산 오류: {e}")
+        return 0, AGG_regime_message
 
 def USLA_momentum(): # Edit사용
     """모멘텀 점수 계산 (KIS API 사용)"""
+    USLA_momentum_message = []
     try:
         today = date.today()
         target_month = today.month
@@ -691,19 +688,19 @@ def USLA_momentum(): # Edit사용
                 time_module.sleep(0.1)  # API 호출 간격
                 
             except Exception as e:
-                KA.SendMessage(f"USLA {ticker} 월간 데이터 조회 오류: {e}")
+                USLA_momentum_message.append(f"USLA {ticker} 월간 데이터 조회 오류: {e}")
                 continue
         
         if not price_data:
-            KA.SendMessage("USLA 경고: 모멘텀 계산을 위한 데이터를 가져올 수 없습니다.")
-            return pd.DataFrame()
+            USLA_momentum_message.append("USLA 경고: 모멘텀 계산을 위한 데이터를 가져올 수 없습니다.")
+            return pd.DataFrame(), USLA_momentum_message
         
         # DataFrame으로 변환
         price_df = pd.DataFrame(price_data)
         
         if len(price_df) < 13:
-            KA.SendMessage("USLA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
-            return pd.DataFrame()
+            USLA_momentum_message.append("USLA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
+            return pd.DataFrame(), USLA_momentum_message
             
         momentum_scores = []
         
@@ -741,21 +738,21 @@ def USLA_momentum(): # Edit사용
                 })
                 
             except Exception as e:
-                KA.SendMessage(f"USLA {ticker} 모멘텀 계산 오류: {e}")
+                USLA_momentum_message.append(f"USLA {ticker} 모멘텀 계산 오류: {e}")
                 continue
         
         if not momentum_scores:
-            return pd.DataFrame()
+            return pd.DataFrame(), USLA_momentum_message
             
         momentum_df = pd.DataFrame(momentum_scores)
         momentum_df['rank'] = momentum_df['momentum'].rank(ascending=False)
         momentum_df = momentum_df.sort_values('rank').reset_index(drop=True)
         
-        return momentum_df
+        return momentum_df, USLA_momentum_message
         
     except Exception as e:
-        KA.SendMessage(f"USLA 모멘텀 점수 계산 오류: {e}")
-        return pd.DataFrame()
+        USLA_momentum_message.append(f"USLA 모멘텀 점수 계산 오류: {e}")
+        return pd.DataFrame(), USLA_momentum_message
 
 def USLA_portfolio_weights(top_tickers): # Edit사용
     """최소분산 포트폴리오 가중치 계산 (KIS API 사용)"""
@@ -840,6 +837,8 @@ def USLA_portfolio_weights(top_tickers): # Edit사용
 
 def USLA_strategy(regime, momentum_df): # Edit사용
     """전략 실행"""
+    USLA_strategy_message = []
+    
     if momentum_df.empty:
         KA.SendMessage("USLA 경고: 모멘텀 데이터가 비어 계산할 수 없습니다.")
         return None
@@ -854,11 +853,11 @@ def USLA_strategy(regime, momentum_df): # Edit사용
         score = momentum.iloc[i]['momentum']
         lines.append(f"{i+1}위: {ticker} ({score:.4f})")
 
-    KA.SendMessage("\n".join(lines))
+    USLA_strategy_message.append("\n".join(lines))
         
     # 3. 투자 전략 결정
     if regime < 0:
-        KA.SendMessage(f"USLA Regime: {regime:.2f} < 0 → 100% CASH")
+        USLA_strategy_message.append(f"USLA Regime: {regime:.2f} < 0 → 100% CASH")
         
         allocation = {ticker: 0.0 for ticker in USLA_ticker}
         allocation['CASH'] = 1.0
@@ -866,7 +865,7 @@ def USLA_strategy(regime, momentum_df): # Edit사용
     else:
         # 상위 2개 ETF 선택
         if len(momentum_df) < 2:
-            KA.SendMessage(f"USLA 경고: 모멘텀 데이터가 2개 미만입니다. CASH로 대기합니다.")
+            USLA_strategy_message.append(f"USLA 경고: 모멘텀 데이터가 2개 미만입니다. CASH로 대기합니다.")
             allocation = {ticker: 0.0 for ticker in USLA_ticker}
             allocation['CASH'] = 1.0
         else:
@@ -883,42 +882,44 @@ def USLA_strategy(regime, momentum_df): # Edit사용
     current_prices = get_prices(USLA_ticker)
     
     # 4. 결과 출력
-    message = []
     for ticker in USLA_ticker:
         if allocation.get(ticker, 0) > 0:
-            message.append(f"USLA {ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
+            USLA_strategy_message.append(f"USLA {ticker}: {allocation[ticker]:.1%} (현재가: ${current_prices[ticker]:.2f})")
 
-    KA.SendMessage("\n".join(message))
-    
-    return {
+    result = {
         'regime': regime,
         'momentum': momentum_df,
         'allocation': allocation,
         'current_prices': current_prices
     }
 
+    return result, USLA_strategy_message
+
 def USLA_target_regime(): # Edit사용
     """target 티커별 목표 비중 산출"""
-    regime = AGG_regime()
-    momentum_df = USLA_momentum()
-    result = USLA_strategy(regime, momentum_df)
+    USLA_target_regime_message = []
+    regime, AGG_regime_message = AGG_regime()
+    USLA_target_regime_message.extend(AGG_regime_message)
+    momentum_df, USLA_momentum_message = USLA_momentum()
+    USLA_target_regime_message.extend(USLA_momentum_message)
+    result, USLA_strategy_message = USLA_strategy(regime, momentum_df)
+    USLA_target_regime_message.extend(USLA_strategy_message)
     USLA_regime = result['regime']
 
     if result is None:
-        KA.SendMessage("USLA 경고: 전략 실행 실패, CASH로 대기합니다.")
-        return {'CASH': 1.0}, USLA_regime
-    
+        USLA_target_regime_message.append("USLA 경고: 전략 실행 실패, CASH로 대기")
+        return {'CASH': 1.0}, USLA_regime, USLA_target_regime_message
     USLA_target = {
         ticker: weight 
         for ticker, weight in result['allocation'].items() 
         if weight >= 0.001
     }
     
-    return USLA_target, USLA_regime
+    return USLA_target, USLA_regime, USLA_target_regime_message
 
 def HAA_target_regime(): # Edit사용
     """HAA 모멘텀 점수 계산 (KIS API 사용)"""
-    
+    HAA_target_regime_message = []
     # 결과값 초기화 실패 시'CASH' 100%로 대기
     HAA_target = {'CASH': 1.0}
     HAA_regime = -1
@@ -948,22 +949,21 @@ def HAA_target_regime(): # Edit사용
                 time_module.sleep(0.1)  # API 호출 간격
                 
             except Exception as e:
-                KA.SendMessage(f"HAA {ticker} 월간 데이터 조회 오류: {e}")
+                HAA_target_regime_message.append(f"HAA {ticker} 월간 데이터 조회 오류: {e}")
                 continue
         
         if not price_data:
-            KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터를 가져올 수 없습니다.")
-            return HAA_target, HAA_regime
+            HAA_target_regime_message.append("HAA 경고: 모멘텀 계산을 위한 데이터를 가져올 수 없습니다.")
+            return HAA_target, HAA_regime, HAA_target_regime_message
         
         # DataFrame으로 변환
         price_df = pd.DataFrame(price_data)
         
         if len(price_df) < 13:
-            KA.SendMessage("HAA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
-            return HAA_target, HAA_regime
+            HAA_target_regime_message.append("HAA 경고: 모멘텀 계산을 위한 데이터가 충분하지 않습니다.")
+            return HAA_target, HAA_regime, HAA_target_regime_message
             
         momentum_scores = []
-        messages = []
         
         for ticker in HAA_ticker:
             try:
@@ -992,28 +992,28 @@ def HAA_target_regime(): # Edit사용
                 })
             
             except Exception as e:
-                messages.append(f"HAA {ticker} 모멘텀 계산 오류: {e}")
+                HAA_target_regime_message.append(f"HAA {ticker} 모멘텀 계산 오류: {e}")
                 continue
         
         if not momentum_scores:
-            KA.SendMessage("HAA 경고: 계산된 모멘텀 데이터를 찾을 수 없습니다.")
-            return HAA_target, HAA_regime
+            HAA_target_regime_message.append("HAA 경고: 계산된 모멘텀 데이터를 찾을 수 없습니다.")
+            return HAA_target, HAA_regime, HAA_target_regime_message
         
         # Regime구하기
         regime = momentum_scores['TIP']
         if regime is None:
-            KA.SendMessage(f"HAA 경고: {Regime_ETF} 모멘텀 데이터를 찾을 수 없습니다.")
-            return HAA_target, HAA_regime
+            HAA_target_regime_message.append(f"HAA 경고: {Regime_ETF} 모멘텀 데이터를 찾을 수 없습니다.")
+            return HAA_target, HAA_regime, HAA_target_regime_message
         else:
-            messages.append(f"HAA: {Regime_ETF} 모멘텀 = {regime:.2f}")
+            HAA_target_regime_message.append(f"HAA: {Regime_ETF} 모멘텀 = {regime:.2f}")
 
         # 데이터프레임 만들기
         momentum_df = pd.DataFrame(momentum_scores)
         if momentum_df is None:
-            KA.SendMessage(f"HAA 경고: momentum_df를 찾을 수 없습니다.")
-            return HAA_target, HAA_regime
+            HAA_target_regime_message.append(f"HAA 경고: momentum_df를 찾을 수 없습니다.")
+            return HAA_target, HAA_regime, HAA_target_regime_message
         else:
-            messages.append(f"HAA: momentum_df 생성 성공")
+            HAA_target_regime_message.append(f"HAA: momentum_df 생성 성공")
 
         # regime 양수일 때 Aggresive ETF의 모멘텀 점수 구하기
         if regime >= 0:
@@ -1025,16 +1025,16 @@ def HAA_target_regime(): # Edit사용
             num_tickers = min(8, len(momentum_df))
             momentum = momentum_df.head(num_tickers)
 
-            messages.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
+            HAA_target_regime_message.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
             for i in range(num_tickers):
                 ticker = momentum.iloc[i]['ticker']
                 score = momentum.iloc[i]['momentum']
-                messages.append(f"{i+1}위: {ticker} ({score:.4f})")
+                HAA_target_regime_message.append(f"{i+1}위: {ticker} ({score:.4f})")
 
             # 상위 4개 ETF 선택
             if len(momentum_df) < 4:
-                KA.SendMessage(f"HAA 경고: 모멘텀 데이터가 4개 미만입니다. CASH로 대기합니다.")
-                return HAA_target, HAA_regime
+                HAA_target_regime_message.append(f"HAA 경고: 모멘텀 데이터가 4개 미만입니다. CASH로 대기합니다.")
+                return HAA_target, HAA_regime, HAA_target_regime_message
             else:
                 top_tickers = momentum_df.head(4)['ticker'].tolist()
                 
@@ -1044,10 +1044,9 @@ def HAA_target_regime(): # Edit사용
                 HAA_regime = regime
 
                 for ticker, weight in HAA_target.items():
-                    messages.append(f"{ticker}: {weight:.2%}")
+                    HAA_target_regime_message.append(f"{ticker}: {weight:.2%}")
 
-                KA.SendMessage("\n".join(messages))
-                return HAA_target, HAA_regime
+                return HAA_target, HAA_regime, HAA_target_regime_message
 
         # regime 음수일 때 defensive ETF의 모멘텀 점수 구하기    
         elif regime < 0:
@@ -1059,16 +1058,15 @@ def HAA_target_regime(): # Edit사용
             num_tickers = min(2, len(momentum_df))
             momentum = momentum_df.head(num_tickers)
 
-            messages.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
+            HAA_target_regime_message.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
             for i in range(num_tickers):
                 ticker = momentum.iloc[i]['ticker']
                 score = momentum.iloc[i]['momentum']
-                messages.append(f"{i+1}위: {ticker} ({score:.4f})")
-
+                HAA_target_regime_message.append(f"{i+1}위: {ticker} ({score:.4f})")
             # 상위 1개 ETF 선택
             if len(momentum_df) < 1:
-                KA.SendMessage(f"HAA 경고: 모멘텀 데이터가 1개 미만입니다. CASH로 대기합니다.")
-                return HAA_target, HAA_regime
+                HAA_target_regime_message.append(f"HAA 경고: 모멘텀 데이터가 1개 미만입니다. CASH로 대기합니다.")
+                return HAA_target, HAA_regime, HAA_target_regime_message
             else:
                 top_tickers = momentum_df.head(1)['ticker'].tolist()
                 
@@ -1084,15 +1082,14 @@ def HAA_target_regime(): # Edit사용
                 HAA_regime = regime
 
                 for ticker, weight in HAA_target.items():
-                    messages.append(f"{ticker}: {weight:.2%}")
+                    HAA_target_regime_message.append(f"{ticker}: {weight:.2%}")
 
-                KA.SendMessage("\n".join(messages))
-                return HAA_target, HAA_regime
+                return HAA_target, HAA_regime, HAA_target_regime_message
 
     except Exception as e:
-        KA.SendMessage(f"HAA_momentum 전체 오류: {e}")
-        return HAA_target, HAA_regime
-
+        HAA_target_regime_message.append(f"HAA_momentum 전체 오류: {e}")
+        return HAA_target, HAA_regime, HAA_target_regime_message
+    
 def split_data(round): # 신규 생성 사용
     '''모델과 회차, 티커별 분할횟수와 분할당 가격 산출'''
     if round in range(1, 12): # Pre-Market
@@ -1202,49 +1199,51 @@ if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
 
 # 메인로직 시작 전 시스템 상태 확인
 health_check()
-KA.SendMessage(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
+start_message = [] # 출력메세지 모으기
+start_message.append(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 거래시작")
 
 if order_time['round'] == 1:
     '''round 1회에서 목표 Trading qty 구하기'''
+    message = [] # 메세지 초기화
+    message.extend(start_message)
     # USAA regime체크 및 거래 목표 데이터 만들기
-    USLA_target, USLA_regime = USLA_target_regime()
+    USLA_target, USLA_regime, USLA_message = USLA_target_regime()
+    message.extend(USLA_message)
     # HAA regime체크 및 거래 목표 데이터 만들기
-    HAA_target, HAA_regime = HAA_target_regime()
+    HAA_target, HAA_regime, HAA_message = HAA_target_regime()
+    message.extend(HAA_message)
 
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
     ## 헷징 모드 확인 후 USD 재조정
-    if USLA_qty == [] and HAA_qty == []: # USLA와 HAA 모두에 보유잔고 없음 (전액 현금 헷징)
-        USLA_target_balance = Total_balance * 0.67 # USLA모델에 USD 예수금의 67% 할당
-        USLA_target_weight = 0.67
-        HAA_target_balance = Total_balance * 0.33  # HAA모델에 USD 예수금의 33% 할당
-        HAA_target_weight = 0.33
-    elif USLA_qty == [] and HAA_qty != []: # USLA에만 ETF 잔고 없음 (USLA모델 현금 헷징)
-        USLA_target_balance = USD * (67 / 68)
-        USLA_target_weight = (USD * (67 / 68)) / Total_balance
-        HAA_target_balance = HAA_balance + (USD / 68)
-        HAA_target_weight = (HAA_balance + (USD / 68)) / Total_balance
-    elif USLA_qty != [] and HAA_qty == []: # HAA에만 ETF 잔고 없음 (HAA모델 현금 헷징)
-        USLA_target_balance = USLA_balance + (USD * 2 / 35)
-        USLA_target_weight = (USLA_balance + (USD * 2 / 35)) / Total_balance
-        HAA_target_balance = USD * (33 / 35)
-        HAA_target_weight = (USD * (33 / 35)) / Total_balance
+    if USLA_qty == [] and HAA_qty == []: # USLA와 HAA 모두에 보유잔고 없음
+        USLA_target_balance = Total_balance * 0.7 # USLA모델에 USD 예수금의 70% 할당
+        USLA_target_weight = 0.7
+        HAA_target_balance = Total_balance * 0.3  # HAA모델에 USD 예수금의 30% 할당
+        HAA_target_weight = 0.3
+    elif USLA_qty == [] and HAA_qty != []: # USLA에만 ETF 잔고 없음
+        USLA_target_balance = USD * (70/70.6)
+        USLA_target_weight = (USD * (70/70.6)) / Total_balance
+        HAA_target_balance = HAA_balance + (USD * (0.6/70.6))
+        HAA_target_weight = (HAA_balance + (USD * (0.6/70.6))) / Total_balance
+    elif USLA_qty != [] and HAA_qty == []: # HAA에만 ETF 잔고 없음
+        USLA_target_balance = USLA_balance + (USD * 1.4 / 31.4)
+        USLA_target_weight = (USLA_balance + (USD * 1.4 / 31.4)) / Total_balance
+        HAA_target_balance = USD * (USD * 30 / 31.4)
+        HAA_target_weight = (USD * (30 / 31.4)) / Total_balance
     else: # 두 모델 모두에 ETF 잔고 있음 (정상 운용)
-        USLA_target_balance = USLA_balance + (USD * 0.67)  # 달러의 67%는 USLA모델에 할당
-        USLA_target_weight = (USLA_balance + (USD * 0.67)) / Total_balance
-        HAA_target_balance = HAA_balance + (USD * 0.33)  # 달러의 33%는 HAA모델에 할당
-        HAA_target_weight = (HAA_balance + (USD * 0.33)) / Total_balance
+        USLA_target_balance = USLA_balance + (USD * 0.7)  # 달러의 70%는 USLA모델에 할당
+        USLA_target_weight = (USLA_balance + (USD * 0.7)) / Total_balance
+        HAA_target_balance = HAA_balance + (USD * 0.3)  # 달러의 30%는 HAA모델에 할당
+        HAA_target_weight = (HAA_balance + (USD * 0.3)) / Total_balance
 
     ## 만약 1월에는 비중 리밸런싱
     if order_time['month'] == 1:
-        USAA_target_balance = Total_balance * 0.67
-        USLA_target_weight = 0.67
-        HAA_target_balance = Total_balance * 0.33
-        HAA_target_weight = 0.33
-
-    USLA_target = [USLA_target_weight, USLA_target_balance]
-    HAA_target = [HAA_target_weight, HAA_target_balance]
+        USAA_target_balance = Total_balance * 0.7
+        USLA_target_weight = 0.7
+        HAA_target_balance = Total_balance * 0.3
+        HAA_target_weight = 0.3
 
     USLA = {}
     for ticker in USLA_ticker:
@@ -1252,19 +1251,19 @@ if order_time['round'] == 1:
             USLA[ticker] = {
                 'hold_qty': USLA_qty[ticker], # 현재 보유량
                 'current_price': USLA_price[ticker], # 해당 티커의 현재가
-                'target_weight': 0, # 해당 티커의 목표비중 (3% 거래 안정성 마진 적용)
-                'target_balance': 0, # 해당 티커의 목표투자금 (3% 거래 안정성 마진 적용)
+                'target_weight': 0, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
+                'target_balance': 0, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': 0, # 해당 티커의 목표수량
                 'buy_qty': 0, # 해당 티커의 매수 수량
                 'sell_qty': USLA_qty[ticker] # 해당 티커의 매도 수량
             }
         elif ticker in USLA_target:
-            USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.97) / USLA_price[ticker])  # 3% 거래 안정성 마진 적용
+            USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.98) / USLA_price[ticker])  # 2% 거래 안정성 마진 적용
             USLA[ticker] = {
                 'hold_qty': USLA_qty[ticker], # 현재 보유량
                 'current_price': USLA_price[ticker], # 해당 티커의 현재가
-                'target_weight': USLA_target[ticker] * USLA_target_weight * 0.97, # 해당 티커의 목표비중 (3% 거래 안정성 마진 적용)
-                'target_balance': USLA_target[ticker] * USLA_target_balance * 0.97, # 해당 티커의 목표투자금 (3% 거래 안정성 마진 적용)
+                'target_weight': USLA_target[ticker] * USLA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
+                'target_balance': USLA_target[ticker] * USLA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': USLA_target_qty, # 해당 티커의 목표수량
                 'buy_qty': USLA_target_qty - USLA_qty[ticker] if USLA_target_qty > USLA_qty[ticker] else 0, # 해당 티커의 매수 수량
                 'sell_qty': USLA_qty[ticker] - USLA_target_qty if USLA_target_qty < USLA_qty[ticker] else 0 # 해당 티커의 매도 수량
@@ -1276,19 +1275,19 @@ if order_time['round'] == 1:
             HAA[ticker] = {
                 'hold_qty': HAA_qty[ticker], # 현재 보유량
                 'current_price': HAA_price[ticker], # 해당 티커의 현재가
-                'target_weight': 0, # 해당 티커의 목표비중 (3% 거래 안정성 마진 적용)
-                'target_balance': 0, # 해당 티커의 목표투자금 (3% 거래 안정성 마진 적용)
+                'target_weight': 0, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
+                'target_balance': 0, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': 0, # 해당 티커의 목표수량
                 'buy_qty': 0, # 해당 티커의 매수 수량
                 'sell_qty': HAA_qty[ticker] # 해당 티커의 매도 수량                
             }
         elif ticker in HAA_target:
-            HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.97) / HAA_price[ticker])  # 3% 거래 안정성 마진 적용
+            HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.98) / HAA_price[ticker])  # 2% 거래 안정성 마진 적용
             HAA[ticker] = {
                 'hold_qty': HAA_qty[ticker], # 현재 보유량
                 'current_price': HAA_price[ticker], # 해당 티커의 현재가
-                'target_weight': HAA_target[ticker] * HAA_target_weight * 0.97, # 해당 티커의 목표비중 (3% 거래 안정성 마진 적용)
-                'target_balance': HAA_target[ticker] * HAA_target_balance * 0.97, # 해당 티커의 목표투자금 (3% 거래 안정성 마진 적용)
+                'target_weight': HAA_target[ticker] * HAA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
+                'target_balance': HAA_target[ticker] * HAA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': HAA_target_qty, # 해당 티커의 목표수량
                 'buy_qty': HAA_target_qty - HAA_qty[ticker] if HAA_target_qty > HAA_qty[ticker] else 0, # 해당 티커의 매수 수량
                 'sell_qty': HAA_qty[ticker] - HAA_target_qty if HAA_target_qty < HAA_qty[ticker] else 0 # 해당 티커의 매도 수량                
@@ -1306,200 +1305,132 @@ if order_time['round'] == 1:
     Buy_order = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
 
     # 다음 order time으로 넘길 Trading data json 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, USLA_target, HAA_target, USLA, HAA)
+    saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
+    message.extend(saveTR_message)
+    KA.SendMessage("\n".join(message))
+
     sys.exit(0)
 
-################ 1/31 ##############################################
-
-
 elif order_time['round'] in range(2, 25):  # Round 2~24회차
+    if order_time['round'] == 2:
+        message = [] # 메세지 초기화
+    else:
+        with open(USAA_Message_path, 'r', encoding='utf-8') as f:
+            message = json.load(f)
+    print_time = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+    if order_time['round'] in print_time:
+        KA.SendMessage("\n".join(message))
+        message = [] # 메세지 초기화
+        
+    message.extend(start_message)
+
     # ====================================
     # 1단계: 지난 라운드 TR_data 불러오기
     # ====================================
     try:
-        TR_data =HAA.load_HAA_TR()
-        Sell_order = TR_data['Sell_order']
-        Buy_order = TR_data['Buy_order']
-        Hold_usd = TR_data['CASH']
-        target_weight = TR_data['target_weight']
-        target_qty = TR_data['target_qty']
-        target_usd = target_qty['CASH']
-        # 이전 라운드 USD 저장 (검증용)
-        prev_round_usd = Hold_usd
-    
+        with open(USAA_TR_path, 'r', encoding='utf-8') as f:
+            TR_data = json.load(f)
     except Exception as e:
-        KA.SendMessage(f"HAA_TR JSON 파일 오류: {e}")
+        message.append(f"USAA_TR JSON 파일 오류: {e}")
         sys.exit(0)
 
     # ============================================
-    # 2단계: 체결 내역 확인 (주문 취소 전!)
-    # ============================================
-    # 성공한 주문만 필터링하여 체결 확인
-    successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
-    successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
-
-    report_message = [] # 출력메세지 모으기
-
-    # 매도 체결결과 반영
-    if len(successful_sell_orders) > 0:
-        sell_summary, message = HAA.calculate_sell_summary(successful_sell_orders)
-        Hold_usd += sell_summary['net_amount']
-        for i in message:
-            report_message.append(i)
-        report_message.append(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
-    
-    # 매수 체결결과 반영
-    if len(successful_buy_orders) > 0:
-        buy_summary, message = HAA.calculate_buy_summary(successful_buy_orders)
-        Hold_usd -= buy_summary['total_amount']
-        for i in message:
-            report_message.append(i)
-        report_message.append(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
-
-    # USD 잔고 변화 로깅
-    usd_change = Hold_usd - prev_round_usd
-    report_message.append(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
-    
-    # ============================================
-    # 3단계: 미체결 주문 취소 (체결 확인 후!)
+    # 2단계: 미체결 주문 취소
     # ============================================
     try:
-        cancel_result, cancel_messages = HAA.cancel_all_unfilled_orders()
-        report_message.extend(cancel_messages)
-        if cancel_result['total'] > 0:
-            report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+        cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
+        message.extend(cancel_messages)
+        if cancel_summary['total'] > 0:
+            message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
     except Exception as e:
-        report_message.append(f"USLA 주문 취소 오류: {e}")
-        
-    # 출력
-    KA.SendMessage("\n".join(report_message))
+        message.append(f"USAA 주문 취소 오류: {e}")
 
     # ============================================
-    # 4단계: 새로운 주문 준비 및 실행
+    # 3단계: 새로운 주문 준비 및 실행
     # ============================================
+    # 계좌잔고 조회
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+
     # 목표 비중 만들기
-    Hold = real_Hold() #실제보유
-    ### 다시 잔고 계산해 비중 다시 내기 ####
-    Buy = dict()
-    Sell = dict()
-    # target에 있는 종목 처리
-    for ticker in target_qty.keys():
-        hold_qty = Hold.get(ticker, 0)
-        target = target_qty[ticker] ###### 
-        if ticker == "CASH":
-            continue
-        if target > hold_qty:
-            Buy[ticker] = target - hold_qty
-        elif target < hold_qty:
-            Sell[ticker] = hold_qty - target
-    # Hold에만 있고 target에 없는 종목 처리 (전량 매도)
-    for ticker in Hold.keys():
-        if ticker == "CASH":
-            continue
-        if ticker not in target_qty.keys():
-            if Hold[ticker] > 0:
-                Sell[ticker] = Hold[ticker]
-    
-    # Buy USD환산총액이 현재 Hold['CASH']보다 클 경우 매수수량 조정
-    TR_usd = Hold_usd - target_usd  # 매수가능 USD
-    needs_usd = 0
-    for ticker in Buy.keys(): # Buy USD환산총액 계산
-        price = HAA.get_US_current_price(ticker)
-        if isinstance(price, (int, float)) and price > 0:
-            needs_usd += Buy[ticker] * (price * (1 + HAA.fee))
-        else:
-            needs_usd += 0
-        time_module.sleep(0.1)
-    Buy_qty = dict()
-    ratio = TR_usd / needs_usd if needs_usd > 0 else 0
-    if ratio < 1.0:
-        for ticker in Buy.keys():
-            original_qty = Buy[ticker]
-            adjusted_qty = int(original_qty * ratio)
-            Buy_qty[ticker] = adjusted_qty
-    else:
-        Buy_qty = Buy
-    
-    # split 데이터 만들기      
-    round_split = HAA.make_split_data(order_time['round'])
-    sell_split = [round_split["sell_splits"], round_split["sell_price_adjust"]]
-    buy_split = [round_split["buy_splits"], round_split["buy_price_adjust"]]
-    
-    # Sell 주문
-    Sell_order = Selling(Sell, sell_split, order_time)
-    
-    # Buy 주문
-    Buy_order = Buying(Buy_qty, buy_split, TR_usd, order_time)
+    USLA = TR_data["USLA"]
+    for ticker in USLA_ticker:
+        USLA[ticker]['hold_qty'] = USLA_qty[ticker]  # 현재 보유량 업데이트
+        USLA[ticker]['current_price'] = USLA_price[ticker]  # 현재가 업데이트
+        USLA_target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
+        USLA_target_balance = USLA[ticker]['target_weight'] * Total_balance
+        USLA[ticker]['target_balance'] = USLA_target_balance  # 목표투자금 업데이트
+        USLA[ticker]['target_qty'] = USLA_target_qty  # 목표수량 업데이트
+        USLA[ticker]['buy_qty'] = USLA_target_qty - USLA_qty[ticker] if USLA_target_qty > USLA_qty[ticker] else 0  # 매수 수량 업데이트
+        USLA[ticker]['sell_qty'] = USLA_qty[ticker] - USLA_target_qty if USLA_target_qty < USLA_qty[ticker] else 0  # 매도 수량 업데이트
 
-    # 데이터 저장
-    save_TR_data(order_time, Sell_order, Buy_order, Hold_usd, target_weight, target_qty)
+    HAA = TR_data["HAA"]
+    for ticker in HAA_ticker:
+        HAA[ticker]['hold_qty'] = HAA_qty[ticker]  # 현재 보유량 업데이트
+        HAA[ticker]['current_price'] = HAA_price[ticker]  # 현재가 업데이트
+        HAA_target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
+        HAA_target_balance = HAA[ticker]['target_weight'] * Total_balance
+        HAA[ticker]['target_balance'] = HAA_target_balance  # 목표투자금 업데이트
+        HAA[ticker]['target_qty'] = HAA_target_qty  # 목표수량 업데이트
+        HAA[ticker]['buy_qty'] = HAA_target_qty - HAA_qty[ticker] if HAA_target_qty > HAA_qty[ticker] else 0  # 매수 수량 업데이트
+        HAA[ticker]['sell_qty'] = HAA_qty[ticker] - HAA_target_qty if HAA_target_qty < HAA_qty[ticker] else 0  # 매도 수량 업데이트
+
+    # 회차별 분할 데이터 트레이딩
+    round_split = split_data(order_time['round'])
+    sell_split_USLA = [round_split["sell_splits"], round_split["sell_price_USLA"]]
+    buy_split_USLA = [round_split["buy_splits"], round_split["buy_price_USLA"]]
+    sell_split_HAA = [round_split["sell_splits"], round_split["sell_price_HAA"]]
+    buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
+
+    # 주문
+    Sell_order = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
+    Buy_order = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
+
+    # 다음 order time으로 넘길 Trading data json 데이터 저장
+    saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
+    message.extend(saveTR_message)
+
+    # 메세지 파일 저장
+    try:
+        with open(USAA_Message_path, 'w', encoding='utf-8') as f:
+            json.dump(message, f, ensure_ascii=False, indent=4)
+
+    except Exception as e:
+        USAA_Message_backup = "/var/autobot/TR_USAA/USAA_Message.txt"
+        with open(USAA_Message_backup, 'w', encoding='utf-8') as f:
+            json.dump(message, f, ensure_ascii=False, indent=4)
 
     sys.exit(0)
 
-elif order_time['round'] == 25:  # 25회차 최종기록
+elif order_time['round'] == 25:  # 최종기록
+    with open(USAA_Message_path, 'r', encoding='utf-8') as f:
+        message = json.load(f)
+    message.extend(start_message)
     # ============================================
     # 1단계: 지난 라운드 TR_data 불러오기
     # ============================================
     try:
-        TR_data = HAA.load_HAA_TR()
-        Sell_order = TR_data['Sell_order']
-        Buy_order = TR_data['Buy_order']
-        Hold_usd = TR_data['CASH']
-        target_weight = TR_data['target_weight']
-        target_qty = TR_data['target_qty']
-        target_usd = target_qty['CASH']
-        # 이전 라운드 USD 저장 (검증용)
-        prev_round_usd = Hold_usd
-    
+        with open(USAA_TR_path, 'r', encoding='utf-8') as f:
+            TR_data = json.load(f)
     except Exception as e:
-        KA.SendMessage(f"HAA_TR JSON 파일 오류: {e}")
+        message.append(f"USAA_TR JSON 파일 오류: {e}")
         sys.exit(0)    
 
     # ============================================
-    # 2단계: 최종 체결 내역 확인 (주문 취소 전!)
-    # ============================================
-    # 성공한 주문만 필터링
-    successful_sell_orders = [o for o in Sell_order if o.get('success', False)]
-    successful_buy_orders = [o for o in Buy_order if o.get('success', False)]
-
-    report_message = [] # 출력메세지 모으기
-
-    # 매도 체결결과 반영
-    if len(successful_sell_orders) > 0:
-        sell_summary, message = HAA.calculate_sell_summary(successful_sell_orders)
-        Hold_usd += sell_summary['net_amount']
-        for i in message:
-            report_message.append(i)
-        report_message.append(f"매도 체결: ${sell_summary['net_amount']:.2f} (수수료 차감 후)")
-    
-    # 매수 체결결과 반영
-    if len(successful_buy_orders) > 0:
-        buy_summary, message = HAA.calculate_buy_summary(successful_buy_orders)
-        Hold_usd -= buy_summary['total_amount']
-        for i in message:
-            report_message.append(i)
-        report_message.append(f"매수 체결: ${buy_summary['total_amount']:.2f} (수수료 포함)")
-
-    # USD 잔고 변화 로깅
-    usd_change = Hold_usd - prev_round_usd
-    report_message.append(f"USD 변화: ${usd_change:+.2f} (이전: ${prev_round_usd:.2f} → 현재: ${Hold_usd:.2f})")
-
-    # ============================================
-    # 3단계: 최종 미체결 주문 취소 (체결 확인 후!)
+    # 2단계: 최종 미체결 주문 취소 + 모여진 메세지 출력
     # ============================================
     try:
-        cancel_result, cancel_messages = HAA.cancel_all_unfilled_orders()
-        report_message.extend(cancel_messages)
-        if cancel_result['total'] > 0:
-            report_message.append(f"미체결 주문 취소: {cancel_result['success']}/{cancel_result['total']}")
+        cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
+        message.extend(cancel_messages)
+        if cancel_summary['total'] > 0:
+            message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
     except Exception as e:
-        report_message.append(f"USLA 주문 취소 오류: {e}")
+        message.append(f"USAA 주문 취소 오류: {e}")
         
-    # 출력
-    KA.SendMessage("\n".join(report_message))    
+    KA.SendMessage("\n".join(message))
 
+###########################################################################################
     # ============================================
-    # 4단계: 최종 데이터 저장 (USLA_data.json)
+    # 3단계: 최종 데이터 저장 (USLA_data.json)
     # ============================================
     HAA_data = HAA.load_HAA_data()
     

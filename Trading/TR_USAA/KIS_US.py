@@ -128,7 +128,7 @@ class KIS_API:
         str: 에러 메시지
         """
         if not ticker:
-            return "티커를 입력해주세요."
+            return "error:티커를 입력해주세요."
         
         ticker = ticker.upper()
         
@@ -140,7 +140,7 @@ class KIS_API:
                 return exchange
             time.sleep(0.1)
 
-        return "거래소 조회 실패"
+        return "error: 거래소 조회 실패"
 
     # 주식 현재가 조회
     def get_US_current_price(self, ticker: str) -> Union[float, str]:
@@ -715,7 +715,7 @@ class KIS_API:
             data = response.json()
             
             if data.get('rt_cd') != '0':
-                print(f"API 오류: {data.get('msg1')}")
+                KA.SendMessage(f"API 오류: {data.get('msg1')}")
                 return None
             
             output1 = data.get('output1', [])
@@ -748,9 +748,7 @@ class KIS_API:
             return stocks
             
         except Exception as e:
-            KA.Sen(f"잔고 조회 오류: {e}")
-            import traceback
-            traceback.print_exc()
+            KA.SendMessage(f"잔고 조회 오류: {e}")
             return None
 
     # 미국 달러 예수금
@@ -932,7 +930,7 @@ class KIS_API:
             exchange = None
         
         if exchange is None:
-            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 정규장 TR_ID
@@ -991,7 +989,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            KA.SendMessage(f"주문 취소 오류: {e}")
+            print(f"주문 취소 오류: {e}")
             return None
 
     # 미체결 주문 조회
@@ -1350,14 +1348,14 @@ class KIS_API:
         str: 에러 메시지 또는 "보유 잔고 없음"
         """
         if not ticker:
-            return "티커를 입력해주세요."
+            return "error: 티커를 입력해주세요."
         
         ticker = ticker.upper()
         
         # 1. 거래소 조회
         exchange = self.get_exchange_by_ticker(ticker)
         if not isinstance(exchange, str) or exchange == "거래소 조회 실패":
-            return f"{ticker} 거래소 조회 실패"
+            return f"error: {ticker} 거래소 조회 실패"
         
         # 2. 거래소 코드에 따른 통화 코드 설정
         currency_map = {
