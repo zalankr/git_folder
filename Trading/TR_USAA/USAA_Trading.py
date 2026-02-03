@@ -389,6 +389,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA): # Edit사용
     """
     저장 실패 시에도 백업 파일 생성
     """
+    TR_data = {} # 초기화
     message = []
     TR_data = {
         "round": order_time['round'],
@@ -424,17 +425,6 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA): # Edit사용
             message.append(f"USAA TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
 
     return message
-
-def load_USAA_data(): #
-    """USAA data 불러오기"""   
-    try:
-        with open(USAA_data_path, 'r', encoding='utf-8') as f:
-            USAA_data = json.load(f)
-        return USAA_data
-
-    except Exception as e:
-        KA.SendMessage(f"USAA_data JSON 파일 오류: {e}")
-        sys.exit(0)
 
 def get_prices(tickers): # Edit사용
     """현재 가격 조회 (KIS API 사용)"""
@@ -1216,7 +1206,7 @@ if order_time['round'] == 1:
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
-    ## 헷징 모드 확인 후 USD 재조정
+    ## 헷징 모드 확인 후 비중 조정
     if USLA_qty == [] and HAA_qty == []: # USLA와 HAA 모두에 보유잔고 없음
         USLA_target_balance = Total_balance * 0.7 # USLA모델에 USD 예수금의 70% 할당
         USLA_target_weight = 0.7
@@ -1402,19 +1392,12 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     sys.exit(0)
 
 elif order_time['round'] == 25:  # 최종기록
+    # ============================================
+    # 1단계: 지난 라운드 Message 불러오기
+    # ============================================
     with open(USAA_Message_path, 'r', encoding='utf-8') as f:
         message = json.load(f)
-    message.extend(start_message)
-    # ============================================
-    # 1단계: 지난 라운드 TR_data 불러오기
-    # ============================================
-    try:
-        with open(USAA_TR_path, 'r', encoding='utf-8') as f:
-            TR_data = json.load(f)
-    except Exception as e:
-        message.append(f"USAA_TR JSON 파일 오류: {e}")
-        sys.exit(0)    
-
+     
     # ============================================
     # 2단계: 최종 미체결 주문 취소 + 모여진 메세지 출력
     # ============================================
@@ -1428,100 +1411,29 @@ elif order_time['round'] == 25:  # 최종기록
         
     KA.SendMessage("\n".join(message))
 
-###########################################################################################
     # ============================================
-    # 3단계: 최종 데이터 저장 (USLA_data.json)
+    # 3단계: 최종 데이터 출력
     # ============================================
-    HAA_data = HAA.load_HAA_data()
+    message = [] # 메세지 초기화
+    message.extend(f"KIS USAA {order_time['date']} 리벨런싱 완료") 
+    # 계좌잔고 조회
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+
+    USLA_target, USLA_regime, USLA_message = USLA_target_regime()
+    message.append(f"USLA Regime: {USLA_regime}")
+    for i in USLA_target.keys():
+        message.append(f"USLA {i} - weight:{USLA_target[i]:.2%}, qty:{USLA_qty[i]}")
+    HAA_target, HAA_regime, HAA_message = HAA_target_regime()
+    message.append(f"HAA Regime: {HAA_regime}")
+    for i in HAA_target.keys():
+        message.append(f"HAA {i} - weight:{HAA_target[i]:.2%}, qty:{HAA_qty[i]}")
+    message.append(f"USLA 평가금: {USLA_balance:,.2f} USD")
+    message.append(f"HAA 평가금: {HAA_balance:,.2f} USD")
+    message.append(f"USD 평가금: {USD:,.2f} USD")
+    message.append(f"총 평가금: {Total_balance:,.2f} USD")
+
+    # 카톡 리밸 종료 결과 보내기
+    KA.SendMessage("\n".join(message))
     
-    Hold = real_Hold()
-
-    SPY = Hold.get('SPY', 0)    
-    IWM = Hold.get('IWM', 0)
-    VEA = Hold.get('VEA', 0)
-    VWO = Hold.get('VWO', 0)
-    PDBC = Hold.get('PDBC', 0)
-    VNQ = Hold.get('VNQ', 0)
-    TLT = Hold.get('TLT', 0)
-    IEF = Hold.get('IEF', 0)
-    CASH = Hold_usd
-
-    # 당일 티커별 평가금 산출 - 수수료 포함
-    SPY_eval = SPY * (HAA.get_US_current_price('SPY') * (1-HAA.fee))
-    IWM_eval = IWM * (HAA.get_US_current_price('IWM') * (1-HAA.fee))
-    VEA_eval = VEA * (HAA.get_US_current_price('VEA') * (1-HAA.fee))
-    VWO_eval = VWO * (HAA.get_US_current_price('VWO') * (1-HAA.fee))
-    PDBC_eval = PDBC * (HAA.get_US_current_price('PDBC') * (1-HAA.fee))
-    VNQ_eval = VNQ * (HAA.get_US_current_price('VNQ') * (1-HAA.fee))
-    TLT_eval = TLT * (HAA.get_US_current_price('TLT') * (1-HAA.fee))
-    IEF_eval = IEF * (HAA.get_US_current_price('IEF') * (1-HAA.fee))
-    stocks_eval_usd = SPY_eval + IWM_eval + VEA_eval + VWO_eval + PDBC_eval + VNQ_eval + TLT_eval + IEF_eval
-    balance = stocks_eval_usd + CASH
-    balanceKRW = int(balance * HAA.get_US_dollar_balance()['exchange_rate'])
-   
-    #data 조정
-    HAA_data = {
-        'date': str(order_time['date']),
-        'regime_score': HAA_data['regime_signal'],
-        'SPY_hold': SPY,
-        'SPY_weight': HAA_data['SPY_weight'],
-        'SPY_target_qty': HAA_data['SPY_target_qty'],
-        'IWM_hold': IWM,
-        'IWM_weight': HAA_data['IWM_weight'],
-        'IWM_target_qty': HAA_data['IWM_target_qty'],
-        'VEA_hold': VEA,
-        'VEA_weight': HAA_data['VEA_weight'],
-        'VEA_target_qty': HAA_data['VEA_target_qty'],
-        'VWO_hold': VWO,
-        'VWO_weight': HAA_data['VWO_weight'],
-        'VWO_target_qty': HAA_data['VWO_target_qty'],
-        'PDBC_hold': PDBC,
-        'PDBC_weight': HAA_data['PDBC_weight'],
-        'PDBC_target_qty': HAA_data['PDBC_target_qty'],
-        'VNQ_hold': VNQ,
-        'VNQ_weight': HAA_data['VNQ_weight'],
-        'VNQ_target_qty': HAA_data['VNQ_target_qty'],
-        'TLT_hold': TLT,
-        'TLT_weight': HAA_data['TLT_weight'],
-        'TLT_target_qty': HAA_data['TLT_target_qty'],
-        'IEF_hold': IEF,
-        'IEF_weight': HAA_data['IEF_weight'],
-        'IEF_target_qty': HAA_data['IEF_target_qty'],
-        'CASH_hold': CASH,
-        'CASH_weight': HAA_data['CASH_weight'],
-        'CASH_target_qty': HAA_data['CASH_target_qty'],
-        'balance': balance,
-        'last_day_balance': HAA_data['last_day_balance'],
-        'last_month_balance': HAA_data['last_month_balance'],
-        'last_year_balance': HAA_data['last_year_balance'],
-        'daily_return': HAA_data['daily_return'],
-        'monthly_return': HAA_data['monthly_return'],
-        'yearly_return': HAA_data['yearly_return'],
-        'exchange_rate': HAA_data['exchange_rate'],
-        'balance_KRW': balanceKRW,
-        'last_day_balance_KRW': HAA_data['last_day_balance_KRW'],
-        'last_month_balance_KRW': HAA_data['last_month_balance_KRW'],
-        'last_year_balance_KRW': HAA_data['last_year_balance_KRW'],
-        'daily_return_KRW': HAA_data['daily_return_KRW'],
-        'monthly_return_KRW': HAA_data['monthly_return_KRW'],
-        'yearly_return_KRW': HAA_data['yearly_return_KRW']
-    }
-
-    HAA.save_HAA_data_json(HAA_data)
-
-# 카톡 리밸 종료 결과 보내기
-KA.SendMessage(f"KIS HAA {order_time['date']}\n당월 리벨런싱 완료")
-KA.SendMessage(
-    f"KIS HAA regime_signal: {HAA_data['regime_signal']}\n"
-    f"SPY: {SPY}, weight: {HAA_data['SPY_weight']}\n"
-    f"IWM: {IWM}, weight: {HAA_data['IWM_weight']}\n"
-    f"VEA: {VEA}, weight: {HAA_data['VEA_weight']}\n"
-    f"VWO: {VWO}, weight: {HAA_data['VWO_weight']}\n"
-    f"PDBC: {PDBC}, weight: {HAA_data['PDBC_weight']}\n"
-    f"VNQ: {VNQ}, weight: {HAA_data['VNQ_weight']}\n"
-    f"TLT: {TLT}, weight: {HAA_data['TLT_weight']}\n"
-    f"IEF: {IEF}, weight: {HAA_data['IEF_weight']}\n"
-    f"CASH: {CASH}, weight: {HAA_data['CASH_weight']}\n"
-    f"KIS HAA balance: {balance}\n"
-    f"CASH: ${Hold_usd:.2f}, Risk regime인 경우 USD RP 월말일까지 투자"
-)
+    # 시스템 종료
+    sys.exit(0)
