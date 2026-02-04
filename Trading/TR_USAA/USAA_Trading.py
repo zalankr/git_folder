@@ -30,9 +30,9 @@ Aggresive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
 Defensive_ETF = ['IEF', 'BIL']
 Regime_ETF = 'TIP'
 all_ticker = USLA_ticker + HAA_ticker
-all_ticker_with_cash = all_ticker + ['CASH']
+# all_ticker_with_cash = all_ticker + ['CASH']
 fee_rate = 0.0009 # 수수료 이벤트 계좌 0.09%
-USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
+# USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
 USAA_TR_path = "/var/autobot/TR_USAA/USAA_TR.json"
 USAA_Message_path = "/var/autobot/TR_USAA/USAA_Message.json"
 
