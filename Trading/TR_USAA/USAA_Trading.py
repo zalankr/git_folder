@@ -1395,8 +1395,13 @@ elif order_time['round'] == 25:  # 최종기록
     # ============================================
     # 1단계: 지난 라운드 Message 불러오기
     # ============================================
-    with open(USAA_Message_path, 'r', encoding='utf-8') as f:
-        message = json.load(f)
+    try:
+        with open(USAA_Message_path, 'r', encoding='utf-8') as f:
+            message = json.load(f)
+    except Exception as e:
+        message = []
+        message.append(f"USAA_Message JSON 파일 오류: {e}")
+        sys.exit(0)
      
     # ============================================
     # 2단계: 최종 미체결 주문 취소 + 모여진 메세지 출력
@@ -1415,18 +1420,23 @@ elif order_time['round'] == 25:  # 최종기록
     # 3단계: 최종 데이터 출력
     # ============================================
     message = [] # 메세지 초기화
-    message.extend(f"KIS USAA {order_time['date']} 리벨런싱 완료") 
+    message.append(f"USAA {order_time['date']} 리밸런싱 종료")
+    
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
     USLA_target, USLA_regime, USLA_message = USLA_target_regime()
     message.append(f"USLA Regime: {USLA_regime}")
     for i in USLA_target.keys():
-        message.append(f"USLA {i} - weight:{USLA_target[i]:.2%}, qty:{USLA_qty[i]}")
+        balance = USLA_qty[i] * USLA_price[i]
+        weight = balance / Total_balance
+        message.append(f"USLA {i} - weight:{weight:.2%}, qty:{USLA_qty[i]}")
     HAA_target, HAA_regime, HAA_message = HAA_target_regime()
     message.append(f"HAA Regime: {HAA_regime}")
     for i in HAA_target.keys():
-        message.append(f"HAA {i} - weight:{HAA_target[i]:.2%}, qty:{HAA_qty[i]}")
+        balance = HAA_qty[i] * HAA_price[i]
+        weight = balance / Total_balance
+        message.append(f"HAA {i} - weight:{weight:.2%}, qty:{HAA_qty[i]}")
     message.append(f"USLA 평가금: {USLA_balance:,.2f} USD")
     message.append(f"HAA 평가금: {HAA_balance:,.2f} USD")
     message.append(f"USD 평가금: {USD:,.2f} USD")
