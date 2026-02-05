@@ -15,6 +15,7 @@ def getMA(ohlcv,period,st):
 
 # 어제 포지션을 오늘 포지션으로 변경 함수
 def make_position(upbit):
+    UPmessage = []
     # 어제의 json값 불러오기
     TR_data_path = '/var/autobot/TR_Upbit/TR_data2.json'
     try:
@@ -22,11 +23,10 @@ def make_position(upbit):
             TR_data = json.load(f)
     except FileNotFoundError:
         TR_data = {}  # 파일이 없으면 빈 딕셔너리 생성
-        print("JSON 파일 없음 - 기본값 사용")
-        KA.SendMessage("TR_data 파일 없음")
+        UPmessage.append("TR_data 파일 없음")
     except Exception as e:
-        print(f"JSON 파일 오류: {e}")
-        raise
+        UPmessage.append(f"TR_data 파일 오류: {e}")
+        
     # JSON data에서 티커별 어제의 목표비중 불러오기
     Last_ETH_weight = TR_data.get("ETH_weight", 0.0) #어제의 티커별 목표비중
     Last_BTC_weight = TR_data.get("BTC_weight", 0.0) #어제의 티커별 목표비중
@@ -233,7 +233,7 @@ def make_position(upbit):
         "Monthly_return": Monthly_return,
         "Yearly_return": Yearly_return
     }
-    return TR_data
+    return TR_data, UPmessage
 
 # 시간확인 조건문 함수: 8:55 > daily파일 불러와 Signal산출 후 매매 후 TR기록 json생성, 9:05/9:15/9:25> 트레이딩 후 TR기록 9:30 > 트레이딩 후 
 def what_time():
@@ -329,6 +329,7 @@ def Cancel_Order(upbit):
 
 # 매도주문 ###### ticker 인수 넣기
 def partial_selling(ticker, current_price, amount_per_times, TR_time, upbit):
+    Upmessage = []
     prices = []
     for i in range(TR_time[1]):
         order_num = i + 1
@@ -351,24 +352,25 @@ def partial_selling(ticker, current_price, amount_per_times, TR_time, upbit):
             # 주문 금액 체크 - 실제 주문 금액으로 검증
             order_amount = volume * price
             if order_amount < 5500:  # 5500원으로 체크
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}회차 {ticker} 주문금액 부족으로 스킵")
+                Upmessage.append(f"Upbit {TR_time[0]}, {t+1}회차 {ticker} 주문금액 부족으로 스킵")
                 continue
 
             result = upbit.sell_limit_order(ticker, price, volume)
-            print(f"{TR_time[0]}차 {t+1}/{TR_time[1]} {ticker} 분할 매도:", result)
 
             if result and 'price' in result:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}, {ticker} 분할 매도 수량: {volume}")
+                Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]}, {ticker} 분할 매도 수량: {volume}")
             else:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 주문 실패")
+                Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 주문 실패")
 
         except Exception as order_error:
             print(f"주문 {t+1}회차 오류: {order_error}")
-            KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매도 오류: {order_error}")
+            Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매도 오류: {order_error}")
 
-    return result
+    return result, Upmessage
+
 # 매수주문
 def partial_buying(ticker, current_price, krw_per_times, TR_time, upbit):        
+    Upmessage = []
     prices = []
     for i in range(TR_time[1]):
         order_num = i + 1
@@ -391,25 +393,23 @@ def partial_buying(ticker, current_price, krw_per_times, TR_time, upbit):
             # 주문 금액 체크 - 실제 주문 금액으로 검증
             order_amount = volume * price
             if order_amount < 5500:  # 5500원으로 체크
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}회차 {ticker} 주문금액 부족으로 스킵")
+                Upmessage.append(f"Upbit {TR_time[0]}, {t+1}회차 {ticker} 주문금액 부족으로 스킵")
                 continue
                 
             result = upbit.buy_limit_order(ticker, price, volume)
-            print(f"{TR_time[0]}차 {t+1}/{TR_time[1]} {ticker} 분할 매수", result)
             
             if result and 'price' in result:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 수량: {volume}")
+                Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 수량: {volume}")
             else:
-                KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류")
+                Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류")
                 
         except Exception as order_error:
             print(f"주문 {t+1}회차 오류: {order_error}")
-            KA.SendMessage(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류: {order_error}")
-
-    return result
+            Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류: {order_error}")
+    return result, Upmessage
 
 # 직전 2시간 체결 주문 확인 함수
-def check_filled_orders_last_hour(upbit, ticker):
+def check_filled_orders_last_hour(upbit, ticker, Upmessage):
     """
     Args:
         upbit: Upbit 객체
@@ -431,8 +431,8 @@ def check_filled_orders_last_hour(upbit, ticker):
         filled_orders = upbit.get_order(ticker, state='done', limit=100)
         
         if not filled_orders:
-            print(f"{ticker} 직전 2시간 체결 내역 없음")
-            return 0.0, 0.0
+            Upmessage.append(f"{ticker} 직전 2시간 체결 내역 없음")
+            return 0.0, 0.0, Upmessage
         
         for filled_order in filled_orders:
             # 주문 체결 시간 파싱
@@ -461,14 +461,14 @@ def check_filled_orders_last_hour(upbit, ticker):
                 total_krw_used += krw_used
                 total_volume_filled += executed_volume
                 
-                print(f"체결 확인: {ticker} 매수 {executed_volume:.8f}개, "
-                      f"평균가 {avg_price:.0f}원, 수수료 {paid_fee:.0f}원, "
-                      f"시간: {created_at_str}")
+                # print(f"체결 확인: {ticker} 매수 {executed_volume:.8f}개, "
+                #       f"평균가 {avg_price:.0f}원, 수수료 {paid_fee:.0f}원, "
+                #       f"시간: {created_at_str}")
         
-        KA.SendMessage(f"{ticker} 직전 2시간 체결 요약: 사용 KRW {total_krw_used:.0f}원")
-        KA.SendMessage(f"체결량 {total_volume_filled:.8f}개")
+        Upmessage.append(f"{ticker} 직전 2시간 체결 요약: 사용 KRW {total_krw_used:.0f}원")
+        Upmessage.append(f"체결량 {total_volume_filled:.8f}개")
         
-        return total_krw_used, total_volume_filled
+        return total_krw_used, total_volume_filled, Upmessage
     
     except Exception as e:
         print(f"{ticker} 체결 확인 중 오류: {e}")
@@ -489,11 +489,12 @@ def check_all_filled_orders_last_hour(upbit):
             'BTC_volume_filled': float,
         }
     """
+    Upmessage = []
     # ETH 체결 확인
-    eth_krw, eth_volume = check_filled_orders_last_hour(upbit, "KRW-ETH")
+    eth_krw, eth_volume, Upmessage = check_filled_orders_last_hour(upbit, "KRW-ETH", Upmessage)
     
     # BTC 체결 확인
-    btc_krw, btc_volume = check_filled_orders_last_hour(upbit, "KRW-BTC")
+    btc_krw, btc_volume, Upmessage = check_filled_orders_last_hour(upbit, "KRW-BTC", Upmessage)
     
     result = {
         'KRWETH_used': eth_krw,
@@ -502,7 +503,7 @@ def check_all_filled_orders_last_hour(upbit):
         'BTC_volume_filled': btc_volume,
     }
     
-    return result
+    return result, Upmessage
 
 # 종합 잔고조회
 def Total_balance(upbit):
