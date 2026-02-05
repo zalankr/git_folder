@@ -134,7 +134,7 @@ try:
 
     # google sheet 업로드
     credentials_file = "/var/autobot/gspread/service_account.json" # 구글 서비스 계정 JSON 파일 경로
-    spreadsheet_name = "2026_TR_USLA" # 스프레드시트 이름 >>> 만들기
+    spreadsheet_name = "2026_TR_USAA" # 스프레드시트 이름
 
     # 구글 스프레드시트 연결
     spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
