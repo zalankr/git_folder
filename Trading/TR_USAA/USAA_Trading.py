@@ -1381,7 +1381,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
     # 주문
     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
-    order_messages.extend(order_messages)
+    message.extend(order_messages)
     
     order_messages = [] # 메세지 초기화
     
@@ -1406,7 +1406,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     
     # 매수주문
     Buy_order, buy_order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
-    order_messages.extend(buy_order_messages)
+    message.extend(buy_order_messages)
 
     # 다음 order time으로 넘길 Trading data json 데이터 저장
     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
