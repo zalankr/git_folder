@@ -94,7 +94,7 @@ def get_balance(): # 신규 생성 사용
     HAA_price  = {} # 해당 티커 현재 가격
     for ticker in HAA_ticker:
         if ticker == 'TIP':
-            continue
+            continue # TIP은 Regime signal 확인용으로 투자, 보유용이 아니라서 제외
         balance = KIS.get_ticker_balance(ticker)
         if balance:
             eval_amount = balance.get('eval_amount', 0)
@@ -1231,7 +1231,10 @@ if order_time['round'] == 1:
                 'sell_qty': USLA_qty[ticker] # 해당 티커의 매도 수량
             }
         elif ticker in USLA_target:
-            USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.98) / USLA_price[ticker])  # 2% 거래 안정성 마진 적용
+            if USLA_price[ticker] <= 0:
+                USLA_target_qty = 0
+            else:
+                USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.98) / USLA_price[ticker])  # 2% 거래 안정성 마진 적용
             USLA[ticker] = {
                 'hold_qty': USLA_qty[ticker], # 현재 보유량
                 'current_price': USLA_price[ticker], # 해당 티커의 현재가
@@ -1255,7 +1258,10 @@ if order_time['round'] == 1:
                 'sell_qty': HAA_qty[ticker] # 해당 티커의 매도 수량                
             }
         elif ticker in HAA_target:
-            HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.98) / HAA_price[ticker])  # 2% 거래 안정성 마진 적용
+            if HAA_price[ticker] <= 0:
+                HAA_target_qty = 0
+            else:
+                HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.98) / HAA_price[ticker])  # 2% 거래 안정성 마진 적용
             HAA[ticker] = {
                 'hold_qty': HAA_qty[ticker], # 현재 보유량
                 'current_price': HAA_price[ticker], # 해당 티커의 현재가
@@ -1281,13 +1287,28 @@ if order_time['round'] == 1:
     
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
+    price_error = False
     
     for ticker in USLA_ticker:
+        if USLA[ticker]['current_price'] <= 0:
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            USLA[ticker]['buy_qty'] = 0
+            price_error = True
+            continue
         invest = USLA[ticker]['buy_qty'] * USLA[ticker]['current_price']
         FULL_BUYUSD += invest
+        
     for ticker in HAA_ticker:
+        if HAA[ticker]['current_price'] <= 0:
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            HAA[ticker]['buy_qty'] = 0
+            price_error = True
+            continue
         invest = HAA[ticker]['buy_qty'] * HAA[ticker]['current_price']
         FULL_BUYUSD += invest
+        
+    if price_error:
+        message.append("⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
         
     if FULL_BUYUSD > USD:
         ADJUST_RATE = USD / FULL_BUYUSD
@@ -1354,7 +1375,10 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     for ticker in USLA_ticker:
         USLA[ticker]['hold_qty'] = USLA_qty[ticker]  # 현재 보유량 업데이트
         USLA[ticker]['current_price'] = USLA_price[ticker]  # 현재가 업데이트
-        USLA_target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
+        if USLA_price[ticker] <= 0:
+            USLA_target_qty = 0
+        else:
+            USLA_target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
         USLA_target_balance = USLA[ticker]['target_weight'] * Total_balance
         USLA[ticker]['target_balance'] = USLA_target_balance  # 목표투자금 업데이트
         USLA[ticker]['target_qty'] = USLA_target_qty  # 목표수량 업데이트
@@ -1365,7 +1389,10 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     for ticker in HAA_ticker:
         HAA[ticker]['hold_qty'] = HAA_qty[ticker]  # 현재 보유량 업데이트
         HAA[ticker]['current_price'] = HAA_price[ticker]  # 현재가 업데이트
-        HAA_target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
+        if HAA_price[ticker] <= 0:
+            HAA_target_qty = 0
+        else:
+            HAA_target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
         HAA_target_balance = HAA[ticker]['target_weight'] * Total_balance
         HAA[ticker]['target_balance'] = HAA_target_balance  # 목표투자금 업데이트
         HAA[ticker]['target_qty'] = HAA_target_qty  # 목표수량 업데이트
