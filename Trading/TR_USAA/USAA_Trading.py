@@ -122,9 +122,13 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
     
     Returns:
     - Sell_order: 주문 결과 리스트 (성공/실패 모두 포함)
-    """
+    """  
     Sell_order = []
     order_messages = []
+    
+    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
+    round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
+    order_messages.append(round_info)
 
     Sell_USLA = {}
     for ticker in USLA.keys():
@@ -139,11 +143,8 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
     Sell = {**Sell_USLA, **Sell_HAA}
 
     if len(Sell.keys()) == 0:
-        return Sell_order
-    
-    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
-    round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
-    order_messages.append(round_info)
+        order_messages.append("매도할 종목이 없습니다.")
+        return Sell_order, order_messages
 
     for ticker in Sell.keys():
         if Sell[ticker] == 0:
@@ -186,6 +187,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
                 
             try:
                 order_info, order_sell_message = KIS.order_sell_US(ticker, quantity, price)
+                order_messages.extend(order_sell_message)
                 
                 if order_info and order_info.get('success') == True:
                     order_info = {
@@ -200,16 +202,8 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
                         'split_index': i
                     }
                     Sell_order.append(order_info)
-                    
-                    # 수정: 변수명 변경 (i → j) 또는 extend 사용
-                    if order_sell_message and len(order_sell_message) > 0:
-                        order_messages.extend(order_sell_message)  # extend 사용
-                    order_messages.append(f"✅ {ticker} {quantity}주 @${price} (분할{i+1})")
                 else:
                     error_msg = order_info.get('error_message', 'Unknown error') if order_info else 'API 호출 실패'
-                    if order_sell_message and len(order_sell_message) > 0:
-                        order_messages.extend(order_sell_message)  # extend 사용
-                    order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                     Sell_order.append({
                         'success': False,
                         'ticker': ticker,
@@ -222,7 +216,6 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
                     })
             except Exception as e:
                 error_msg = f"Exception: {str(e)}"
-                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                 Sell_order.append({
                     'success': False,
                     'ticker': ticker,
@@ -240,9 +233,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
     total_count = len(Sell_order)
     order_messages.append(f"매도 주문: {success_count}/{total_count} 완료")
     
-    KA.SendMessage("\n".join(order_messages))
-    
-    return Sell_order
+    return Sell_order, order_messages
 
 def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
     """
@@ -260,6 +251,10 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
     """
     Buy_order = []
     order_messages = []
+
+    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
+    round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
+    order_messages.append(round_info)    
     
     Buy_USLA = {}
     for ticker in USLA.keys():
@@ -276,14 +271,11 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
     if USD < 0:
         USD = 0
         order_messages.append("매수 가능 USD 부족")
+        return Buy_order, order_messages
     
     if len(Buy.keys()) == 0:
-        KA.SendMessage("매수할 종목이 없습니다.")
-        return Buy_order
-    
-    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
-    round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
-    order_messages.append(round_info)
+        order_messages.append("매수할 종목이 없습니다.")
+        return Buy_order, order_messages
     
     for ticker in Buy.keys():
         if Buy[ticker] == 0:
@@ -327,6 +319,7 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
                 
             try:
                 order_info, order_buy_message = KIS.order_buy_US(ticker, quantity, price)
+                order_messages.extend(order_buy_message)
                 
                 if order_info and order_info.get('success') == True:
                     order_info = {
@@ -341,16 +334,8 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
                         'split_index': i
                     }
                     Buy_order.append(order_info)
-
-                    # 수정: 변수명 변경 (i → j) 또는 extend 사용
-                    if order_buy_message and len(order_buy_message) > 0:
-                        order_messages.extend(order_buy_message)  # extend 사용
-                    order_messages.append(f"✅ {ticker} {quantity}주 @${price} (분할{i+1})")
                 else:
                     error_msg = order_info.get('error_message', 'Unknown error') if order_info else 'API 호출 실패'
-                    if order_buy_message and len(order_buy_message) > 0:
-                        order_messages.extend(order_buy_message)  # extend 사용
-                    order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                     Buy_order.append({
                         'success': False,
                         'ticker': ticker,
@@ -381,9 +366,7 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
     total_count = len(Buy_order)
     order_messages.append(f"매수 주문: {success_count}/{total_count} 완료")
 
-    KA.SendMessage("\n".join(order_messages))
-
-    return Buy_order
+    return Buy_order, order_messages
 
 def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA): # Edit사용
     """
@@ -1290,9 +1273,34 @@ if order_time['round'] == 1:
     sell_split_HAA = [round_split["sell_splits"], round_split["sell_price_HAA"]]
     buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
 
-    # 주문
-    Sell_order = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
-    Buy_order = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
+    # 매도주문
+    Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
+    message.extend(order_messages)
+    
+    order_messages = [] # 메세지 초기화
+    
+    # 예수금에 맞는 주문수량 구하기
+    FULL_BUYUSD = 0
+    
+    for ticker in USLA_ticker:
+        invest = USLA[ticker]['buy_qty'] * USLA[ticker]['current_price']
+        FULL_BUYUSD += invest
+    for ticker in HAA_ticker:
+        invest = HAA[ticker]['buy_qty'] * HAA[ticker]['current_price']
+        FULL_BUYUSD += invest
+        
+    if FULL_BUYUSD > USD:
+        ADJUST_RATE = USD / FULL_BUYUSD
+        for ticker in USLA_ticker:
+            USLA[ticker]['buy_qty'] = int(USLA[ticker]['buy_qty'] * ADJUST_RATE)
+        for ticker in HAA_ticker:
+            HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
+    else:
+        pass  # 예수금이 충분할 경우 조정 없음
+
+    # 매수주문
+    Buy_order, order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
+    message.extend(order_messages)
 
     # 다음 order time으로 넘길 Trading data json 데이터 저장
     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
@@ -1372,8 +1380,33 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
 
     # 주문
-    Sell_order = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
-    Buy_order = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
+    Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
+    order_messages.extend(order_messages)
+    
+    order_messages = [] # 메세지 초기화
+    
+    # 예수금에 맞는 주문수량 구하기
+    FULL_BUYUSD = 0
+    
+    for ticker in USLA_ticker:
+        invest = USLA[ticker]['buy_qty'] * USLA[ticker]['current_price']
+        FULL_BUYUSD += invest
+    for ticker in HAA_ticker:
+        invest = HAA[ticker]['buy_qty'] * HAA[ticker]['current_price']
+        FULL_BUYUSD += invest
+        
+    if FULL_BUYUSD > USD:
+        ADJUST_RATE = USD / FULL_BUYUSD
+        for ticker in USLA_ticker:
+            USLA[ticker]['buy_qty'] = int(USLA[ticker]['buy_qty'] * ADJUST_RATE)
+        for ticker in HAA_ticker:
+            HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
+    else:
+        pass  # 예수금이 충분할 경우 조정 없음
+    
+    # 매수주문
+    Buy_order, buy_order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
+    order_messages.extend(buy_order_messages)
 
     # 다음 order time으로 넘길 Trading data json 데이터 저장
     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
@@ -1401,7 +1434,6 @@ elif order_time['round'] == 25:  # 최종기록
     except Exception as e:
         message = []
         message.append(f"USAA_Message JSON 파일 오류: {e}")
-        sys.exit(0)
      
     # ============================================
     # 2단계: 최종 미체결 주문 취소 + 모여진 메세지 출력
