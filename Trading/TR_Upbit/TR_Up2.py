@@ -22,6 +22,24 @@ TR_data_path = '/var/autobot/TR_Upbit/TR_data2.json'
 now, current_time, TR_time = UP.what_time()
 message = []
 
+def send_messages_in_chunks(messages, max_length=900):
+    current_chunk = []
+    current_length = 0
+    
+    for msg in messages:
+        msg_length = len(msg) + 1  # \n 포함
+        if current_length + msg_length > max_length:
+            KA.SendMessage("\n".join(current_chunk))
+            time_module.sleep(1)
+            current_chunk = [msg]
+            current_length = msg_length
+        else:
+            current_chunk.append(msg)
+            current_length += msg_length
+    
+    if current_chunk:
+        KA.SendMessage("\n".join(current_chunk))
+
 # If 8:58 Trading 8분할(첫 번째)에만 전일 Upbit_data json읽고 Signal계산, 투자 금액 산출 후 다시 저장
 try:
     if TR_time[1] == 8: # 8:58 8분할 매매시에만 실행
@@ -67,6 +85,7 @@ try:
                 TR_data = json.load(f)
         except Exception as e:
             message.append(f"Upbit {TR_time[0]} JSON 파일 오류: {e}")
+            send_messages_in_chunks(message, max_length=900)
             sys.exit(1) # 오류와 함께 종료
 
         # 변수지정
@@ -182,6 +201,9 @@ try:
 except Exception as e:
         message.append(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
 
+send_messages_in_chunks(message, max_length=900)
+message = []  # 메시지 초기화
+
 time_module.sleep(1) # 타임슬립 1초
 
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
@@ -287,15 +309,19 @@ try:
         GU.save_to_sheets(spreadsheet,TR_data, current_month)
     else:
         pass
+    send_messages_in_chunks(message, max_length=900)
+    message = []  # 메시지 초기화
 
 except Exception as e:
     message.append(f"Upbit {TR_time[0]} 당일 data 기록 중 예외 오류: {e}")
+    send_messages_in_chunks(message, max_length=900)
+    message = []  # 메시지 초기화
 
 #### 검증 > 마지막에 crontab에서 5분 후 자동종료 되게 설정
 if TR_time[1] == 0:
     print(f"Upbit {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
     message.append(f"Upbit {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
+    send_messages_in_chunks(message, max_length=900)
+    message = []  # 메시지 초기화
 
-KA.SendMessage("\n".join(message))
-message = []  # 메시지 초기화
 sys.exit()

@@ -1158,6 +1158,24 @@ def split_data(round): # 신규 생성 사용
 
     return round_split
 
+def send_messages_in_chunks(message, max_length=900):
+    current_chunk = []
+    current_length = 0
+    
+    for msg in message:
+        msg_length = len(msg) + 1  # \n 포함
+        if current_length + msg_length > max_length:
+            KA.SendMessage("\n".join(current_chunk))
+            time_module.sleep(1)
+            current_chunk = [msg]
+            current_length = msg_length
+        else:
+            current_chunk.append(msg)
+            current_length += msg_length
+    
+    if current_chunk:
+        KA.SendMessage("\n".join(current_chunk))
+
 # ============================================
 # 메인 로직 # 연단위 모델간 리밸런싱
 # ============================================
@@ -1282,7 +1300,6 @@ if order_time['round'] == 1:
     # 매도주문
     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
     message.extend(order_messages)
-    
     order_messages = [] # 메세지 초기화
     
     # 예수금에 맞는 주문수량 구하기
@@ -1326,7 +1343,7 @@ if order_time['round'] == 1:
     # 다음 order time으로 넘길 Trading data json 데이터 저장
     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
     message.extend(saveTR_message)
-    KA.SendMessage("\n".join(message))
+    send_messages_in_chunks(message, max_length=900)
 
     sys.exit(0)
 
@@ -1338,7 +1355,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             message = json.load(f)
     print_time = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
     if order_time['round'] in print_time:
-        KA.SendMessage("\n".join(message))
+        send_messages_in_chunks(message, max_length=900)
         message = [] # 메세지 초기화
         
     message.extend(start_message)
@@ -1473,7 +1490,7 @@ elif order_time['round'] == 25:  # 최종기록
     except Exception as e:
         message.append(f"USAA 주문 취소 오류: {e}")
         
-    KA.SendMessage("\n".join(message))
+    send_messages_in_chunks(message, max_length=900)
 
     # ============================================
     # 3단계: 최종 데이터 출력
@@ -1502,7 +1519,7 @@ elif order_time['round'] == 25:  # 최종기록
     message.append(f"총 평가금: {Total_balance:,.2f} USD")
 
     # 카톡 리밸 종료 결과 보내기
-    KA.SendMessage("\n".join(message))
+    send_messages_in_chunks(message, max_length=900)
     
     # 시스템 종료
     sys.exit(0)

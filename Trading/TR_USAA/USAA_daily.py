@@ -21,6 +21,24 @@ acnt_prdt_cd = "01"
 KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
 
+def send_messages_in_chunks(message, max_length=900):
+    current_chunk = []
+    current_length = 0
+    
+    for msg in message:
+        msg_length = len(msg) + 1  # \n 포함
+        if current_length + msg_length > max_length:
+            KA.SendMessage("\n".join(current_chunk))
+            time.sleep(1)
+            current_chunk = [msg]
+            current_length = msg_length
+        else:
+            current_chunk.append(msg)
+            current_length += msg_length
+    
+    if current_chunk:
+        KA.SendMessage("\n".join(current_chunk))
+
 message = []
 try:
     # 지난 USLA data 불러오기
@@ -130,7 +148,7 @@ try:
     # KaKaoTalk 알림
     for key, value in USLA_data.items():
         message.append(f"{key}: {value}")
-    KA.SendMessage("\n".join(message))
+    send_messages_in_chunks(message, max_length=900)
 
     # google sheet 업로드
     credentials_file = "/var/autobot/gspread/service_account.json" # 구글 서비스 계정 JSON 파일 경로
