@@ -200,7 +200,7 @@ try:
 
 except Exception as e:
         message.append(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
-
+        
 send_messages_in_chunks(message, max_length=900)
 message = []  # 메시지 초기화
 
@@ -289,11 +289,11 @@ try:
         # KakaoTalk 메시지 보내기
         ETH_target = TR_data["ETH_target"]
         BTC_target = TR_data["BTC_target"]
-        message.append(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
-        message.append(f"Upbit 일수익률: {Daily_return}% \n월수익률: {Monthly_return}% \n연수익률: {Yearly_return}% \n환산잔고: {round(Total):,}원 \nETH: {ETH:,}, BTC: {BTC:,} \nKRW: {(round(KRW)):,}원")
-        message.append(f"Upbit ETH Position: {ETH_Position} \nETH weight: {ETH_weight} \nETH target: {ETH_target}")
-        message.append(f"Upbit BTC Position: {BTC_Position} \nBTC_weight: {BTC_weight} \nBTC_target: {BTC_target}")
-
+        message.append(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} 당일 트레이딩 완료")
+        message.append(f"수익률 - 일: {Daily_return}% | 월: {Monthly_return}% | 연: {Yearly_return}%")
+        message.append(f"환산잔고: {round(Total):,}원")
+        message.append(f"보유현황 - ETH: {ETH:.6f} | BTC: {BTC:.6f} | KRW: {round(KRW):,}원")
+        message.append(f"포지션 - ETH: {ETH_Position}({ETH_weight}) | BTC: {BTC_Position}({BTC_weight})")
         # Google Spreadsheet에 데이터 추가
         # 설정값 (실제 값으로 변경 필요)
         credentials_file = "/var/autobot/gspread/service_account.json" # 구글 서비스 계정 JSON 파일 경로
