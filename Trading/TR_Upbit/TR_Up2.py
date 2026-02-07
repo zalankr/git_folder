@@ -40,12 +40,12 @@ try:
         # Upbit_data.json파일 생성 후 알림
         with open(TR_data_path, 'w', encoding='utf-8') as f:
             json.dump(TR_data, f, ensure_ascii=False, indent=4)
-        message.extend(f"Upbit Trading, {TR_time[0]} Upbit trade 당일 전략 data 생성완료")
+        message.append(f"Upbit Trading, {TR_time[0]} Upbit trade 당일 전략 data 생성완료")
     else:
         pass
 
 except Exception as e:
-    message.extend(f"Upbit {TR_time[0]} \nUpbit trade 당일 전략 생성 시 예외 오류: {e}")
+    message.append(f"Upbit {TR_time[0]} \nUpbit trade 당일 전략 생성 시 예외 오류: {e}")
 
 time_module.sleep(1) # 타임슬립 1초
 
@@ -105,7 +105,7 @@ try:
                 message.extend(Upmessage)
                 Upmessage = []  # 메시지 초기화
             else:
-                message.extend(f"Upbit {TR_time[0]} ETH Sell_half: 매도할 수량 없음 (보유: {ETH:.8f}, 목표: {ETH_target:.8f})")
+                message.append(f"Upbit {TR_time[0]} ETH Sell_half: 매도할 수량 없음 (보유: {ETH:.8f}, 목표: {ETH_target:.8f})")
         
         elif ETH_Position == "Buy_full" or ETH_Position == "Buy_half":
             KRWETH_buy = TR_data["KRWETH_buy"]
@@ -181,7 +181,7 @@ try:
 
 except Exception as e:
         message.append(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
-        KA.SendMessage("\n".join(message))
+
 time_module.sleep(1) # 타임슬립 1초
 
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
@@ -289,7 +289,6 @@ try:
         pass
 
 except Exception as e:
-    print(f"Upbit {TR_time[0]} 당일 data 기록 중 예외 오류: {e}")
     message.append(f"Upbit {TR_time[0]} 당일 data 기록 중 예외 오류: {e}")
 
 #### 검증 > 마지막에 crontab에서 5분 후 자동종료 되게 설정
