@@ -278,11 +278,6 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):  # Edit사용
             Buy_HAA[ticker] = HAA[ticker]['buy_qty']
 
     Buy = {**Buy_USLA, **Buy_HAA}
-
-    if USD < 0:
-        USD = 0
-        order_messages.append("매수 가능 USD 부족")
-        return Buy_order, order_messages
     
     if len(Buy.keys()) == 0:
         order_messages.append("매수할 종목이 없습니다.")
@@ -984,7 +979,12 @@ def HAA_target_regime(): # Edit사용
             return HAA_target, HAA_regime, HAA_target_regime_message
         
         # Regime구하기
-        regime = momentum_scores['TIP']
+        regime = None
+        for score in momentum_scores:
+            if score['ticker'] == 'TIP':
+                regime = score['momentum']
+                break
+
         if regime is None:
             HAA_target_regime_message.append(f"HAA 경고: {Regime_ETF} 모멘텀 데이터를 찾을 수 없습니다.")
             return HAA_target, HAA_regime, HAA_target_regime_message
@@ -1005,32 +1005,17 @@ def HAA_target_regime(): # Edit사용
             aggresive_df['rank'] = aggresive_df['momentum'].rank(ascending=False)
             aggresive_df = aggresive_df.sort_values('rank').reset_index(drop=True)
 
-            # 모멘텀 상위 종목 출력 (최대 8개 또는 실제 데이터 개수 중 적은 것)
-            num_tickers = min(8, len(momentum_df))
-            momentum = momentum_df.head(num_tickers)
+            top_tickers = aggresive_df.head(4)['ticker'].tolist()
 
-            HAA_target_regime_message.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
-            for i in range(num_tickers):
-                ticker = momentum.iloc[i]['ticker']
-                score = momentum.iloc[i]['momentum']
-                HAA_target_regime_message.append(f"{i+1}위: {ticker} ({score:.4f})")
+            # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
+            weights = 0.25 # 25%씩 할당
+            HAA_target = {ticker: weights for ticker in top_tickers}
+            HAA_regime = regime
 
-            # 상위 4개 ETF 선택
-            if len(momentum_df) < 4:
-                HAA_target_regime_message.append(f"HAA 경고: 모멘텀 데이터가 4개 미만입니다. CASH로 대기합니다.")
-                return HAA_target, HAA_regime, HAA_target_regime_message
-            else:
-                top_tickers = momentum_df.head(4)['ticker'].tolist()
-                
-                # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
-                weights = 0.25 # 25%씩 할당
-                HAA_target = {ticker: weights for ticker in top_tickers}
-                HAA_regime = regime
+            for ticker, weight in HAA_target.items():
+                HAA_target_regime_message.append(f"{ticker}: {weight:.2%}")
 
-                for ticker, weight in HAA_target.items():
-                    HAA_target_regime_message.append(f"{ticker}: {weight:.2%}")
-
-                return HAA_target, HAA_regime, HAA_target_regime_message
+            return HAA_target, HAA_regime, HAA_target_regime_message
 
         # regime 음수일 때 defensive ETF의 모멘텀 점수 구하기    
         elif regime < 0:
@@ -1038,37 +1023,18 @@ def HAA_target_regime(): # Edit사용
             defensive_df['rank'] = defensive_df['momentum'].rank(ascending=False)
             defensive_df = defensive_df.sort_values('rank').reset_index(drop=True)
 
-            # 모멘텀 상위 종목 출력 (최대 2개 또는 실제 데이터 개수 중 적은 것)
-            num_tickers = min(2, len(momentum_df))
-            momentum = momentum_df.head(num_tickers)
+            top_ticker = defensive_df.head(1)['ticker']
 
-            HAA_target_regime_message.append(f"HAA Regime: {regime:.2f}", "모멘텀 순위:")
-            for i in range(num_tickers):
-                ticker = momentum.iloc[i]['ticker']
-                score = momentum.iloc[i]['momentum']
-                HAA_target_regime_message.append(f"{i+1}위: {ticker} ({score:.4f})")
-            # 상위 1개 ETF 선택
-            if len(momentum_df) < 1:
-                HAA_target_regime_message.append(f"HAA 경고: 모멘텀 데이터가 1개 미만입니다. CASH로 대기합니다.")
-                return HAA_target, HAA_regime, HAA_target_regime_message
-            else:
-                top_tickers = momentum_df.head(1)['ticker'].tolist()
-                
-                # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
-                if top_tickers == ['IEF']:
-                    HAA_target = {'IEF': 1.0}
-                    # HAA_target['IEF'] = 1.0
+            # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
+            if top_ticker == 'IEF':
+                HAA_target = {'IEF': 1.0}
 
-                elif top_tickers == ['BIL']:
-                    HAA_target = {'CASH': 1.0}
-                    # HAA_target['CASH'] = 1.0  # 100% 현금 보유
-                
-                HAA_regime = regime
+            elif top_ticker == 'BIL':
+                HAA_target = {'CASH': 1.0} # 100% 현금 보유
 
-                for ticker, weight in HAA_target.items():
-                    HAA_target_regime_message.append(f"{ticker}: {weight:.2%}")
+            HAA_target_regime_message.append(f"{top_ticker}: {weights:.2%}")
 
-                return HAA_target, HAA_regime, HAA_target_regime_message
+            return HAA_target, HAA_regime, HAA_target_regime_message
 
     except Exception as e:
         HAA_target_regime_message.append(f"HAA_momentum 전체 오류: {e}")
@@ -1306,6 +1272,9 @@ if order_time['round'] == 1:
 
     HAA = {}
     for ticker in HAA_ticker:
+        if ticker == 'TIP':
+            continue
+
         if ticker not in HAA_target:
             HAA[ticker] = {
                 'hold_qty': HAA_qty[ticker], # 현재 보유량
