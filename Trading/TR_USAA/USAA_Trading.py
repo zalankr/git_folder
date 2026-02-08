@@ -1467,6 +1467,9 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
     HAA = TR_data["HAA"]
     for ticker in HAA_ticker:
+        # TIP은 건너뛰기
+        if ticker == 'TIP':
+            continue
         HAA[ticker]['hold_qty'] = HAA_qty[ticker]  # 현재 보유량 업데이트
         HAA[ticker]['current_price'] = HAA_price[ticker]  # 현재가 업데이트
         if HAA_price[ticker] <= 0:
@@ -1500,6 +1503,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
+    price_error = False
     
     for ticker in USLA_ticker:
         if USLA[ticker]['current_price'] <= 0:
