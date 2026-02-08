@@ -180,6 +180,17 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):  # Edit사�
             if quantity == 0:
                 continue
 
+            # if ticker in USLA_ticker:
+            #     if i < len(sell_split_USLA[1]):
+            #         price = round(current_price * sell_split_USLA[1][i], 2)
+            #     else:
+            #         price = round(current_price * 0.99, 2)  # 기본값
+            # else:
+            #     if i < len(sell_split_HAA[1]):
+            #         price = round(current_price * sell_split_HAA[1][i], 2)
+            #     else:
+            #         price = round(current_price * 0.99, 2)  # 기본값
+
             if ticker in USLA_ticker:
                 price = round(current_price * sell_split_USLA[1][i], 2)
             else:
@@ -1084,68 +1095,98 @@ def split_data(round): # 신규 생성 사용
         if round == 12:
             pass
         elif round == 13:
-            sell_price_adjust[0] = 0.99
+            sell_price_USLA[0] = 0.99
+            sell_price_HAA[0] = 0.99
         elif round == 14:
             sell_splits = 4
-            sell_price_adjust = sell_price_adjust[:sell_splits]
-            buy_price_adjust[0] = 1.01
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
+            buy_price_USLA[0] = 1.01
+            buy_price_HAA[0] = 1.01
         elif round == 15:
             sell_splits = 4
-            sell_price_adjust = sell_price_adjust[:sell_splits]
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
             buy_splits = 4
-            buy_price_adjust = buy_price_adjust[:buy_splits]
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
         elif round == 16:
             sell_splits = 4
-            sell_price_adjust = sell_price_adjust[:sell_splits]
-            sell_price_adjust[0] = 0.99
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_USLA[0] = 0.99
+            sell_price_HAA = sell_price_HAA[:sell_splits]
+            sell_price_HAA[0] = 0.99
             buy_splits = 4
-            buy_price_adjust = buy_price_adjust[:buy_splits]
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
         elif round == 17:
             sell_splits = 3
-            sell_price_adjust = sell_price_adjust[:sell_splits]
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
             buy_splits = 4
-            buy_price_adjust = buy_price_adjust[:buy_splits]
-            buy_price_adjust[0] = 1.01
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
+            buy_price_USLA[0] = 1.01
+            buy_price_HAA[0] = 1.01
         elif round == 18:
             sell_splits = 3
-            sell_price_adjust = sell_price_adjust[:sell_splits]
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
             buy_splits = 3
-            buy_price_adjust = buy_price_adjust[:buy_splits]
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
         elif round == 19:
             sell_splits = 3
-            sell_price_adjust = sell_price_adjust[:sell_splits]
-            sell_price_adjust[0] = 0.99
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]    
+            sell_price_USLA[0] = 0.99
+            sell_price_HAA[0] = 0.99
             buy_splits = 3
-            buy_price_adjust = buy_price_adjust[:buy_splits]
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
         elif round == 20:
             sell_splits = 2
-            sell_price_adjust = sell_price_adjust[:sell_splits]
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
             buy_splits = 3
-            buy_price_adjust = buy_price_adjust[:buy_splits]
-            buy_price_adjust[0] = 1.01
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
+            buy_price_USLA[0] = 1.01
+            buy_price_HAA[0] = 1.01
         elif round == 21:
             sell_splits = 2
-            sell_price_adjust = sell_price_adjust[:sell_splits]
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
             buy_splits = 2
-            buy_price_adjust = buy_price_adjust[:buy_splits]
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
         elif round == 22:
             sell_splits = 2
-            sell_price_adjust = sell_price_adjust[:sell_splits]
-            sell_price_adjust[0] = 0.99
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
+            sell_price_USLA[0] = 0.99
+            sell_price_HAA[0] = 0.99
             buy_splits = 2
-            buy_price_adjust = buy_price_adjust[:buy_splits]
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_HAA = buy_price_HAA[:buy_splits]
         elif round == 23:
             sell_splits = 1
-            sell_price_adjust = sell_price_adjust[:sell_splits]
-            sell_price_adjust[0] = 0.98
+            sell_price_USLA = sell_price_USLA[:sell_splits]
+            sell_price_HAA = sell_price_HAA[:sell_splits]
+            sell_price_USLA[0] = 0.98
+            sell_price_HAA[0] = 0.98
             buy_splits = 2
-            buy_price_adjust = buy_price_adjust[:buy_splits]
-            buy_price_adjust[0] = 1.01
+            buy_price_USLA = buy_price_USLA[:buy_splits]
+            buy_price_USLA[0] = 1.01
+            buy_price_HAA = buy_price_HAA[:buy_splits]
+            buy_price_HAA[0] = 1.01
         elif round == 24:
             sell_splits = 1
-            sell_price_adjust = [0.98]
+            sell_price_USLA = [0.98]
+            sell_price_HAA = [0.98]
             buy_splits = 1
-            buy_price_adjust = [1.02]
+            buy_price_USLA = [1.02]
+            buy_price_HAA = [1.02]
         
     round_split = {
         "sell_splits": sell_splits, 
@@ -1290,6 +1331,23 @@ if order_time['round'] == 1:
                 'sell_qty': HAA_qty[ticker] - HAA_target_qty if HAA_target_qty < HAA_qty[ticker] else 0 # 해당 티커의 매도 수량                
             }
 
+    # 목표비중 합계 검증
+    total_weight = 0
+    for ticker in USLA.keys():
+        total_weight += USLA[ticker].get('target_weight', 0)
+    for ticker in HAA.keys():
+        total_weight += HAA[ticker].get('target_weight', 0)
+
+    if total_weight > 1.01:
+        error_msg = f"❌ 목표 비중 초과: {total_weight:.2%}"
+        message.append(error_msg)
+        KA.SendMessage("\n".join(message))
+        sys.exit(1)
+    elif total_weight < 0.90:
+        message.append(f"⚠️ 목표 비중 부족: {total_weight:.2%}")
+    else:
+        message.append(f"✓ 목표 비중 합계: {total_weight:.2%}")
+
     # 회차별 분할 데이터 트레이딩
     round_split = split_data(order_time['round'])
     sell_split_USLA = [round_split["sell_splits"], round_split["sell_price_USLA"]]
@@ -1393,9 +1451,14 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         USLA[ticker]['hold_qty'] = USLA_qty[ticker]  # 현재 보유량 업데이트
         USLA[ticker]['current_price'] = USLA_price[ticker]  # 현재가 업데이트
         if USLA_price[ticker] <= 0:
-            USLA_target_qty = 0
-        else:
-            USLA_target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
+            USLA[ticker]['target_qty'] = USLA_qty[ticker]  # ← 현재 수량 유지 (핵심!)
+            USLA[ticker]['target_balance'] = 0
+            USLA[ticker]['buy_qty'] = 0
+            USLA[ticker]['sell_qty'] = 0
+            continue
+
+        USLA_target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
         USLA_target_balance = USLA[ticker]['target_weight'] * Total_balance
         USLA[ticker]['target_balance'] = USLA_target_balance  # 목표투자금 업데이트
         USLA[ticker]['target_qty'] = USLA_target_qty  # 목표수량 업데이트
@@ -1408,8 +1471,14 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         HAA[ticker]['current_price'] = HAA_price[ticker]  # 현재가 업데이트
         if HAA_price[ticker] <= 0:
             HAA_target_qty = 0
-        else:
-            HAA_target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
+            HAA[ticker]['target_qty'] = HAA_qty[ticker]  # ← 현재 수량 유지 (핵심!)
+            HAA[ticker]['target_balance'] = 0
+            HAA[ticker]['buy_qty'] = 0
+            HAA[ticker]['sell_qty'] = 0
+            continue
+
+        HAA_target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
         HAA_target_balance = HAA[ticker]['target_weight'] * Total_balance
         HAA[ticker]['target_balance'] = HAA_target_balance  # 목표투자금 업데이트
         HAA[ticker]['target_qty'] = HAA_target_qty  # 목표수량 업데이트
@@ -1433,11 +1502,24 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     FULL_BUYUSD = 0
     
     for ticker in USLA_ticker:
+        if USLA[ticker]['current_price'] <= 0:
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            USLA[ticker]['buy_qty'] = 0
+            price_error = True
+            continue
         invest = USLA[ticker]['buy_qty'] * USLA[ticker]['current_price']
         FULL_BUYUSD += invest
     for ticker in HAA_ticker:
+        if HAA[ticker]['current_price'] <= 0:
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            HAA[ticker]['buy_qty'] = 0
+            price_error = True
+            continue
         invest = HAA[ticker]['buy_qty'] * HAA[ticker]['current_price']
         FULL_BUYUSD += invest
+
+    if price_error:
+        message.append("⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
         
     if FULL_BUYUSD > USD:
         ADJUST_RATE = USD / FULL_BUYUSD
