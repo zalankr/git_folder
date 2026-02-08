@@ -7,6 +7,7 @@ def get_current():
     current = datetime.now()
     current_date = current.date()
     current_time = current.time()
+    
     # 현재 월이 1월인지 확인
     is_rebanlancing = 'not rebalancing'
     if current.month == 1:

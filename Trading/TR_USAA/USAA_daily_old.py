@@ -22,7 +22,6 @@ KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
 
 def send_messages_in_chunks(message, max_length=900):
-    """메시지를 최대 길이로 나누어 전송"""
     current_chunk = []
     current_length = 0
     
@@ -42,58 +41,46 @@ def send_messages_in_chunks(message, max_length=900):
 
 message = []
 try:
-    # 지난 USAA data 불러오기
+    # 지난 USLA data 불러오기
     with open(USAA_data_path, 'r', encoding='utf-8') as f:
-        previous_USAA_data = json.load(f)  # 변수명 변경하여 덮어쓰기 방지
+        USLA_data = json.load(f)
 
-    # 현재 날짜 업데이트
+    # date 업데이트
     current = datetime.now()
     current_date = current.date()
 
     # USAA 계좌잔고 조회
-    try:
-        USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = USAA.get_balance()
-        time.sleep(0.2)
-    except Exception as e:
-        error_msg = f"계좌 잔고 조회 실패: {e}"
-        print(error_msg)
-        KA.SendMessage(error_msg)
-        raise
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = USAA.get_balance()
+    time.sleep(0.2) # API 호출 간격 조절
     
     # USLA, HAA 타겟 및 레짐 산출
-    try:
-        USLA_target, USLA_regime, USLA_message = USAA.USLA_target_regime()
-        HAA_target, HAA_regime, HAA_message = USAA.HAA_target_regime()
-        time.sleep(0.2)
-    except Exception as e:
-        error_msg = f"타겟/레짐 산출 실패: {e}"
-        print(error_msg)
-        KA.SendMessage(error_msg)
-        raise
+    USLA_target, USLA_regime, USLA_message = USAA.USLA_target_regime()
+    HAA_target, HAA_regime, HAA_message = USAA.HAA_target_regime()
+    time.sleep(0.2) # API 호출 간격 조절
 
     # 당일 평가금 산출
     balance = float("{:.2f}".format(Total_balance))
     CASH = float("{:.2f}".format(USD))
 
     # 전일, 월초, 연초 전월말, 전년말 잔고 업데이트
-    last_day_balance = float("{:.2f}".format(previous_USAA_data.get('balance', balance)))
-    last_day_balance_KRW = int(previous_USAA_data.get('balance_KRW', 0))
+    last_day_balance = float("{:.2f}".format(USLA_data['balance'])) # USLA_data['balance']
+    last_day_balance_KRW = int(USLA_data['balance_KRW'])
 
-    if current.day == 1:  # 월초 전월 잔고 데이터 변경
+    if current.day == 1: # 월초 전월 잔고 데이터 변경
         last_month_balance = last_day_balance
         last_month_balance_KRW = last_day_balance_KRW
         message.append(f"월초, 전월 잔고를 {last_month_balance}원으로 업데이트했습니다.")
     else:
-        last_month_balance = previous_USAA_data.get('last_month_balance', balance)
-        last_month_balance_KRW = previous_USAA_data.get('last_month_balance_KRW', 0)
+        last_month_balance = USLA_data['last_month_balance']
+        last_month_balance_KRW = USLA_data['last_month_balance_KRW']
 
-    if current.month == 1 and current.day == 1:  # 연초 전년 잔고 데이터 변경
+    if current.month == 1 and current.day == 1: # 연초 전년 잔고 데이터 변경
         last_year_balance = last_day_balance
         last_year_balance_KRW = last_day_balance_KRW
         message.append(f"연초, 전년 잔고를 {last_year_balance}원으로 업데이트했습니다.")
     else:
-        last_year_balance = previous_USAA_data.get('last_year_balance', balance)
-        last_year_balance_KRW = previous_USAA_data.get('last_year_balance_KRW', 0)
+        last_year_balance = USLA_data['last_year_balance']
+        last_year_balance_KRW = USLA_data['last_year_balance_KRW']
 
     # 환율 조회
     try:
@@ -104,32 +91,28 @@ try:
         print(error_msg)
         KA.SendMessage(error_msg)
         # 이전 환율 사용
-        exchange_rate = previous_USAA_data.get('exchange_rate', 1400)  # 기본값 1400
+        exchange_rate = USAA_data.get('exchange_rate', 1400)  # 기본값 1400
 
     # 평가금 KRW 환산
     today_eval_KRW = int(balance * exchange_rate)
     
-    # 일, 월, 연 수익률 계산
-    daily_return = ((Total_balance - last_day_balance) / last_day_balance * 100) if last_day_balance > 0 else 0
+    # 일, 월, 연 수익률 #
+    daily_return = (Total_balance - last_day_balance) / last_day_balance * 100
     daily_return = float("{:.2f}".format(daily_return))
-    
-    monthly_return = ((Total_balance - last_month_balance) / last_month_balance * 100) if last_month_balance > 0 else 0
+    monthly_return = (Total_balance - last_month_balance) / last_month_balance * 100
     monthly_return = float("{:.2f}".format(monthly_return))
-    
-    yearly_return = ((Total_balance - last_year_balance) / last_year_balance * 100) if last_year_balance > 0 else 0
+    yearly_return = (Total_balance - last_year_balance) / last_year_balance * 100
     yearly_return = float("{:.2f}".format(yearly_return))
 
-    daily_return_KRW = ((today_eval_KRW - last_day_balance_KRW) / last_day_balance_KRW * 100) if last_day_balance_KRW > 0 else 0
+    daily_return_KRW = (today_eval_KRW - last_day_balance_KRW) / last_day_balance_KRW * 100
     daily_return_KRW = float("{:.2f}".format(daily_return_KRW))
-    
-    monthly_return_KRW = ((today_eval_KRW - last_month_balance_KRW) / last_month_balance_KRW * 100) if last_month_balance_KRW > 0 else 0
+    monthly_return_KRW = (today_eval_KRW - last_month_balance_KRW) / last_month_balance_KRW * 100
     monthly_return_KRW = float("{:.2f}".format(monthly_return_KRW))
-    
-    yearly_return_KRW = ((today_eval_KRW - last_year_balance_KRW) / last_year_balance_KRW * 100) if last_year_balance_KRW > 0 else 0
+    yearly_return_KRW = (today_eval_KRW - last_year_balance_KRW) / last_year_balance_KRW * 100
     yearly_return_KRW = float("{:.2f}".format(yearly_return_KRW))
 
-    # 새로운 USAA data 생성
-    new_USAA_data = {
+    # USLA data
+    USLA_data = {
         'date': str(current_date),
         'USLA_regime': USLA_regime,
         'UPRO': USLA_qty.get("UPRO", 0),
@@ -164,37 +147,28 @@ try:
         'yearly_return_KRW': yearly_return_KRW
     }
 
-    # USAA data 저장
+    # USLA data 저장
     with open(USAA_data_path, 'w', encoding='utf-8') as f:
-        json.dump(new_USAA_data, f, indent=4, ensure_ascii=False)
+        json.dump(USLA_data, f, indent=4, ensure_ascii=False)
 
-    # KakaoTalk 알림
-    for key, value in new_USAA_data.items():
+
+    # KaKaoTalk 알림
+    for key, value in USLA_data.items():
         message.append(f"{key}: {value}")
     send_messages_in_chunks(message, max_length=900)
 
-    # Google Sheet 업로드
-    try:
-        credentials_file = "/var/autobot/gspread/service_account.json"
-        spreadsheet_name = "2026_TR_USAA"
+    # google sheet 업로드
+    credentials_file = "/var/autobot/gspread/service_account.json" # 구글 서비스 계정 JSON 파일 경로
+    spreadsheet_name = "2026_TR_USAA" # 스프레드시트 이름
 
-        # Google 스프레드시트 연결
-        spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
+    # 구글 스프레드시트 연결
+    spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
 
-        # 현재 월 계산
-        current_month = current_date.month
+    # 현재 월 계산 
+    current_month = current_date.month
 
-        # 데이터 저장
-        GU.save_to_sheets(spreadsheet, new_USAA_data, current_month)
-    except Exception as e:
-        error_msg = f"Google Sheet 업로드 실패: {e}"
-        print(error_msg)
-        KA.SendMessage(error_msg)
-        # Google Sheet 업로드 실패는 전체 프로세스를 중단하지 않음
+    # 데이터 저장
+    GU.save_to_sheets(spreadsheet, USLA_data, current_month)
     
 except Exception as e:
-    error_msg = f"USAA_daily.py 에러 발생: {e}"
-    KA.SendMessage(error_msg)
-    raise  # 에러를 다시 발생시켜 스택 트레이스 확인 가능
-
-sys.exit(0)
+    KA.SendMessage(f"USAA_daily.py 에러 발생: {e}")
