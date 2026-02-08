@@ -1039,7 +1039,7 @@ def HAA_target_regime(): # Edit사용
                 HAA_target = {'CASH': 1.0} # 100% 현금 보유
 
             HAA_regime = regime
-            HAA_target_regime_message.append(f"{top_ticker}: {weights:.2%}")
+            HAA_target_regime_message.append(f"{top_ticker}: 100%")
 
             return HAA_target, HAA_regime, HAA_target_regime_message
 
@@ -1357,6 +1357,8 @@ if order_time['round'] == 1:
         FULL_BUYUSD += invest
         
     for ticker in HAA_ticker:
+        if ticker == 'TIP':
+            continue
         if HAA[ticker]['current_price'] <= 0:
             message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             HAA[ticker]['buy_qty'] = 0
@@ -1497,6 +1499,8 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         invest = USLA[ticker]['buy_qty'] * USLA[ticker]['current_price']
         FULL_BUYUSD += invest
     for ticker in HAA_ticker:
+        if ticker == 'TIP':
+            continue
         if HAA[ticker]['current_price'] <= 0:
             message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             HAA[ticker]['buy_qty'] = 0
