@@ -1005,10 +1005,16 @@ def HAA_target_regime(): # Edit사용
             aggresive_df['rank'] = aggresive_df['momentum'].rank(ascending=False)
             aggresive_df = aggresive_df.sort_values('rank').reset_index(drop=True)
 
-            top_tickers = aggresive_df.head(4)['ticker'].tolist()
-
             # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
-            weights = 0.25 # 25%씩 할당
+            if len(aggresive_df) < 4:
+                HAA_target_regime_message.append(f"HAA 경고: Aggressive ETF {len(aggresive_df)}개만 있음")
+                # 있는 만큼만 균등 배분
+                top_tickers = aggresive_df['ticker'].tolist()
+                weights = 1.0 / len(top_tickers)
+            else:
+                top_tickers = aggresive_df.head(4)['ticker'].tolist()
+                weights = 0.25
+
             HAA_target = {ticker: weights for ticker in top_tickers}
             HAA_regime = regime
 
@@ -1023,7 +1029,7 @@ def HAA_target_regime(): # Edit사용
             defensive_df['rank'] = defensive_df['momentum'].rank(ascending=False)
             defensive_df = defensive_df.sort_values('rank').reset_index(drop=True)
 
-            top_ticker = defensive_df.head(1)['ticker']
+            top_ticker = defensive_df.head(1)['ticker'].iloc[0]
 
             # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
             if top_ticker == 'IEF':
@@ -1032,6 +1038,7 @@ def HAA_target_regime(): # Edit사용
             elif top_ticker == 'BIL':
                 HAA_target = {'CASH': 1.0} # 100% 현금 보유
 
+            HAA_regime = regime
             HAA_target_regime_message.append(f"{top_ticker}: {weights:.2%}")
 
             return HAA_target, HAA_regime, HAA_target_regime_message
@@ -1214,26 +1221,33 @@ if order_time['round'] == 1:
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
-    ## 헷징 모드 확인 후 비중 조정
-    if USLA_qty == [] and HAA_qty == []: # USLA와 HAA 모두에 보유잔고 없음
-        USLA_target_balance = Total_balance * 0.7 # USLA모델에 USD 예수금의 70% 할당
+    ## 헷징 모드 확인 후 비중 조정: 빈 딕셔너리 체크 (값이 모두 0인지)
+    USLA_has_position = any(qty > 0 for qty in USLA_qty.values())
+    HAA_has_position = any(qty > 0 for qty in HAA_qty.values())
+
+    if not USLA_has_position and not HAA_has_position:
+        # 둘 다 보유 없음
+        USLA_target_balance = Total_balance * 0.7
         USLA_target_weight = 0.7
-        HAA_target_balance = Total_balance * 0.3  # HAA모델에 USD 예수금의 30% 할당
+        HAA_target_balance = Total_balance * 0.3
         HAA_target_weight = 0.3
-    elif USLA_qty == [] and HAA_qty != []: # USLA에만 ETF 잔고 없음
+    elif not USLA_has_position and HAA_has_position:
+        # USLA만 없음
         USLA_target_balance = USD * (70/70.6)
         USLA_target_weight = (USD * (70/70.6)) / Total_balance
         HAA_target_balance = HAA_balance + (USD * (0.6/70.6))
         HAA_target_weight = (HAA_balance + (USD * (0.6/70.6))) / Total_balance
-    elif USLA_qty != [] and HAA_qty == []: # HAA에만 ETF 잔고 없음
+    elif USLA_has_position and not HAA_has_position:
+        # HAA만 없음
         USLA_target_balance = USLA_balance + (USD * 1.4 / 31.4)
         USLA_target_weight = (USLA_balance + (USD * 1.4 / 31.4)) / Total_balance
-        HAA_target_balance = USD * (USD * 30 / 31.4)
+        HAA_target_balance = USD * (30 / 31.4)
         HAA_target_weight = (USD * (30 / 31.4)) / Total_balance
-    else: # 두 모델 모두에 ETF 잔고 있음 (정상 운용)
-        USLA_target_balance = USLA_balance + (USD * 0.7)  # 달러의 70%는 USLA모델에 할당
+    else:
+        # 둘 다 보유
+        USLA_target_balance = USLA_balance + (USD * 0.7)
         USLA_target_weight = (USLA_balance + (USD * 0.7)) / Total_balance
-        HAA_target_balance = HAA_balance + (USD * 0.3)  # 달러의 30%는 HAA모델에 할당
+        HAA_target_balance = HAA_balance + (USD * 0.3)
         HAA_target_weight = (HAA_balance + (USD * 0.3)) / Total_balance
 
     ## 만약 1월에는 비중 리밸런싱
