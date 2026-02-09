@@ -22,10 +22,17 @@ class KIS_API:
         self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09% 이벤트 계좌
         self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09% 이벤트 계좌
     
-    # API-Key 로드
+    # API-Key 로드 
     def _load_api_keys(self):
-        with open(self.key_file_path) as f:
-            self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
+        try:
+            with open(self.key_file_path) as f:
+                self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
+        except FileNotFoundError:
+            KA.SendMessage(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
+            sys.exit(1)
+        except Exception as e:
+            KA.SendMessage(f"API Key 로드 실패: {e}")
+            sys.exit(1)
     
     # 토큰 로드
     def load_token(self) -> Optional[Dict]:
