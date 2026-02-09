@@ -114,8 +114,13 @@ class KIS_API:
             'appKey': self.app_key,
             'appSecret': self.app_secret,
         }
-        res = requests.post(url, headers=headers, data=json.dumps(datas), timeout=5)
-        return res.json()["HASH"]
+        try:
+            res = requests.post(url, headers=headers, data=json.dumps(datas), timeout=5)
+            res.raise_for_status()
+            return res.json()["HASH"]
+        except Exception as e:
+            KA.SendMessage(f"Hashkey 생성 실패: {e}")
+            return ""
 
     # Ticker로 거래소명 조회
     def get_exchange_by_ticker(self, ticker: str) -> str:
