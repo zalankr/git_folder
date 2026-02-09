@@ -82,7 +82,7 @@ class KIS_API:
         url = f"{self.url_base}/{path}"
         
         try:
-            response = requests.post(url, headers=headers, data=json.dumps(body))
+            response = requests.post(url, headers=headers, data=json.dumps(body), timeout=10)
             response.raise_for_status()
             
             token_response = response.json()
@@ -114,7 +114,7 @@ class KIS_API:
             'appKey': self.app_key,
             'appSecret': self.app_secret,
         }
-        res = requests.post(url, headers=headers, data=json.dumps(datas))
+        res = requests.post(url, headers=headers, data=json.dumps(datas), timeout=5)
         return res.json()["HASH"]
 
     # Ticker로 거래소명 조회
@@ -190,7 +190,7 @@ class KIS_API:
         try:
             # 1단계: 현재체결가
             response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price", 
-                                   headers=headers, params=params)
+                                   headers=headers, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('rt_cd') == '0':
@@ -208,7 +208,7 @@ class KIS_API:
             # 2단계: 현재가상세
             headers['tr_id'] = "HHDFS76200200"
             response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price-detail",
-                                   headers=headers, params=params)
+                                   headers=headers, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('rt_cd') == '0':
@@ -234,7 +234,7 @@ class KIS_API:
                 "MODP": "0"
             }
             response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/dailyprice",
-                                   headers=headers, params=params_daily)
+                                   headers=headers, params=params_daily, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('rt_cd') == '0':
@@ -1278,7 +1278,7 @@ class KIS_API:
             path = "uapi/overseas-price/v1/quotations/dailyprice"
             url = f"{self.url_base}/{path}"
             
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=10)
             response.raise_for_status()
             
             result = response.json()
@@ -1354,7 +1354,7 @@ class KIS_API:
         
         # 1. 거래소 조회
         exchange = self.get_exchange_by_ticker(ticker)
-        if not isinstance(exchange, str) or exchange == "거래소 조회 실패":
+        if not isinstance(exchange, str) or exchange.startswith("error"):
             return f"error: {ticker} 거래소 조회 실패"
         
         # 2. 거래소 코드에 따른 통화 코드 설정
@@ -1391,7 +1391,7 @@ class KIS_API:
         }
         
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=10)
             response.raise_for_status()
             
             result = response.json()
@@ -1406,8 +1406,7 @@ class KIS_API:
                 # ovrs_pdno는 ticker를 의미
                 if item.get('ovrs_pdno', '').upper() == ticker:
                     holding_qty = float(item.get('ovrs_cblc_qty', '0'))
-                    
-                    # return holding_qty                    
+                                 
                     return {
                         'ticker': ticker, # 종목코드
                         'holding_qty': holding_qty, # 보유수량
