@@ -526,7 +526,7 @@ def get_monthly_prices_kis(ticker: str, start_date: str, end_date: str) -> pd.Se
     except Exception as e:
         KA.SendMessage(f"{ticker} 월간 가격 조회 오류: {e}")
 
-def get_daily_prices_kis(self, tickers: list, days: int = 90) -> pd.DataFrame: # Edit사용
+def get_daily_prices_kis(tickers: list, days: int = 90) -> pd.DataFrame: # Edit사용
     """
     KIS API로 일간 가격 데이터 조회 (포트폴리오 최적화용)
     
