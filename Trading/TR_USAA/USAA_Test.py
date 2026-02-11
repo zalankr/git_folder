@@ -1277,6 +1277,7 @@ if order_time['round'] == 1:
 
     USLA = {}
     for ticker in USLA_ticker:
+        USLA_price[ticker] = KIS.get_US_current_price(ticker)
         if ticker not in USLA_target:
             USLA[ticker] = {
                 'hold_qty': USLA_qty.get(ticker, 0), # 현재 보유량
@@ -1294,7 +1295,7 @@ if order_time['round'] == 1:
                 USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.98) / USLA_price[ticker])  # 2% 거래 안정성 마진 적용
             USLA[ticker] = {
                 'hold_qty': USLA_qty.get(ticker, 0), # 현재 보유량
-                'current_price': USLA_price[ticker], # 해당 티커의 현재가
+                'current_price': USLA_price[ticker] if ticker in USLA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
                 'target_weight': USLA_target[ticker] * USLA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
                 'target_balance': USLA_target[ticker] * USLA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': USLA_target_qty, # 해당 티커의 목표수량
@@ -1306,11 +1307,11 @@ if order_time['round'] == 1:
     for ticker in HAA_ticker:
         if ticker == 'TIP':
             continue
-
+        HAA_price[ticker] = KIS.get_US_current_price(ticker)
         if ticker not in HAA_target:
             HAA[ticker] = {
                 'hold_qty': HAA_qty.get(ticker, 0), # 현재 보유량
-                'current_price': HAA_price[ticker], # 해당 티커의 현재가
+                'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
                 'target_weight': 0, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
                 'target_balance': 0, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': 0, # 해당 티커의 목표수량
@@ -1324,7 +1325,7 @@ if order_time['round'] == 1:
                 HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.98) / HAA_price[ticker])  # 2% 거래 안정성 마진 적용
             HAA[ticker] = {
                 'hold_qty': HAA_qty.get(ticker, 0), # 현재 보유량
-                'current_price': HAA_price[ticker], # 해당 티커의 현재가
+                'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
                 'target_weight': HAA_target[ticker] * HAA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
                 'target_balance': HAA_target[ticker] * HAA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': HAA_target_qty, # 해당 티커의 목표수량
