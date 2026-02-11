@@ -1279,13 +1279,13 @@ if order_time['round'] == 1:
     for ticker in USLA_ticker:
         if ticker not in USLA_target:
             USLA[ticker] = {
-                'hold_qty': USLA_qty[ticker], # 현재 보유량
+                'hold_qty': USLA_qty.get(ticker, 0), # 현재 보유량
                 'current_price': USLA_price[ticker], # 해당 티커의 현재가
                 'target_weight': 0, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
                 'target_balance': 0, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': 0, # 해당 티커의 목표수량
                 'buy_qty': 0, # 해당 티커의 매수 수량
-                'sell_qty': USLA_qty[ticker] # 해당 티커의 매도 수량
+                'sell_qty': USLA_qty.get(ticker, 0) # 해당 티커의 매도 수량
             }
         elif ticker in USLA_target:
             if USLA_price[ticker] <= 0:
@@ -1293,13 +1293,13 @@ if order_time['round'] == 1:
             else:
                 USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.98) / USLA_price[ticker])  # 2% 거래 안정성 마진 적용
             USLA[ticker] = {
-                'hold_qty': USLA_qty[ticker], # 현재 보유량
+                'hold_qty': USLA_qty.get(ticker, 0), # 현재 보유량
                 'current_price': USLA_price[ticker], # 해당 티커의 현재가
                 'target_weight': USLA_target[ticker] * USLA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
                 'target_balance': USLA_target[ticker] * USLA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': USLA_target_qty, # 해당 티커의 목표수량
-                'buy_qty': USLA_target_qty - USLA_qty[ticker] if USLA_target_qty > USLA_qty[ticker] else 0, # 해당 티커의 매수 수량
-                'sell_qty': USLA_qty[ticker] - USLA_target_qty if USLA_target_qty < USLA_qty[ticker] else 0 # 해당 티커의 매도 수량
+                'buy_qty': USLA_target_qty - USLA_qty.get(ticker, 0) if USLA_target_qty > USLA_qty.get(ticker, 0) else 0, # 해당 티커의 매수 수량
+                'sell_qty': USLA_qty.get(ticker, 0) - USLA_target_qty if USLA_target_qty < USLA_qty.get(ticker, 0) else 0 # 해당 티커의 매도 수량
             }
 
     HAA = {}
@@ -1309,13 +1309,13 @@ if order_time['round'] == 1:
 
         if ticker not in HAA_target:
             HAA[ticker] = {
-                'hold_qty': HAA_qty[ticker], # 현재 보유량
+                'hold_qty': HAA_qty.get(ticker, 0), # 현재 보유량
                 'current_price': HAA_price[ticker], # 해당 티커의 현재가
                 'target_weight': 0, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
                 'target_balance': 0, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': 0, # 해당 티커의 목표수량
                 'buy_qty': 0, # 해당 티커의 매수 수량
-                'sell_qty': HAA_qty[ticker] # 해당 티커의 매도 수량                
+                'sell_qty': HAA_qty.get(ticker, 0) # 해당 티커의 매도 수량                
             }
         elif ticker in HAA_target:
             if HAA_price[ticker] <= 0:
@@ -1323,13 +1323,13 @@ if order_time['round'] == 1:
             else:
                 HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.98) / HAA_price[ticker])  # 2% 거래 안정성 마진 적용
             HAA[ticker] = {
-                'hold_qty': HAA_qty[ticker], # 현재 보유량
+                'hold_qty': HAA_qty.get(ticker, 0), # 현재 보유량
                 'current_price': HAA_price[ticker], # 해당 티커의 현재가
                 'target_weight': HAA_target[ticker] * HAA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
                 'target_balance': HAA_target[ticker] * HAA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
                 'target_qty': HAA_target_qty, # 해당 티커의 목표수량
-                'buy_qty': HAA_target_qty - HAA_qty[ticker] if HAA_target_qty > HAA_qty[ticker] else 0, # 해당 티커의 매수 수량
-                'sell_qty': HAA_qty[ticker] - HAA_target_qty if HAA_target_qty < HAA_qty[ticker] else 0 # 해당 티커의 매도 수량                
+                'buy_qty': HAA_target_qty - HAA_qty.get(ticker, 0) if HAA_target_qty > HAA_qty.get(ticker, 0) else 0, # 해당 티커의 매수 수량
+                'sell_qty': HAA_qty.get(ticker, 0) - HAA_target_qty if HAA_target_qty < HAA_qty.get(ticker, 0) else 0 # 해당 티커의 매도 수량                
             }
             
     print(USLA) ################################################# 지울 것
