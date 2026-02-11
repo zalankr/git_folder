@@ -1224,16 +1224,6 @@ if order_time['round'] == 1:
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
-    print("\n".join(message)) ################################################# 여기부터 지울 것
-    print(USD) ################################################# 
-    print(USLA_balance) #################################################
-    print(USLA_qty) #################################################
-    print(USLA_price) #################################################
-    print(HAA_balance) #################################################
-    print(HAA_qty) #################################################
-    print(HAA_price) #################################################
-    print(Total_balance) ################################################# 여기까지 지울 것
-
     ## 헷징 모드 확인 후 비중 조정: 빈 딕셔너리 체크 (값이 모두 0인지)
     USLA_has_position = any(qty > 0 for qty in USLA_qty.values())
     HAA_has_position = any(qty > 0 for qty in HAA_qty.values())
@@ -1332,26 +1322,25 @@ if order_time['round'] == 1:
                 'buy_qty': HAA_target_qty - HAA_qty.get(ticker, 0) if HAA_target_qty > HAA_qty.get(ticker, 0) else 0, # 해당 티커의 매수 수량
                 'sell_qty': HAA_qty.get(ticker, 0) - HAA_target_qty if HAA_target_qty < HAA_qty.get(ticker, 0) else 0 # 해당 티커의 매도 수량                
             }
-            
-    print(USLA) ################################################# 지울 것
-    print(HAA) ################################################# 지울 것
 
-#     # 목표비중 합계 검증
-#     total_weight = 0
-#     for ticker in USLA.keys():
-#         total_weight += USLA[ticker].get('target_weight', 0)
-#     for ticker in HAA.keys():
-#         total_weight += HAA[ticker].get('target_weight', 0)
+    # 목표비중 합계 검증
+    total_weight = 0
+    for ticker in USLA.keys():
+        total_weight += USLA[ticker].get('target_weight', 0)
+    for ticker in HAA.keys():
+        total_weight += HAA[ticker].get('target_weight', 0)
 
-#     if total_weight > 1.01:
-#         error_msg = f"❌ 목표 비중 초과: {total_weight:.2%}"
-#         message.append(error_msg)
-#         KA.SendMessage("\n".join(message))
-#         sys.exit(1)
-#     elif total_weight < 0.90:
-#         message.append(f"⚠️ 목표 비중 부족: {total_weight:.2%}")
-#     else:
-#         message.append(f"✓ 목표 비중 합계: {total_weight:.2%}")
+    if total_weight > 1.01:
+        error_msg = f"❌ 목표 비중 초과: {total_weight:.2%}"
+        message.append(error_msg)
+        KA.SendMessage("\n".join(message))
+        sys.exit(1)
+    elif total_weight < 0.90:
+        message.append(f"⚠️ 목표 비중 부족: {total_weight:.2%}")
+    else:
+        message.append(f"✓ 목표 비중 합계: {total_weight:.2%}")
+        
+    print("\n".join(message)) #################################################지울 것
 
 #     # 회차별 분할 데이터 트레이딩
 #     round_split = split_data(order_time['round'])
