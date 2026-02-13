@@ -1252,15 +1252,12 @@ if order_time['round'] == 1:
         HAA_target_weight = (HAA_balance + (USD * 0.3)) / Total_balance
 
     ## 만약 1월에는 비중 리밸런싱
-    order_time['month'] = 1 ######################################################## 테스트 후 지울 것
+    order_time['month'] = 1 ######################################################## 최초 + 테스트 후 지울 것
     if order_time['month'] == 1:
         USLA_target_weight = 0.7
         USLA_target_balance = Total_balance * USLA_target_weight
         HAA_target_weight = 0.3
         HAA_target_balance = Total_balance * HAA_target_weight
-        
-    print(f"USLA_target_balance: {USLA_target_balance}, USLA_target_weight: {USLA_target_weight}") #########지울 것
-    print(f"HAA_target_balance: {HAA_target_balance}, HAA_target_weight: {HAA_target_weight}") #########지울 것
 
     USLA = {}
     for ticker in USLA_ticker:
