@@ -226,7 +226,11 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
                     'split_index': i
                 })
             
-            time_module.sleep(0.5)
+            # 같은 티커의 분할 주문 사이는 1초, 다른 티커로 넘어갈 때는 0.5초
+            if i < sell_split_USLA[0] - 1:
+                time_module.sleep(1.0)  # 같은 티커 분할 주문 사이
+            else:
+                time_module.sleep(0.5)  # 다음 티커로
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
@@ -354,7 +358,11 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
                     'split_index': i
                 })
 
-            time_module.sleep(0.5)
+            # 같은 티커의 분할 주문 사이는 1초, 다른 티커로 넘어갈 때는 0.5초
+            if i < buy_split_USLA[0] - 1:
+                time_module.sleep(1.0)  # 같은 티커 분할 주문 사이
+            else:
+                time_module.sleep(0.5)  # 다음 티커로
 
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)

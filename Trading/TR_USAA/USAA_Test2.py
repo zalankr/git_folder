@@ -226,7 +226,11 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
                     'split_index': i
                 })
             
-            time_module.sleep(0.5)
+            # 같은 티커의 분할 주문 사이는 1초, 다른 티커로 넘어갈 때는 0.5초
+            if i < sell_split_USLA[0] - 1:
+                time_module.sleep(1.0)  # 같은 티커 분할 주문 사이
+            else:
+                time_module.sleep(0.5)  # 다음 티커로
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
@@ -354,7 +358,11 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
                     'split_index': i
                 })
 
-            time_module.sleep(0.5)
+            # 같은 티커의 분할 주문 사이는 1초, 다른 티커로 넘어갈 때는 0.5초
+            if i < buy_split_USLA[0] - 1:
+                time_module.sleep(1.0)  # 같은 티커 분할 주문 사이
+            else:
+                time_module.sleep(0.5)  # 다음 티커로
 
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
@@ -1185,7 +1193,7 @@ def send_messages_in_chunks(message, max_length=900):
 order_time = USAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
-order_time['round'] = 2 ######################################################## 테스트 후 지울 것
+order_time['round'] = 1 ######################################################## 테스트 후 지울 것
 
 if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
     KA.SendMessage(f"USAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USAA_day 리스트에 없습니다.")

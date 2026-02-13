@@ -338,55 +338,72 @@ class KIS_API:
             "hashkey": self.hashkey(data)
         }
 
-        try:
-            time.sleep(0.1)
-
-            response = requests.post(url, headers=headers, data=json.dumps(data))
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            # 응답 성공 여부 확인
-            if result.get('rt_cd') == '0':
-                output = result.get('output', {})
+        # 500 에러 재시도 로직
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0:
+                    time.sleep(2)  # 재시도 전 2초 대기
+                    order_sell_message.append(f"재시도 {attempt}/{max_retries}")
                 
-                order_info = {
-                    'success': True,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': output.get('ODNO', ''),      # 주문번호
-                    'order_time': output.get('ORD_TMD', ''),     # 주문시각
-                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                    'message': result.get('msg1', ''),
-                    'response': response
-                }
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+                response.raise_for_status()
                 
-                order_sell_message.append(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")                
-                return order_info, order_sell_message
-            else:
-                order_sell_message.append(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
-                order_info = {
-                    'success': False,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': '',
-                    'error_code': result.get('rt_cd'),
-                    'error_message': result.get('msg1', ''),
-                    'response': response
-                }
-                return order_info, order_sell_message
+                result = response.json()
                 
-        except requests.exceptions.RequestException as e:
-            order_sell_message.append(f"정규매도 주문 오류: {e}")
-            order_info = None
-            return order_info, order_sell_message
-                
-        except Exception as e:
-            order_sell_message.append(f"정규매도 주문 오류: {e}")
-            order_info = None
-            return order_info, order_sell_message
+                # 응답 성공 여부 확인
+                if result.get('rt_cd') == '0':
+                    output = result.get('output', {})
+                    
+                    order_info = {
+                        'success': True,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': output.get('ODNO', ''),      # 주문번호
+                        'order_time': output.get('ORD_TMD', ''),     # 주문시각
+                        'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
+                        'message': result.get('msg1', ''),
+                        'response': response
+                    }
+                    
+                    order_sell_message.append(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")                
+                    return order_info, order_sell_message
+                else:
+                    order_sell_message.append(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                    order_info = {
+                        'success': False,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': '',
+                        'error_code': result.get('rt_cd'),
+                        'error_message': result.get('msg1', ''),
+                        'response': response
+                    }
+                    return order_info, order_sell_message
+                    
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 500 and attempt < max_retries:
+                    order_sell_message.append(f"500 에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_sell_message.append(f"정규매도 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_sell_message
+                    
+            except Exception as e:
+                if attempt < max_retries:
+                    order_sell_message.append(f"에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_sell_message.append(f"정규매도 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_sell_message
+        
+        # 모든 재시도 실패
+        order_sell_message.append(f"정규매도 주문 최종 실패: 모든 재시도 소진")
+        return None, order_sell_message
 
     # 미국 정규시장 주식 매수 주문
     def order_buy_US(self, ticker: str, quantity: int, price: float, 
@@ -453,48 +470,70 @@ class KIS_API:
             "hashkey": self.hashkey(data)
         }
 
-        try:
-            time.sleep(0.1)
-
-            response = requests.post(url, headers=headers, data=json.dumps(data))
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if result.get('rt_cd') == '0':
-                output = result.get('output', {})
+        # 500 에러 재시도 로직
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0:
+                    time.sleep(2)  # 재시도 전 2초 대기
+                    order_buy_message.append(f"재시도 {attempt}/{max_retries}")
                 
-                order_info = {
-                    'success': True,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': output.get('ODNO', ''),
-                    'order_time': output.get('ORD_TMD', ''),
-                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                    'message': result.get('msg1', ''),
-                    'response': response
-                }
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+                response.raise_for_status()
                 
-                order_buy_message.append(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
-                return order_info, order_buy_message
-            else:
-                order_buy_message.append(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
-                return {
-                    'success': False,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': '',
-                    'error_code': result.get('rt_cd'),
-                    'error_message': result.get('msg1', ''),
-                    'response': response
-                }
+                result = response.json()
                 
-        except Exception as e:
-            order_buy_message.append(f"정규매수 주문 오류: {e}")
-            order_info = None
-            return order_info, order_buy_message
+                if result.get('rt_cd') == '0':
+                    output = result.get('output', {})
+                    
+                    order_info = {
+                        'success': True,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': output.get('ODNO', ''),
+                        'order_time': output.get('ORD_TMD', ''),
+                        'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
+                        'message': result.get('msg1', ''),
+                        'response': response
+                    }
+                    
+                    order_buy_message.append(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
+                    return order_info, order_buy_message
+                else:
+                    order_buy_message.append(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                    return {
+                        'success': False,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': '',
+                        'error_code': result.get('rt_cd'),
+                        'error_message': result.get('msg1', ''),
+                        'response': response
+                    }, order_buy_message
+                    
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 500 and attempt < max_retries:
+                    order_buy_message.append(f"500 에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_buy_message.append(f"정규매수 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_buy_message
+                    
+            except Exception as e:
+                if attempt < max_retries:
+                    order_buy_message.append(f"에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_buy_message.append(f"정규매수 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_buy_message
+        
+        # 모든 재시도 실패
+        order_buy_message.append(f"정규매수 주문 최종 실패: 모든 재시도 소진")
+        return None, order_buy_message
     
     # 미국 주간거래 매수 주문 (국내 증권사지원 주간거래)
     def order_daytime_buy_US(self, ticker: str, quantity: int, price: float,
