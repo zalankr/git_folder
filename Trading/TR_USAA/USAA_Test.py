@@ -71,7 +71,7 @@ def get_balance():
         USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
     else:
         USD = 0  # API 호출 실패 시 처리
-    time_module.sleep(0.05)
+    time_module.sleep(0.1)
 
     USLA_balance = 0 # 해당 모델 현재 달러화 잔고
     USLA_qty = {} # 해당 티커 현재 보유량
@@ -85,7 +85,7 @@ def get_balance():
         else:
             eval_amount = 0  # 문자열(에러) 반환 시 처리
         USLA_balance += eval_amount
-        time_module.sleep(0.05)
+        time_module.sleep(0.1)
 
     HAA_balance = 0 # 해당 모델 현재 달러화 잔고
     HAA_qty = {} # 해당 티커 현재 보유량
@@ -101,7 +101,7 @@ def get_balance():
         else:
             eval_amount = 0  # 문자열(에러) 반환 시 처리
         HAA_balance += eval_amount
-        time_module.sleep(0.05)
+        time_module.sleep(0.1)
 
     Total_balance = USLA_balance + HAA_balance + USD # 전체 잔고
 

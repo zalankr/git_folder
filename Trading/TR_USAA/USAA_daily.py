@@ -20,6 +20,8 @@ cano = "63604155"
 acnt_prdt_cd = "01"
 KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
+USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
+HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
 
 def send_messages_in_chunks(message, max_length=900):
     """메시지를 최대 길이로 나누어 전송"""
@@ -39,6 +41,49 @@ def send_messages_in_chunks(message, max_length=900):
     
     if current_chunk:
         KA.SendMessage("\n".join(current_chunk))
+
+def get_balance(): # 신규 생성 사용
+    # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
+    USD_account = KIS.get_US_dollar_balance()
+    if USD_account:
+        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
+    else:
+        USD = 0  # API 호출 실패 시 처리
+    time.sleep(0.1)
+
+    USLA_balance = 0 # 해당 모델 현재 달러화 잔고
+    USLA_qty = {} # 해당 티커 현재 보유량
+    USLA_price  = {} # 해당 티커 현재 가격
+    for ticker in USLA_ticker:
+        balance = KIS.get_ticker_balance(ticker)
+        if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
+            eval_amount = balance.get('eval_amount', 0)
+            USLA_qty[ticker] = balance.get('holding_qty', 0)
+            USLA_price[ticker] = balance.get('current_price', 0)
+        else:
+            eval_amount = 0  # 문자열(에러) 반환 시 처리
+        USLA_balance += eval_amount
+        time.sleep(0.1)
+
+    HAA_balance = 0 # 해당 모델 현재 달러화 잔고
+    HAA_qty = {} # 해당 티커 현재 보유량
+    HAA_price  = {} # 해당 티커 현재 가격
+    for ticker in HAA_ticker:
+        if ticker == 'TIP':
+            continue # TIP은 Regime signal 확인용으로 투자, 보유용이 아니라서 제외
+        balance = KIS.get_ticker_balance(ticker)
+        if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
+            eval_amount = balance.get('eval_amount', 0)
+            HAA_qty[ticker] = balance.get('holding_qty', 0)
+            HAA_price[ticker] = balance.get('current_price', 0)
+        else:
+            eval_amount = 0  # 문자열(에러) 반환 시 처리
+        HAA_balance += eval_amount
+        time_module.sleep(0.05)
+
+    Total_balance = USLA_balance + HAA_balance + USD # 전체 잔고
+
+    return USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance
 
 message = []
 try:
