@@ -343,7 +343,7 @@ class KIS_API:
         for attempt in range(max_retries + 1):
             try:
                 if attempt > 0:
-                    time.sleep(2)  # 재시도 전 2초 대기
+                    time.sleep(1)  # 재시도 전 1초 대기
                     order_sell_message.append(f"재시도 {attempt}/{max_retries}")
                 
                 response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
@@ -475,7 +475,7 @@ class KIS_API:
         for attempt in range(max_retries + 1):
             try:
                 if attempt > 0:
-                    time.sleep(2)  # 재시도 전 2초 대기
+                    time.sleep(1)  # 재시도 전 1초 대기
                     order_buy_message.append(f"재시도 {attempt}/{max_retries}")
                 
                 response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
