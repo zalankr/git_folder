@@ -339,6 +339,8 @@ class KIS_API:
         }
 
         try:
+            time.sleep(0.1)
+
             response = requests.post(url, headers=headers, data=json.dumps(data))
             response.raise_for_status()
             
@@ -452,6 +454,8 @@ class KIS_API:
         }
 
         try:
+            time.sleep(0.1)
+
             response = requests.post(url, headers=headers, data=json.dumps(data))
             response.raise_for_status()
             

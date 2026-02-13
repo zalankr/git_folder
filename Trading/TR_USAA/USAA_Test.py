@@ -178,17 +178,6 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
             if quantity == 0:
                 continue
 
-            # if ticker in USLA_ticker:
-            #     if i < len(sell_split_USLA[1]):
-            #         price = round(current_price * sell_split_USLA[1][i], 2)
-            #     else:
-            #         price = round(current_price * 0.99, 2)  # 기본값
-            # else:
-            #     if i < len(sell_split_HAA[1]):
-            #         price = round(current_price * sell_split_HAA[1][i], 2)
-            #     else:
-            #         price = round(current_price * 0.99, 2)  # 기본값
-
             if ticker in USLA_ticker:
                 price = round(current_price * sell_split_USLA[1][i], 2)
             else:
@@ -225,6 +214,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
                     })
             except Exception as e:
                 error_msg = f"Exception: {str(e)}"
+                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                 Sell_order.append({
                     'success': False,
                     'ticker': ticker,
@@ -236,7 +226,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
                     'split_index': i
                 })
             
-            time_module.sleep(0.2)
+            time_module.sleep(0.5)
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
@@ -364,7 +354,7 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
                     'split_index': i
                 })
 
-            time_module.sleep(0.2)
+            time_module.sleep(0.5)
 
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
@@ -1341,10 +1331,10 @@ if order_time['round'] == 1:
     sell_split_HAA = [round_split["sell_splits"], round_split["sell_price_HAA"]]
     buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
     
-#     # 매도주문
-#     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
-#     message.extend(order_messages)
-#     order_messages = [] # 메세지 초기화
+    # 매도주문
+    Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
+    message.extend(order_messages)
+    order_messages = [] # 메세지 초기화
     
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
@@ -1382,60 +1372,54 @@ if order_time['round'] == 1:
     else:
         pass  # 예수금이 충분할 경우 조정 없음
 
+    # 매수주문
+    Buy_order, order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
+    message.extend(order_messages)
+
+    # 다음 order time으로 넘길 Trading data json 데이터 저장
+    saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
+    message.extend(saveTR_message)
+    send_messages_in_chunks(message, max_length=900)
+
     print("\n".join(message)) #################################################지울 것
-    print(FULL_BUYUSD)        #################################################지울 것
-    for ticker in USLA.keys():#################################################지울 것
-        print(f"{ticker} : {USLA[ticker]['buy_qty']}")#################################################지울 것
-    print()#################################################지울 것
-    for ticker in HAA.keys():#################################################지울 것
-        print(f"{ticker} : {HAA[ticker]['buy_qty']}")#################################################지울 것
-    print()#################################################지울 것
 
+    sys.exit(0)
 
-#     # 매수주문
-#     Buy_order, order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
-#     message.extend(order_messages)
-
-#     # 다음 order time으로 넘길 Trading data json 데이터 저장
-#     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
-#     message.extend(saveTR_message)
-#     send_messages_in_chunks(message, max_length=900)
-
-#     sys.exit(0)
-
-# elif order_time['round'] in range(2, 25):  # Round 2~24회차
-#     if order_time['round'] == 2:
-#         message = [] # 메세지 초기화
-#     else:
-#         with open(USAA_Message_path, 'r', encoding='utf-8') as f:
-#             message = json.load(f)
-#     print_time = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
-#     if order_time['round'] in print_time:
-#         send_messages_in_chunks(message, max_length=900)
-#         message = [] # 메세지 초기화
+elif order_time['round'] in range(2, 25):  # Round 2~24회차
+    if order_time['round'] == 2:
+        message = [] # 메세지 초기화
+    else:
+        with open(USAA_Message_path, 'r', encoding='utf-8') as f:
+            message = json.load(f)
+    print_time = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+    if order_time['round'] in print_time:
+        send_messages_in_chunks(message, max_length=900)
+        message = [] # 메세지 초기화
         
-#     message.extend(start_message)
+    message.extend(start_message)
 
-#     # ====================================
-#     # 1단계: 지난 라운드 TR_data 불러오기
-#     # ====================================
-#     try:
-#         with open(USAA_TR_path, 'r', encoding='utf-8') as f:
-#             TR_data = json.load(f)
-#     except Exception as e:
-#         message.append(f"USAA_TR JSON 파일 오류: {e}")
-#         sys.exit(0)
+    # ====================================
+    # 1단계: 지난 라운드 TR_data 불러오기
+    # ====================================
+    try:
+        with open(USAA_TR_path, 'r', encoding='utf-8') as f:
+            TR_data = json.load(f)
+    except Exception as e:
+        message.append(f"USAA_TR JSON 파일 오류: {e}")
+        sys.exit(0)
 
-#     # ============================================
-#     # 2단계: 미체결 주문 취소
-#     # ============================================
-#     try:
-#         cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
-#         message.extend(cancel_messages)
-#         if cancel_summary['total'] > 0:
-#             message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
-#     except Exception as e:
-#         message.append(f"USAA 주문 취소 오류: {e}")
+    # ============================================
+    # 2단계: 미체결 주문 취소
+    # ============================================
+    try:
+        cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
+        message.extend(cancel_messages)
+        if cancel_summary['total'] > 0:
+            message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
+    except Exception as e:
+        message.append(f"USAA 주문 취소 오류: {e}")
+
+    print("\n".join(message)) #################################################지울 것
 
 #     # ============================================
 #     # 3단계: 새로운 주문 준비 및 실행
