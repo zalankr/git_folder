@@ -1,4 +1,3 @@
-import USAA_Trading as USAA
 import KIS_US
 import kakao_alert as KA
 from datetime import datetime
@@ -97,7 +96,7 @@ try:
 
     # USAA 계좌잔고 조회
     try:
-        USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = USAA.get_balance()
+        USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
     except Exception as e:
         error_msg = f"계좌 잔고 조회 실패: {e}"
