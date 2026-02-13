@@ -79,7 +79,7 @@ def get_balance(): # 신규 생성 사용
         else:
             eval_amount = 0  # 문자열(에러) 반환 시 처리
         HAA_balance += eval_amount
-        time_module.sleep(0.05)
+        time.sleep(0.05)
 
     Total_balance = USLA_balance + HAA_balance + USD # 전체 잔고
 
@@ -98,24 +98,13 @@ try:
     # USAA 계좌잔고 조회
     try:
         USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = USAA.get_balance()
-        time.sleep(0.2)
+
     except Exception as e:
         error_msg = f"계좌 잔고 조회 실패: {e}"
         print(error_msg)
         KA.SendMessage(error_msg)
         raise
     
-    # USLA, HAA 타겟 및 레짐 산출
-    try:
-        USLA_target, USLA_regime, USLA_message = USAA.USLA_target_regime()
-        HAA_target, HAA_regime, HAA_message = USAA.HAA_target_regime()
-        time.sleep(0.2)
-    except Exception as e:
-        error_msg = f"타겟/레짐 산출 실패: {e}"
-        print(error_msg)
-        KA.SendMessage(error_msg)
-        raise
-
     # 당일 평가금 산출
     balance = float("{:.2f}".format(Total_balance))
     CASH = float("{:.2f}".format(USD))
@@ -176,13 +165,13 @@ try:
     # 새로운 USAA data 생성
     new_USAA_data = {
         'date': str(current_date),
-        'USLA_regime': USLA_regime,
+        'USLA_regime': previous_USAA_data["USLA_regime"],
         'UPRO': USLA_qty.get("UPRO", 0),
         'TQQQ': USLA_qty.get("TQQQ", 0),
         'EDC': USLA_qty.get("EDC", 0),
         'TMF': USLA_qty.get("TMF", 0),
         'TMV': USLA_qty.get("TMV", 0),
-        'HAA_regime': HAA_regime,
+        'HAA_regime': previous_USAA_data["HAA_regime"],
         'SPY': HAA_qty.get("SPY", 0),
         'IWM': HAA_qty.get("IWM", 0),
         'VEA': HAA_qty.get("VEA", 0),
