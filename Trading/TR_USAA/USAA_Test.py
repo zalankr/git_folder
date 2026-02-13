@@ -131,12 +131,12 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
     Sell_USLA = {}
     for ticker in USLA.keys():
         if USLA[ticker]['sell_qty'] > 0:
-            Sell_USLA[ticker] = USLA[ticker]['sell_qty']
+            Sell_USLA[ticker] = int(USLA[ticker]['sell_qty'])
 
     Sell_HAA = {}
     for ticker in HAA.keys():
         if HAA[ticker]['sell_qty'] > 0:
-            Sell_HAA[ticker] = HAA[ticker]['sell_qty']
+            Sell_HAA[ticker] = int(HAA[ticker]['sell_qty'])
 
     Sell = {**Sell_USLA, **Sell_HAA}
 
@@ -147,12 +147,21 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
     for ticker in Sell.keys():
         if Sell[ticker] == 0:
             continue
-        qty_per_split = int(Sell[ticker] // sell_split_USLA[0]) # 소숫점 아래 삭제 나누기
+        
+        # ✅ 핵심 수정: 티커별로 올바른 분할 설정 사용
+        if ticker in USLA_ticker:
+            split_count = sell_split_USLA[0]
+            price_multipliers = sell_split_USLA[1]
+        else:
+            split_count = sell_split_HAA[0]
+            price_multipliers = sell_split_HAA[1]
+        
+        qty_per_split = int(Sell[ticker] // split_count)
 
         if ticker in USLA_ticker:
-            current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 검증필요
+            current_price = USLA[ticker].get("current_price", 0)
         else:
-            current_price = HAA[ticker].get("current_price", 0) # HAA 현재가 우선 사용, 검증필요
+            current_price = HAA[ticker].get("current_price", 0)
 
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
@@ -169,19 +178,16 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
             })
             continue
 
-        for i in range(sell_split_USLA[0]):
-            if i == sell_split_USLA[0] - 1:
-                quantity = Sell[ticker] - qty_per_split * (sell_split_USLA[0] - 1)
+        for i in range(split_count):
+            if i == split_count - 1:
+                quantity = int(Sell[ticker] - qty_per_split * (split_count - 1))
             else:
                 quantity = qty_per_split
             
             if quantity == 0:
                 continue
 
-            if ticker in USLA_ticker:
-                price = round(current_price * sell_split_USLA[1][i], 2)
-            else:
-                price = round(current_price * sell_split_HAA[1][i], 2)
+            price = round(current_price * price_multipliers[i], 2)
                 
             try:
                 order_info, order_sell_message = KIS.order_sell_US(ticker, quantity, price)
@@ -226,7 +232,11 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
                     'split_index': i
                 })
             
-            time_module.sleep(0.5)
+            # 같은 티커의 분할 주문 사이는0.2초, 다른 티커로 넘어갈 때는 0.2초
+            if i < split_count - 1:
+                time_module.sleep(0.2)
+            else:
+                time_module.sleep(0.2)
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
@@ -236,14 +246,14 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
 
 def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
     """
-    매수 주문 실행 함수
+    매수 주문 실행 함수 - 버그 수정 버전
     
     Parameters:
     - USLA: USLA 모델 내 티커별 트레이딩 딕셔너리
     - HAA: HAA 모델 내 티커별 트레이딩 딕셔너리
     - buy_split_USLA: USLA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
     - buy_split_HAA: HAA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
-    - order_time: 현재 주문 시간 정보 딕셔너리  # 추가
+    - order_time: 현재 주문 시간 정보 딕셔너리
     
     Returns:
     - Buy_order: 주문 결과 리스트 (성공/실패 모두 포함)
@@ -251,19 +261,18 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
     Buy_order = []
     order_messages = []
 
-    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
     round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
     order_messages.append(round_info)    
     
     Buy_USLA = {}
     for ticker in USLA.keys():
         if USLA[ticker]['buy_qty'] > 0:
-            Buy_USLA[ticker] = USLA[ticker]['buy_qty']
+            Buy_USLA[ticker] = int(USLA[ticker]['buy_qty'])
 
     Buy_HAA = {}
     for ticker in HAA.keys():
         if HAA[ticker]['buy_qty'] > 0:
-            Buy_HAA[ticker] = HAA[ticker]['buy_qty']
+            Buy_HAA[ticker] = int(HAA[ticker]['buy_qty'])
 
     Buy = {**Buy_USLA, **Buy_HAA}
     
@@ -275,12 +284,21 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
         if Buy[ticker] == 0:
             order_messages.append(f"{ticker} 매수 수량 0")
             continue
-        qty_per_split = int(Buy[ticker] // buy_split_USLA[0]) # 소숫점 아래 삭제 나누기
+        
+        # ✅ 핵심 수정: 티커별로 올바른 분할 설정 사용
+        if ticker in USLA_ticker:
+            split_count = buy_split_USLA[0]
+            price_multipliers = buy_split_USLA[1]
+        else:
+            split_count = buy_split_HAA[0]
+            price_multipliers = buy_split_HAA[1]
+        
+        qty_per_split = int(Buy[ticker] // split_count)
 
         if ticker in USLA_ticker:
-            current_price = USLA[ticker].get("current_price", 0) # USLA 현재가 우선 사용, 검증필요
+            current_price = USLA[ticker].get("current_price", 0)
         else:
-            current_price = HAA[ticker].get("current_price", 0) # HAA 현재가 우선 사용, 검증필요
+            current_price = HAA[ticker].get("current_price", 0)
         
         if not isinstance(current_price, (int, float)) or current_price <= 0:
             error_msg = f"{ticker} 가격 조회 실패 - 주문 스킵"
@@ -297,19 +315,16 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
             })
             continue
 
-        for i in range(buy_split_USLA[0]):
-            if i == buy_split_USLA[0] - 1:
-                quantity = Buy[ticker] - qty_per_split * (buy_split_USLA[0] - 1)
+        for i in range(split_count):
+            if i == split_count - 1:
+                quantity = int(Buy[ticker] - qty_per_split * (split_count - 1))
             else:
                 quantity = qty_per_split
             
             if quantity == 0:
                 continue
 
-            if ticker in USLA_ticker:
-                price = round(current_price * buy_split_USLA[1][i], 2)
-            else:
-                price = round(current_price * buy_split_HAA[1][i], 2)
+            price = round(current_price * price_multipliers[i], 2)
                 
             try:
                 order_info, order_buy_message = KIS.order_buy_US(ticker, quantity, price)
@@ -354,7 +369,11 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
                     'split_index': i
                 })
 
-            time_module.sleep(0.5)
+            # 같은 티커의 분할 주문 사이는 0.2초, 다른 티커로 넘어갈 때는 0.2초
+            if i < split_count - 1:
+                time_module.sleep(0.2)
+            else:
+                time_module.sleep(0.2)
 
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
@@ -1185,7 +1204,7 @@ def send_messages_in_chunks(message, max_length=900):
 order_time = USAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
-order_time['round'] = 2 ######################################################## 테스트 후 지울 것
+order_time['round'] = 1 ######################################################## 테스트 후 지울 것
 
 if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
     KA.SendMessage(f"USAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USAA_day 리스트에 없습니다.")
@@ -1419,14 +1438,12 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     except Exception as e:
         message.append(f"USAA 주문 취소 오류: {e}")
 
+    # ============================================
+    # 3단계: 새로운 주문 준비 및 실행
+    # ============================================
+    # 계좌잔고 조회
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
     print("\n".join(message)) #################################################지울 것
-
-#     # ============================================
-#     # 3단계: 새로운 주문 준비 및 실행
-#     # ============================================
-#     # 계좌잔고 조회
-#     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-
 #     # 목표 비중 만들기
 #     USLA = TR_data["USLA"]
 #     for ticker in USLA_ticker:
