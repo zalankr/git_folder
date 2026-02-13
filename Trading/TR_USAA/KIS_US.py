@@ -150,7 +150,7 @@ class KIS_API:
             price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
                 return exchange
-            time.sleep(0.05)
+            time.sleep(0.1)
 
         return "error: 거래소 조회 실패"
 
@@ -176,7 +176,7 @@ class KIS_API:
             price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
                 return price
-            time.sleep(0.05)
+            time.sleep(0.1)
 
         return "현재가 조회 실패"
 
