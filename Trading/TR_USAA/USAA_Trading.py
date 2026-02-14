@@ -1182,7 +1182,7 @@ def split_data(round):
 
     return round_split
 
-def send_messages_in_chunks(message, max_length=900):
+def send_messages_in_chunks(message, max_length=1000):
     current_chunk = []
     current_length = 0
     
@@ -1397,7 +1397,7 @@ if order_time['round'] == 1:
     # 다음 order time으로 넘길 Trading data json 데이터 저장
     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
     message.extend(saveTR_message)
-    send_messages_in_chunks(message, max_length=1200)
+    send_messages_in_chunks(message, max_length=1000)
 
     sys.exit(0)
 
@@ -1551,7 +1551,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     message.extend(saveTR_message)
 
     # 메세지 출력
-    send_messages_in_chunks(message, max_length=1200)
+    send_messages_in_chunks(message, max_length=1000)
 
     sys.exit(0)
 
@@ -1593,6 +1593,6 @@ elif order_time['round'] == 25:  # 최종기록
     message.append(f"총 평가금: {Total_balance:,.2f} USD")
 
     # 카톡 리밸 종료 결과 보내기
-    send_messages_in_chunks(message, max_length=1200)
+    send_messages_in_chunks(message, max_length=1000)
     
     sys.exit(0)
