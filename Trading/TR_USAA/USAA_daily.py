@@ -22,7 +22,7 @@ USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
 USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
 HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
 
-def send_messages_in_chunks(message, max_length=900):
+def send_messages_in_chunks(message, max_length=1000):
     """메시지를 최대 길이로 나누어 전송"""
     current_chunk = []
     current_length = 0
@@ -104,29 +104,74 @@ try:
         KA.SendMessage(error_msg)
         raise
     
+    ## 헷징 모드 확인 후 비중 조정: 빈 딕셔너리 체크 (값이 모두 0인지)
+    USLA_has_position = any(qty > 0 for qty in USLA_qty.values())
+    HAA_has_position = any(qty > 0 for qty in HAA_qty.values())
+
+    if not USLA_has_position and not HAA_has_position:
+        # 둘 다 보유 없음
+        USLA_balance = USD * 0.7
+        HAA_balance = USD * 0.3
+
+    elif not USLA_has_position and HAA_has_position:
+        # USLA만 없음
+        USLA_balance = USD * (70/70.6)
+        HAA_balance = HAA_balance + (USD * (0.6/70.6))
+
+    elif USLA_has_position and not HAA_has_position:
+        # HAA만 없음
+        USLA_balance = USLA_balance + (USD * (1.4/31.4))
+        HAA_balance = USD * (30/31.4)
+
+    else:
+        # 둘 다 보유
+        USLA_balance = USLA_balance + (USD * 0.7)
+        HAA_balance = HAA_balance + (USD * 0.3)
+
     # 당일 평가금 산출
     balance = float("{:.2f}".format(Total_balance))
-    CASH = float("{:.2f}".format(USD))
+    USLA_balance = float("{:.2f}".format(USLA_balance))
+    HAA_balance = float("{:.2f}".format(HAA_balance))
 
     # 전일, 월초, 연초 전월말, 전년말 잔고 업데이트
     last_day_balance = float("{:.2f}".format(previous_USAA_data.get('balance', balance)))
     last_day_balance_KRW = int(previous_USAA_data.get('balance_KRW', 0))
+    USLA_last_day_balance = float("{:.2f}".format(previous_USAA_data.get('USLA_balance', USLA_balance)))
+    USLA_last_day_balance_KRW = int(previous_USAA_data.get('USLA_balance_KRW', 0))
+    HAA_last_day_balance = float("{:.2f}".format(previous_USAA_data.get('HAA_balance', HAA_balance)))
+    HAA_last_day_balance_KRW = int(previous_USAA_data.get('HAA_balance_KRW', 0))
 
     if current.day == 1:  # 월초 전월 잔고 데이터 변경
         last_month_balance = last_day_balance
+        USLA_last_month_balance = USLA_last_day_balance
+        HAA_last_month_balance = HAA_last_day_balance
         last_month_balance_KRW = last_day_balance_KRW
-        message.append(f"월초, 전월 잔고를 {last_month_balance}원으로 업데이트했습니다.")
+        USLA_last_month_balance_KRW = USLA_last_day_balance_KRW
+        HAA_last_month_balance_KRW = HAA_last_day_balance_KRW
+        message.append(f"월초, 전월 전체잔고를 {last_month_balance}원으로 업데이트했습니다.")
     else:
         last_month_balance = previous_USAA_data.get('last_month_balance', balance)
+        USLA_last_month_balance = previous_USAA_data.get('USLA_last_month_balance', USLA_balance)
+        HAA_last_month_balance = previous_USAA_data.get('HAA_last_month_balance', HAA_balance)
         last_month_balance_KRW = previous_USAA_data.get('last_month_balance_KRW', 0)
+        USLA_last_month_balance_KRW = previous_USAA_data.get('USLA_last_month_balance_KRW', 0)
+        HAA_last_month_balance_KRW = previous_USAA_data.get('HAA_last_month_balance_KRW', 0)
 
     if current.month == 1 and current.day == 1:  # 연초 전년 잔고 데이터 변경
         last_year_balance = last_day_balance
+        USLA_last_year_balance = USLA_last_day_balance
+        HAA_last_year_balance = HAA_last_day_balance
         last_year_balance_KRW = last_day_balance_KRW
-        message.append(f"연초, 전년 잔고를 {last_year_balance}원으로 업데이트했습니다.")
+        USLA_last_year_balance_KRW = USLA_last_day_balance_KRW
+        HAA_last_year_balance_KRW = HAA_last_day_balance_KRW
+        message.append(f"연초, 전년 전체잔고를 {last_year_balance}원으로 업데이트했습니다.")
     else:
         last_year_balance = previous_USAA_data.get('last_year_balance', balance)
+        USLA_last_year_balance = previous_USAA_data.get('USLA_last_year_balance', USLA_balance)
+        HAA_last_year_balance = previous_USAA_data.get('HAA_last_year_balance', HAA_balance)
         last_year_balance_KRW = previous_USAA_data.get('last_year_balance_KRW', 0)
+        USLA_last_year_balance_KRW = previous_USAA_data.get('USLA_last_year_balance_KRW', 0)
+        HAA_last_year_balance_KRW = previous_USAA_data.get('HAA_last_year_balance_KRW', 0)
 
     # 환율 조회
     try:
@@ -141,50 +186,45 @@ try:
 
     # 평가금 KRW 환산
     today_eval_KRW = int(balance * exchange_rate)
+    USLA_today_eval_KRW = int(USLA_balance * exchange_rate)
+    HAA_today_eval_KRW = int(HAA_balance * exchange_rate)
     
-    # 일, 월, 연 수익률 계산
-    daily_return = ((Total_balance - last_day_balance) / last_day_balance * 100) if last_day_balance > 0 else 0
-    daily_return = float("{:.2f}".format(daily_return))
-    
+    #월, 연 수익률 계산
     monthly_return = ((Total_balance - last_month_balance) / last_month_balance * 100) if last_month_balance > 0 else 0
     monthly_return = float("{:.2f}".format(monthly_return))
+    USLA_monthly_return = ((USLA_balance - USLA_last_month_balance) / USLA_last_month_balance * 100) if USLA_last_month_balance > 0 else 0
+    USLA_monthly_return = float("{:.2f}".format(USLA_monthly_return))
+    HAA_monthly_return = ((HAA_balance - HAA_last_month_balance) / HAA_last_month_balance * 100) if HAA_last_month_balance > 0 else 0
+    HAA_monthly_return = float("{:.2f}".format(HAA_monthly_return))
     
     yearly_return = ((Total_balance - last_year_balance) / last_year_balance * 100) if last_year_balance > 0 else 0
     yearly_return = float("{:.2f}".format(yearly_return))
+    USLA_yearly_return = ((USLA_balance - USLA_last_year_balance) / USLA_last_year_balance * 100) if USLA_last_year_balance > 0 else 0
+    USLA_yearly_return = float("{:.2f}".format(USLA_yearly_return))
+    HAA_yearly_return = ((HAA_balance - HAA_last_year_balance) / HAA_last_year_balance * 100) if HAA_last_year_balance > 0 else 0
+    HAA_yearly_return = float("{:.2f}".format(HAA_yearly_return))
 
-    daily_return_KRW = ((today_eval_KRW - last_day_balance_KRW) / last_day_balance_KRW * 100) if last_day_balance_KRW > 0 else 0
-    daily_return_KRW = float("{:.2f}".format(daily_return_KRW))
-    
     monthly_return_KRW = ((today_eval_KRW - last_month_balance_KRW) / last_month_balance_KRW * 100) if last_month_balance_KRW > 0 else 0
     monthly_return_KRW = float("{:.2f}".format(monthly_return_KRW))
+    USLA_monthly_return_KRW = ((USLA_today_eval_KRW - USLA_last_month_balance_KRW) / USLA_last_month_balance_KRW * 100) if USLA_last_month_balance_KRW > 0 else 0
+    USLA_monthly_return_KRW = float("{:.2f}".format(USLA_monthly_return_KRW))
+    HAA_monthly_return_KRW = ((HAA_today_eval_KRW - HAA_last_month_balance_KRW) / HAA_last_month_balance_KRW * 100) if HAA_last_month_balance_KRW > 0 else 0
+    HAA_monthly_return_KRW = float("{:.2f}".format(HAA_monthly_return_KRW))
     
     yearly_return_KRW = ((today_eval_KRW - last_year_balance_KRW) / last_year_balance_KRW * 100) if last_year_balance_KRW > 0 else 0
     yearly_return_KRW = float("{:.2f}".format(yearly_return_KRW))
+    USLA_yearly_return_KRW = ((USLA_today_eval_KRW - USLA_last_year_balance_KRW) / USLA_last_year_balance_KRW * 100) if USLA_last_year_balance_KRW > 0 else 0
+    USLA_yearly_return_KRW = float("{:.2f}".format(USLA_yearly_return_KRW))
+    HAA_yearly_return_KRW = ((HAA_today_eval_KRW - HAA_last_year_balance_KRW) / HAA_last_year_balance_KRW * 100) if HAA_last_year_balance_KRW > 0 else 0
+    HAA_yearly_return_KRW = float("{:.2f}".format(HAA_yearly_return_KRW))
 
     # 새로운 USAA data 생성
     new_USAA_data = {
         'date': str(current_date),
-        'USLA_regime': previous_USAA_data["USLA_regime"],
-        'UPRO': USLA_qty.get("UPRO", 0),
-        'TQQQ': USLA_qty.get("TQQQ", 0),
-        'EDC': USLA_qty.get("EDC", 0),
-        'TMF': USLA_qty.get("TMF", 0),
-        'TMV': USLA_qty.get("TMV", 0),
-        'HAA_regime': previous_USAA_data["HAA_regime"],
-        'SPY': HAA_qty.get("SPY", 0),
-        'IWM': HAA_qty.get("IWM", 0),
-        'VEA': HAA_qty.get("VEA", 0),
-        'VWO': HAA_qty.get("VWO", 0),
-        'PDBC': HAA_qty.get("PDBC", 0),
-        'VNQ': HAA_qty.get("VNQ", 0),
-        'TLT': HAA_qty.get("TLT", 0),
-        'IEF': HAA_qty.get("IEF", 0),
-        'CASH': CASH,
         'balance': balance,
         'last_day_balance': last_day_balance,
         'last_month_balance': last_month_balance,
         'last_year_balance': last_year_balance,
-        'daily_return': daily_return,
         'monthly_return': monthly_return,
         'yearly_return': yearly_return,
         'exchange_rate': exchange_rate,
@@ -192,9 +232,32 @@ try:
         'last_day_balance_KRW': last_day_balance_KRW,
         'last_month_balance_KRW': last_month_balance_KRW,
         'last_year_balance_KRW': last_year_balance_KRW,
-        'daily_return_KRW': daily_return_KRW,
         'monthly_return_KRW': monthly_return_KRW,
-        'yearly_return_KRW': yearly_return_KRW
+        'yearly_return_KRW': yearly_return_KRW,
+        'USLA balance': USLA_balance,
+        'USLA_last_day_balance': USLA_last_day_balance,
+        'USLA_last_month_balance': USLA_last_month_balance,
+        'USLA_last_year_balance': USLA_last_year_balance,
+        'USLA_monthly_return': USLA_monthly_return,
+        'USLA_yearly_return': USLA_yearly_return,
+        'USLA_balance_KRW': USLA_today_eval_KRW,
+        'USLA_last_day_balance_KRW': USLA_last_day_balance_KRW,
+        'USLA_last_month_balance_KRW': USLA_last_month_balance_KRW,
+        'USLA_last_year_balance_KRW': USLA_last_year_balance_KRW,
+        'USLA_monthly_return_KRW': USLA_monthly_return_KRW,
+        'USLA_yearly_return_KRW': USLA_yearly_return_KRW,
+        'HAA balance': HAA_balance,
+        'HAA_last_day_balance': HAA_last_day_balance,
+        'HAA_last_month_balance': HAA_last_month_balance,
+        'HAA_last_year_balance': HAA_last_year_balance,
+        'HAA_monthly_return': HAA_monthly_return,
+        'HAA_yearly_return': HAA_yearly_return,
+        'HAA_balance_KRW': HAA_today_eval_KRW,
+        'HAA_last_day_balance_KRW': HAA_last_day_balance_KRW,
+        'HAA_last_month_balance_KRW': HAA_last_month_balance_KRW,
+        'HAA_last_year_balance_KRW': HAA_last_year_balance_KRW,
+        'HAA_monthly_return_KRW': HAA_monthly_return_KRW,
+        'HAA_yearly_return_KRW': HAA_yearly_return_KRW
     }
 
     # USAA data 저장
