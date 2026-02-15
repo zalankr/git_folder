@@ -221,43 +221,43 @@ try:
     # 새로운 USAA data 생성
     new_USAA_data = {
         'date': str(current_date),
-        'balance': balance,
-        'last_day_balance': last_day_balance,
-        'last_month_balance': last_month_balance,
-        'last_year_balance': last_year_balance,
-        'monthly_return': monthly_return,
-        'yearly_return': yearly_return,
         'exchange_rate': exchange_rate,
-        'balance_KRW': today_eval_KRW,
-        'last_day_balance_KRW': last_day_balance_KRW,
-        'last_month_balance_KRW': last_month_balance_KRW,
-        'last_year_balance_KRW': last_year_balance_KRW,
-        'monthly_return_KRW': monthly_return_KRW,
-        'yearly_return_KRW': yearly_return_KRW,
-        'USLA balance': USLA_balance,
-        'USLA_last_day_balance': USLA_last_day_balance,
-        'USLA_last_month_balance': USLA_last_month_balance,
-        'USLA_last_year_balance': USLA_last_year_balance,
-        'USLA_monthly_return': USLA_monthly_return,
-        'USLA_yearly_return': USLA_yearly_return,
-        'USLA_balance_KRW': USLA_today_eval_KRW,
-        'USLA_last_day_balance_KRW': USLA_last_day_balance_KRW,
-        'USLA_last_month_balance_KRW': USLA_last_month_balance_KRW,
-        'USLA_last_year_balance_KRW': USLA_last_year_balance_KRW,
-        'USLA_monthly_return_KRW': USLA_monthly_return_KRW,
-        'USLA_yearly_return_KRW': USLA_yearly_return_KRW,
-        'HAA balance': HAA_balance,
-        'HAA_last_day_balance': HAA_last_day_balance,
-        'HAA_last_month_balance': HAA_last_month_balance,
-        'HAA_last_year_balance': HAA_last_year_balance,
-        'HAA_monthly_return': HAA_monthly_return,
-        'HAA_yearly_return': HAA_yearly_return,
-        'HAA_balance_KRW': HAA_today_eval_KRW,
-        'HAA_last_day_balance_KRW': HAA_last_day_balance_KRW,
-        'HAA_last_month_balance_KRW': HAA_last_month_balance_KRW,
-        'HAA_last_year_balance_KRW': HAA_last_year_balance_KRW,
-        'HAA_monthly_return_KRW': HAA_monthly_return_KRW,
-        'HAA_yearly_return_KRW': HAA_yearly_return_KRW
+        'Total': balance,
+        'last_day': last_day_balance,
+        'last_mon': last_month_balance,
+        'last_year': last_year_balance,
+        'mon_ret': monthly_return,
+        'year_ret': yearly_return,
+        'Total_W': today_eval_KRW,
+        'last_day_W': last_day_balance_KRW,
+        'last_mon_W': last_month_balance_KRW,
+        'last_year_W': last_year_balance_KRW,
+        'mon_ret_W': monthly_return_KRW,
+        'year_ret_W': yearly_return_KRW,
+        'USLA': USLA_balance,
+        'USLA_last_day': USLA_last_day_balance,
+        'USLA_last_mon': USLA_last_month_balance,
+        'USLA_last_year': USLA_last_year_balance,
+        'USLA_mon_ret': USLA_monthly_return,
+        'USLA_year_ret': USLA_yearly_return,
+        'USLA_W': USLA_today_eval_KRW,
+        'USLA_last_day_W': USLA_last_day_balance_KRW,
+        'USLA_last_mon_W': USLA_last_month_balance_KRW,
+        'USLA_last_year_W': USLA_last_year_balance_KRW,
+        'USLA_mon_ret_W': USLA_monthly_return_KRW,
+        'USLA_year_ret_W': USLA_yearly_return_KRW,
+        'HAA': HAA_balance,
+        'HAA_last_day': HAA_last_day_balance,
+        'HAA_last_mon': HAA_last_month_balance,
+        'HAA_last_year': HAA_last_year_balance,
+        'HAA_mon_ret': HAA_monthly_return,
+        'HAA_year_ret': HAA_yearly_return,
+        'HAA_W': HAA_today_eval_KRW,
+        'HAA_last_day_W': HAA_last_day_balance_KRW,
+        'HAA_last_mon_W': HAA_last_month_balance_KRW,
+        'HAA_last_year_W': HAA_last_year_balance_KRW,
+        'HAA_mon_ret_W': HAA_monthly_return_KRW,
+        'HAA_year_ret_W': HAA_yearly_return_KRW
     }
 
     # USAA data 저장
@@ -267,7 +267,7 @@ try:
     # KakaoTalk 알림
     for key, value in new_USAA_data.items():
         message.append(f"{key}: {value}")
-    send_messages_in_chunks(message, max_length=900)
+    send_messages_in_chunks(message, max_length=1200)
 
     # Google Sheet 업로드
     try:
