@@ -65,13 +65,13 @@ def check_order_time():
         'time': current_time,
         'month': current_date.month,
         'round': 0,         # 기본값
-        'total_round': 25    # 기본값
+        'total_round': 24    # 기본값
     }
 
     if check_USAA == "USAA_winter":
         current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(9, 0)   # 09:00
-        end = time_obj(21, 5)    # 21:05
+        end = time_obj(20, 5)    # 20:05
         
         if start <= current < end:
             order_time['round'] = 1 + (current.hour - 9) * 2 + (current.minute // 30)
@@ -79,7 +79,7 @@ def check_order_time():
     elif check_USAA == "USAA_summer":
         current = time_obj(current_time.hour, current_time.minute)
         start = time_obj(8, 0)   # 08:00
-        end = time_obj(20, 5)    # 20:05
+        end = time_obj(19, 5)    # 19:05
 
         if start <= current < end:
             order_time['round'] = 1 + (current.hour - 8) * 2 + (current.minute // 30)

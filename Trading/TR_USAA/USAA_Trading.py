@@ -1602,3 +1602,5 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         send_messages_in_chunks(message, max_length=1000)
         
     sys.exit(0)
+
+sys.exit(0)
