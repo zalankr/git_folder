@@ -1193,8 +1193,17 @@ def send_messages_in_chunks(message, max_length=1000):
     if current_chunk:
         KA.SendMessage("\n".join(current_chunk))
 
-price = int(KIS.get_current_price("005930"))
+price = int(KIS.get_KR_current_price("005930"))
 print(f"삼성전자현재가: {price}원")
+result = KIS.get_KR_stock_balance()
+print("\n".join(result))
+balance = KIS.get_KR_account_summary()
+socksbalance = balance['stock_eval_amt']
+cash_balance = balance['cash_balance']
+total_krw_asset = balance['total_krw_asset']
+print(f"주식평가금액: {socksbalance}원 \n원화 잔고: {cash_balance}원 \n전체 원화자산: {total_krw_asset}원")
+KRW =KIS.get_KR_orderable_cash()
+print(f"원화주문가능금액: {KRW}원")
 
 # ============================================
 # 메인 로직 # 연단위 모델간 리밸런싱

@@ -21,7 +21,17 @@ class KIS_API:
         self.access_token = self.get_access_token()
         self.sell_fee_tax = 0.00214  # 매도 수수료 0.014% + 세금 0.2% KRQT계좌
         self.buy_fee_tax = 0.00014  # 매수 수수료 0.014% KRQT 계좌
+
+        self.last_api_call = 0
+        self.api_interval = 0.07 # 초당 ~14회 요청 인터벌
     
+    def _rate_limit_sleep(self):
+        """API 호출 간격 제어 (Rate Limit 대응)"""
+        elapsed = time.time() - self.last_api_call
+        if elapsed < self.api_interval:
+            time.sleep(self.api_interval - elapsed)
+        self.last_api_call = time.time()
+
     # API-Key 로드 
     def _load_api_keys(self):
         try:
@@ -129,142 +139,6 @@ class KIS_API:
             KA.SendMessage(f"Hashkey 생성 실패: {e}")
             return ""
 
-    # Ticker로 거래소명 조회
-    def get_exchange_by_ticker(self, ticker: str) -> str:
-        """
-        미국 주식 거래소 조회       
-        Parameters:
-        ticker (str): 주식 티커 심볼        
-        Returns:
-        str: 거래소명
-        str: 에러 메시지
-        """
-        if not ticker:
-            return "error:티커를 입력해주세요."
-        
-        ticker = ticker.upper()
-        
-        exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
-
-        for exchange in exchanges:
-            price = self.get_price_from_kis(ticker, exchange)
-            if isinstance(price, float):
-                return exchange
-            time.sleep(0.1)
-
-        return "error: 거래소 조회 실패"
-
-    # 주식 현재가 조회
-    def get_US_current_price(self, ticker: str) -> Union[float, str]:
-        """
-        미국 주식 현재가 조회       
-        Parameters:
-        ticker (str): 주식 티커 심볼        
-        Returns:
-        float: 현재가
-        str: 에러 메시지
-        """
-        if not ticker:
-            return "티커를 입력해주세요."
-        
-        ticker = ticker.upper()
-
-        # 거래소 목록 정의
-        exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
-        
-        for exchange in exchanges:
-            price = self.get_price_from_kis(ticker, exchange)
-            if isinstance(price, float):
-                return price
-            time.sleep(0.1)
-
-        return "현재가 조회 실패"
-
-    # KIS API로 현재가 조회
-    def get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
-        """KIS API로 현재가 조회 (3단계)"""
-        
-        # 1단계: 현재체결가 API
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "HHDFS00000300"
-        }
-        
-        params = {
-            "AUTH": "",
-            "EXCD": exchange,
-            "SYMB": ticker
-        }
-        
-        try:
-            # 1단계: 현재체결가
-            response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price", 
-                                   headers=headers, params=params, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('rt_cd') == '0':
-                    output = data.get('output', {})
-                    for field in ['last', 'base', 'open', 'high', 'low']:
-                        value = output.get(field, '').strip()
-                        if value and value != '0':
-                            try:
-                                price = float(value)
-                                if price > 0:
-                                    return price
-                            except:
-                                continue
-            
-            # 2단계: 현재가상세
-            headers['tr_id'] = "HHDFS76200200"
-            response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price-detail",
-                                   headers=headers, params=params, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('rt_cd') == '0':
-                    output = data.get('output', {})
-                    for field in ['last', 'open', 'high', 'low', 'base', 't_xprc', 'p_xprc']:
-                        value = output.get(field, '').strip()
-                        if value and value != '0':
-                            try:
-                                price = float(value)
-                                if price > 0:
-                                    return price
-                            except:
-                                continue
-            
-            # 3단계: 기간별시세
-            headers['tr_id'] = "HHDFS76240000"
-            params_daily = {
-                "AUTH": "",
-                "EXCD": exchange,
-                "SYMB": ticker,
-                "GUBN": "0",
-                "BYMD": "",
-                "MODP": "0"
-            }
-            response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/dailyprice",
-                                   headers=headers, params=params_daily, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('rt_cd') == '0':
-                    output = data.get('output2', [])
-                    if output and len(output) > 0:
-                        clos = output[0].get('clos', '').strip()
-                        if clos and clos != '0':
-                            try:
-                                price = float(clos)
-                                if price > 0:
-                                    return price
-                            except:
-                                pass
-        except:
-            pass
-        
-        return "KIS API 조회 실패"
-    
     # 미국 정규시장 주식 매도 주문
     def order_sell_US(self, ticker: str, quantity: int, price: float,
                         exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
@@ -739,71 +613,6 @@ class KIS_API:
                 
         except Exception as e:
             KA.SendMessage(f"주간매도 주문오류: {e}")
-            return None
-
-    # 미국 주식 종목별 잔고
-    def get_US_stock_balance(self) -> Optional[List[Dict]]:
-        """미국 주식 종목별 잔고 (체결기준 현재잔고)"""
-        path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
-        url = f"{self.url_base}/{path}"
-        
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "CTRP6504R"
-        }
-        
-        params = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "WCRC_FRCR_DVSN_CD": "02",  # 02: 외화
-            "NATN_CD": "840",  # 840: 미국
-            "TR_MKET_CD": "00",  # 00: 전체
-            "INQR_DVSN_CD": "00"  # 00: 전체
-        }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('rt_cd') != '0':
-                KA.SendMessage(f"API 오류: {data.get('msg1')}")
-                return None
-            
-            output1 = data.get('output1', [])
-            stocks = []
-            
-            for stock in output1:
-                # 핵심 수정: ccld_qty_smtl1 (체결수량합계) 사용
-                quantity = int(float(stock.get('ccld_qty_smtl1', 0)))
-                
-                # 수량이 0인 종목은 제외 (옵션)
-                if quantity == 0:
-                    continue
-                
-                stock_info = {
-                    'ticker': stock.get('pdno', ''),
-                    'name': stock.get('prdt_name', ''),
-                    'quantity': quantity,  # 체결수량합계 = 전일잔고 + 당일매수 - 당일매도
-                    'avg_price': float(stock.get('avg_unpr3', 0)),
-                    'current_price': float(stock.get('ovrs_now_pric1', 0)),
-                    'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
-                    'profit_loss': float(stock.get('evlu_pfls_amt2', 0)),
-                    'profit_loss_rate': float(stock.get('evlu_pfls_rt1', 0)),
-                    'exchange': stock.get('ovrs_excg_cd', ''),
-                    # 추가 정보 (선택)
-                    'thdt_buy_qty': int(float(stock.get('thdt_buy_ccld_qty1', 0))),  # 당일 매수량
-                    'thdt_sell_qty': int(float(stock.get('thdt_sll_ccld_qty1', 0)))  # 당일 매도량
-                }
-                stocks.append(stock_info)
-            
-            return stocks
-            
-        except Exception as e:
-            KA.SendMessage(f"잔고 조회 오류: {e}")
             return None
 
     # 미국 달러 예수금
@@ -1477,9 +1286,9 @@ class KIS_API:
         return "보유 잔고 없음"
         
 
-##########################################################################################################3
+##########################################################################################################
 
-    def get_current_price(self, ticker: str) -> Union[float, str]: # 한국주식 현재가 조회 검증완료
+    def get_KR_current_price(self, ticker: str) -> Union[float, str]: # 한국주식 현재가 조회 검증완료
         """
         국내 주식 현재가 조회
         Parameters:
@@ -1518,28 +1327,184 @@ class KIS_API:
         except Exception as e:
             return f"현재가 조회 오류: {e}"
         
-"""
-[Header tr_id TTTT1002U(미국 매수 주문)]
-00 : 지정가
-32 : LOO(장개시지정가)
-34 : LOC(장마감지정가)
-35 : TWAP (시간가중평균)
-36 : VWAP (거래량가중평균)
-* TWAP, VWAP 주문은 분할시간 주문 입력 필수
+    def get_KR_stock_balance(self) -> Optional[List[Dict]]:
+        """한국 주식 종목별 잔고 조회"""
+        path = "uapi/domestic-stock/v1/trading/inquire-balance"
+        url = f"{self.url_base}/{path}"
 
-[Header tr_id TTTT1006U(미국 매도 주문)]
-00 : 지정가
-31 : MOO(장개시시장가)
-32 : LOO(장개시지정가)
-33 : MOC(장마감시장가)
-34 : LOC(장마감지정가)
-35 : TWAP (시간가중평균)
-36 : VWAP (거래량가중평균)
-* TWAP, VWAP 주문은 분할시간 주문 입력 필수
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTC8434R",   # 실전투자 / 모의투자: VTTC8434R
+            "custtype": "P"          # 개인
+        }
 
-[Header tr_id TTTS1001U(홍콩 매도 주문)]
-00 : 지정가
-50 : 단주지정가
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "AFHR_FLPR_YN": "N",        # 시간외단일가 여부
+            "OFL_YN": "",               # 오프라인 여부 (미사용)
+            "INQR_DVSN": "00",          # 00: 전체
+            "UNPR_DVSN": "01",          # 단가구분 01: 기본값
+            "FUND_STTL_ICLD_YN": "N",   # 펀드결제분 포함여부
+            "FNCG_AMT_AUTO_RDPT_YN": "N",
+            "PRCS_DVSN": "00",          # 00: 전일매매포함
+            "CTX_AREA_FK100": "",       # 연속조회 키 (최초조회 시 공란)
+            "CTX_AREA_NK100": ""        # 연속조회 키 (최초조회 시 공란)
+        }
 
-※ TWAP, VWAP 주문은 정정 불가
-"""
+        try:
+            stocks = []
+
+            while True:
+                response = requests.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                if data.get('rt_cd') != '0':
+                    KA.SendMessage(f"한국주식 잔고조회 API 오류: {data.get('msg1')}")
+                    return None
+
+                for stock in data.get('output1', []):
+                    quantity = int(stock.get('hldg_qty', 0))
+                    if quantity == 0:
+                        continue
+
+                    stocks.append({
+                        'ticker': stock.get('pdno', ''),           # 종목코드 (6자리)
+                        'name': stock.get('prdt_name', ''),        # 종목명
+                        'quantity': quantity,                       # 보유수량
+                        'avg_price': float(stock.get('pchs_avg_pric', 0)),   # 매입평균가
+                        'current_price': float(stock.get('prpr', 0)),        # 현재가
+                        'eval_amt': float(stock.get('evlu_amt', 0)),         # 평가금액
+                        'profit_loss': float(stock.get('evlu_pfls_amt', 0)), # 평가손익
+                        'profit_loss_rate': float(stock.get('evlu_pfls_rt', 0)) # 손익률
+                    })
+
+                # 연속조회 처리 (실전: 50종목, 모의: 20종목 초과 시)
+                FK100 = data.get('ctx_area_fk100', '').strip()
+                NK100 = data.get('ctx_area_nk100', '').strip()
+
+                if FK100 == '' or NK100 == '':
+                    break
+
+                params['CTX_AREA_FK100'] = FK100
+                params['CTX_AREA_NK100'] = NK100
+                time.sleep(0.1)
+
+            return stocks
+
+        except Exception as e:
+            KA.SendMessage(f"한국주식 잔고조회 오류: {e}")
+            return None
+        
+    def get_KR_account_summary(self) -> Optional[Dict]:
+        """
+        한국주식 계좌 원화 자산 요약
+        Returns:
+            {
+                'stock_eval_amt': 한국주식 평가금액 합계 (원),
+                'cash_balance':   원화 예수금 잔고 (원),
+                'total_krw_asset': 계좌 전체 원화자산 (주식평가금+예수금)
+            }
+        """
+        path = "uapi/domestic-stock/v1/trading/inquire-balance"
+        url = f"{self.url_base}/{path}"
+
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTC8434R",   # 실전투자 / 모의투자: VTTC8434R
+            "custtype": "P"
+        }
+
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "AFHR_FLPR_YN": "N",
+            "OFL_YN": "",
+            "INQR_DVSN": "00",
+            "UNPR_DVSN": "01",
+            "FUND_STTL_ICLD_YN": "N",
+            "FNCG_AMT_AUTO_RDPT_YN": "N",
+            "PRCS_DVSN": "00",
+            "CTX_AREA_FK100": "",
+            "CTX_AREA_NK100": ""
+        }
+
+        try:
+            self._rate_limit_sleep()
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if data.get('rt_cd') != '0':
+                KA.SendMessage(f"계좌요약 API 오류: {data.get('msg1')}")
+                return None
+
+            # output2는 연속조회 무관하게 첫 번째 응답에 계좌 전체 합산값 반환
+            output2 = data.get('output2', [{}])
+            summary = output2[0] if output2 else {}
+
+            stock_eval_amt  = float(summary.get('scts_evlu_amt', 0))   # 주식 평가금액 합계
+            cash_balance    = float(summary.get('dnca_tot_amt', 0))     # 예수금 총금액
+            total_krw_asset = stock_eval_amt + cash_balance
+
+            return {
+                'stock_eval_amt':  stock_eval_amt,
+                'cash_balance':    cash_balance,
+                'total_krw_asset': total_krw_asset
+            }
+
+        except Exception as e:
+            KA.SendMessage(f"계좌요약 조회 오류: {e}")
+            return None
+        
+    def get_KR_orderable_cash(self) -> Optional[float]:
+        """
+        한국주식 매수 가능 원화 예수금 조회
+        TR: TTTC8908R (실전) / VTTC8908R (모의)
+        Returns:
+            float: 주문가능현금 (원) / None: 오류
+        """
+        path = "uapi/domestic-stock/v1/trading/inquire-psbl-order"
+        url = f"{self.url_base}/{path}"
+
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey": self.app_key,
+            "appSecret": self.app_secret,
+            "tr_id": "TTTC8908R",   # 실전투자 / 모의투자: VTTC8908R
+            "custtype": "P"
+        }
+
+        params = {
+            "CANO": self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "PDNO": "005930",       # 조회용 더미 종목코드 (삼성전자) - API 필수값
+            "ORD_UNPR": "0",        # 시장가 기준 (0 입력)
+            "ORD_DVSN": "01",       # 01: 시장가
+            "CMA_EVLU_AMT_ICLD_YN": "N",   # CMA 평가금액 포함여부
+            "OVRS_ICLD_YN": "N"    # 해외 포함여부
+        }
+
+        try:
+            self._rate_limit_sleep()
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if data.get('rt_cd') != '0':
+                KA.SendMessage(f"매수가능조회 API 오류: {data.get('msg1')}")
+                return None
+
+            return float(data['output'].get('ord_psbl_cash', 0))
+
+        except Exception as e:
+            KA.SendMessage(f"매수가능현금 조회 오류: {e}")
+            return None
