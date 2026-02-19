@@ -138,682 +138,9 @@ class KIS_API:
         except Exception as e:
             KA.SendMessage(f"Hashkey 생성 실패: {e}")
             return ""
-
-    # 미국 정규시장 주식 매도 주문
-    def order_sell_US(self, ticker: str, quantity: int, price: float,
-                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
-        """
-        미국 주식 매도 주문 (Regular Market)
-        
-        Parameters:
-        ticker: 종목 코드
-        quantity: 주문 수량
-        price: 지정가
-        exchange: 거래소 코드 ("NASD" > "NYSE" > "AMEX" > "BAT" > "ARC"순서)
-        ord_dvsn: 주문구분 ("00": 지정가, "31": MOO, "32": LOO, "33": MOC, "34": LOC)
-        
-        Returns:
-        Dict 또는 None - 주문 정보 딕셔너리
-        {
-            'success': bool,
-            'ticker': str,
-            'quantity': int,
-            'price': float,
-            'order_number': str,  # 주문번호 (ODNO)
-            'order_time': str,    # 주문시각
-            'response': requests.Response
-        }
-        """
-        order_sell_message = []
-
-        if exchange is None:
-            exchange = self.get_exchange_by_ticker(ticker)
-            if exchange == "NAS" or exchange == "BAQ":
-                exchange = "NASD"
-            elif exchange == "AMS" or exchange == "BAA":
-                exchange = "AMEX"
-            elif exchange == "NYS" or exchange == "BAY":
-                exchange = "NYSE"
-            else:
-                exchange = None
-        
-        if exchange is None:
-            order_sell_message.append(f"{ticker} 거래소를 찾을 수 없습니다.")
-            order_info = None
-            return order_info, order_sell_message
-        
-        # 가격을 소수점 2자리로 반올림
-        price = round(price, 2)
-        
-        path = "uapi/overseas-stock/v1/trading/order"
-        url = f"{self.url_base}/{path}"
-
-        data = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "OVRS_EXCG_CD": exchange,
-            "PDNO": ticker,
-            "ORD_DVSN": ord_dvsn,
-            "ORD_QTY": str(quantity),
-            "OVRS_ORD_UNPR": f"{price:.2f}",  # 소수점 2자리 문자열
-            "CTAC_TLNO": "",
-            "MGCO_APTM_ODNO": "",
-            "SLL_TYPE": "00",
-            "ORD_SVR_DVSN_CD": "0"
-        }
-
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "TTTT1006U",
-            "custtype": "P",
-            "hashkey": self.hashkey(data)
-        }
-
-        # 500 에러 재시도 로직
-        max_retries = 2
-        for attempt in range(max_retries + 1):
-            try:
-                if attempt > 0:
-                    time.sleep(1)  # 재시도 전 1초 대기
-                    order_sell_message.append(f"재시도 {attempt}/{max_retries}")
-                
-                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
-                response.raise_for_status()
-                
-                result = response.json()
-                
-                # 응답 성공 여부 확인
-                if result.get('rt_cd') == '0':
-                    output = result.get('output', {})
-                    
-                    order_info = {
-                        'success': True,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': output.get('ODNO', ''),      # 주문번호
-                        'order_time': output.get('ORD_TMD', ''),     # 주문시각
-                        'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                        'message': result.get('msg1', ''),
-                        'response': response
-                    }
-                    
-                    order_sell_message.append(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")                
-                    return order_info, order_sell_message
-                else:
-                    order_sell_message.append(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
-                    order_info = {
-                        'success': False,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': '',
-                        'error_code': result.get('rt_cd'),
-                        'error_message': result.get('msg1', ''),
-                        'response': response
-                    }
-                    return order_info, order_sell_message
-                    
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 500 and attempt < max_retries:
-                    order_sell_message.append(f"500 에러 발생, 재시도 중...")
-                    continue
-                else:
-                    order_sell_message.append(f"정규매도 주문 오류: {e}")
-                    order_info = None
-                    return order_info, order_sell_message
-                    
-            except Exception as e:
-                if attempt < max_retries:
-                    order_sell_message.append(f"에러 발생, 재시도 중...")
-                    continue
-                else:
-                    order_sell_message.append(f"정규매도 주문 오류: {e}")
-                    order_info = None
-                    return order_info, order_sell_message
-        
-        # 모든 재시도 실패
-        order_sell_message.append(f"정규매도 주문 최종 실패: 모든 재시도 소진")
-        return None, order_sell_message
-
-    # 미국 정규시장 주식 매수 주문
-    def order_buy_US(self, ticker: str, quantity: int, price: float, 
-                        exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
-        """
-        미국 주식 매수 주문 (Regular Market)
-        
-        Parameters:
-        ticker: 종목 코드
-        quantity: 주문 수량
-        price: 지정가
-        exchange: 거래소 코드 (None이면 자동 검색)
-        ord_dvsn: 주문구분 ("00": 지정가, "32": LOO, "34": LOC)
-        
-        Returns:
-        Dict 또는 None - 주문 정보 딕셔너리
-        """
-
-        order_buy_message = []
-
-        if exchange is None:
-            exchange = self.get_exchange_by_ticker(ticker)
-            if exchange == "NAS" or exchange == "BAQ":
-                exchange = "NASD"
-            elif exchange == "AMS" or exchange == "BAA":
-                exchange = "AMEX"
-            elif exchange == "NYS" or exchange == "BAY":
-                exchange = "NYSE"
-            else:
-                exchange = None
-        
-        if exchange is None:
-            order_buy_message.append(f"{ticker} 거래소를 찾을 수 없습니다.")
-            order_info = None
-            return order_info, order_buy_message
-        
-        # 가격을 소수점 2자리로 반올림
-        price = round(price, 2)
-        
-        path = "uapi/overseas-stock/v1/trading/order"
-        url = f"{self.url_base}/{path}"
-
-        data = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "OVRS_EXCG_CD": exchange,
-            "PDNO": ticker,
-            "ORD_DVSN": ord_dvsn,
-            "ORD_QTY": str(quantity),
-            "OVRS_ORD_UNPR": f"{price:.2f}",
-            "CTAC_TLNO": "",
-            "MGCO_APTM_ODNO": "",
-            "SLL_TYPE": "",  # 매수는 공란
-            "ORD_SVR_DVSN_CD": "0"
-        }
-
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "TTTT1002U",  # 매수는 TTTT1002U
-            "custtype": "P",
-            "hashkey": self.hashkey(data)
-        }
-
-        # 500 에러 재시도 로직
-        max_retries = 2
-        for attempt in range(max_retries + 1):
-            try:
-                if attempt > 0:
-                    time.sleep(1)  # 재시도 전 1초 대기
-                    order_buy_message.append(f"재시도 {attempt}/{max_retries}")
-                
-                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
-                response.raise_for_status()
-                
-                result = response.json()
-                
-                if result.get('rt_cd') == '0':
-                    output = result.get('output', {})
-                    
-                    order_info = {
-                        'success': True,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': output.get('ODNO', ''),
-                        'order_time': output.get('ORD_TMD', ''),
-                        'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                        'message': result.get('msg1', ''),
-                        'response': response
-                    }
-                    
-                    order_buy_message.append(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
-                    return order_info, order_buy_message
-                else:
-                    order_buy_message.append(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
-                    return {
-                        'success': False,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': '',
-                        'error_code': result.get('rt_cd'),
-                        'error_message': result.get('msg1', ''),
-                        'response': response
-                    }, order_buy_message
-                    
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 500 and attempt < max_retries:
-                    order_buy_message.append(f"500 에러 발생, 재시도 중...")
-                    continue
-                else:
-                    order_buy_message.append(f"정규매수 주문 오류: {e}")
-                    order_info = None
-                    return order_info, order_buy_message
-                    
-            except Exception as e:
-                if attempt < max_retries:
-                    order_buy_message.append(f"에러 발생, 재시도 중...")
-                    continue
-                else:
-                    order_buy_message.append(f"정규매수 주문 오류: {e}")
-                    order_info = None
-                    return order_info, order_buy_message
-        
-        # 모든 재시도 실패
-        order_buy_message.append(f"정규매수 주문 최종 실패: 모든 재시도 소진")
-        return None, order_buy_message
     
-    # 미국 달러 예수금
-    def get_US_dollar_balance(self) -> Optional[Dict]:
-        """미국 달러 예수금"""
-        path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
-        url = f"{self.url_base}/{path}"
-        
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "CTRP6504R"
-        }
-        
-        params = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "WCRC_FRCR_DVSN_CD": "02",
-            "NATN_CD": "840",
-            "TR_MKET_CD": "00",
-            "INQR_DVSN_CD": "00"
-        }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('rt_cd') != '0':
-                return None
-            
-            output2 = data.get('output2', [])
-            if not output2:
-                return None
-            
-            usd_info = output2[0]
-            
-            return {
-                'currency': usd_info.get('crcy_cd', 'USD'),
-                'deposit': float(usd_info.get('frcr_dncl_amt_2', 0)),
-                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)), # 출금가능액, 정확한 거래가능금액
-                'exchange_rate': float(usd_info.get('frst_bltn_exrt', 0)),
-                'krw_value': float(usd_info.get('frcr_evlu_amt2', 0))
-            }
-        except:
-            return None
-
-    # 체결내역 확인
-    def check_order_execution(self, order_number, ticker, order_type="00"):       
-        """
-        주문 체결 확인 함수
-        
-        Parameters:
-        order_number (str): 주문번호 (ODNO)
-        ticker (str): 종목코드
-
-        order_type (str): 주문 유형 ("00": 전체, "01": 매도, "02": 매수)
-        
-        Returns:
-        dict: 체결 정보 또는 None
-            - success (bool): 체결 성공 여부
-            - name (str): 종목명
-            - qty (str): 체결수량
-            - price (str): 체결단가
-            - amount (str): 체결금액
-            - status (str): 처리상태
-            - order_type (str): 주문유형 (매도/매수)
-        """
-        
-        # 오늘 날짜
-        today = datetime.now().strftime('%Y%m%d')
-        
-        # 거래소 확인
-        exchange = self.get_exchange_by_ticker(ticker)
-        if exchange == "NAS" or exchange == "BAQ":
-            exchange = "NASD"
-        elif exchange == "AMS" or exchange == "BAA":
-            exchange = "AMEX"
-        elif exchange == "NYS" or exchange == "BAY":
-            exchange = "NYSE"
-        else:
-            exchange = None
-        
-        if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
-            return None
-        
-        # 체결 내역 조회
-        print(f"\n주문번호 {order_number} 체결 내역 확인 중...")
-        
-        path = "uapi/overseas-stock/v1/trading/inquire-ccnl"
-        url = f"{self.url_base}/{path}"
-        
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "TTTS3035R"
-        }
-        
-        params = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "PDNO": ticker,
-            "ORD_STRT_DT": today,
-            "ORD_END_DT": today,
-            "SLL_BUY_DVSN": order_type,   # "00": 전체, "01": 매도, "02": 매수
-            "CCLD_NCCS_DVSN": "01",       # 체결만
-            "OVRS_EXCG_CD": exchange,
-            "SORT_SQN": "DS",
-            "ORD_DT": "",
-            "ORD_GNO_BRNO": "",
-            "ODNO": "",
-            "CTX_AREA_NK200": "",
-            "CTX_AREA_FK200": ""
-        }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if result.get('rt_cd') == '0':
-                orders = result.get('output', [])
-                
-                # 해당 주문 찾기
-                for order in orders:
-                    if order.get('odno') == order_number:
-                        return {
-                            'success': True,
-                            'name': order.get('prdt_name'),
-                            'qty': order.get('ft_ccld_qty'),
-                            'price': order.get('ft_ccld_unpr3'),
-                            'amount': order.get('ft_ccld_amt3'),
-                            'status': order.get('prcs_stat_name'),
-                            'order_type': order.get('sll_buy_dvsn_cd_name', '알 수 없음')
-                        }
-                
-                print(f"주문번호 {order_number}를 찾을 수 없습니다.")
-                return None
-            else:
-                print(f"조회 실패: {result.get('msg1')}")
-                return None
-                
-        except Exception as e:
-            print(f"체결 확인 중 오류: {e}")
-            return None
-
-    # 미국 주식 주문 취소
-    def cancel_US_order(self, order_number: str, ticker: str, 
-                        quantity: int, exchange: Optional[str] = None,
-                        ) -> Optional[Dict]:
-        """
-        미국 주식 주문 취소
-        
-        Parameters:
-        order_number (str): 취소할 주문번호 (ODNO)
-        ticker (str): 종목코드
-        quantity (int): 취소 수량 (전량 취소시 원주문 수량)
-        exchange (str): 거래소 코드 (None이면 자동 검색)
-        
-        Returns:
-        Dict 또는 None - 취소 결과
-        """
-        message = []
-        # 거래소 확인
-        exchange = self.get_exchange_by_ticker(ticker)
-        if exchange == "NAS" or exchange == "BAQ":
-            exchange = "NASD"
-        elif exchange == "AMS" or exchange == "BAA":
-            exchange = "AMEX"
-        elif exchange == "NYS" or exchange == "BAY":
-            exchange = "NYSE"
-        else:
-            exchange = None
-        
-        if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
-            return None
-        
-        # 정규장 TR_ID
-        tr_id = "TTTT1004U"
-        path = "uapi/overseas-stock/v1/trading/order-rvsecncl"
-        url = f"{self.url_base}/{path}"
-        
-        data = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "OVRS_EXCG_CD": exchange,
-            "PDNO": ticker,
-            "ORGN_ODNO": order_number,
-            "ORD_DVSN": "00",
-            "RVSE_CNCL_DVSN_CD": "02",  # 02: 취소
-            "ORD_QTY": "0",  # 취소는 0
-            "OVRS_ORD_UNPR": "0",  # 취소는 0
-            "CTAC_TLNO": "",
-            "MGCO_APTM_ODNO": "",
-            "ORD_SVR_DVSN_CD": "0"
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": tr_id,
-            "custtype": "P",
-            "hashkey": self.hashkey(data)
-        }
-        
-        try:
-            response = requests.post(url, headers=headers, data=json.dumps(data))
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if result.get('rt_cd') == '0':
-                # print(f"주문 취소 성공: {ticker} (주문번호: {order_number})")
-                return {
-                    'success': True,
-                    'ticker': ticker,
-                    'order_number': order_number,
-                    'message': result.get('msg1', ''),
-                    'response': response
-                }
-            else:
-                # print(f"주문 취소 실패: {result.get('msg1', '알 수 없는 오류')}")
-                return {
-                    'success': False,
-                    'ticker': ticker,
-                    'order_number': order_number,
-                    'error_message': result.get('msg1', ''),
-                    'response': response
-                }
-                
-        except Exception as e:
-            print(f"주문 취소 오류: {e}")
-            return None
-
-    # 미체결 주문 조회
-    def get_unfilled_orders(self, start_date: Optional[str] = None, 
-                        end_date: Optional[str] = None) -> List[Dict]:
-        """
-        미체결 주문 조회
-        
-        Parameters:
-        start_date (str): 시작일 (YYYYMMDD) - None이면 오늘
-        end_date (str): 종료일 (YYYYMMDD) - None이면 오늘
-        
-        Returns:
-        List[Dict]: 미체결 주문 리스트
-        """
-        if start_date is None or end_date is None:
-            today = datetime.now().strftime('%Y%m%d')
-            start_date = end_date = today
-        
-        path = "uapi/overseas-stock/v1/trading/inquire-nccs"
-        url = f"{self.url_base}/{path}"
-        
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "TTTS3018R"
-        }
-        
-        params = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "PDNO": "",
-            "ORD_STRT_DT": start_date,
-            "ORD_END_DT": end_date,
-            "SLL_BUY_DVSN": "00",  # 00: 전체
-            "CCLD_NCCS_DVSN": "02",  # 02: 미체결만
-            "OVRS_EXCG_CD": "",  # 전체
-            "SORT_SQN": "DS",
-            "ORD_DT": "",
-            "ORD_GNO_BRNO": "",
-            "ODNO": "",
-            "CTX_AREA_NK200": "",
-            "CTX_AREA_FK200": ""
-        }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if result.get('rt_cd') == '0':
-                orders = result.get('output', [])
-                
-                unfilled_orders = []
-                for order in orders:
-                    unfilled_orders.append({
-                        'order_number': order.get('odno', ''),
-                        'ticker': order.get('pdno', ''),
-                        'name': order.get('prdt_name', ''),
-                        'order_type': order.get('sll_buy_dvsn_cd_name', ''),
-                        'order_qty': int(order.get('ft_ord_qty', 0)),
-                        'filled_qty': int(order.get('ft_ccld_qty', 0)),
-                        'unfilled_qty': int(order.get('nccs_qty', 0)),
-                        'order_price': float(order.get('ft_ord_unpr3', 0)),
-                        'exchange': order.get('ovrs_excg_cd', ''),
-                        'status': order.get('prcs_stat_name', '')
-                    })
-                
-                return unfilled_orders
-            else:
-                print(f"미체결 조회 실패: {result.get('msg1')}")
-                return []
-                
-        except Exception as e:
-            print(f"미체결 조회 오류: {e}")
-            return []
-
-    # 모든 미체결 주문 취소 >>> 오류수정
-    def cancel_all_unfilled_orders(self, start_date: Optional[str] = None,
-                                end_date: Optional[str] = None
-                                ) -> Tuple[Dict, List[str]]:
-        """
-        모든 미체결 주문 일괄 취소
-        
-        Parameters:
-        start_date (str): 시작일 (YYYYMMDD) - None이면 오늘
-        end_date (str): 종료일 (YYYYMMDD) - None이면 오늘
-        
-        Returns:
-        Dict: 취소 결과 요약
-        {
-            'total': int,           # 전체 미체결 주문 수
-            'success': int,         # 취소 성공 수
-            'failed': int,          # 취소 실패 수
-            'success_list': List,   # 성공한 주문 리스트
-            'failed_list': List     # 실패한 주문 리스트
-        }
-        """
-        # 1. 미체결 주문 조회
-        unfilled_orders = self.get_unfilled_orders(start_date, end_date)
-        
-        if not unfilled_orders:
-            summary = {
-                'total': 0,
-                'success': 0,
-                'failed': 0,
-                'success_list': [],
-                'failed_list': []
-            }
-            message = ["미체결 주문 없음"]
-            return summary, message
-
-        # 2. 각 주문 취소
-        success_list = []
-        failed_list = []
-        
-        for i, order in enumerate(unfilled_orders, 1):
-            result = self.cancel_US_order(
-                order_number=order['order_number'],
-                ticker=order['ticker'],
-                quantity=order['order_qty'],
-                exchange=order['exchange']
-            )
-            
-            # 결과 처리
-            if result and result.get('success'):
-                success_list.append({
-                    'ticker': order['ticker'],
-                    'name': order['name'],
-                    'order_number': order['order_number'],
-                    'unfilled_qty': order['unfilled_qty']
-                })
-            else:
-                failed_list.append({
-                    'ticker': order['ticker'],
-                    'name': order['name'],
-                    'order_number': order['order_number'],
-                    'unfilled_qty': order['unfilled_qty'],
-                    'error': result.get('error_message') if result else '알 수 없는 오류'
-                })
-            
-            # API 호출 간격 (0.2초)
-            time.sleep(0.2)
-        
-        # 3. 결과 요약
-        summary = {
-            'total': len(unfilled_orders),
-            'success': len(success_list),
-            'failed': len(failed_list),
-            'success_list': success_list,
-            'failed_list': failed_list
-        }
-        
-        # 4. 결과 출력
-        message = []
-        message.append(f"전체 미체결: {summary['total']}건")
-        message.append(f"취소 성공: {summary['success']}건")
-        message.append(f"취소 실패: {summary['failed']}건")
-        return summary, message
-
-##########################################################################################################
-
-    def get_KR_current_price(self, ticker: str) -> Union[float, str]: # 한국주식 현재가 조회 검증완료
+    # 국내 주식 현재가 조회
+    def get_KR_current_price(self, ticker: str) -> Union[float, str]:
         """
         국내 주식 현재가 조회
         Parameters:
@@ -851,7 +178,8 @@ class KIS_API:
 
         except Exception as e:
             return f"현재가 조회 오류: {e}"
-        
+
+    # 한국 주식 계좌 잔고 조회
     def get_KR_stock_balance(self) -> Optional[List[Dict]]:
         """한국 주식 종목별 잔고 조회"""
         path = "uapi/domestic-stock/v1/trading/inquire-balance"
@@ -863,21 +191,21 @@ class KIS_API:
             "appKey": self.app_key,
             "appSecret": self.app_secret,
             "tr_id": "TTTC8434R",   # 실전투자 / 모의투자: VTTC8434R
-            "custtype": "P"          # 개인
+            "custtype": "P"
         }
 
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "AFHR_FLPR_YN": "N",        # 시간외단일가 여부
-            "OFL_YN": "",               # 오프라인 여부 (미사용)
-            "INQR_DVSN": "00",          # 00: 전체
-            "UNPR_DVSN": "01",          # 단가구분 01: 기본값
-            "FUND_STTL_ICLD_YN": "N",   # 펀드결제분 포함여부
+            "AFHR_FLPR_YN": "N",
+            "OFL_YN": "",
+            "INQR_DVSN": "00",
+            "UNPR_DVSN": "01",
+            "FUND_STTL_ICLD_YN": "N",
             "FNCG_AMT_AUTO_RDPT_YN": "N",
-            "PRCS_DVSN": "00",          # 00: 전일매매포함
-            "CTX_AREA_FK100": "",       # 연속조회 키 (최초조회 시 공란)
-            "CTX_AREA_NK100": ""        # 연속조회 키 (최초조회 시 공란)
+            "PRCS_DVSN": "00",
+            "CTX_AREA_FK100": "",
+            "CTX_AREA_NK100": ""
         }
 
         try:
@@ -898,17 +226,18 @@ class KIS_API:
                         continue
 
                     stocks.append({
-                        'ticker': stock.get('pdno', ''),           # 종목코드 (6자리)
-                        'name': stock.get('prdt_name', ''),        # 종목명
-                        'quantity': quantity,                       # 보유수량
-                        'avg_price': float(stock.get('pchs_avg_pric', 0)),   # 매입평균가
-                        'current_price': float(stock.get('prpr', 0)),        # 현재가
-                        'eval_amt': float(stock.get('evlu_amt', 0)),         # 평가금액
-                        'profit_loss': float(stock.get('evlu_pfls_amt', 0)), # 평가손익
-                        'profit_loss_rate': float(stock.get('evlu_pfls_rt', 0)) # 손익률
+                        "종목코드": stock.get('pdno', ''),
+                        "종목명": stock.get('prdt_name', ''),
+                        "보유수량": quantity,
+                        "매도가능수량": int(stock.get('ord_psbl_qty', 0)),
+                        "매입단가": float(stock.get('pchs_avg_pric', 0)),
+                        "매입금액": int(float(stock.get('pchs_amt', 0))),
+                        "현재가": int(stock.get('prpr', 0)),
+                        "평가금액": int(float(stock.get('evlu_amt', 0))),
+                        "평가손익": int(float(stock.get('evlu_pfls_amt', 0))),
+                        "수익률": float(stock.get('evlu_pfls_rt', 0)),
                     })
 
-                # 연속조회 처리 (실전: 50종목, 모의: 20종목 초과 시)
                 FK100 = data.get('ctx_area_fk100', '').strip()
                 NK100 = data.get('ctx_area_nk100', '').strip()
 
@@ -924,7 +253,21 @@ class KIS_API:
         except Exception as e:
             KA.SendMessage(f"한국주식 잔고조회 오류: {e}")
             return None
-        
+
+    # 한국 주식 종목 잔고 조회
+    def get_KR_stock_balance_by_ticker(self, ticker: str) -> Optional[Dict]:
+        """한국 주식 특정 종목 잔고 조회"""
+        stocks = self.get_KR_stock_balance()
+        if stocks is None:
+            return None
+
+        for stock in stocks:
+            if stock['종목코드'] == ticker:
+                return stock
+
+        return None  # 미보유 종목
+
+    # 한국 주식 계좌 원화 평가금 요약        
     def get_KR_account_summary(self) -> Optional[Dict]:
         """
         한국주식 계좌 원화 자산 요약
@@ -989,6 +332,7 @@ class KIS_API:
             KA.SendMessage(f"계좌요약 조회 오류: {e}")
             return None
         
+    # 한국 주식 매수 가능 원화 예수금 조회    
     def get_KR_orderable_cash(self) -> Optional[float]:
         """
         한국주식 매수 가능 원화 예수금 조회
@@ -1033,3 +377,532 @@ class KIS_API:
         except Exception as e:
             KA.SendMessage(f"매수가능현금 조회 오류: {e}")
             return None
+
+    # 한국 주식 매수 주문
+    def order_buy_KR(self, ticker: str, quantity: int, price: int = 0,
+                     ord_dvsn: str = "01") -> Tuple[Optional[Dict], List[str]]:
+        """
+        한국 주식 매수 주문
+
+        Parameters:
+            ticker   (str): 종목코드 (예: "005930")
+            quantity (int): 주문 수량
+            price    (int): 주문 단가 (시장가일 때는 0)
+            ord_dvsn (str): 주문구분
+                "00" 지정가 | "01" 시장가 | "02" 조건부지정가
+                "03" 최유리지정가 | "04" 최우선지정가 | "05" 장전시간외
+                "06" 장후시간외 | "07" 시간외단일가
+
+        Returns:
+            Tuple[Dict | None, List[str]]
+            Dict keys:
+                success      (bool)
+                ticker       (str)
+                quantity     (int)
+                price        (int)
+                order_number (str)  주문번호 (ODNO)
+                order_time   (str)  주문시각
+                org_number   (str)  원주문번호
+                message      (str)
+                response     (requests.Response)
+        """
+        order_buy_message: List[str] = []
+
+        if not ticker or quantity <= 0:
+            order_buy_message.append("종목코드 또는 수량이 올바르지 않습니다.")
+            return None, order_buy_message
+
+        path = "uapi/domestic-stock/v1/trading/order-cash"
+        url  = f"{self.url_base}/{path}"
+
+        data = {
+            "CANO":         self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "PDNO":         ticker,
+            "ORD_DVSN":     ord_dvsn,
+            "ORD_QTY":      str(quantity),
+            "ORD_UNPR":     str(price),   # 시장가는 "0"
+        }
+
+        headers = {
+            "Content-Type":  "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey":        self.app_key,
+            "appSecret":     self.app_secret,
+            "tr_id":         "TTTC0802U",  # 실전: TTTC0802U / 모의: VTTC0802U
+            "custtype":      "P",
+            "hashkey":       self.hashkey(data)
+        }
+
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0:
+                    time.sleep(1)
+                    order_buy_message.append(f"재시도 {attempt}/{max_retries}")
+
+                self._rate_limit_sleep()
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+                response.raise_for_status()
+                result = response.json()
+
+                if result.get("rt_cd") == "0":
+                    output = result.get("output", {})
+                    order_info = {
+                        "success":      True,
+                        "ticker":       ticker,
+                        "quantity":     quantity,
+                        "price":        price,
+                        "order_number": output.get("ODNO", ""),
+                        "order_time":   output.get("ORD_TMD", ""),
+                        "org_number":   output.get("KRX_FWDG_ORD_ORGNO", ""),
+                        "message":      result.get("msg1", ""),
+                        "response":     response
+                    }
+                    order_buy_message.append(
+                        f"국내매수 주문: {ticker} {quantity}주 "
+                        f"@ {price:,}원  주문번호: {order_info['order_number']}"
+                    )
+                    return order_info, order_buy_message
+                else:
+                    order_buy_message.append(f"국내매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                    return {
+                        "success":       False,
+                        "ticker":        ticker,
+                        "quantity":      quantity,
+                        "price":         price,
+                        "order_number":  "",
+                        "error_code":    result.get("rt_cd"),
+                        "error_message": result.get("msg1", ""),
+                        "response":      response
+                    }, order_buy_message
+
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 500 and attempt < max_retries:
+                    order_buy_message.append("500 에러 발생, 재시도 중...")
+                    continue
+                order_buy_message.append(f"국내매수 주문 오류: {e}")
+                return None, order_buy_message
+
+            except Exception as e:
+                if attempt < max_retries:
+                    order_buy_message.append("에러 발생, 재시도 중...")
+                    continue
+                order_buy_message.append(f"국내매수 주문 오류: {e}")
+                return None, order_buy_message
+
+        order_buy_message.append("국내매수 주문 최종 실패: 모든 재시도 소진")
+        return None, order_buy_message
+
+    # 한국 주식 매도 주문
+    def order_sell_KR(self, ticker: str, quantity: int, price: int = 0,
+                      ord_dvsn: str = "01") -> Tuple[Optional[Dict], List[str]]:
+        """
+        한국 주식 매도 주문
+
+        Parameters:
+            ticker   (str): 종목코드 (예: "005930")
+            quantity (int): 주문 수량
+            price    (int): 주문 단가 (시장가일 때는 0)
+            ord_dvsn (str): 주문구분 (order_buy_KR 동일)
+
+        Returns:
+            Tuple[Dict | None, List[str]]
+            Dict keys: success, ticker, quantity, price,
+                       order_number, order_time, org_number, message, response
+        """
+        order_sell_message: List[str] = []
+
+        if not ticker or quantity <= 0:
+            order_sell_message.append("종목코드 또는 수량이 올바르지 않습니다.")
+            return None, order_sell_message
+
+        path = "uapi/domestic-stock/v1/trading/order-cash"
+        url  = f"{self.url_base}/{path}"
+
+        data = {
+            "CANO":         self.cano,
+            "ACNT_PRDT_CD": self.acnt_prdt_cd,
+            "PDNO":         ticker,
+            "ORD_DVSN":     ord_dvsn,
+            "ORD_QTY":      str(quantity),
+            "ORD_UNPR":     str(price),
+        }
+
+        headers = {
+            "Content-Type":  "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey":        self.app_key,
+            "appSecret":     self.app_secret,
+            "tr_id":         "TTTC0801U",  # 실전: TTTC0801U / 모의: VTTC0801U
+            "custtype":      "P",
+            "hashkey":       self.hashkey(data)
+        }
+
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0:
+                    time.sleep(1)
+                    order_sell_message.append(f"재시도 {attempt}/{max_retries}")
+
+                self._rate_limit_sleep()
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+                response.raise_for_status()
+                result = response.json()
+
+                if result.get("rt_cd") == "0":
+                    output = result.get("output", {})
+                    order_info = {
+                        "success":      True,
+                        "ticker":       ticker,
+                        "quantity":     quantity,
+                        "price":        price,
+                        "order_number": output.get("ODNO", ""),
+                        "order_time":   output.get("ORD_TMD", ""),
+                        "org_number":   output.get("KRX_FWDG_ORD_ORGNO", ""),
+                        "message":      result.get("msg1", ""),
+                        "response":     response
+                    }
+                    order_sell_message.append(
+                        f"국내매도 주문: {ticker} {quantity}주 "
+                        f"@ {price:,}원  주문번호: {order_info['order_number']}"
+                    )
+                    return order_info, order_sell_message
+                else:
+                    order_sell_message.append(f"국내매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                    return {
+                        "success":       False,
+                        "ticker":        ticker,
+                        "quantity":      quantity,
+                        "price":         price,
+                        "order_number":  "",
+                        "error_code":    result.get("rt_cd"),
+                        "error_message": result.get("msg1", ""),
+                        "response":      response
+                    }, order_sell_message
+
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 500 and attempt < max_retries:
+                    order_sell_message.append("500 에러 발생, 재시도 중...")
+                    continue
+                order_sell_message.append(f"국내매도 주문 오류: {e}")
+                return None, order_sell_message
+
+            except Exception as e:
+                if attempt < max_retries:
+                    order_sell_message.append("에러 발생, 재시도 중...")
+                    continue
+                order_sell_message.append(f"국내매도 주문 오류: {e}")
+                return None, order_sell_message
+
+        order_sell_message.append("국내매도 주문 최종 실패: 모든 재시도 소진")
+        return None, order_sell_message
+
+    # 한국 주식 주문 체결 확인
+    def check_KR_order_execution(self, order_number: str, ticker: str,
+                                  order_type: str = "00") -> Optional[Dict]:
+        """
+        한국 주식 주문 체결 확인
+
+        Parameters:
+            order_number (str): 주문번호 (ODNO)
+            ticker       (str): 종목코드
+            order_type   (str): "00" 전체 | "01" 매도 | "02" 매수
+
+        Returns:
+            Dict | None
+                success      (bool)
+                order_number (str)
+                name         (str)  종목명
+                qty          (str)  체결수량
+                price        (str)  체결단가
+                amount       (str)  체결금액
+                status       (str)  처리상태명
+                order_type   (str)  매도/매수 구분
+            None: 해당 주문번호를 찾지 못하거나 API 오류
+        """
+        today = datetime.now().strftime("%Y%m%d")
+
+        path = "uapi/domestic-stock/v1/trading/inquire-daily-ccld"
+        url  = f"{self.url_base}/{path}"
+
+        headers = {
+            "Content-Type":  "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey":        self.app_key,
+            "appSecret":     self.app_secret,
+            "tr_id":         "TTTC8001R",   # 실전: TTTC8001R / 모의: VTTC8001R
+            "custtype":      "P"
+        }
+
+        params = {
+            "CANO":          self.cano,
+            "ACNT_PRDT_CD":  self.acnt_prdt_cd,
+            "INQR_STRT_DT":  today,
+            "INQR_END_DT":   today,
+            "SLL_BUY_DVSN_CD": order_type,   # 00: 전체 / 01: 매도 / 02: 매수
+            "INQR_DVSN":     "00",            # 00: 역순
+            "PDNO":          ticker,
+            "CCLD_DVSN":     "01",            # 01: 체결만
+            "ORD_GNO_BRNO":  "",
+            "ODNO":          order_number,
+            "INQR_DVSN_3":   "00",
+            "INQR_DVSN_1":   "",
+            "CTX_AREA_FK100": "",
+            "CTX_AREA_NK100": ""
+        }
+
+        try:
+            self._rate_limit_sleep()
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get("rt_cd") != "0":
+                print(f"국내 체결확인 조회 실패: {result.get('msg1')}")
+                return None
+
+            orders = result.get("output1", [])
+            for order in orders:
+                if order.get("odno") == order_number:
+                    return {
+                        "success":      True,
+                        "order_number": order_number,
+                        "name":         order.get("prdt_name", ""),
+                        "qty":          order.get("tot_ccld_qty", "0"),   # 총체결수량
+                        "price":        order.get("avg_prvs", "0"),        # 평균체결가
+                        "amount":       order.get("tot_ccld_amt", "0"),   # 총체결금액
+                        "status":       order.get("ord_tmd", ""),          # 주문시각 (상태 대체)
+                        "order_type":   order.get("sll_buy_dvsn_cd_name", "알 수 없음")
+                    }
+
+            print(f"주문번호 {order_number}를 체결 내역에서 찾을 수 없습니다.")
+            return None
+
+        except Exception as e:
+            print(f"국내 체결 확인 오류: {e}")
+            return None
+
+    # 한국 주식 미체결 주문 조회
+    def get_KR_unfilled_orders(self) -> List[Dict]:
+        """
+        한국 주식 당일 미체결 주문 전체 조회
+
+        Returns:
+            List[Dict]: 미체결 주문 리스트
+                order_number (str)  주문번호
+                ticker       (str)  종목코드
+                name         (str)  종목명
+                order_type   (str)  매도/매수 구분명
+                order_qty    (int)  주문수량
+                filled_qty   (int)  체결수량
+                unfilled_qty (int)  미체결수량
+                order_price  (int)  주문단가
+                ord_dvsn     (str)  주문구분명
+        """
+        path = "uapi/domestic-stock/v1/trading/inquire-psbl-rvsecncl"
+        url  = f"{self.url_base}/{path}"
+
+        headers = {
+            "Content-Type":  "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey":        self.app_key,
+            "appSecret":     self.app_secret,
+            "tr_id":         "TTTC8036R",   # 실전: TTTC8036R / 모의: VTTC8036R
+            "custtype":      "P"
+        }
+
+        params = {
+            "CANO":          self.cano,
+            "ACNT_PRDT_CD":  self.acnt_prdt_cd,
+            "CTX_AREA_FK100": "",
+            "CTX_AREA_NK100": "",
+            "INQR_DVSN_1":   "0",   # 0: 조회순서 기본
+            "INQR_DVSN_2":   "0"    # 0: 전체
+        }
+
+        try:
+            unfilled: List[Dict] = []
+
+            while True:
+                self._rate_limit_sleep()
+                response = requests.get(url, headers=headers, params=params, timeout=10)
+                response.raise_for_status()
+                result = response.json()
+
+                if result.get("rt_cd") != "0":
+                    print(f"국내 미체결 조회 실패: {result.get('msg1')}")
+                    return []
+
+                for order in result.get("output", []):
+                    unfilled_qty = int(order.get("psbl_qty", 0))
+                    if unfilled_qty == 0:
+                        continue
+                    unfilled.append({
+                        "order_number": order.get("odno", ""),
+                        "ticker":       order.get("pdno", ""),
+                        "name":         order.get("prdt_name", ""),
+                        "order_type":   order.get("sll_buy_dvsn_cd_name", ""),
+                        "order_qty":    int(order.get("ord_qty", 0)),
+                        "filled_qty":   int(order.get("tot_ccld_qty", 0)),
+                        "unfilled_qty": unfilled_qty,
+                        "order_price":  int(order.get("ord_unpr", 0)),
+                        "ord_dvsn":     order.get("ord_dvsn_name", "")
+                    })
+
+                FK100 = result.get("ctx_area_fk100", "").strip()
+                NK100 = result.get("ctx_area_nk100", "").strip()
+                if not FK100 or not NK100:
+                    break
+                params["CTX_AREA_FK100"] = FK100
+                params["CTX_AREA_NK100"] = NK100
+
+            return unfilled
+
+        except Exception as e:
+            print(f"국내 미체결 조회 오류: {e}")
+            return []
+
+    # 한국 주식 개별 주문 취소
+    def cancel_KR_order(self, order_number: str, ticker: str,
+                         quantity: int) -> Optional[Dict]:
+        """
+        한국 주식 개별 주문 취소
+
+        Parameters:
+            order_number (str): 취소할 주문번호 (ODNO)
+            ticker       (str): 종목코드
+            quantity     (int): 취소 수량 (전량 취소 시 원주문 수량 그대로)
+
+        Returns:
+            Dict | None
+                success      (bool)
+                ticker       (str)
+                order_number (str)
+                message      (str)
+                response     (requests.Response)
+        """
+        path = "uapi/domestic-stock/v1/trading/order-rvsecncl"
+        url  = f"{self.url_base}/{path}"
+
+        data = {
+            "CANO":             self.cano,
+            "ACNT_PRDT_CD":     self.acnt_prdt_cd,
+            "KRX_FWDG_ORD_ORGNO": "",
+            "ORGN_ODNO":        order_number,
+            "ORD_DVSN":         "00",       # 00: 지정가로 취소
+            "RVSE_CNCL_DVSN_CD": "02",     # 02: 취소
+            "ORD_QTY":          str(quantity),
+            "ORD_UNPR":         "0",        # 취소는 0
+            "QTY_ALL_ORD_YN":   "Y",        # Y: 잔량 전부 취소
+            "PDNO":             ticker
+        }
+
+        headers = {
+            "Content-Type":  "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey":        self.app_key,
+            "appSecret":     self.app_secret,
+            "tr_id":         "TTTC0803U",   # 실전: TTTC0803U / 모의: VTTC0803U
+            "custtype":      "P",
+            "hashkey":       self.hashkey(data)
+        }
+
+        try:
+            self._rate_limit_sleep()
+            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get("rt_cd") == "0":
+                return {
+                    "success":      True,
+                    "ticker":       ticker,
+                    "order_number": order_number,
+                    "message":      result.get("msg1", ""),
+                    "response":     response
+                }
+            else:
+                return {
+                    "success":       False,
+                    "ticker":        ticker,
+                    "order_number":  order_number,
+                    "error_message": result.get("msg1", ""),
+                    "response":      response
+                }
+
+        except Exception as e:
+            print(f"국내 주문 취소 오류: {e}")
+            return None
+
+    # 한국 주식 전체 주문 취소
+    def cancel_all_KR_unfilled_orders(self) -> Tuple[Dict, List[str]]:
+        """
+        한국 주식 당일 미체결 주문 전량 일괄 취소
+
+        Returns:
+            Tuple[Dict, List[str]]
+            Dict:
+                total        (int)  전체 미체결 주문 수
+                success      (int)  취소 성공 수
+                failed       (int)  취소 실패 수
+                success_list (List) 성공 주문 리스트
+                failed_list  (List) 실패 주문 리스트
+            List[str]: 결과 메시지 리스트
+        """
+        unfilled_orders = self.get_KR_unfilled_orders()
+
+        empty_summary = {
+            "total": 0, "success": 0, "failed": 0,
+            "success_list": [], "failed_list": []
+        }
+        if not unfilled_orders:
+            return empty_summary, ["미체결 주문 없음"]
+
+        success_list, failed_list = [], []
+
+        for order in unfilled_orders:
+            result = self.cancel_KR_order(
+                order_number=order["order_number"],
+                ticker=order["ticker"],
+                quantity=order["unfilled_qty"]
+            )
+
+            entry = {
+                "ticker":       order["ticker"],
+                "name":         order["name"],
+                "order_number": order["order_number"],
+                "unfilled_qty": order["unfilled_qty"]
+            }
+
+            if result and result.get("success"):
+                success_list.append(entry)
+            else:
+                entry["error"] = (
+                    result.get("error_message") if result else "알 수 없는 오류"
+                )
+                failed_list.append(entry)
+
+            time.sleep(0.2)  # API 호출 간격
+
+        summary = {
+            "total":        len(unfilled_orders),
+            "success":      len(success_list),
+            "failed":       len(failed_list),
+            "success_list": success_list,
+            "failed_list":  failed_list
+        }
+
+        messages = [
+            f"전체 미체결: {summary['total']}건",
+            f"취소 성공: {summary['success']}건",
+            f"취소 실패: {summary['failed']}건"
+        ]
+        if failed_list:
+            for f in failed_list:
+                messages.append(
+                    f"  ✗ {f['name']}({f['ticker']}) "
+                    f"주문번호:{f['order_number']} - {f.get('error','')}"
+                )
+        return summary, messages
