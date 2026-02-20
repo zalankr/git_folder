@@ -599,8 +599,9 @@ except Exception as e:
     message.append(f"KRQT_TR JSON 파일 오류: {e}")
     sys.exit(0)
     
-# 일자와 회차 시간데이터 불러오기
+# 일자와 회차 시간데이터 불러오기 및 시작메세지
 order = order_time(day=TR['TR_day'])
+message.append(f"KRQT {order_time['date']} 리밸런싱\n{order_time['TR_day']}일차, {order_time['round']}/{order_time['total_round']}회차 시작")
 
 # 목표종목 csv파일 불러오기 > Dic, JSON 변환
 try:
@@ -629,9 +630,7 @@ for i in code:
     time_module.sleep(0.1)
 
 
-# 메인로직 시작 전 시스템 상태 확인
-# health_check()
-# message = [] # 출력메세지 모으기
+
 # message.append(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 시작")
 
 # if order_time['round'] == 1:
