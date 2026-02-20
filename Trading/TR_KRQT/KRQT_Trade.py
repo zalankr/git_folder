@@ -622,16 +622,17 @@ for _, row in Target.iterrows():
         "weight": row["weight"],     # float
     }
 
+# 잔고 불러오기
+Hold_stocks = KIS.get_KR_stock_balance()
+Total_balance = KIS.get_KR_account_summary()
 
-code = list(portfolio.keys())
-for i in code:
-    price = int(KIS.get_KR_current_price(i))
-    print(f"{portfolio[i]['name']} 현재가: {price}원")
-    time_module.sleep(0.1)
+# code = list(portfolio.keys())
+# for i in code:
+#     price = int(KIS.get_KR_current_price(i))
+#     print(f"{portfolio[i]['name']} 현재가: {price}원")
+#     time_module.sleep(0.1)
 
 
-
-# message.append(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 시작")
 
 # if order_time['round'] == 1:
 #     '''round 1회에서 목표 Trading qty 구하기'''
