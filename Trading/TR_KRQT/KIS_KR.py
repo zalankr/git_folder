@@ -24,7 +24,8 @@ class KIS_API:
 
         self.last_api_call = 0
         self.api_interval = 0.07 # 초당 ~14회 요청 인터벌
-    
+
+    # API 간격 제어
     def _rate_limit_sleep(self):
         """API 호출 간격 제어 (Rate Limit 대응)"""
         elapsed = time.time() - self.last_api_call

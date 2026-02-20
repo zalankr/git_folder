@@ -1,7 +1,7 @@
 import sys
 import json
 import kakao_alert as KA
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta as time_obj
 import pandas as pd
 import requests
 import calendar
@@ -24,8 +24,31 @@ KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 sell_tax = KIS.sell_fee_tax  # 매도 수수료 0.014% + 세금 0.2% KRQT계좌
 buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
-
 KRQT_TR_path = "/var/autobot/TR_KRQT/KRQT_TR.json"
+
+def order_time(day=1):
+    """거래일자와 거래회차 확인""" 
+    # 현재 날짜와 시간 확인 UTC시간대
+    now = datetime.now()
+    current_date = now.date()
+    current_time = now.time()
+
+    # 수정: 모든 키를 미리 초기화
+    order_time = {
+        'date': current_date,
+        'time': current_time,
+        'TR_day': day,          # 기본값
+        'round': 0,        # 기본값
+        'total_round': 14  # 기본값
+    }
+    
+    current = time_obj(current_time.hour, current_time.minute)
+    start = time_obj(0, 0)   # OTC+9 09:00
+    end = time_obj(6, 35)    # OTC+15 15:30    
+    if start <= current < end:
+        order_time['round'] = (current_time.hour + 1) + (order_time['TR_day'] * 7) - 7
+
+    return order_time
 
 def health_check():
     """시스템 상태 확인"""
@@ -38,9 +61,7 @@ def health_check():
     # 2. JSON 파일 존재
     import os
     files = [
-        "/var/autobot/TR_USAA/USAA_day.json",
-        "/var/autobot/TR_USAA/USAA_data.json",
-        "/var/autobot/TR_USAA/USAA_TR.json"
+        "/var/autobot/TR_KRQT/KRQT_TR.json",
     ]
     for f in files:
         if not os.path.exists(f):
@@ -562,21 +583,24 @@ def send_messages_in_chunks(message, max_length=1000):
     if current_chunk:
         KA.SendMessage("\n".join(current_chunk))
 
-price = int(KIS.get_KR_current_price("005930"))
-print(f"삼성전자현재가: {price}원")
-result = KIS.get_KR_stock_balance()
-print("\n".join(result))
-balance = KIS.get_KR_account_summary()
-socksbalance = balance['stock_eval_amt']
-cash_balance = balance['cash_balance']
-total_krw_asset = balance['total_krw_asset']
-print(f"주식평가금액: {socksbalance}원 \n원화 잔고: {cash_balance}원 \n전체 원화자산: {total_krw_asset}원")
-KRW =KIS.get_KR_orderable_cash()
-print(f"원화주문가능금액: {KRW}원")
-
 # ============================================
 # 메인 로직 # 연단위 모델간 리밸런싱
 # ============================================
+message = [] # 출력메시지 모으기 LIST 생성
+
+# KRQT_TR.json 불러오기
+try:
+    with open(KRQT_TR_path, 'r', encoding='utf-8') as f:
+        TR = json.load(f)
+except Exception as e:
+    message.append(f"KRQT_TR JSON 파일 오류: {e}")
+    sys.exit(0)
+    
+# 일자와 회차 시간데이터 불러오기
+order = order_time(day=TR['TR_day'])
+print(order)
+
+
 
 # 오더타임 체크
 # order_time = USAA_Calender.check_order_time()
@@ -970,3 +994,16 @@ print(f"원화주문가능금액: {KRW}원")
 #     send_messages_in_chunks(message, max_length=1000)
     
 #     sys.exit(0)
+# sys.exit(0)
+
+# price = int(KIS.get_KR_current_price("005930"))
+# print(f"삼성전자현재가: {price}원")
+# result = KIS.get_KR_stock_balance()
+# print("\n".join(result))
+# balance = KIS.get_KR_account_summary()
+# socksbalance = balance['stock_eval_amt']
+# cash_balance = balance['cash_balance']
+# total_krw_asset = balance['total_krw_asset']
+# print(f"주식평가금액: {socksbalance}원 \n원화 잔고: {cash_balance}원 \n전체 원화자산: {total_krw_asset}원")
+# KRW =KIS.get_KR_orderable_cash()
+# print(f"원화주문가능금액: {KRW}원")
