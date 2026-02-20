@@ -1208,7 +1208,7 @@ order_time = USAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
 if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
-    KA.SendMessage(f"USAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USAA_day 리스트에 없습니다.")
+    KA.SendMessage(f"USAA 리밸런싱 일정이 아닙니다.\n{order_time['date']}, {order_time['time']}가 일정에 없습니다.")
     sys.exit(0)
 
 # 메인로직 시작 전 시스템 상태 확인
