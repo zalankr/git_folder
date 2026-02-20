@@ -24,9 +24,10 @@ KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 sell_tax = KIS.sell_fee_tax  # 매도 수수료 0.014% + 세금 0.2% KRQT계좌
 buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
-KRQT_TR_path = "/var/autobot/TR_KRQT/KRQT_TR.json"
+KRQT_TR_path = "/var/autobot/TR_KRQT/KRQT_TR.json" # json
+KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
 
-def order_time(day=1):
+def order_time(day=1): # 사용
     """거래일자와 거래회차 확인""" 
     # 현재 날짜와 시간 확인 UTC시간대
     now = datetime.now()
@@ -50,29 +51,30 @@ def order_time(day=1):
 
     return order_time
 
-def health_check():
+def health_check(): # 사용 완료
     """시스템 상태 확인"""
     checks = []
     
     # 1. API 토큰 유효성
     if not KIS.access_token:
-        checks.append("USAA 체크: API 토큰 없음")
+        checks.append("KRQT 체크: API 토큰 없음")
     
-    # 2. JSON 파일 존재
+    # 2. data 파일 존재
     import os
     files = [
         "/var/autobot/TR_KRQT/KRQT_TR.json",
+        "/var/autobot/TR_KRQT/KRQT_stock.csv"
     ]
     for f in files:
         if not os.path.exists(f):
-            checks.append(f"USAA 체크: json 파일 없음: {f}")
+            checks.append(f"KRQT 체크: data파일 없음: {f}")
     
     # 3. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("USAA 체크: KIS API 서버 접속 불가")
+        checks.append("KRQT 체크: KIS API 서버 접속 불가")
     
     if checks:
         KA.SendMessage("\n".join(checks))
@@ -584,9 +586,10 @@ def send_messages_in_chunks(message, max_length=1000):
         KA.SendMessage("\n".join(current_chunk))
 
 # ============================================
-# 메인 로직 # 연단위 모델간 리밸런싱
+# 메인 로직 # 분기 리밸런싱
 # ============================================
-message = [] # 출력메시지 모으기 LIST 생성
+message = [] # 출력메시지 LIST 생성
+health_check() # 시스템 상태 확인
 
 # KRQT_TR.json 불러오기
 try:
@@ -598,17 +601,33 @@ except Exception as e:
     
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['TR_day'])
-print(order)
+
+# 목표종목 csv파일 불러오기 > Dic, JSON 변환
+try:
+    with open(KRQT_stock_path, 'r', encoding='utf-8') as f:
+        Target = pd.read_csv(f, dtype={
+            "code": str,    # 코드 > 문자열
+            "name": str,    # 종목 > 문자열
+            "weight": float # 비중 > 실수
+        })
+except Exception as e:
+    message.append(f"KRQT_stock.csv 파일 오류: {e}")
+    sys.exit(0)
+
+portfolio = {} 
+for _, row in Target.iterrows():
+    portfolio[row["code"]] = {       # str
+        "name":   row["name"],       # str
+        "weight": row["weight"],     # float
+    }
 
 
+code = list(portfolio.keys())
+for i in code:
+    price = int(KIS.get_KR_current_price(i))
+    print(f"{portfolio[i]['name']} 현재가: {price}원")
+    time_module.sleep(0.1)
 
-# 오더타임 체크
-# order_time = USAA_Calender.check_order_time()
-# order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
-
-# if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
-#     KA.SendMessage(f"USAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USAA_day 리스트에 없습니다.")
-#     sys.exit(0)
 
 # 메인로직 시작 전 시스템 상태 확인
 # health_check()
