@@ -1,29 +1,17 @@
 {
     "round": 24,
-    "timestamp": "2025-11-13T20:30:07.915297",
+    "timestamp": "2026-02-02T20:30:04.565698",
     "Sell_order": [],
-    "Buy_order": [
-        {
-            "success": true,
-            "ticker": "EDC",
-            "quantity": 1,
-            "price": 54.95,
-            "order_number": "0031328857",
-            "order_time": "053007",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 0
-        }
-    ],
-    "CASH": 198.0351510000001,
+    "Buy_order": [],
+    "CASH": 183.25556474999996,
     "target_weight": {
-        "TQQQ": 0.45885752094467386,
-        "EDC": 0.5111424790553261,
+        "TQQQ": 0.555217443324328,
+        "EDC": 0.414782556675672,
         "CASH": 0.03
     },
     "target_qty": {
-        "TQQQ": 9,
-        "EDC": 20,
-        "CASH": 120.26999999999998
+        "TQQQ": 27,
+        "EDC": 15,
+        "CASH": 146.41837725000005
     }
 }
