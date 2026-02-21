@@ -1,161 +1,106 @@
 {
-    "round": 1,
-    "timestamp": "2026-02-14T03:17:50.813472",
-    "Sell_order": [],
+    "round": 24,
+    "timestamp": "2026-02-20T20:30:27.810306",
+    "Sell_order": [
+        {
+            "success": true,
+            "ticker": "TQQQ",
+            "quantity": 1,
+            "price": 48.79,
+            "order_number": "0031011846",
+            "order_time": "053025",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
+            "split_index": 0
+        }
+    ],
     "Buy_order": [
         {
-            "success": false,
-            "ticker": "TQQQ",
-            "quantity": 4,
-            "price": 48.23,
-            "order_number": "",
-            "order_time": "031745",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 0
-        },
-        {
-            "success": false,
-            "ticker": "TQQQ",
-            "quantity": 5,
-            "price": 47.99,
-            "order_number": "",
-            "order_time": "031745",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 1
-        },
-        {
-            "success": false,
-            "ticker": "EDC",
-            "quantity": 3,
-            "price": 73.74,
-            "order_number": "",
-            "order_time": "031746",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 0
-        },
-        {
-            "success": false,
-            "ticker": "EDC",
-            "quantity": 4,
-            "price": 73.37,
-            "order_number": "",
-            "order_time": "031746",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 1
-        },
-        {
-            "success": false,
+            "success": true,
             "ticker": "IWM",
             "quantity": 1,
-            "price": 262.3,
-            "order_number": "",
-            "order_time": "031747",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
+            "price": 269.49,
+            "order_number": "0031011848",
+            "order_time": "053026",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
             "split_index": 0
         },
         {
-            "success": false,
-            "ticker": "IWM",
-            "quantity": 2,
-            "price": 261.65,
-            "order_number": "",
-            "order_time": "031748",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 1
-        },
-        {
-            "success": false,
-            "ticker": "VEA",
-            "quantity": 7,
-            "price": 68.59,
-            "order_number": "",
-            "order_time": "031748",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 0
-        },
-        {
-            "success": false,
-            "ticker": "VEA",
-            "quantity": 8,
-            "price": 68.42,
-            "order_number": "",
-            "order_time": "031749",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 1
-        },
-        {
-            "success": false,
+            "success": true,
             "ticker": "VWO",
             "quantity": 1,
-            "price": 57.46,
-            "order_number": "",
-            "order_time": "031749",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 1
-        },
-        {
-            "success": false,
-            "ticker": "PDBC",
-            "quantity": 36,
-            "price": 14.13,
-            "order_number": "",
-            "order_time": "031750",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
+            "price": 59.63,
+            "order_number": "0031011854",
+            "order_time": "053027",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
             "split_index": 0
         },
         {
-            "success": false,
+            "success": true,
             "ticker": "PDBC",
-            "quantity": 37,
-            "price": 14.1,
-            "order_number": "",
-            "order_time": "031750",
-            "error_message": "장운영시간이 아닙니다.(단,주간거래시간이면 전용화면 주문가능, 주문시간 외 불가)",
-            "split_index": 1
+            "quantity": 1,
+            "price": 14.91,
+            "order_number": "0031011856",
+            "order_time": "053027",
+            "org_number": "01790",
+            "message": "주문 전송 완료 되었습니다.",
+            "split_index": 0
         }
     ],
     "USLA": {
         "UPRO": {
-            "hold_qty": 0,
-            "current_price": 113.51,
+            "hold_qty": [
+                0
+            ],
+            "current_price": 116.79,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "TQQQ": {
-            "hold_qty": 92.0,
-            "current_price": 48.47,
-            "target_weight": 0.3476099083002935,
-            "target_balance": 4922.399628467967,
+            "hold_qty": [
+                102
+            ],
+            "current_price": 49.7899,
+            "target_weight": 0.35033197925678683,
+            "target_balance": 5057.518572063507,
             "target_qty": 101,
-            "buy_qty": 9.0,
-            "sell_qty": 0
+            "buy_qty": 0,
+            "sell_qty": 1
         },
         "EDC": {
-            "hold_qty": 57.0,
-            "current_price": 74.11,
-            "target_weight": 0.33839009169970646,
-            "target_balance": 4791.840571532033,
-            "target_qty": 64,
-            "buy_qty": 7.0,
+            "hold_qty": [
+                62
+            ],
+            "current_price": 77.9489,
+            "target_weight": 0.3356680207432131,
+            "target_balance": 4845.824387936493,
+            "target_qty": 62,
+            "buy_qty": 0,
             "sell_qty": 0
         },
         "TMV": {
-            "hold_qty": 0,
-            "current_price": 34.13,
+            "hold_qty": [
+                0
+            ],
+            "current_price": 34.55,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "TMF": {
-            "hold_qty": 0,
-            "current_price": 40.42,
+            "hold_qty": [
+                0
+            ],
+            "current_price": 39.975,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0
@@ -164,81 +109,81 @@
     "HAA": {
         "SPY": {
             "hold_qty": 0,
-            "current_price": 681.75,
+            "current_price": 688.49,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "IWM": {
-            "hold_qty": 0,
-            "current_price": 262.96,
+            "hold_qty": 3,
+            "current_price": 264.21,
             "target_weight": 0.0735,
-            "target_balance": 1040.81145,
-            "target_qty": 3,
-            "buy_qty": 3,
+            "target_balance": 1061.07246,
+            "target_qty": 4,
+            "buy_qty": 1,
             "sell_qty": 0
         },
         "VEA": {
-            "hold_qty": 0,
-            "current_price": 68.76,
+            "hold_qty": 15,
+            "current_price": 69.4498,
             "target_weight": 0.0735,
-            "target_balance": 1040.81145,
+            "target_balance": 1061.07246,
             "target_qty": 15,
-            "buy_qty": 15,
+            "buy_qty": 0,
             "sell_qty": 0
         },
         "VWO": {
-            "hold_qty": 17.0,
-            "current_price": 57.75,
+            "hold_qty": 17,
+            "current_price": 58.4626,
             "target_weight": 0.0735,
-            "target_balance": 1040.81145,
+            "target_balance": 1061.07246,
             "target_qty": 18,
-            "buy_qty": 1.0,
+            "buy_qty": 1,
             "sell_qty": 0
         },
         "PDBC": {
-            "hold_qty": 0,
-            "current_price": 14.17,
+            "hold_qty": 71,
+            "current_price": 14.62,
             "target_weight": 0.0735,
-            "target_balance": 1040.81145,
-            "target_qty": 73,
-            "buy_qty": 73,
+            "target_balance": 1061.07246,
+            "target_qty": 72,
+            "buy_qty": 1,
             "sell_qty": 0
         },
         "VNQ": {
             "hold_qty": 0,
-            "current_price": 94.59,
+            "current_price": 94.745,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "TLT": {
             "hold_qty": 0,
-            "current_price": 89.72,
+            "current_price": 89.395,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "IEF": {
             "hold_qty": 0,
-            "current_price": 97.21,
+            "current_price": 97.0501,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "BIL": {
             "hold_qty": 0,
-            "current_price": 91.51,
+            "current_price": 91.5609,
             "target_weight": 0,
-            "target_balance": 0,
+            "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
             "sell_qty": 0

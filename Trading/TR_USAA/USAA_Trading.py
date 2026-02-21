@@ -1208,7 +1208,7 @@ order_time = USAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
 if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
-    KA.SendMessage(f"USAA 리밸런싱일이 아닙니다.\n{order_time['date']}가 USAA_day 리스트에 없습니다.")
+    KA.SendMessage(f"USAA 리밸런싱 일정이 아닙니다.\n{order_time['date']}, {order_time['time']}가 일정에 없습니다.")
     sys.exit(0)
 
 # 메인로직 시작 전 시스템 상태 확인
@@ -1259,7 +1259,7 @@ if order_time['round'] == 1:
         HAA_target_weight = (HAA_balance + (USD * 0.3)) / Total_balance
 
     ## 만약 1월이라면 비중 리밸런싱
-    order_time['month'] = 1 ################################ 2/16 테스트 최초실행 이후 지울 것 ####################################
+    order_time['month'] = 1 ################################ 최초 정상 실행 이후 지울 것 ####################################
     if order_time['month'] == 1:
         USLA_target_weight = 0.7
         USLA_target_balance = Total_balance * USLA_target_weight
