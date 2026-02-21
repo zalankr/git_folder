@@ -138,7 +138,7 @@ class KIS_API:
             return res.json()["HASH"]
         except Exception as e:
             KA.SendMessage(f"Hashkey 생성 실패: {e}")
-            return ""
+            raise RuntimeError(f"Hashkey 생성 실패: {e}")  # 빈 문자열 반환 시 주문이 진행되므로 예외로 차단
     
     # 국내 주식 현재가 조회
     def get_KR_current_price(self, ticker: str) -> Union[float, str]:
@@ -213,6 +213,7 @@ class KIS_API:
             stocks = []
 
             while True:
+                self._rate_limit_sleep()
                 response = requests.get(url, headers=headers, params=params)
                 response.raise_for_status()
                 data = response.json()
@@ -236,7 +237,7 @@ class KIS_API:
                         "현재가": int(stock.get('prpr', 0)),
                         "평가금액": int(float(stock.get('evlu_amt', 0))),
                         "평가손익": int(float(stock.get('evlu_pfls_amt', 0))),
-                        "수익률": float(stock.get('evlu_pfls_rt', 0)),
+                        "수익률": float(stock.get('evlu_pfls_rt', 0))
                     })
 
                 FK100 = data.get('ctx_area_fk100', '').strip()
@@ -661,7 +662,7 @@ class KIS_API:
             result = response.json()
 
             if result.get("rt_cd") != "0":
-                print(f"국내 체결확인 조회 실패: {result.get('msg1')}")
+                KA.SendMessage(f"국내 체결확인 조회 실패: {result.get('msg1')}")
                 return None
 
             orders = result.get("output1", [])
@@ -678,11 +679,11 @@ class KIS_API:
                         "order_type":   order.get("sll_buy_dvsn_cd_name", "알 수 없음")
                     }
 
-            print(f"주문번호 {order_number}를 체결 내역에서 찾을 수 없습니다.")
+            KA.SendMessage(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
             return None
 
         except Exception as e:
-            print(f"국내 체결 확인 오류: {e}")
+            KA.SendMessage(f"국내 체결 확인 오류: {e}")
             return None
 
     # 한국 주식 미체결 주문 조회
@@ -908,6 +909,7 @@ class KIS_API:
                 )
         return summary, messages
     
+    # 한국 주식 시장 거래일 여부
     def is_KR_trading_day(self, date: Optional[datetime] = None) -> bool:
         """
         한국 주식시장 거래일 여부 확인 (KIS API 휴장일 조회 기반)
@@ -942,23 +944,26 @@ class KIS_API:
             "CTX_AREA_FK": ""
         }
 
-        try:
-            self._rate_limit_sleep()
-            res = requests.get(url, headers=headers, params=params, timeout=5)
-            res.raise_for_status()
-            data = res.json()
+        for attempt in range(3):   # 최대 3회 재시도
+            try:
+                self._rate_limit_sleep()
+                res = requests.get(url, headers=headers, params=params, timeout=5)
+                res.raise_for_status()
+                data = res.json()
 
-            if data.get("rt_cd") != "0":
-                KA.SendMessage(f"거래일 조회 실패: {data.get('msg1')}")
+                if data.get("rt_cd") != "0":
+                    KA.SendMessage(f"거래일 조회 실패: {data.get('msg1')}")
+                    return False
+
+                for item in data.get("output", []):
+                    if item.get("bass_dt") == date_str:
+                        return item.get("opnd_yn") == "Y"
+
+                return False  # 해당 날짜 정보 없으면 보수적으로 False
+
+            except Exception as e:
+                if attempt < 2:
+                    time.sleep(2)
+                    continue
+                KA.SendMessage(f"거래일 조회 오류 (3회 실패): {e}")
                 return False
-
-            # output 리스트에서 해당 날짜 항목 탐색
-            for item in data.get("output", []):
-                if item.get("bass_dt") == date_str:
-                    return item.get("opnd_yn") == "Y"  # Y: 개장일, N: 휴장일
-
-            return False  # 해당 날짜 정보 없으면 보수적으로 False
-
-        except Exception as e:
-            KA.SendMessage(f"거래일 조회 오류: {e}")
-            return False
