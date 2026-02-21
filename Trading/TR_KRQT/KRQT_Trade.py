@@ -629,10 +629,6 @@ for i in code:
     time_module.sleep(0.1)
 
 
-# 메인로직 시작 전 시스템 상태 확인
-# health_check()
-# message = [] # 출력메세지 모으기
-# message.append(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 시작")
 
 # if order_time['round'] == 1:
 #     '''round 1회에서 목표 Trading qty 구하기'''
