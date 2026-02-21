@@ -588,6 +588,11 @@ def send_messages_in_chunks(message, max_length=1000):
 # ============================================
 # 메인 로직 # 분기 리밸런싱
 # ============================================
+checkday = KIS.is_KR_trading_day()
+if checkday == False:
+    KA.SendMessage("KR: 거래일이 아닌니다.")
+    sys.exit(0)
+
 message = [] # 출력메시지 LIST 생성
 health_check() # 시스템 상태 확인
 

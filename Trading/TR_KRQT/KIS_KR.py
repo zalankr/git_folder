@@ -907,3 +907,58 @@ class KIS_API:
                     f"주문번호:{f['order_number']} - {f.get('error','')}"
                 )
         return summary, messages
+    
+    def is_KR_trading_day(self, date: Optional[datetime] = None) -> bool:
+        """
+        한국 주식시장 거래일 여부 확인 (KIS API 휴장일 조회 기반)
+
+        Parameters:
+            date (datetime, optional): 확인할 날짜. 기본값은 오늘.
+
+        Returns:
+            bool: 거래일이면 True, 휴장일(주말/공휴일)이면 False
+        """
+        target = date or datetime.now()
+
+        # 주말 사전 필터 (API 호출 절약)
+        if target.weekday() >= 5:  # 5=토, 6=일
+            return False
+
+        date_str = target.strftime("%Y%m%d")
+        path = "uapi/domestic-stock/v1/quotations/chk-holiday"
+        url  = f"{self.url_base}/{path}"
+
+        headers = {
+            "Content-Type":  "application/json",
+            "authorization": f"Bearer {self.access_token}",
+            "appKey":        self.app_key,
+            "appSecret":     self.app_secret,
+            "tr_id":         "CTCA0903R",
+            "custtype":      "P"
+        }
+        params = {
+            "BASS_DT":   date_str,   # 기준일자 (YYYYMMDD)
+            "CTX_AREA_NK": "",
+            "CTX_AREA_FK": ""
+        }
+
+        try:
+            self._rate_limit_sleep()
+            res = requests.get(url, headers=headers, params=params, timeout=5)
+            res.raise_for_status()
+            data = res.json()
+
+            if data.get("rt_cd") != "0":
+                KA.SendMessage(f"거래일 조회 실패: {data.get('msg1')}")
+                return False
+
+            # output 리스트에서 해당 날짜 항목 탐색
+            for item in data.get("output", []):
+                if item.get("bass_dt") == date_str:
+                    return item.get("opnd_yn") == "Y"  # Y: 개장일, N: 휴장일
+
+            return False  # 해당 날짜 정보 없으면 보수적으로 False
+
+        except Exception as e:
+            KA.SendMessage(f"거래일 조회 오류: {e}")
+            return False
