@@ -588,13 +588,12 @@ def send_messages_in_chunks(message, max_length=1000):
 # ============================================
 # 메인 로직 # 분기 리밸런싱
 # ============================================
-checkday = KIS.is_KR_trading_day()
-if checkday == False:
-    KA.SendMessage("KR: 거래일이 아닌니다.")
-    sys.exit(0)
-
-message = [] # 출력메시지 LIST 생성
+# checkday = KIS.is_KR_trading_day()
+# if checkday == False:
+#     KA.SendMessage("KR: 거래일이 아닌니다.")
+#     sys.exit(0)
 health_check() # 시스템 상태 확인
+message = [] # 출력메시지 LIST 생성
 
 # KRQT_TR.json 불러오기
 try:
@@ -621,16 +620,23 @@ except Exception as e:
 
 portfolio = {} 
 for _, row in Target.iterrows():
-    portfolio[row["code"]] = {       # str
+    code = row["code"][1:]
+    portfolio[code] = {       # str
         "name":   row["name"],       # str
         "weight": row["weight"],     # float
     }
 
+account = KIS.get_KR_account_summary()
+total_balance = account['total_krw_asset']
+total_invest = total_balance * 0.99 # cash는 1%유지
 
 code = list(portfolio.keys())
 for i in code:
     price = int(KIS.get_KR_current_price(i))
-    print(f"{portfolio[i]['name']} 현재가: {price}원")
+    portfolio[i]['target_invest'] = int(portfolio[i]['weight'] * total_invest)
+    portfolio[i]['target_qty'] = int(portfolio[i]['target_invest'] / price)
+
+    print(f"{portfolio[i]['name']} 현재가: {price}원, 목표비중: {portfolio[i]['weight']:.2%}, 목표금액: {portfolio[i]['target_invest']:,}원, 목표수량: {portfolio[i]['target_qty']:,}개")
     time_module.sleep(0.1)
 
 
