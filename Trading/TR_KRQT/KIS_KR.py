@@ -181,7 +181,7 @@ class KIS_API:
             return f"현재가 조회 오류: {e}"
 
     # 한국 주식 계좌 잔고 조회
-    def get_KR_stock_balance(self) -> Optional[List[Dict]]:
+    def get_KR_stock_balance(self) -> Union[List[Dict], str]:
         """한국 주식 종목별 잔고 조회"""
         path = "uapi/domestic-stock/v1/trading/inquire-balance"
         url = f"{self.url_base}/{path}"
@@ -219,8 +219,8 @@ class KIS_API:
                 data = response.json()
 
                 if data.get('rt_cd') != '0':
-                    KA.SendMessage(f"한국주식 잔고조회 API 오류: {data.get('msg1')}")
-                    return None
+                    message = f"한국주식 잔고조회 API 오류: {data.get('msg1')}"
+                    return message
 
                 for stock in data.get('output1', []):
                     quantity = int(stock.get('hldg_qty', 0))
@@ -253,8 +253,8 @@ class KIS_API:
             return stocks
 
         except Exception as e:
-            KA.SendMessage(f"한국주식 잔고조회 오류: {e}")
-            return None
+            message = f"한국주식 잔고조회 오류: {e}"
+            return message
 
     # 한국 주식 종목 잔고 조회
     def get_KR_stock_balance_by_ticker(self, ticker: str) -> Optional[Dict]:
@@ -382,7 +382,7 @@ class KIS_API:
 
     # 한국 주식 매수 주문
     def order_buy_KR(self, ticker: str, quantity: int, price: int = 0,
-                     ord_dvsn: str = "01") -> Tuple[Optional[Dict], List[str]]:
+                     ord_dvsn: str = "00") -> Optional[Dict]:
         """
         한국 주식 매수 주문
 
@@ -408,11 +408,8 @@ class KIS_API:
                 message      (str)
                 response     (requests.Response)
         """
-        order_buy_message: List[str] = []
-
         if not ticker or quantity <= 0:
-            order_buy_message.append("종목코드 또는 수량이 올바르지 않습니다.")
-            return None, order_buy_message
+            return None
 
         path = "uapi/domestic-stock/v1/trading/order-cash"
         url  = f"{self.url_base}/{path}"
@@ -441,7 +438,6 @@ class KIS_API:
             try:
                 if attempt > 0:
                     time.sleep(1)
-                    order_buy_message.append(f"재시도 {attempt}/{max_retries}")
 
                 self._rate_limit_sleep()
                 response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
@@ -461,13 +457,8 @@ class KIS_API:
                         "message":      result.get("msg1", ""),
                         "response":     response
                     }
-                    order_buy_message.append(
-                        f"국내매수 주문: {ticker} {quantity}주 "
-                        f"@ {price:,}원  주문번호: {order_info['order_number']}"
-                    )
-                    return order_info, order_buy_message
+                    return order_info
                 else:
-                    order_buy_message.append(f"국내매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                     return {
                         "success":       False,
                         "ticker":        ticker,
@@ -477,28 +468,24 @@ class KIS_API:
                         "error_code":    result.get("rt_cd"),
                         "error_message": result.get("msg1", ""),
                         "response":      response
-                    }, order_buy_message
+                    }
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
-                    order_buy_message.append("500 에러 발생, 재시도 중...")
+                    KA.SendMessage("500 에러 발생, 재시도 중...")
                     continue
-                order_buy_message.append(f"국내매수 주문 오류: {e}")
-                return None, order_buy_message
+                return None
 
             except Exception as e:
                 if attempt < max_retries:
-                    order_buy_message.append("에러 발생, 재시도 중...")
                     continue
-                order_buy_message.append(f"국내매수 주문 오류: {e}")
-                return None, order_buy_message
+                return None
 
-        order_buy_message.append("국내매수 주문 최종 실패: 모든 재시도 소진")
-        return None, order_buy_message
+        return None
 
     # 한국 주식 매도 주문
     def order_sell_KR(self, ticker: str, quantity: int, price: int = 0,
-                      ord_dvsn: str = "01") -> Tuple[Optional[Dict], List[str]]:
+                      ord_dvsn: str = "00") -> Optional[Dict]:
         """
         한국 주식 매도 주문
 
@@ -513,11 +500,10 @@ class KIS_API:
             Dict keys: success, ticker, quantity, price,
                        order_number, order_time, org_number, message, response
         """
-        order_sell_message: List[str] = []
 
         if not ticker or quantity <= 0:
-            order_sell_message.append("종목코드 또는 수량이 올바르지 않습니다.")
-            return None, order_sell_message
+            KA.SendMessage("종목코드 또는 수량이 올바르지 않습니다.")
+            return None
 
         path = "uapi/domestic-stock/v1/trading/order-cash"
         url  = f"{self.url_base}/{path}"
@@ -546,7 +532,6 @@ class KIS_API:
             try:
                 if attempt > 0:
                     time.sleep(1)
-                    order_sell_message.append(f"재시도 {attempt}/{max_retries}")
 
                 self._rate_limit_sleep()
                 response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
@@ -566,13 +551,8 @@ class KIS_API:
                         "message":      result.get("msg1", ""),
                         "response":     response
                     }
-                    order_sell_message.append(
-                        f"국내매도 주문: {ticker} {quantity}주 "
-                        f"@ {price:,}원  주문번호: {order_info['order_number']}"
-                    )
-                    return order_info, order_sell_message
+                    return order_info
                 else:
-                    order_sell_message.append(f"국내매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                     return {
                         "success":       False,
                         "ticker":        ticker,
@@ -582,24 +562,20 @@ class KIS_API:
                         "error_code":    result.get("rt_cd"),
                         "error_message": result.get("msg1", ""),
                         "response":      response
-                    }, order_sell_message
+                    }
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
-                    order_sell_message.append("500 에러 발생, 재시도 중...")
+                    KA.SendMessage("500 에러 발생, 재시도 중...")
                     continue
-                order_sell_message.append(f"국내매도 주문 오류: {e}")
-                return None, order_sell_message
+                return None
 
             except Exception as e:
                 if attempt < max_retries:
-                    order_sell_message.append("에러 발생, 재시도 중...")
                     continue
-                order_sell_message.append(f"국내매도 주문 오류: {e}")
-                return None, order_sell_message
+                return None
 
-        order_sell_message.append("국내매도 주문 최종 실패: 모든 재시도 소진")
-        return None, order_sell_message
+        return None
 
     # 한국 주식 주문 체결 확인
     def check_KR_order_execution(self, order_number: str, ticker: str,
@@ -734,7 +710,7 @@ class KIS_API:
                 result = response.json()
 
                 if result.get("rt_cd") != "0":
-                    print(f"국내 미체결 조회 실패: {result.get('msg1')}")
+                    KA.SendMessage(f"미체결 조회 실패: {result.get('msg1')}")
                     return []
 
                 for order in result.get("output", []):
@@ -763,7 +739,7 @@ class KIS_API:
             return unfilled
 
         except Exception as e:
-            print(f"국내 미체결 조회 오류: {e}")
+            KA.SendMessage(f"미체결 조회 오류: {e}")
             return []
 
     # 한국 주식 개별 주문 취소
@@ -835,24 +811,14 @@ class KIS_API:
                 }
 
         except Exception as e:
-            print(f"국내 주문 취소 오류: {e}")
+            KA.SendMessage(f"주문 취소 오류: {e}")
             return None
 
     # 한국 주식 전체 주문 취소
-    def cancel_all_KR_unfilled_orders(self) -> Tuple[Dict, List[str]]:
-        """
-        한국 주식 당일 미체결 주문 전량 일괄 취소
+    def cancel_all_KR_unfilled_orders(self, side: str = "all") -> Optional[Dict]:
+        if side not in ("buy", "sell", "all"):
+            raise ValueError(f"side는 'buy', 'sell', 'all' 중 하나여야 합니다: {side}")
 
-        Returns:
-            Tuple[Dict, List[str]]
-            Dict:
-                total        (int)  전체 미체결 주문 수
-                success      (int)  취소 성공 수
-                failed       (int)  취소 실패 수
-                success_list (List) 성공 주문 리스트
-                failed_list  (List) 실패 주문 리스트
-            List[str]: 결과 메시지 리스트
-        """
         unfilled_orders = self.get_KR_unfilled_orders()
 
         empty_summary = {
@@ -860,7 +826,15 @@ class KIS_API:
             "success_list": [], "failed_list": []
         }
         if not unfilled_orders:
-            return empty_summary, ["미체결 주문 없음"]
+            return empty_summary
+
+        # ✅ 실제 필드명 "order_type", 실제 값 "매수"/"매도" 기준으로 필터
+        side_map = {"buy": "매수", "sell": "매도"}
+        if side != "all":
+            unfilled_orders = [o for o in unfilled_orders if o.get("order_type") == side_map[side]]
+
+        if not unfilled_orders:
+            return empty_summary
 
         success_list, failed_list = [], []
 
@@ -870,23 +844,19 @@ class KIS_API:
                 ticker=order["ticker"],
                 quantity=order["unfilled_qty"]
             )
-
             entry = {
                 "ticker":       order["ticker"],
                 "name":         order["name"],
                 "order_number": order["order_number"],
-                "unfilled_qty": order["unfilled_qty"]
+                "unfilled_qty": order["unfilled_qty"],
+                "order_type":   order.get("order_type")
             }
-
             if result and result.get("success"):
                 success_list.append(entry)
             else:
-                entry["error"] = (
-                    result.get("error_message") if result else "알 수 없는 오류"
-                )
+                entry["error"] = result.get("error_message") if result else "알 수 없는 오류"
                 failed_list.append(entry)
-
-            time.sleep(0.2)  # API 호출 간격
+            time.sleep(0.2)
 
         summary = {
             "total":        len(unfilled_orders),
@@ -896,18 +866,7 @@ class KIS_API:
             "failed_list":  failed_list
         }
 
-        messages = [
-            f"전체 미체결: {summary['total']}건",
-            f"취소 성공: {summary['success']}건",
-            f"취소 실패: {summary['failed']}건"
-        ]
-        if failed_list:
-            for f in failed_list:
-                messages.append(
-                    f"  ✗ {f['name']}({f['ticker']}) "
-                    f"주문번호:{f['order_number']} - {f.get('error','')}"
-                )
-        return summary, messages
+        return summary
     
     # 한국 주식 시장 거래일 여부
     def is_KR_trading_day(self, date: Optional[datetime] = None) -> bool:
@@ -967,3 +926,44 @@ class KIS_API:
                     continue
                 KA.SendMessage(f"거래일 조회 오류 (3회 실패): {e}")
                 return False
+            
+    def round_to_tick(self, price: float, market: str = "KR") -> int:
+        """
+        주문 가격을 시장별 호가 단위에 맞게 변환
+        
+        Args:
+            price: 원본 가격 (float)
+            market: "KR" (한국), "US" (미국), "JP" (일본)
+        
+        Returns:
+            호가 단위에 맞춘 정수 가격
+        """
+        if market == "US":
+            # 미국: 소수점 2자리 (센트 단위) → 정수 불필요, 반올림
+            return round(price, 2)
+        
+        elif market == "JP":
+            # 일본: 엔화 단위 (정수)
+            return int(price)
+        
+        elif market == "KR":
+            # 한국: 주가 구간별 호가 단위 (KRX 기준)
+            if price < 1_000:
+                tick = 1
+            elif price < 5_000:
+                tick = 5
+            elif price < 10_000:
+                tick = 10
+            elif price < 50_000:
+                tick = 50
+            elif price < 100_000:
+                tick = 100
+            elif price < 500_000:
+                tick = 500
+            else:
+                tick = 1_000
+            
+            return int((price // tick) * tick)
+        
+        else:
+            raise ValueError(f"지원하지 않는 시장: {market}")
