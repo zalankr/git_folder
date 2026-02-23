@@ -1,12 +1,19 @@
+from __future__ import annotations  # ← 이 줄 추가
 import time
 import requests
+import sys
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
-CHAT_ID = "YOUR_CHAT_ID"
+# telegram 로드
+key_file_path = "/var/autobot/telegram/telegram_TRbot.txt"
+try:
+    with open(key_file_path) as f:
+        BOT_TOKEN, CHAT_ID = [line.strip() for line in f.readlines()]
+except Exception as e:
+    print("Exception", e)
+    sys.exit(1)
 
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 MAX_CHARS = 4096
-
 
 def send_telegram(
     message: str | list[str],
@@ -65,18 +72,18 @@ def send_telegram(
 
 
 # ── 사용 예시 ──────────────────────────────────────────────
-if __name__ == "__main__":
-    # 단일 문자열
-    send_telegram("🚨 AAPL 목표가 도달 — 현재가: $195.4")
 
-    # 문자열 리스트 (줄바꿈 결합 → 한 메시지로 전송)
-    send_telegram([
-        "📊 <b>[포트폴리오 리포트]</b>",
-        "",
-        "  AAPL  $195.4  +1.2%",
-        "  NVDA  $875.2  +3.5%",
-        "  TSLA  $210.8  -0.8%",
-        "",
-        "▶ 총 평가금액: $128,450",
-        "▶ 일간 손익: +$1,230 (+0.97%)",
-    ])
+# # 단일 문자열
+# send_telegram("🚨 AAPL 목표가 도달 — 현재가: $195.4")
+
+# # 문자열 리스트 (줄바꿈 결합 → 한 메시지로 전송)
+# send_telegram([
+#     "📊 <b>[포트폴리오 리포트]</b>",
+#     "",
+#     "  AAPL  $195.4  +1.2%",
+#     "  NVDA  $875.2  +3.5%",
+#     "  TSLA  $210.8  -0.8%",
+#     "",
+#     "▶ 총 평가금액: $128,450",
+#     "▶ 일간 손익: +$1,230 (+0.97%)",
+# ])
