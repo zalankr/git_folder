@@ -37,7 +37,7 @@ def health_check(): # 점검 완료
         checks.append("KR체크: KIS API 서버 접속 불가")
     
     if checks:
-        TA.send_tele("\n".join(checks))
+        TA.send_tele(checks)
         sys.exit(1)
 
 # ============================================
@@ -91,7 +91,7 @@ order_info, order_buy_message = KIS.order_buy_KR(ticker=TICKER, quantity=split_q
 message.extend(order_buy_message)
 
 if not order_info or not order_info.get('success'):
-    TA.send_tele("KR: 매수 주문 실패로 종료합니다.\n" + "\n".join(order_buy_message))
+    TA.send_tele(["KR: 매수 주문 실패로 종료합니다."] + order_buy_message)
     sys.exit(0)
 
 order_number = order_info['order_number']

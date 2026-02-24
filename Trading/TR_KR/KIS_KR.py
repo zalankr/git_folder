@@ -677,7 +677,7 @@ class KIS_API:
                         "order_type":   order.get("sll_buy_dvsn_cd_name", "알 수 없음")
                     }
 
-            TA.send_tele(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
+            # TA.send_tele(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
             return None
 
         except Exception as e:

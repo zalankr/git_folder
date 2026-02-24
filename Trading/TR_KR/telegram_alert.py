@@ -34,7 +34,7 @@ def send_tele(
     """
     # 1. 리스트 → 줄바꿈 결합
     full_text = "\n".join(message) if isinstance(message, list) else message
-
+    
     # 2. 4096자 기준 줄 단위 청크 분할
     chunks, current = [], ""
     for line in full_text.splitlines(keepends=True):
@@ -69,21 +69,3 @@ def send_tele(
 
         if i < len(chunks) - 1:
             time.sleep(interval)
-
-
-# ── 사용 예시 ──────────────────────────────────────────────
-
-# # 단일 문자열
-# send_tele("🚨 AAPL 목표가 도달 — 현재가: $195.4")
-
-# # 문자열 리스트 (줄바꿈 결합 → 한 메시지로 전송)
-# send_tele([
-#     "📊 <b>[포트폴리오 리포트]</b>",
-#     "",
-#     "  AAPL  $195.4  +1.2%",
-#     "  NVDA  $875.2  +3.5%",
-#     "  TSLA  $210.8  -0.8%",
-#     "",
-#     "▶ 총 평가금액: $128,450",
-#     "▶ 일간 손익: +$1,230 (+0.97%)",
-# ])
