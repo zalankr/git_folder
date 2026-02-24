@@ -35,8 +35,8 @@ def check_USAA_rebalancing(current_date):
         print(f"JSON 파일 오류: {e}")
         # 추가: 안전하게 종료
         try:
-            import telegram_alert as TA
-            TA.send_tele(f"USAA_day.json 로드 실패: {e}")
+            import kakao_alert as KA
+            KA.SendMessage(f"USAA_day.json 로드 실패: {e}")
         except:
             pass
         return "USAA_not_rebalancing_day"
@@ -86,7 +86,7 @@ def check_order_time():
 
     return order_time
     
-# 서머타임(DST) 확인 현재는 사용 안 하나 나중에 사용할 수도 있음
+# 서머타임(DST) 확인
 def is_us_dst():
     """
     미국 동부 시간 기준 현재 서머타임(DST) 여부 확인

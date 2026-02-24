@@ -1,6 +1,6 @@
 import sys
 import json
-import telegram_alert as TA
+import kakao_alert as KA
 from datetime import date, datetime, timedelta
 import pandas as pd
 import riskfolio as rp
@@ -14,7 +14,7 @@ import USAA_Calender
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    TA.send_tele("USAA: 이미 실행 중입니다.")
+    KA.SendMessage("USAA: 이미 실행 중입니다.")
     sys.exit(0)
 
 # KIS instance 생성
@@ -26,7 +26,6 @@ KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
 HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
-
 Aggresive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
 Defensive_ETF = ['IEF', 'BIL']
 Regime_ETF = 'TIP'
@@ -61,7 +60,7 @@ def health_check():
         checks.append("USAA 체크: KIS API 서버 접속 불가")
     
     if checks:
-        TA.send_tele(checks)
+        KA.SendMessage("\n".join(checks))
         sys.exit(1)
 
 def get_balance():
@@ -129,7 +128,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
     order_messages = []
     
     # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
-    round_info = f"USAA: {order_time['round']}/{order_time['total_round']}회 매도주문"
+    round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
     order_messages.append(round_info)
 
     Sell_USLA = {}
@@ -145,7 +144,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
     Sell = {**Sell_USLA, **Sell_HAA}
 
     if len(Sell.keys()) == 0:
-        order_messages.append("USAA: 매도 종목이 없습니다.")
+        order_messages.append("매도 종목이 없습니다.")
         return Sell_order, order_messages
 
     for ticker in Sell.keys():
@@ -168,7 +167,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
             current_price = HAA[ticker].get("current_price", 0)
 
         if not isinstance(current_price, (int, float)) or current_price <= 0:
-            error_msg = f"USAA: {ticker} 가격 조회 실패 - 매도 주문 스킵"
+            error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
             order_messages.append(error_msg)
             Sell_order.append({
                 'success': False,
@@ -223,8 +222,8 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
                         'split_index': i
                     })
             except Exception as e:
-                error_msg = f"USAA: Exception: {str(e)}"
-                order_messages.append(f"USAA: ❌ {ticker} {quantity}주 @${price} - {error_msg}")
+                error_msg = f"Exception: {str(e)}"
+                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                 Sell_order.append({
                     'success': False,
                     'ticker': ticker,
@@ -244,7 +243,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
-    order_messages.append(f"USAA: 매도 주문 {success_count}/{total_count} 완료")
+    order_messages.append(f"매도 주문: {success_count}/{total_count} 완료")
     
     return Sell_order, order_messages
 
@@ -265,7 +264,7 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
     Buy_order = []
     order_messages = []
 
-    round_info = f"USAA: {order_time['round']}/{order_time['total_round']}회 매수주문"
+    round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
     order_messages.append(round_info)    
     
     Buy_USLA = {}
@@ -281,12 +280,12 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
     Buy = {**Buy_USLA, **Buy_HAA}
     
     if len(Buy.keys()) == 0:
-        order_messages.append("USAA: 매수할 종목이 없습니다.")
+        order_messages.append("매수할 종목이 없습니다.")
         return Buy_order, order_messages
     
     for ticker in Buy.keys():
         if Buy[ticker] == 0:
-            order_messages.append(f"USAA: {ticker} 매수 수량 0")
+            order_messages.append(f"{ticker} 매수 수량 0")
             continue
         
         # ✅ 핵심 수정: 티커별로 올바른 분할 설정 사용
@@ -305,7 +304,7 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
             current_price = HAA[ticker].get("current_price", 0)
         
         if not isinstance(current_price, (int, float)) or current_price <= 0:
-            error_msg = f"USAA: {ticker} 가격 조회 실패 - 주문 스킵"
+            error_msg = f"{ticker} 가격 조회 실패 - 주문 스킵"
             order_messages.append(error_msg)
             Buy_order.append({
                 'success': False,
@@ -360,8 +359,8 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
                         'split_index': i
                     })
             except Exception as e:
-                error_msg = f"USAA: Exception: {str(e)}"
-                order_messages.append(f"USAA: ❌ {ticker} {quantity}주 @${price} - {error_msg}")
+                error_msg = f"Exception: {str(e)}"
+                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
                 Buy_order.append({
                     'success': False,
                     'ticker': ticker,
@@ -381,7 +380,7 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
 
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
-    order_messages.append(f"USAA: 매수 주문 {success_count}/{total_count} 완료")
+    order_messages.append(f"매수 주문: {success_count}/{total_count} 완료")
 
     return Buy_order, order_messages
 
@@ -406,8 +405,8 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA):
             json.dump(TR_data, f, ensure_ascii=False, indent=4)
         
         message.append(
-            f"USAA: {order_time['date']}, {order_time['season']} 리밸런싱\n"
-            f"USAA: {order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래저장완료\n"
+            f"{order_time['date']}, {order_time['season']} 리밸런싱\n"
+            f"{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 거래저장완료\n"
         )
         
     except Exception as e:
@@ -421,7 +420,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA):
             message.append(f"USAA 백업 파일 생성: {backup_path}")
         except Exception as backup_error:
             message.append(f"USAA 백업 파일 생성도 실패: {backup_error}")
-            # 최후의 수단: telegram으로 데이터 전송
+            # 최후의 수단: 카카오로 데이터 전송
             message.append(f"USAA TR_data: {json.dumps(TR_data, ensure_ascii=False)[:1000]}")
 
     return message
@@ -439,20 +438,20 @@ def get_prices(tickers):
                 if isinstance(price, float) and price > 0:
                     prices[ticker] = price
                 else:
-                    TA.send_tele(f"USAA: {ticker} 가격 조회 실패")
+                    KA.SendMessage(f"USAA {ticker} 가격 조회 실패")
                     prices[ticker] = 100.0
                 
                 time_module.sleep(0.1)  # API 호출 간격
                 
             except Exception as e:
-                TA.send_tele(f"USAA: {ticker} 가격 조회 오류: {e}")
+                KA.SendMessage(f"USAA {ticker} 가격 조회 오류: {e}")
                 prices[ticker] = 100.0
         
         prices['CASH'] = 1.0
         return prices
         
     except Exception as e:
-        TA.send_tele(f"USAA: 가격 조회 전체 오류: {e}")
+        KA.SendMessage(f"USAA 가격 조회 전체 오류: {e}")
         return {ticker: 100.0 for ticker in all_ticker}
 
 def get_monthly_prices_kis(ticker: str, start_date: str, end_date: str) -> pd.Series:
@@ -510,7 +509,7 @@ def get_monthly_prices_kis(ticker: str, start_date: str, end_date: str) -> pd.Se
                 output2 = data['output2']
                 
                 if not output2:
-                    TA.send_tele(f"USAA: {ticker} 데이터가 비어있습니다.")
+                    KA.SendMessage(f"{ticker} 데이터가 비어있습니다.")
                 
                 # DataFrame 생성
                 df = pd.DataFrame(output2)
@@ -530,12 +529,12 @@ def get_monthly_prices_kis(ticker: str, start_date: str, end_date: str) -> pd.Se
                 
                 return price_series
             else:
-                TA.send_tele(f"USAA: {ticker} API 응답 오류: {data.get('msg1', 'Unknown error')}")
+                KA.SendMessage(f"{ticker} API 응답 오류: {data.get('msg1', 'Unknown error')}")
         else:
-            TA.send_tele(f"USAA: {ticker} API 호출 실패: HTTP {response.status_code}")
+            KA.SendMessage(f"{ticker} API 호출 실패: HTTP {response.status_code}")
             
     except Exception as e:
-        TA.send_tele(f"USAA: {ticker} 월간 가격 조회 오류: {e}")
+        KA.SendMessage(f"{ticker} 월간 가격 조회 오류: {e}")
 
 def get_daily_prices_kis(tickers: list, days: int = 90) -> pd.DataFrame:
     """
@@ -600,11 +599,11 @@ def get_daily_prices_kis(tickers: list, days: int = 90) -> pd.DataFrame:
             time_module.sleep(0.1)
             
         except Exception as e:
-            TA.send_tele(f"USAA: {ticker} 일간 데이터 조회 오류: {e}")
+            KA.SendMessage(f"USLA {ticker} 일간 데이터 조회 오류: {e}")
             continue
     
     if not price_data:
-        raise ValueError("USAA: 일간 가격 데이터를 가져올 수 없습니다.")
+        raise ValueError("일간 가격 데이터를 가져올 수 없습니다.")
     
     return pd.DataFrame(price_data).sort_index(ascending=True)
 
@@ -809,7 +808,7 @@ def USLA_portfolio_weights(top_tickers):
         weights = port.optimization(model=model, rm=rm, obj=obj, rf=rf, l=l, hist=hist)
         
         if weights is None or weights.empty:
-            TA.send_tele(f"USLA 최적화 실패: 동일가중으로 설정")
+            KA.SendMessage(f"USLA 최적화 실패: 동일가중으로 설정")
             return {ticker: 1 / len(top_tickers) for ticker in top_tickers} # 100%내 50%씩 동일가중
         
         weight_dict = {}
@@ -819,7 +818,7 @@ def USLA_portfolio_weights(top_tickers):
         return weight_dict
         
     except Exception as e:
-        TA.send_tele(f"USLA 포트폴리오 최적화 오류: {e}")
+        KA.SendMessage(f"USLA 포트폴리오 최적화 오류: {e}")
         # 동일가중으로 폴백
         equal_weight = 1 / len(top_tickers) # 동일가중
         return {ticker: equal_weight for ticker in top_tickers}
@@ -829,7 +828,7 @@ def USLA_strategy(regime, momentum_df):
     USLA_strategy_message = []
     
     if momentum_df.empty:
-        TA.send_tele("USLA 경고: 모멘텀 데이터가 비어 계산할 수 없습니다.")
+        KA.SendMessage("USLA 경고: 모멘텀 데이터가 비어 계산할 수 없습니다.")
         return None
     
     # 모멘텀 상위 종목 출력 (최대 5개 또는 실제 데이터 개수)
@@ -891,15 +890,13 @@ def USLA_target_regime():
     USLA_target_regime_message.extend(AGG_regime_message)
     momentum_df, USLA_momentum_message = USLA_momentum()
     USLA_target_regime_message.extend(USLA_momentum_message)
-    strategy_result = USLA_strategy(regime, momentum_df)
-    if strategy_result is None:
-        USLA_target_regime_message.append("USLA 경고: 전략 실행 실패, CASH로 대기")
-        return {'CASH': 1.0}, 0, USLA_target_regime_message
-
-    result, USLA_strategy_message = strategy_result
+    result, USLA_strategy_message = USLA_strategy(regime, momentum_df)
     USLA_target_regime_message.extend(USLA_strategy_message)
     USLA_regime = result['regime']
 
+    if result is None:
+        USLA_target_regime_message.append("USLA 경고: 전략 실행 실패, CASH로 대기")
+        return {'CASH': 1.0}, USLA_regime, USLA_target_regime_message
     USLA_target = {
         ticker: weight 
         for ticker, weight in result['allocation'].items() 
@@ -1184,6 +1181,24 @@ def split_data(round):
 
     return round_split
 
+def send_messages_in_chunks(message, max_length=1000):
+    current_chunk = []
+    current_length = 0
+    
+    for msg in message:
+        msg_length = len(msg) + 1  # \n 포함
+        if current_length + msg_length > max_length:
+            KA.SendMessage("\n".join(current_chunk))
+            time_module.sleep(1)
+            current_chunk = [msg]
+            current_length = msg_length
+        else:
+            current_chunk.append(msg)
+            current_length += msg_length
+    
+    if current_chunk:
+        KA.SendMessage("\n".join(current_chunk))
+
 # ============================================
 # 메인 로직 # 연단위 모델간 리밸런싱
 # ============================================
@@ -1192,8 +1207,8 @@ def split_data(round):
 order_time = USAA_Calender.check_order_time()
 order_time['time'] = order_time['time'].replace(second=0, microsecond=0)
 
-if order_time['season'] == "USAA_not_rebalancing_day" or order_time['round'] == 0:
-    TA.send_tele(f"USAA 리밸런싱 일정이 아닙니다.\n{order_time['date']}, {order_time['time']}가 일정에 없습니다.")
+if order_time['season'] == "USAA_not_rebalancing" or order_time['round'] == 0:
+    KA.SendMessage(f"USAA 리밸런싱 일정이 아닙니다.\n{order_time['date']}, {order_time['time']}가 일정에 없습니다.")
     sys.exit(0)
 
 # 메인로직 시작 전 시스템 상태 확인
@@ -1244,7 +1259,7 @@ if order_time['round'] == 1:
         HAA_target_weight = (HAA_balance + (USD * 0.3)) / Total_balance
 
     ## 만약 1월이라면 비중 리밸런싱
-    order_time['month'] = 1 ################################ 최초 정상 실행 이후 이 라인 지울 것 ####################################
+    order_time['month'] = 1 ################################ 최초 정상 실행 이후 지울 것 ####################################
     if order_time['month'] == 1:
         USLA_target_weight = 0.7
         USLA_target_balance = Total_balance * USLA_target_weight
@@ -1317,14 +1332,14 @@ if order_time['round'] == 1:
         total_weight += HAA[ticker].get('target_weight', 0)
 
     if total_weight > 1.01:
-        error_msg = f"USAA: ❌ 목표 비중 초과: {total_weight:.2%}"
+        error_msg = f"❌ 목표 비중 초과: {total_weight:.2%}"
         message.append(error_msg)
-        TA.send_tele(message)
+        KA.SendMessage("\n".join(message))
         sys.exit(1)
     elif total_weight < 0.90:
-        message.append(f"USAA: ⚠️ 목표 비중 부족: {total_weight:.2%}")
+        message.append(f"⚠️ 목표 비중 부족: {total_weight:.2%}")
     else:
-        message.append(f"USAA: ✓ 목표 비중 합계: {total_weight:.2%}")
+        message.append(f"✓ 목표 비중 합계: {total_weight:.2%}")
 
     # 회차별 분할 데이터 트레이딩
     round_split = split_data(order_time['round'])
@@ -1344,7 +1359,7 @@ if order_time['round'] == 1:
     
     for ticker in USLA_ticker:
         if USLA[ticker]['current_price'] <= 0:
-            message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             USLA[ticker]['buy_qty'] = 0
             price_error = True
             continue
@@ -1355,7 +1370,7 @@ if order_time['round'] == 1:
         if ticker == 'TIP':
             continue
         if HAA[ticker]['current_price'] <= 0:
-            message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             HAA[ticker]['buy_qty'] = 0
             price_error = True
             continue
@@ -1363,7 +1378,7 @@ if order_time['round'] == 1:
         FULL_BUYUSD += invest
         
     if price_error:
-        message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
+        message.append("⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
         
     if FULL_BUYUSD > USD:
         ADJUST_RATE = USD / FULL_BUYUSD
@@ -1381,7 +1396,7 @@ if order_time['round'] == 1:
     # 다음 order time으로 넘길 Trading data json 데이터 저장 및 메세지 출력
     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
     message.extend(saveTR_message)
-    TA.send_tele(message)
+    send_messages_in_chunks(message, max_length=1000)
 
     sys.exit(0)
 
@@ -1403,7 +1418,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
         message.extend(cancel_messages)
         if cancel_summary['total'] > 0:
-            message.append(f"USAA미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
+            message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
     except Exception as e:
         message.append(f"USAA 주문 취소 오류: {e}")
 
@@ -1416,13 +1431,13 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     # 목표 비중 만들기
     USLA = TR_data["USLA"]
     for ticker in USLA_ticker:
-        USLA[ticker]['hold_qty'] = int(USLA_qty.get(ticker, 0)) # 현재 보유량 업데이트
+        USLA[ticker]['hold_qty'] = int(USLA_qty.get(ticker, 0)), # 현재 보유량 업데이트
         current_price = KIS.get_US_current_price(ticker)
         time_module.sleep(0.15)
         USLA[ticker]['current_price'] = current_price # 해당 티커의 현재가
         
         if current_price <= 0:
-            message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
             USLA[ticker]['target_qty'] = int(USLA_qty.get(ticker, 0))  # ← 현재 수량 유지 (핵심!)
             USLA[ticker]['target_balance'] = 0
             USLA[ticker]['buy_qty'] = 0
@@ -1447,7 +1462,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         HAA[ticker]['current_price'] = current_price # 해당 티커의 현재가
         if current_price <= 0:
             HAA_target_qty = 0
-            message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
             HAA[ticker]['target_qty'] = int(HAA_qty.get(ticker, 0))  # ← 현재 수량 유지 (핵심!)
             HAA[ticker]['target_balance'] = 0
             HAA[ticker]['buy_qty'] = 0
@@ -1469,14 +1484,14 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         total_weight += HAA[ticker].get('target_weight', 0)
 
     if total_weight > 1.01:
-        error_msg = f"USAA: ❌ 목표 비중 초과: {total_weight:.2%}"
+        error_msg = f"❌ 목표 비중 초과: {total_weight:.2%}"
         message.append(error_msg)
-        TA.send_tele(message)
+        KA.SendMessage("\n".join(message))
         sys.exit(1)
     elif total_weight < 0.90:
-        message.append(f"USAA: ⚠️ 목표 비중 부족: {total_weight:.2%}")
+        message.append(f"⚠️ 목표 비중 부족: {total_weight:.2%}")
     else:
-        message.append(f"USAA: ✓ 목표 비중 합계: {total_weight:.2%}")
+        message.append(f"✓ 목표 비중 합계: {total_weight:.2%}")
 
     # 회차별 분할 데이터 트레이딩
     round_split = split_data(order_time['round'])
@@ -1496,7 +1511,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     
     for ticker in USLA_ticker:
         if USLA[ticker]['current_price'] <= 0:
-            message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             USLA[ticker]['buy_qty'] = 0
             price_error = True
             continue
@@ -1507,7 +1522,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         if ticker == 'TIP':
             continue
         if HAA[ticker]['current_price'] <= 0:
-            message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
+            message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             HAA[ticker]['buy_qty'] = 0
             price_error = True
             continue
@@ -1515,7 +1530,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         FULL_BUYUSD += invest
 
     if price_error:
-        message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
+        message.append("⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
         
     if FULL_BUYUSD > USD:
         ADJUST_RATE = USD / FULL_BUYUSD
@@ -1535,7 +1550,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     message.extend(saveTR_message)
 
     # 메세지 출력
-    TA.send_tele(message)
+    send_messages_in_chunks(message, max_length=1000)
 
     if order_time['round'] == 24:  # 최종기록
         # ============================================
@@ -1548,7 +1563,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
             message.extend(cancel_messages)
             if cancel_summary['total'] > 0:
-                message.append(f"USAA: 미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
+                message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
         except Exception as e:
             message.append(f"USAA 주문 취소 오류: {e}")
             
@@ -1584,7 +1599,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         message.append(f"총 평가금: {Total_balance:,.2f} USD")
 
         # 카톡 리밸 종료 결과 보내기
-        TA.send_tele(message)
+        send_messages_in_chunks(message, max_length=1000)
         
     sys.exit(0)
 
