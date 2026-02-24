@@ -1,7 +1,7 @@
 import requests
 import json
 from datetime import datetime, timedelta
-import kakao_alert as KA
+import telegram_alert as TA
 import sys
 import os
 from typing import Union, Optional, Dict, List, Tuple
@@ -28,10 +28,10 @@ class KIS_API:
             with open(self.key_file_path) as f:
                 self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
         except FileNotFoundError:
-            KA.SendMessage(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
+            TA.send_tele(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
             sys.exit(1)
         except Exception as e:
-            KA.SendMessage(f"API Key 로드 실패: {e}")
+            TA.send_tele(f"API Key 로드 실패: {e}")
             sys.exit(1)
     
     # 토큰 로드
@@ -42,7 +42,7 @@ class KIS_API:
                     return json.load(f)
             return None
         except Exception as e:
-            KA.SendMessage(f"KIS 토큰 로드 오류: {e}")
+            TA.send_tele(f"KIS 토큰 로드 오류: {e}")
             return None
     
     # 토큰 저장
@@ -57,7 +57,7 @@ class KIS_API:
                 json.dump(token_data, f, indent=2)
             return True
         except Exception as e:
-            KA.SendMessage(f"KIS 토큰 저장 오류: {e}")
+            TA.send_tele(f"KIS 토큰 저장 오류: {e}")
             return False
     
     # 토큰 유효성 확인
@@ -99,9 +99,8 @@ class KIS_API:
             self.save_token(access_token, expires_in)
             return access_token
         except Exception as e:
-            KA.SendMessage(f"KIS 토큰 발급 실패: {e}")
+            TA.send_tele(f"KIS 토큰 발급 실패: {e}")
             sys.exit(0)
-            # return None
 
     # 토큰 접속
     def get_access_token(self) -> Optional[str]:
@@ -126,7 +125,7 @@ class KIS_API:
             res.raise_for_status()
             return res.json()["HASH"]
         except Exception as e:
-            KA.SendMessage(f"Hashkey 생성 실패: {e}")
+            TA.send_tele(f"Hashkey 생성 실패: {e}")
             return ""
 
     # Ticker로 거래소명 조회
@@ -565,7 +564,7 @@ class KIS_API:
                 exchange = None
         
         if exchange is None:
-            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
+            TA.send_tele(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -622,7 +621,7 @@ class KIS_API:
                 KA.SendMessage(f"주간매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 return order_info
             else:
-                KA.SendMessage(f"주간매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                TA.send_tele(f"주간매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -635,7 +634,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            KA.SendMessage(f"주간매수 주문 오류: {e}")
+            TA.send_tele(f"주간매수 주문 오류: {e}")
             return None
 
     # 미국 주간거래 매도 주문 (국내 증권사지원 주간거래)
@@ -668,7 +667,7 @@ class KIS_API:
                 exchange = None
         
         if exchange is None:
-            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
+            TA.send_tele(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 가격을 소수점 2자리로 반올림
@@ -722,10 +721,10 @@ class KIS_API:
                     'response': response
                 }
                 
-                KA.SendMessage(f"주간매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
+                TA.send_tele(f"주간매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 return order_info
             else:
-                KA.SendMessage(f"주간매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                TA.send_tele(f"주간매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                 return {
                     'success': False,
                     'ticker': ticker,
@@ -738,7 +737,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            KA.SendMessage(f"주간매도 주문오류: {e}")
+            TA.send_telee(f"주간매도 주문오류: {e}")
             return None
 
     # 미국 주식 종목별 잔고
@@ -770,7 +769,7 @@ class KIS_API:
             data = response.json()
             
             if data.get('rt_cd') != '0':
-                KA.SendMessage(f"API 오류: {data.get('msg1')}")
+                TA.send_tele(f"API 오류: {data.get('msg1')}")
                 return None
             
             output1 = data.get('output1', [])
@@ -803,7 +802,7 @@ class KIS_API:
             return stocks
             
         except Exception as e:
-            KA.SendMessage(f"잔고 조회 오류: {e}")
+            TA.send_tele(f"잔고 조회 오류: {e}")
             return None
 
     # 미국 달러 예수금

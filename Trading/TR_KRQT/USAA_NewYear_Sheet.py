@@ -2,7 +2,7 @@ import gspread
 
 # 날짜 인풋 받기
 year = input('year?:')
-model = input('model name?:')
+model = 'TR_USAA'
 
 ## Google Spread sheet 작성
 gc = gspread.service_account("C:/Users/ilpus/Desktop/NKL_invest/service_account.json")

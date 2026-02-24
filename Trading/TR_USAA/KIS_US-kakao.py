@@ -19,15 +19,20 @@ class KIS_API:
         
         self._load_api_keys()
         self.access_token = self.get_access_token()
-        self.SELL_FEE_RATE = 0.0025  # test매도수수료 0.25% 수수료 할인 안 된 테스트 계좌/외부 코드에는 FEE는 이걸로 단일화 처리 중 
-        # self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09%
-        self.BUY_FEE_RATE = 0.0025  # test매수수수료 0.25% 수수료 할인 안 된 테스트 계좌
-        # self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09%
+        self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09% 이벤트 계좌
+        self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09% 이벤트 계좌
     
-    # API-Key 로드
+    # API-Key 로드 
     def _load_api_keys(self):
-        with open(self.key_file_path) as f:
-            self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
+        try:
+            with open(self.key_file_path) as f:
+                self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
+        except FileNotFoundError:
+            KA.SendMessage(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
+            sys.exit(1)
+        except Exception as e:
+            KA.SendMessage(f"API Key 로드 실패: {e}")
+            sys.exit(1)
     
     # 토큰 로드
     def load_token(self) -> Optional[Dict]:
@@ -84,7 +89,7 @@ class KIS_API:
         url = f"{self.url_base}/{path}"
         
         try:
-            response = requests.post(url, headers=headers, data=json.dumps(body))
+            response = requests.post(url, headers=headers, data=json.dumps(body), timeout=10)
             response.raise_for_status()
             
             token_response = response.json()
@@ -116,8 +121,13 @@ class KIS_API:
             'appKey': self.app_key,
             'appSecret': self.app_secret,
         }
-        res = requests.post(url, headers=headers, data=json.dumps(datas))
-        return res.json()["HASH"]
+        try:
+            res = requests.post(url, headers=headers, data=json.dumps(datas), timeout=5)
+            res.raise_for_status()
+            return res.json()["HASH"]
+        except Exception as e:
+            KA.SendMessage(f"Hashkey 생성 실패: {e}")
+            return ""
 
     # Ticker로 거래소명 조회
     def get_exchange_by_ticker(self, ticker: str) -> str:
@@ -130,19 +140,19 @@ class KIS_API:
         str: 에러 메시지
         """
         if not ticker:
-            return "티커를 입력해주세요."
+            return "error:티커를 입력해주세요."
         
         ticker = ticker.upper()
         
         exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
 
         for exchange in exchanges:
-            price = self._get_price_from_kis(ticker, exchange)
+            price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
                 return exchange
             time.sleep(0.1)
 
-        return "거래소 조회 실패"
+        return "error: 거래소 조회 실패"
 
     # 주식 현재가 조회
     def get_US_current_price(self, ticker: str) -> Union[float, str]:
@@ -163,7 +173,7 @@ class KIS_API:
         exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
         
         for exchange in exchanges:
-            price = self._get_price_from_kis(ticker, exchange)
+            price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
                 return price
             time.sleep(0.1)
@@ -171,7 +181,7 @@ class KIS_API:
         return "현재가 조회 실패"
 
     # KIS API로 현재가 조회
-    def _get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
+    def get_price_from_kis(self, ticker: str, exchange: str) -> Union[float, str]:
         """KIS API로 현재가 조회 (3단계)"""
         
         # 1단계: 현재체결가 API
@@ -192,7 +202,7 @@ class KIS_API:
         try:
             # 1단계: 현재체결가
             response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price", 
-                                   headers=headers, params=params)
+                                   headers=headers, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('rt_cd') == '0':
@@ -210,7 +220,7 @@ class KIS_API:
             # 2단계: 현재가상세
             headers['tr_id'] = "HHDFS76200200"
             response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/price-detail",
-                                   headers=headers, params=params)
+                                   headers=headers, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('rt_cd') == '0':
@@ -236,7 +246,7 @@ class KIS_API:
                 "MODP": "0"
             }
             response = requests.get(f"{self.url_base}/uapi/overseas-price/v1/quotations/dailyprice",
-                                   headers=headers, params=params_daily)
+                                   headers=headers, params=params_daily, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('rt_cd') == '0':
@@ -328,53 +338,72 @@ class KIS_API:
             "hashkey": self.hashkey(data)
         }
 
-        try:
-            response = requests.post(url, headers=headers, data=json.dumps(data))
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            # 응답 성공 여부 확인
-            if result.get('rt_cd') == '0':
-                output = result.get('output', {})
+        # 500 에러 재시도 로직
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0:
+                    time.sleep(1)  # 재시도 전 1초 대기
+                    order_sell_message.append(f"재시도 {attempt}/{max_retries}")
                 
-                order_info = {
-                    'success': True,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': output.get('ODNO', ''),      # 주문번호
-                    'order_time': output.get('ORD_TMD', ''),     # 주문시각
-                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                    'message': result.get('msg1', ''),
-                    'response': response
-                }
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+                response.raise_for_status()
                 
-                order_sell_message.append(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")                
-                return order_info, order_sell_message
-            else:
-                order_sell_message.append(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
-                order_info = {
-                    'success': False,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': '',
-                    'error_code': result.get('rt_cd'),
-                    'error_message': result.get('msg1', ''),
-                    'response': response
-                }
-                return order_info, order_sell_message
+                result = response.json()
                 
-        except requests.exceptions.RequestException as e:
-            order_sell_message.append(f"정규매도 주문 오류: {e}")
-            order_info = None
-            return order_info, order_sell_message
-                
-        except Exception as e:
-            order_sell_message.append(f"정규매도 주문 오류: {e}")
-            order_info = None
-            return order_info, order_sell_message
+                # 응답 성공 여부 확인
+                if result.get('rt_cd') == '0':
+                    output = result.get('output', {})
+                    
+                    order_info = {
+                        'success': True,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': output.get('ODNO', ''),      # 주문번호
+                        'order_time': output.get('ORD_TMD', ''),     # 주문시각
+                        'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
+                        'message': result.get('msg1', ''),
+                        'response': response
+                    }
+                    
+                    order_sell_message.append(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")                
+                    return order_info, order_sell_message
+                else:
+                    order_sell_message.append(f"정규매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                    order_info = {
+                        'success': False,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': '',
+                        'error_code': result.get('rt_cd'),
+                        'error_message': result.get('msg1', ''),
+                        'response': response
+                    }
+                    return order_info, order_sell_message
+                    
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 500 and attempt < max_retries:
+                    order_sell_message.append(f"500 에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_sell_message.append(f"정규매도 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_sell_message
+                    
+            except Exception as e:
+                if attempt < max_retries:
+                    order_sell_message.append(f"에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_sell_message.append(f"정규매도 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_sell_message
+        
+        # 모든 재시도 실패
+        order_sell_message.append(f"정규매도 주문 최종 실패: 모든 재시도 소진")
+        return None, order_sell_message
 
     # 미국 정규시장 주식 매수 주문
     def order_buy_US(self, ticker: str, quantity: int, price: float, 
@@ -441,52 +470,76 @@ class KIS_API:
             "hashkey": self.hashkey(data)
         }
 
-        try:
-            response = requests.post(url, headers=headers, data=json.dumps(data))
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if result.get('rt_cd') == '0':
-                output = result.get('output', {})
+        # 500 에러 재시도 로직
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0:
+                    time.sleep(1)  # 재시도 전 1초 대기
+                    order_buy_message.append(f"재시도 {attempt}/{max_retries}")
                 
-                order_info = {
-                    'success': True,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': output.get('ODNO', ''),
-                    'order_time': output.get('ORD_TMD', ''),
-                    'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                    'message': result.get('msg1', ''),
-                    'response': response
-                }
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+                response.raise_for_status()
                 
-                order_buy_message.append(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
-                return order_info, order_buy_message
-            else:
-                order_buy_message.append(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
-                return {
-                    'success': False,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': '',
-                    'error_code': result.get('rt_cd'),
-                    'error_message': result.get('msg1', ''),
-                    'response': response
-                }
+                result = response.json()
                 
-        except Exception as e:
-            order_buy_message.append(f"정규매수 주문 오류: {e}")
-            order_info = None
-            return order_info, order_buy_message
+                if result.get('rt_cd') == '0':
+                    output = result.get('output', {})
+                    
+                    order_info = {
+                        'success': True,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': output.get('ODNO', ''),
+                        'order_time': output.get('ORD_TMD', ''),
+                        'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
+                        'message': result.get('msg1', ''),
+                        'response': response
+                    }
+                    
+                    order_buy_message.append(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
+                    return order_info, order_buy_message
+                else:
+                    order_buy_message.append(f"정규매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
+                    return {
+                        'success': False,
+                        'ticker': ticker,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_number': '',
+                        'error_code': result.get('rt_cd'),
+                        'error_message': result.get('msg1', ''),
+                        'response': response
+                    }, order_buy_message
+                    
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 500 and attempt < max_retries:
+                    order_buy_message.append(f"500 에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_buy_message.append(f"정규매수 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_buy_message
+                    
+            except Exception as e:
+                if attempt < max_retries:
+                    order_buy_message.append(f"에러 발생, 재시도 중...")
+                    continue
+                else:
+                    order_buy_message.append(f"정규매수 주문 오류: {e}")
+                    order_info = None
+                    return order_info, order_buy_message
+        
+        # 모든 재시도 실패
+        order_buy_message.append(f"정규매수 주문 최종 실패: 모든 재시도 소진")
+        return None, order_buy_message
     
-    # 미국 주간거래 매수 주문 (Pre-market/After-hours)
+    # 미국 주간거래 매수 주문 (국내 증권사지원 주간거래)
     def order_daytime_buy_US(self, ticker: str, quantity: int, price: float,
                             exchange: Optional[str] = None) -> Optional[Dict]:
         """
-        미국 주간거래 매수 주문 (Pre-market/After-hours)
+        미국 국내 증권사지원 주간거래 매수주문
         
         Returns:
         Dict 또는 None - 주문 정보 딕셔너리
@@ -585,11 +638,11 @@ class KIS_API:
             KA.SendMessage(f"주간매수 주문 오류: {e}")
             return None
 
-    # 미국 주간거래 매도 주문 (Pre-market/After-hours)
+    # 미국 주간거래 매도 주문 (국내 증권사지원 주간거래)
     def order_daytime_sell_US(self, ticker: str, quantity: int, price: float,
                             exchange: Optional[str] = None) -> Optional[Dict]:
         """
-        미국 주간거래 매도 주문 (Pre-market/After-hours)
+        미국 국내 증권사지원 주간거래 매도주문
         
         Returns:
         Dict 또는 None - 주문 정보 딕셔너리
@@ -717,7 +770,7 @@ class KIS_API:
             data = response.json()
             
             if data.get('rt_cd') != '0':
-                print(f"API 오류: {data.get('msg1')}")
+                KA.SendMessage(f"API 오류: {data.get('msg1')}")
                 return None
             
             output1 = data.get('output1', [])
@@ -750,9 +803,7 @@ class KIS_API:
             return stocks
             
         except Exception as e:
-            KA.Sen(f"잔고 조회 오류: {e}")
-            import traceback
-            traceback.print_exc()
+            KA.SendMessage(f"잔고 조회 오류: {e}")
             return None
 
     # 미국 달러 예수금
@@ -795,7 +846,7 @@ class KIS_API:
             return {
                 'currency': usd_info.get('crcy_cd', 'USD'),
                 'deposit': float(usd_info.get('frcr_dncl_amt_2', 0)),
-                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)),
+                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)), # 출금가능액, 정확한 거래가능금액
                 'exchange_rate': float(usd_info.get('frst_bltn_exrt', 0)),
                 'krw_value': float(usd_info.get('frcr_evlu_amt2', 0))
             }
@@ -934,7 +985,7 @@ class KIS_API:
             exchange = None
         
         if exchange is None:
-            KA.SendMessage(f"{ticker} 거래소를 찾을 수 없습니다.")
+            print(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
         
         # 정규장 TR_ID
@@ -993,7 +1044,7 @@ class KIS_API:
                 }
                 
         except Exception as e:
-            KA.SendMessage(f"주문 취소 오류: {e}")
+            print(f"주문 취소 오류: {e}")
             return None
 
     # 미체결 주문 조회
@@ -1282,7 +1333,7 @@ class KIS_API:
             path = "uapi/overseas-price/v1/quotations/dailyprice"
             url = f"{self.url_base}/{path}"
             
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=10)
             response.raise_for_status()
             
             result = response.json()
@@ -1331,104 +1382,99 @@ class KIS_API:
 
     # 특정 ticker의 보유 잔고 조회
     def get_ticker_balance(self, ticker: str) -> Union[Dict, str]:
-        """
-        특정 ticker의 계좌 내 보유 잔고 조회
-        
-        Parameters:
-        ticker (str): 주식 티커 심볼
-        
-        Returns:
-        Dict: {
-            'ticker': str,              # 티커 심볼
-            'holding_qty': float,       # 보유 수량
-            'avg_price': float,         # 매입 평균가
-            'current_price': float,     # 현재가
-            'eval_amount': float,       # 평가금액
-            'profit_loss': float,       # 평가손익금액
-            'profit_rate': float,       # 평가손익율(%)
-            'currency': str,            # 거래통화코드
-            'exchange': str             # 거래소코드
-        }
-        str: 에러 메시지 또는 "보유 잔고 없음"
-        """
+        """특정 ticker의 계좌 내 보유 잔고 조회"""
         if not ticker:
-            return "티커를 입력해주세요."
+            return "error: 티커를 입력해주세요."
         
         ticker = ticker.upper()
         
         # 1. 거래소 조회
         exchange = self.get_exchange_by_ticker(ticker)
-        if not isinstance(exchange, str) or exchange == "거래소 조회 실패":
-            return f"{ticker} 거래소 조회 실패"
         
-        # 2. 거래소 코드에 따른 통화 코드 설정
-        currency_map = {
-            "NAS": "USD", "NASD": "USD", "NYS": "USD", "NYSE": "USD", 
-            "AMS": "USD", "AMEX": "USD", "BAY": "USD", "BAQ": "USD", "BAA": "USD",
-            "SEHK": "HKD",
-            "SHAA": "CNY", "SZAA": "CNY",
-            "TKSE": "JPY",
-            "HASE": "VND", "VNSE": "VND"
-        }
+        if not isinstance(exchange, str) or exchange.startswith("error"):
+            return f"error: {ticker} 거래소 조회 실패"
         
-        tr_crcy_cd = currency_map.get(exchange, "USD")
+        # 2. 주요 거래소 목록 (첫 번째는 get_exchange_by_ticker 결과)
+        exchanges_to_try = [exchange]
         
-        # 3. 해외주식 잔고 조회 API 호출
-        path = "uapi/overseas-stock/v1/trading/inquire-balance"
-        url = f"{self.url_base}/{path}"
+        # 첫 번째 조회가 실패할 경우를 대비한 대체 거래소들
+        if exchange not in ['NAS', 'NASD']:
+            exchanges_to_try.append('NASD')
+        if exchange not in ['NYS', 'NYSE']:
+            exchanges_to_try.append('NYSE')
+        if exchange not in ['AMS', 'AMEX']:
+            exchanges_to_try.append('AMEX')
         
-        headers = {
-            "Content-Type": "application/json",
-            "authorization": f"Bearer {self.access_token}",
-            "appKey": self.app_key,
-            "appSecret": self.app_secret,
-            "tr_id": "TTTS3012R"
-        }
-        
-        params = {
-            "CANO": self.cano,
-            "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "OVRS_EXCG_CD": exchange,
-            "TR_CRCY_CD": tr_crcy_cd,
-            "CTX_AREA_FK200": "",
-            "CTX_AREA_NK200": ""
-        }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
+        # 3. 여러 거래소에서 순회 조회
+        for try_exchange in exchanges_to_try:
+            currency_map = {
+                "NAS": "USD", "NASD": "USD", "NYS": "USD", "NYSE": "USD", 
+                "AMS": "USD", "AMEX": "USD", "BAY": "USD", "BAQ": "USD", "BAA": "USD",
+                "SEHK": "HKD", "SHAA": "CNY", "SZAA": "CNY",
+                "TKSE": "JPY", "HASE": "VND", "VNSE": "VND"
+            }
             
-            result = response.json()
+            tr_crcy_cd = currency_map.get(try_exchange, "USD")
             
-            if result.get('rt_cd') != '0':
-                return f"{ticker} 잔고 조회 실패: {result.get('msg1', '알 수 없는 오류')}"
+            path = "uapi/overseas-stock/v1/trading/inquire-balance"
+            url = f"{self.url_base}/{path}"
             
-            # output2에서 해당 ticker 찾기
-            output2 = result.get('output2', [])
+            headers = {
+                "Content-Type": "application/json",
+                "authorization": f"Bearer {self.access_token}",
+                "appKey": self.app_key,
+                "appSecret": self.app_secret,
+                "tr_id": "TTTS3012R"
+            }
             
-            for item in output2:
-                # ovrs_pdno는 ticker를 의미
-                if item.get('ovrs_pdno', '').upper() == ticker:
-                    holding_qty = float(item.get('ovrs_cblc_qty', '0'))
+            params = {
+                "CANO": self.cano,
+                "ACNT_PRDT_CD": self.acnt_prdt_cd,
+                "OVRS_EXCG_CD": try_exchange,
+                "TR_CRCY_CD": tr_crcy_cd,
+                "CTX_AREA_FK200": "",
+                "CTX_AREA_NK200": ""
+            }
+            
+            try:
+                response = requests.get(url, headers=headers, params=params, timeout=10)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                if result.get('rt_cd') != '0':
+                    continue
+                
+                # output1에서 해당 ticker 찾기
+                output1 = result.get('output1', [])
+                
+                if isinstance(output1, dict):
+                    output1 = [output1]
+                elif not isinstance(output1, list):
+                    output1 = []
+                
+                for item in output1:
+                    item_ticker = item.get('ovrs_pdno', '').upper()
                     
-                    return holding_qty
-                    
-                    # return {
-                    #     'ticker': ticker,
-                    #     'holding_qty': holding_qty,
-                    #     'avg_price': float(item.get('pchs_avg_pric', '0')),
-                    #     'current_price': float(item.get('now_pric2', '0')),
-                    #     'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')),
-                    #     'profit_loss': float(item.get('frcr_evlu_pfls_amt', '0')),
-                    #     'profit_rate': float(item.get('evlu_pfls_rt', '0')),
-                    #     'currency': item.get('tr_crcy_cd', tr_crcy_cd),
-                    #     'exchange': item.get('ovrs_excg_cd', exchange)
-                    # }
+                    if item_ticker == ticker:
+                        holding_qty = float(item.get('ovrs_cblc_qty', '0'))
+                        
+                        return {
+                            'ticker': ticker,
+                            'holding_qty': holding_qty,
+                            'avg_price': float(item.get('pchs_avg_pric', '0')),
+                            'current_price': float(item.get('now_pric2', '0')),
+                            'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')),
+                            'profit_loss': float(item.get('frcr_evlu_pfls_amt', '0')),
+                            'profit_rate': float(item.get('evlu_pfls_rt', '0')),
+                            'currency': item.get('tr_crcy_cd', tr_crcy_cd),
+                            'exchange': item.get('ovrs_excg_cd', try_exchange)
+                        }
             
-            return "보유 잔고 없음"
-            
-        except Exception as e:
-            return f"{ticker} 잔고 조회 중 오류 발생: {str(e)}"
+            except Exception:
+                continue
+        
+        return "보유 잔고 없음"
         
 """
 [Header tr_id TTTT1002U(미국 매수 주문)]

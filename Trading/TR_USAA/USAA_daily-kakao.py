@@ -1,5 +1,5 @@
 import KIS_US
-import telegram_alert as TA
+import kakao_alert as KA
 from datetime import datetime
 import gspread_updater as GU
 import time
@@ -21,6 +21,25 @@ KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
 USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
 HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
+
+def send_messages_in_chunks(message, max_length=1000):
+    """메시지를 최대 길이로 나누어 전송"""
+    current_chunk = []
+    current_length = 0
+    
+    for msg in message:
+        msg_length = len(msg) + 1  # \n 포함
+        if current_length + msg_length > max_length:
+            KA.SendMessage("\n".join(current_chunk))
+            time.sleep(1)
+            current_chunk = [msg]
+            current_length = msg_length
+        else:
+            current_chunk.append(msg)
+            current_length += msg_length
+    
+    if current_chunk:
+        KA.SendMessage("\n".join(current_chunk))
 
 def get_balance(): # 신규 생성 사용
     # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
@@ -80,8 +99,9 @@ try:
         USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
     except Exception as e:
-        error_msg = f"USAA: 계좌 잔고 조회 실패: {e}"
-        TA.send_tele(error_msg)
+        error_msg = f"계좌 잔고 조회 실패: {e}"
+        print(error_msg)
+        KA.SendMessage(error_msg)
         raise
     
     ## 헷징 모드 확인 후 비중 조정: 빈 딕셔너리 체크 (값이 모두 0인지)
@@ -128,7 +148,7 @@ try:
         last_month_balance_KRW = last_day_balance_KRW
         USLA_last_month_balance_KRW = USLA_last_day_balance_KRW
         HAA_last_month_balance_KRW = HAA_last_day_balance_KRW
-        message.append(f"USAA: 월초, 전월 전체잔고를 {last_month_balance}원으로 업데이트했습니다.")
+        message.append(f"월초, 전월 전체잔고를 {last_month_balance}원으로 업데이트했습니다.")
     else:
         last_month_balance = previous_USAA_data.get('last_month_balance', balance)
         USLA_last_month_balance = previous_USAA_data.get('USLA_last_month_balance', USLA_balance)
@@ -144,7 +164,7 @@ try:
         last_year_balance_KRW = last_day_balance_KRW
         USLA_last_year_balance_KRW = USLA_last_day_balance_KRW
         HAA_last_year_balance_KRW = HAA_last_day_balance_KRW
-        message.append(f"USAA: 연초, 전년 전체잔고를 {last_year_balance}원으로 업데이트했습니다.")
+        message.append(f"연초, 전년 전체잔고를 {last_year_balance}원으로 업데이트했습니다.")
     else:
         last_year_balance = previous_USAA_data.get('last_year_balance', balance)
         USLA_last_year_balance = previous_USAA_data.get('USLA_last_year_balance', USLA_balance)
@@ -158,8 +178,9 @@ try:
         USD_balance = KIS.get_US_dollar_balance()
         exchange_rate = USD_balance['exchange_rate']
     except Exception as e:
-        error_msg = f"USAA: 환율 조회 실패: {e}"
-        TA.send_tele(error_msg)
+        error_msg = f"환율 조회 실패: {e}"
+        print(error_msg)
+        KA.SendMessage(error_msg)
         # 이전 환율 사용
         exchange_rate = previous_USAA_data.get('exchange_rate', 1400)  # 기본값 1400
 
@@ -246,7 +267,7 @@ try:
     # KakaoTalk 알림
     for key, value in new_USAA_data.items():
         message.append(f"{key}: {value}")
-    TA.send_tele(message)
+    send_messages_in_chunks(message, max_length=1200)
 
     # Google Sheet 업로드
     try:
@@ -263,12 +284,13 @@ try:
         GU.save_to_sheets(spreadsheet, new_USAA_data, current_month)
     except Exception as e:
         error_msg = f"Google Sheet 업로드 실패: {e}"
-        TA.send_tele(error_msg)
+        print(error_msg)
+        KA.SendMessage(error_msg)
         # Google Sheet 업로드 실패는 전체 프로세스를 중단하지 않음
     
 except Exception as e:
     error_msg = f"USAA_daily.py 에러 발생: {e}"
-    TA.send_tele(error_msg)
+    KA.SendMessage(error_msg)
     raise  # 에러를 다시 발생시켜 스택 트레이스 확인 가능
 
 sys.exit(0)
