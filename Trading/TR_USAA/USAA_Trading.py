@@ -1370,6 +1370,8 @@ if order_time['round'] == 1:
         for ticker in USLA_ticker:
             USLA[ticker]['buy_qty'] = int(USLA[ticker]['buy_qty'] * ADJUST_RATE)
         for ticker in HAA_ticker:
+            if ticker == 'TIP':
+                continue
             HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
     else:
         pass  # 예수금이 충분할 경우 조정 없음
