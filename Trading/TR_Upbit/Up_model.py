@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 import time as time_module
 import json
 import math
-import telegram_alert as TA
 
 # 필요한 라이브러리 설치: pip install gspread google-auth
 
@@ -403,8 +402,8 @@ def partial_buying(ticker, current_price, krw_per_times, TR_time, upbit):
                 Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류")
                 
         except Exception as order_error:
-            print(f"주문 {t+1}회차 오류: {order_error}")
             Upmessage.append(f"Upbit {TR_time[0]}, {t+1}/{TR_time[1]} {ticker} 분할 매수 오류: {order_error}")
+
     return result, Upmessage
 
 # 직전 2시간 체결 주문 확인 함수

@@ -21,7 +21,7 @@ with open("/var/autobot/TR_Upbit/upnkr.txt") as f:
 
 # 업비트 접속, JSON data 경로 설정
 upbit = pyupbit.Upbit(access_key, secret_key)
-TR_data_path = '/var/autobot/TR_Upbit/TR_data.json' ##### 필요성 체크
+TR_data_path = '/var/autobot/TR_Upbit/TR_data.json'
 
 # 시간확인 조건문
 now, current_time, TR_time = UP.what_time()
@@ -158,7 +158,7 @@ try:
                 Upmessage = []  # 메시지 초기화
             else:
                 message.append(f"Upbit {TR_time[0]} BTC Sell_half: 매도할 수량 없음 (보유: {BTC:.8f}, 목표: {BTC_target:.8f})")
-###############################################################################################################################################################        
+    
         elif BTC_Position == "Buy_full" or BTC_Position == "Buy_half":
             KRWBTC_buy = TR_data["KRWBTC_buy"]
             result, Upmessage = UP.check_all_filled_orders_last_hour(upbit)
@@ -185,10 +185,8 @@ try:
 except Exception as e:
         message.append(f"Upbit {TR_time[0]} \n주문하기 중 예외 오류: {e}")
         
-send_messages_in_chunks(message, max_length=900)
+TA.send_tele(message)
 message = []  # 메시지 초기화
-
-time_module.sleep(1) # 타임슬립 1초
 
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
 try:
@@ -270,7 +268,7 @@ try:
         with open(TR_data_path, 'w', encoding='utf-8') as f:
             json.dump(TR_data, f, ensure_ascii=False, indent=4)
 
-        # KakaoTalk 메시지 보내기
+        # 메시지 보내기
         ETH_target = TR_data["ETH_target"]
         BTC_target = TR_data["BTC_target"]
         message.append(f"Upbit {now.strftime('%Y-%m-%d %H:%M:%S')} 당일 트레이딩 완료")
@@ -278,8 +276,8 @@ try:
         message.append(f"환산잔고: {round(Total):,}원")
         message.append(f"보유현황 - ETH: {ETH:.6f} | BTC: {BTC:.6f} | KRW: {round(KRW):,}원")
         message.append(f"포지션 - ETH: {ETH_Position}({ETH_weight}) | BTC: {BTC_Position}({BTC_weight})")
+
         # Google Spreadsheet에 데이터 추가
-        # 설정값 (실제 값으로 변경 필요)
         credentials_file = "/var/autobot/gspread/service_account.json" # 구글 서비스 계정 JSON 파일 경로
         spreadsheet_name = "2026_TR_Upbit" # 스프레드시트 이름
         
@@ -293,19 +291,19 @@ try:
         GU.save_to_sheets(spreadsheet,TR_data, current_month)
     else:
         pass
-    send_messages_in_chunks(message, max_length=900)
+
+    TA.send_tele(message)
     message = []  # 메시지 초기화
 
 except Exception as e:
     message.append(f"Upbit {TR_time[0]} 당일 data 기록 중 예외 오류: {e}")
-    send_messages_in_chunks(message, max_length=900)
+    TA.send_tele(message)
     message = []  # 메시지 초기화
 
-#### 검증 > 마지막에 crontab에서 5분 후 자동종료 되게 설정
+# 매매시간이 아닌 경우
 if TR_time[1] == 0:
-    print(f"Upbit {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
     message.append(f"Upbit {now.strftime('%Y-%m-%d')} 트레이딩 프로그램 운용시간이 아닙니다. 프로그램을 종료합니다.")
-    send_messages_in_chunks(message, max_length=900)
+    TA.send_tele(message)
     message = []  # 메시지 초기화
 
-sys.exit()
+sys.exit(0)
