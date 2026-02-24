@@ -15,7 +15,7 @@ except Exception as e:
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 MAX_CHARS = 4096
 
-def send_telegram(
+def send_tele(
     message: str | list[str],
     chat_id: str = CHAT_ID,
     parse_mode: str = "HTML",
@@ -74,10 +74,10 @@ def send_telegram(
 # ── 사용 예시 ──────────────────────────────────────────────
 
 # # 단일 문자열
-# send_telegram("🚨 AAPL 목표가 도달 — 현재가: $195.4")
+# send_tele("🚨 AAPL 목표가 도달 — 현재가: $195.4")
 
 # # 문자열 리스트 (줄바꿈 결합 → 한 메시지로 전송)
-# send_telegram([
+# send_tele([
 #     "📊 <b>[포트폴리오 리포트]</b>",
 #     "",
 #     "  AAPL  $195.4  +1.2%",
