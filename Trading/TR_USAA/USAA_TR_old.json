@@ -1,21 +1,6 @@
 {
     "round": 24,
     "timestamp": "2026-02-20T20:30:27.810306",
-    "USD_total": 551.55,
-    "USD_USAA": [
-        {
-            "balance": 386.085,
-            "weight": 0.7,
-            "mode": "aggresive"
-        }
-    ],
-    "USD_HAA": [
-        {
-            "balance": 165.465,
-            "weight": 0.3,
-            "mode": "aggresive"
-        }
-    ],
     "Sell_order": [
         {
             "success": true,

@@ -1210,9 +1210,25 @@ if order_time['round'] == 1:
     # HAA regime체크 및 거래 목표 데이터 만들기
     HAA_target, HAA_regime, HAA_message = HAA_target_regime()
     message.extend(HAA_message)
-
+    
+    # 지난 월 USAA / HAA Mode와 모델별 USD 비중 불러오기
+    try:
+        with open('USAA_TR.json', 'r') as f:
+            USAA_TR = json.load(f)
+    except Exception as e:
+        message.append(f"USAA_TR JSON 파일 오류: {e}")
+        TA.send_tele(message)
+        sys.exit(1)
+    
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+
+    USLA_mode = USAA_TR['USD_USAA']['mode']
+    HAA_mode = USAA_TR['USD_HAA']['mode']
+    if USLA_mode == "aggresive" and HAA_mode == "aggresive":
+        USD_USAA = USAA_TR['USD_USAA']['weight'] * USD
+        USD_HAA = USAA_TR['USD_HAA']['weight'] * USD
+    #########################TR, daily모두 수정############################    
 
     ## 헷징 모드 확인 후 비중 조정: 빈 딕셔너리 체크 (값이 모두 0인지)
     USLA_has_position = any(qty > 0 for qty in USLA_qty.values())
