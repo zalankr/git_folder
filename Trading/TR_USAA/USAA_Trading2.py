@@ -385,18 +385,26 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
 
     return Buy_order, order_messages
 
-def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, USDX):
+def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, start):
     """
     저장 실패 시에도 백업 파일 생성
+    "USD_total": USD,
+    "USD_USLA": USD_USLA,
+    "USD_HAA": USD_HAA
+    }
     """
     TR_data = {} # 초기화
     message = []
     TR_data = {
         "round": order_time['round'],
         "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
-        "USD_total": USDX['total'],
-        "USD_USAA": USDX['USLA'],
-        "USD_HAA": USDX['HAA'],
+        "USD_total": start['USD_total'],
+        "USD_USAA": start['USD_USLA'],
+        "USD_HAA": start['USD_HAA'],
+        "USLA_target_balance": start['USLA_target_balance'],
+        "USLA_target_weight": start['USLA_target_weight'],
+        "HAA_target_balance": start['HAA_target_balance'],
+        "HAA_target_weight": start['HAA_target_weight'],
         "Sell_order": Sell_order,
         "Buy_order": Buy_order,
         "USLA": USLA,
@@ -1216,8 +1224,8 @@ if order_time['round'] == 1:
     
     # 지난 월 USAA / HAA Mode와 모델별 USD 비중 불러오기
     try:
-        with open('USAA_TR.json', 'r') as f:
-            USAA_TR = json.load(f)
+        with open(USAA_TR_path, 'r') as f:
+            TR_data = json.load(f)
     except Exception as e:
         message.append(f"USAA_TR JSON 파일 오류: {e}")
         TA.send_tele(message)
@@ -1225,34 +1233,42 @@ if order_time['round'] == 1:
     
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+    USD =float(USD)
+    USD_gap = float(USD - float(TR_data['USD_total']))
+    if USD_gap > 0:
+        USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.7)
+        USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.3)
+    elif USD_gap < 0:
+        USD_USLA = float(TR_data['USD_USLA']) - (USD_gap * 0.7)
+        USD_HAA = float(TR_data['USD_HAA']) - (USD_gap * 0.3)
+    else:
+        USD_USLA = float(TR_data['USD_USLA'])
+        USD_HAA = float(TR_data['USD_HAA'])
 
-    USLA_mode = USAA_TR['USD_USLA']['mode']
-    HAA_mode = USAA_TR['USD_HAA']['mode']
-    if USLA_mode == "Aggressive" and HAA_mode == "Aggressive":
-        USD_USLA = USAA_TR['USD_USLA']['weight'] * USD
-        USD_HAA = USAA_TR['USD_HAA']['weight'] * USD
-    elif USLA_mode == "Aggressive" and HAA_mode == "Defensive":
-        USD_HAA = USAA_TR['USD_HAA']['balance']
-        USD_USLA = USD - USD_HAA    
-    elif USLA_mode == "Defensive" and HAA_mode == "Aggressive":
-        USD_USLA = USAA_TR['USD_USLA']['balance']
-        USD_HAA = USD - USD_USLA
-    elif USLA_mode == "Defensive" and HAA_mode == "Defensive":
-        USD_USLA = USAA_TR['USD_USLA']['weight'] * USD
-        USD_HAA = USAA_TR['USD_HAA']['weight'] * USD
-        
-    USLA_target_balance = USLA_balance + USD_USLA
-    USLA_target_weight = USLA_target_balance / Total_balance
-    HAA_target_balance = HAA_balance + USD_HAA
-    HAA_target_weight = HAA_target_balance / Total_balance
+    # 전략 모델별 목표 금액 및 비중
+    USLA_target_balance = float(USLA_balance) + USD_USLA
+    USLA_target_weight = float(USLA_target_balance) / float(Total_balance)
+    HAA_target_balance = float(HAA_balance) + USD_HAA
+    HAA_target_weight = float(HAA_target_balance) / float(Total_balance)
+
+    # 초기 데이터
+    start = {
+        "USD_total": USD,
+        "USD_USLA": USD_USLA,
+        "USD_HAA": USD_HAA,
+        "USLA_target_balance": USLA_target_balance,
+        "USLA_target_weight": USLA_target_weight,
+        "HAA_target_balance": HAA_target_balance,
+        "HAA_target_weight": HAA_target_weight
+    }
     
     ## 만약 1월이라면 비중 리밸런싱
-    order_time['month'] = 1 ################################ 최초 정상 실행 이후 이 라인 지울 것 ####################################
+    order_time['month'] = 1 ######## 최초 정상 실행 이후 이 라인 지울 것 #########
     if order_time['month'] == 1:
         USLA_target_weight = 0.7
-        USLA_target_balance = Total_balance * USLA_target_weight
+        USLA_target_balance = float(Total_balance * USLA_target_weight)
         HAA_target_weight = 0.3
-        HAA_target_balance = Total_balance * HAA_target_weight
+        HAA_target_balance = float(Total_balance * HAA_target_weight)
 
     USLA = {}
     for ticker in USLA_ticker:
@@ -1383,34 +1399,10 @@ if order_time['round'] == 1:
     Buy_order, order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
     message.extend(order_messages)
 
-    # 다음 order time으로 넘길 Trading data json 데이터 저장 및 메세지 출력
-    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-    ############################ USD_USLA, USD_HAA IEF해결해서 만들고 다시 위에 올라가 USD_USLA, USD_HAA 수정하기 ########################
-    if USLA_regime < 0:
-        USLA_mode = "Defensive"
-    else:
-        USLA_mode = "Aggressive"
-    if HAA_regime < 0:
-        HAA_mode = "Defensive"
-    else:
-        HAA_mode = "Aggressive"
-    
-    USD_USLA = []
-    
-    USD_HAA = []
-    
-    USDX = {
-        "USD_total": USD,
-        "USD_USLA": USD_USLA,
-        "USD_HAA": USD_HAA
-    }
-    
-    
-    
-    
-    
-    saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
+    saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, start)
     message.extend(saveTR_message)
+
+    # 메세지 출력
     TA.send_tele(message)
 
     sys.exit(0)
@@ -1459,12 +1451,12 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             USLA[ticker]['sell_qty'] = 0
             continue
 
-        USLA_target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
-        USLA_target_balance = USLA[ticker]['target_weight'] * Total_balance
-        USLA[ticker]['target_balance'] = USLA_target_balance  # 목표투자금 업데이트
-        USLA[ticker]['target_qty'] = USLA_target_qty  # 목표수량 업데이트
-        USLA[ticker]['buy_qty'] = int(USLA_target_qty - USLA_qty[ticker] if USLA_target_qty > USLA_qty[ticker] else 0)  # 매수 수량 업데이트
-        USLA[ticker]['sell_qty'] = int(USLA_qty[ticker] - USLA_target_qty if USLA_target_qty < USLA_qty[ticker] else 0)  # 매도 수량 업데이트
+        target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
+        target_balance = USLA[ticker]['target_weight'] * Total_balance
+        USLA[ticker]['target_balance'] = target_balance  # 목표투자금 업데이트
+        USLA[ticker]['target_qty'] = target_qty  # 목표수량 업데이트
+        USLA[ticker]['buy_qty'] = int(target_qty - USLA_qty[ticker] if target_qty > USLA_qty[ticker] else 0)  # 매수 수량 업데이트
+        USLA[ticker]['sell_qty'] = int(USLA_qty[ticker] - target_qty if target_qty < USLA_qty[ticker] else 0)  # 매도 수량 업데이트
 
     HAA = TR_data["HAA"]
     for ticker in HAA_ticker:
@@ -1476,7 +1468,6 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         time_module.sleep(0.15)
         HAA[ticker]['current_price'] = current_price # 해당 티커의 현재가
         if current_price <= 0:
-            HAA_target_qty = 0
             message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
             HAA[ticker]['target_qty'] = int(HAA_qty.get(ticker, 0))  # ← 현재 수량 유지 (핵심!)
             HAA[ticker]['target_balance'] = 0
@@ -1484,12 +1475,12 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             HAA[ticker]['sell_qty'] = 0
             continue
 
-        HAA_target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
-        HAA_target_balance = HAA[ticker]['target_weight'] * Total_balance
-        HAA[ticker]['target_balance'] = HAA_target_balance  # 목표투자금 업데이트
-        HAA[ticker]['target_qty'] = HAA_target_qty  # 목표수량 업데이트
-        HAA[ticker]['buy_qty'] = int(HAA_target_qty - HAA_qty[ticker] if HAA_target_qty > HAA_qty[ticker] else 0)  # 매수 수량 업데이트
-        HAA[ticker]['sell_qty'] = int(HAA_qty[ticker] - HAA_target_qty if HAA_target_qty < HAA_qty[ticker] else 0)  # 매도 수량 업데이트
+        target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
+        target_balance = HAA[ticker]['target_weight'] * Total_balance
+        HAA[ticker]['target_balance'] = target_balance  # 목표투자금 업데이트
+        HAA[ticker]['target_qty'] = target_qty  # 목표수량 업데이트
+        HAA[ticker]['buy_qty'] = int(target_qty - HAA_qty[ticker] if target_qty > HAA_qty[ticker] else 0)  # 매수 수량 업데이트
+        HAA[ticker]['sell_qty'] = int(HAA_qty[ticker] - target_qty if target_qty < HAA_qty[ticker] else 0)  # 매도 수량 업데이트
 
     # 목표비중 합계 검증
     total_weight = 0
@@ -1562,8 +1553,18 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     Buy_order, buy_order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
     message.extend(buy_order_messages)
 
-    # 다음 order time으로 넘길 Trading data json 데이터 저장
-    saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
+    # 다음 order time으로 넘길 Trading data json 데이터 저장 및 메세지 출력
+    start = {
+        "USD_total": TR_data['USD_total'],
+        "USD_USLA": TR_data['USD_USLA'],
+        "USD_HAA": TR_data['USD_HAA'],
+        "USLA_target_balance": TR_data['USLA_target_balance'],
+        "USLA_target_weight": TR_data['USLA_target_weight'],
+        "HAA_target_balance": TR_data['HAA_target_balance'],
+        "HAA_target_weight": TR_data['HAA_target_weight']
+    }
+    
+    saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, start)
     message.extend(saveTR_message)
 
     # 메세지 출력
@@ -1591,6 +1592,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         
         # 계좌잔고 조회
         USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+        
 
         USLA_target, USLA_regime, USLA_message = USLA_target_regime()
         message.append(f"USLA Regime: {USLA_regime}")
@@ -1610,9 +1612,54 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             balance = float(HAA_qty.get(i, 0)) * float(HAA_price.get(i, 0))
             weight = float(balance) / float(Total_balance) if Total_balance > 0 else 0
             message.append(f"HAA {i} - weight:{weight:.2%}, qty:{int(HAA_qty.get(i, 0))}")
-        message.append(f"USLA 평가금: {USLA_balance:,.2f} USD")
-        message.append(f"HAA 평가금: {HAA_balance:,.2f} USD")
-        message.append(f"USD 평가금: {USD:,.2f} USD")
+
+        # USD 계산
+        USD = float(USD)
+        # USD_gap = float(USD - float(TR_data['USD_total']))
+        if USLA_balance <= 0 and HAA_balance <= 0:
+            if USD >= float(TR_data['USLA_target_balance']):
+                USD_USLA = float(TR_data['USLA_target_balance'] * USD)
+                USD_HAA = float(USD - USD_USLA)
+            else:
+                USD_USLA_weight = float(TR_data['USLA_target_weight'])
+                USD_USLA = float(USD * USD_USLA_weight)
+                USD_HAA = float(USD - USD_USLA)
+        elif USLA_balance <= 0 and HAA_balance > 0:
+            if USD >= float(TR_data['USLA_target_balance']):
+                USD_USLA = float(TR_data['USLA_target_balance'])
+                USD_HAA = float(USD - USD_USLA)
+            else:
+                USD_USLA = USD
+                USD_HAA = 0.00
+        elif USLA_balance > 0 and HAA_balance <= 0:
+            if USD >= float(TR_data['HAA_target_balance']):
+                USD_HAA = float(TR_data['HAA_target_balance'])
+                USD_USLA = float(USD - USD_HAA)
+            else:
+                USD_HAA = USD
+                USD_USLA = 0.00
+        elif USLA_balance > 0 and HAA_balance > 0:
+            USD_USLA = float(USD * float(TR_data['USLA_target_weight']))
+            USD_HAA = float(USD - USD_USLA)
+
+        start = {
+            "USD_total": USD,
+            "USD_USLA": USD_USLA,
+            "USD_HAA": USD_HAA,
+            "USLA_target_balance": TR_data['USLA_target_balance'],
+            "USLA_target_weight": TR_data['USLA_target_weight'],
+            "HAA_target_balance": TR_data['HAA_target_balance'],
+            "HAA_target_weight": TR_data['HAA_target_weight']
+        }        
+
+        saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, start)
+        message.extend(saveTR_message)
+
+        message.append(f"USLA 잔고평가금: {USLA_balance:,.2f} USD")
+        message.append(f"USLA 예수금: {USD_USLA:,.2f} USD")
+        message.append(f"HAA 잔고평가금: {HAA_balance:,.2f} USD")
+        message.append(f"HAA 예수금: {USD_HAA:,.2f} USD")
+        message.append(f"전체 예수금: {USD:,.2f} USD")
         message.append(f"총 평가금: {Total_balance:,.2f} USD")
 
         # 카톡 리밸 종료 결과 보내기
