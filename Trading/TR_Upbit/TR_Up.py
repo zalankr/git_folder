@@ -1,7 +1,7 @@
 import pyupbit
 import json
 import sys
-import time as time_module  # time 모듈을 별칭으로 import
+import time as time_module
 import Up_model as UP
 import telegram_alert as TA
 import gspread_updater as GU

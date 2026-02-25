@@ -4,14 +4,24 @@ from datetime import datetime
 import BinanceTrader
 import USDTManager
 import json
-import kakao_alert as KA
+import telegram_alert as TA
 import gspread_updater as GU
 from tendo import singleton
-me = singleton.SingleInstance()
+import sys
+
+try:
+    me = singleton.SingleInstance()
+except singleton.SingleInstanceException:
+    TA.send_tele("Upbit: 이미 실행 중입니다.")
+    sys.exit(0)
 
 # API 키 불러오기
-with open("/var/autobot/TR_Binance/bnnkr.txt") as f:
-    API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+try:
+    with open("/var/autobot/TR_Binance/bnnkr.txt") as f:
+        API_KEY, API_SECRET = [line.strip() for line in f.readlines()]
+except FileNotFoundError:
+    TA.send_tele("API Key 파일을 찾을 수 없습니다.")
+    sys.exit(1)
 
 # 매니저 인스턴스 생성, JSON data 경로 설정
 BinanceT = BinanceTrader.BinanceT(API_KEY, API_SECRET)
@@ -29,38 +39,39 @@ def Redeem():
     return message
 
 # 당일 최초 기존 주문 취소
+message = []
 result = BinanceT.cancel_all_orders()
 now = datetime.now() # 당일 시작시간 확인
-KA.SendMessage(f"Binance Start: {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 시작 \n주문 취소 목록: {result}")
+message.append(f"Binance Start: {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 시작 \n주문 취소 목록: {result}")
 time_module.sleep(1)
 
 # 당일 포지션 불러오기
-now = datetime.now() # 현재시간 확인
 try:
     # 포지션 확인 및 투자 수량 산출
     position, Last_day_Total_balance, Last_month_Total_balance, Last_year_Total_balance, Daily_return, Monthly_return, Yearly_return, BTC, USDT = BinanceT.make_position()  
     Invest_quantity = float(position['Invest_quantity'])
-    KA.SendMessage(f"Binance Position: {now.strftime('%Y-%m-%d %H:%M:%S')} \nPosition: {position['position']} \nBTC_target: {position['BTC_target']:.2f} \nInvest_quantity: {Invest_quantity:.2f}")
-
+    message.append(f"Binance Position: {now.strftime('%Y-%m-%d %H:%M:%S')} \nPosition: {position['position']} \nBTC_target: {position['BTC_target']:.2f} \nInvest_quantity: {Invest_quantity:.2f}")
+    
 except Exception as e:
-    KA.SendMessage(f"Binance Position: {now.strftime('%Y-%m-%d %H:%M:%S')} \n포지션 생성 예외 오류: {e}")
-
-time_module.sleep(1) # 타임슬립 1초
+    message.append(f"Binance Position: {now.strftime('%Y-%m-%d %H:%M:%S')} \n포지션 생성 예외 오류: {e}")
+    TA.send_tele(message)
+    message=[]
+    sys.exit(1)
 
 # 당일 Redeem 3회
 if position["position"] in ["Buy full", "Buy half"]:
     try:
         for num in range(3):
-            message = Redeem()
+            Redeem_message = Redeem()
+            message.append(Redeem_message)
             now = datetime.now() # 현재시간 확인
-            KA.SendMessage(f"Binance Redeem: {now.strftime('%Y-%m-%d %H:%M:%S')} \n{message}")
-            time_module.sleep(119) # 타임 슬립 119초
+            time_module.sleep(120) # 타임 슬립 120초
 
     except Exception as e:
         now = datetime.now() # 현재시간 확인
-        KA.SendMessage(f"Binance Redeem: {now.strftime('%Y-%m-%d %H:%M:%S')} \nRedeem 예외 오류: {e}")
+        TA.send_tele(f"Binance Redeem: {now.strftime('%Y-%m-%d %H:%M:%S')} \nRedeem 예외 오류: {e}")
 else:
-    time_module.sleep(357) # 타임 슬립 357초
+    time_module.sleep(360) # 타임 슬립 360초
 
 time_module.sleep(87) # 타임 슬립 87초
 
@@ -71,43 +82,51 @@ if position["position"] == "Buy full":
     try:
         USDT = USDTM.get_spot_balance('USDT')['free']
         USDT_per_splits = float(USDT) / 10  # USDT_per_splits = (float(USDT) * 0.99) / 10 에러가 생기면 원복
-        KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
+        message.append(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
+        TA.send_tele(message)
     except Exception as e:
         USDT_per_splits = float(Invest_quantity)
-        KA.SendMessage(f"USDT 산출 예외 오류로 Json데이터 사용: {e}")
+        message.append(f"USDT 산출 예외 오류로 Json데이터 사용: {e}")
+        TA.send_tele(message)
 
 elif position["position"] == "Buy half":
     try:
         USDT = USDTM.get_spot_balance('USDT')['free']
         USDT_per_splits = (float(USDT) * 0.5) / 10  # USDT_per_splits = (float(USDT) * 0.5 * 0.99) / 10 에러가 생기면 원복
-        KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
+        message.append(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nUSDT 회당 투자량: {USDT_per_splits}")
+        TA.send_tele(message)
     except Exception as e:
         USDT_per_splits = float(Invest_quantity)
-        KA.SendMessage(f"USDT 산출 예외 오류로 Json데이터 사용: {e}")
+        message.append(f"USDT 산출 예외 오류로 Json데이터 사용: {e}")
+        TA.send_tele(message)
 
 elif position["position"] == "Sell full":
     try:
         BTC = USDTM.get_spot_balance('BTC')['free']
         BTC_per_splits = float(BTC) / 10  # BTC_per_splits = (float(BTC) * 0.99) / 10 에러가 생기면 원복
-        KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
+        message.append(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
+        TA.send_tele(message)
     except Exception as e:
         BTC_per_splits = float(Invest_quantity)
-        KA.SendMessage(f"BTC 산출 예외 오류로 Json데이터 사용: {e}")
+        message.append(f"BTC 산출 예외 오류로 Json데이터 사용: {e}")
+        TA.send_tele(message)
 
 elif position["position"] == "Sell half":
     try:
         BTC = USDTM.get_spot_balance('BTC')['free']
         BTC_per_splits = (float(BTC) * 0.5) / 10  # BTC_per_splits = (float(BTC) * 0.5 * 0.99) / 10 에러가 생기면 원복
-        KA.SendMessage(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
+        message.append(f"Binance caculate: {now.strftime('%Y-%m-%d %H:%M:%S')} \nBTC 회당 투자량: {BTC_per_splits}")
+        TA.send_tele(message)
     except Exception as e:
         BTC_per_splits = float(Invest_quantity)
-        KA.SendMessage(f"BTC 산출 예외 오류로 Json데이터 사용: {e}")
+        message.append(f"BTC 산출 예외 오류로 Json데이터 사용: {e}")
+        TA.send_tele(message)
 
 time_module.sleep(0.5) # 타임슬립
 
 # 시분할 10회 주문하기 > 18회로 증회
 try:
-    no = 18 # 10회로 변경 가능
+    no = 10 # 10회로 변경 가능
     for num in range(no):
         num = num + 1
         now = datetime.now() # 현재시간 확인
@@ -116,30 +135,30 @@ try:
         if position["position"] == "Buy full":
             try:
                 order = BinanceT.market_buy(usdt_amount = USDT_per_splits)
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
+                TA.send_tele(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
+                TA.send_tele(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         elif position["position"] == "Buy half":
             try:
                 order = BinanceT.market_buy(usdt_amount = USDT_per_splits)
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
+                TA.send_tele(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:    
-                KA.SendMessage(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
+                TA.send_tele(f"Binance Market Buy Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         elif position["position"] == "Sell full":
             try:
                 order = BinanceT.market_sell(btc_amount = BTC_per_splits)
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
+                TA.send_tele(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
+                TA.send_tele(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         elif position["position"] == "Sell half":
             try:
                 order = BinanceT.market_sell(btc_amount = BTC_per_splits)
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
+                TA.send_tele(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 분할 매매")
             except Exception as e:
-                KA.SendMessage(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
+                TA.send_tele(f"Binance Market Sell Order : {now.strftime('%Y-%m-%d %H:%M:%S')} \n{num}/{no} 회차 매매 예외 오류: {e}")
 
         else:
             pass
@@ -148,14 +167,14 @@ try:
 
 except Exception as e:
     now = datetime.now() # 현재시간 확인
-    KA.SendMessage(f"Binance Order: {now.strftime('%Y-%m-%d %H:%M:%S')} \n주문 생성 예외 오류: {e}")
+    TA.send_tele(f"Binance Order: {now.strftime('%Y-%m-%d %H:%M:%S')} \n주문 생성 예외 오류: {e}")
 
 # 마지막 주문 후 수익률 계산하기(년, 월, 일) JSON 기록 카톡 알림, gspread sheet 기록 try로 감싸기
 try:
     # 혹시 남은 기존 주문 취소
     result = BinanceT.cancel_all_orders() # 기존 모든 주문 취소
     now = datetime.now() # 현재시간 확인
-    KA.SendMessage(f"Binance cancle {now.strftime('%Y-%m-%d %H:%M:%S')} \n종료전 주문 취소 목록: {result}")
+    TA.send_tele(f"Binance cancle {now.strftime('%Y-%m-%d %H:%M:%S')} \n종료전 주문 취소 목록: {result}")
     time_module.sleep(1) # 타임 슬립
 
     # 당일 SPOT계좌에 남은 USDT잔고 확인
@@ -169,7 +188,7 @@ try:
         transfer_amount = transfer['amount']
         transfer_to = transfer['to_account']
         transfer_asset = transfer['asset']
-        KA.SendMessage(f'{transfer_asset}, {transfer_amount}, {transfer_to}')
+        TA.send_tele(f'{transfer_asset}, {transfer_amount}, {transfer_to}')
 
         # Funding Account USDT를 Flexible Savings에 Subscribe
         time_module.sleep(5) # 타임 슬립 5초
@@ -177,8 +196,7 @@ try:
         time_module.sleep(5) # 타임 슬립 5초
         result = result['subscribed_amount']
 
-        print(f"Binance saving 성공적으로 예치되었습니다: {result:.2f} USDT")
-        KA.SendMessage(f"Binance saving 성공적으로 예치되었습니다: {result:.2f} USDT")
+        TA.send_tele(f"Binance saving 성공적으로 예치되었습니다: {result:.2f} USDT")
     else:
         pass
 
@@ -195,15 +213,16 @@ try:
     time_module.sleep(0.5) # 타임슬립 0.5초
 
     # 월초, 연초 전월말, 전년말 잔고 업데이트
+    message =[]
     if now.day == 1: # 월초 전월 잔고 데이터 변경
         Last_month_Total_balance = Last_day_Total_balance
-        print(f"Binance 월초, 전월 잔고를 {Last_month_Total_balance}원으로 업데이트했습니다.")
+        message.append(f"Binance 월초, 전월 잔고를 {Last_month_Total_balance}원으로 업데이트했습니다.")
     else:
         pass
 
     if now.month == 1 and now.day == 1: # 연초 전년 잔고 데이터 변경
         Last_year_Total_balance = Last_day_Total_balance
-        print(f"Binance 연초, 전년 잔고를 {Last_year_Total_balance}원으로 업데이트했습니다.")
+        message.append(f"Binance 연초, 전년 잔고를 {Last_year_Total_balance}원으로 업데이트했습니다.")
     else:
         pass
 
@@ -234,9 +253,12 @@ try:
     time_module.sleep(0.5)
 
     # KakaoTalk 메시지 보내기
-    KA.SendMessage(f"Binance finish: {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
-    KA.SendMessage(f"Binance 일수익률: {Daily_return:.2f}% \n월수익률: {Monthly_return:.2f}% \n연수익률: {Yearly_return:.2f}% \n환산잔고: {Total_balance:.2f}$ \nBTC: {BTC:.8f} \nUSDT: {USDT:.2f}$")
-    KA.SendMessage(f"Binance Position: {binance_data['Position']} \nBTC_weight: {binance_data['BTC_weight']} \nBTC_target: {binance_data['BTC_target']:.2f} \nCASH_weight: {binance_data['CASH_weight']}")
+    
+    message.append(f"Binance finish: {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
+    message.append(f"Binance 일수익률: {Daily_return:.2f}% \n월수익률: {Monthly_return:.2f}% \n연수익률: {Yearly_return:.2f}% \n환산잔고: {Total_balance:.2f}$ \nBTC: {BTC:.8f} \nUSDT: {USDT:.2f}$")
+    message.append(f"Binance Position: {binance_data['Position']} \nBTC_weight: {binance_data['BTC_weight']} \nBTC_target: {binance_data['BTC_target']:.2f} \nCASH_weight: {binance_data['CASH_weight']}")
+    TA.send_tele(message)
+    message=[]
 
     # Google Spreadsheet에 데이터 추가   
     # 설정값
@@ -253,7 +275,7 @@ try:
     GU.save_to_sheets(spreadsheet, binance_data, current_month)
 
 except Exception as e:
-    print(f"Binance 기록 {now.strftime('%Y-%m-%d %H:%M:%S')} \n 당일 data 기록 중 예외 오류: {e}")
-    KA.SendMessage(f"Binance 기록 {now.strftime('%Y-%m-%d %H:%M:%S')} 당일 data 기록 중 예외 오류: {e}")
+    message.append(f"Binance 기록 {now.strftime('%Y-%m-%d %H:%M:%S')} \n 당일 data 기록 중 예외 오류: {e}")
+    TA.send_tele(message)
 
-exit()
+sys.exit(0)

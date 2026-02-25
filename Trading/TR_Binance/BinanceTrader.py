@@ -3,7 +3,7 @@ import time
 import logging
 import pandas as pd
 import numpy as np
-import kakao_alert as KA
+import telegram_alert as TA
 import json
 import asyncio
 from typing import Dict, List, Optional, Tuple
@@ -273,13 +273,13 @@ class BinanceT:
                 }
                 
                 self.logger.info(f"Market buy completed: {filled_btc:.8f} BTC at {avg_price:.2f} USDT (Total: {actual_cost:.2f} USDT)")
-                KA.SendMessage(f"Market Buy Order Completed\nBTC: {filled_btc:.8f}\nPrice: {avg_price:.2f} USDT\nTotal Cost: {actual_cost:.2f} USDT")
+                TA.send_tele(f"Market Buy Order Completed\nBTC: {filled_btc:.8f}\nPrice: {avg_price:.2f} USDT\nTotal Cost: {actual_cost:.2f} USDT")
                 
                 return result
                 
             except Exception as e:
                 self.logger.error(f"Market buy order failed: {e}")
-                KA.SendMessage(f"Market Buy Order Failed: {e}")
+                TA.send_tele(f"Market Buy Order Failed: {e}")
                 return None
                 
         except Exception as e:
@@ -368,13 +368,13 @@ class BinanceT:
                 }
                 
                 self.logger.info(f"Market sell completed: {filled_btc:.8f} BTC at {avg_price:.2f} USDT (Total: {actual_proceeds:.2f} USDT)")
-                KA.SendMessage(f"Market Sell Order Completed\nBTC: {filled_btc:.8f}\nPrice: {avg_price:.2f} USDT\nTotal Proceeds: {actual_proceeds:.2f} USDT")
+                TA.send_tele(f"Market Sell Order Completed\nBTC: {filled_btc:.8f}\nPrice: {avg_price:.2f} USDT\nTotal Proceeds: {actual_proceeds:.2f} USDT")
                 
                 return result
                 
             except Exception as e:
                 self.logger.error(f"Market sell order failed: {e}")
-                KA.SendMessage(f"Market Sell Order Failed: {e}")
+                TA.send_tele(f"Market Sell Order Failed: {e}")
                 return None
                 
         except Exception as e:
