@@ -1385,10 +1385,19 @@ if order_time['round'] == 1:
 
     # 다음 order time으로 넘길 Trading data json 데이터 저장 및 메세지 출력
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-    ############################ USD_USLA, USD_HAA 만들기 ########################
-
-
-
+    ############################ USD_USLA, USD_HAA 만들고 다시 위에 올라가 USD_USLA, USD_HAA 수정하기 ########################
+    if USLA_regime < 0:
+        USLA_mode = "Defensive"
+    else:
+        USLA_mode = "Aggressive"
+    if HAA_regime < 0:
+        HAA_mode = "Defensive"
+    else:
+        HAA_mode = "Aggressive"
+    
+    USD_USLA = []
+    USD_HAA = []
+    
     USDX = {
         "USD_total": USD,
         "USD_USLA": USD_USLA,
