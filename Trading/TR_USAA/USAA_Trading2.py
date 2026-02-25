@@ -27,7 +27,7 @@ KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
 HAA_ticker = ['TIP', 'SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
 
-Aggresive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
+Aggressive_ETF = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF']
 Defensive_ETF = ['IEF', 'BIL']
 Regime_ETF = 'TIP'
 all_ticker = USLA_ticker + HAA_ticker
@@ -385,7 +385,7 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
 
     return Buy_order, order_messages
 
-def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA):
+def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, USDX):
     """
     저장 실패 시에도 백업 파일 생성
     """
@@ -394,6 +394,9 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA):
     TR_data = {
         "round": order_time['round'],
         "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
+        "USD_total": USDX['total'],
+        "USD_USAA": USDX['USLA'],
+        "USD_HAA": USDX['HAA'],
         "Sell_order": Sell_order,
         "Buy_order": Buy_order,
         "USLA": USLA,
@@ -1011,20 +1014,20 @@ def HAA_target_regime():
         else:
             HAA_target_regime_message.append(f"HAA: momentum_df 생성 성공")
 
-        # regime 양수일 때 Aggresive ETF의 모멘텀 점수 구하기
+        # regime 양수일 때 Aggressive ETF의 모멘텀 점수 구하기
         if regime >= 0:
-            aggresive_df = momentum_df[momentum_df['ticker'].isin(Aggresive_ETF)].copy()
-            aggresive_df['rank'] = aggresive_df['momentum'].rank(ascending=False)
-            aggresive_df = aggresive_df.sort_values('rank').reset_index(drop=True)
+            Aggressive_df = momentum_df[momentum_df['ticker'].isin(Aggressive_ETF)].copy()
+            Aggressive_df['rank'] = Aggressive_df['momentum'].rank(ascending=False)
+            Aggressive_df = Aggressive_df.sort_values('rank').reset_index(drop=True)
 
             # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
-            if len(aggresive_df) < 4:
-                HAA_target_regime_message.append(f"HAA 경고: Aggressive ETF {len(aggresive_df)}개만 있음")
+            if len(Aggressive_df) < 4:
+                HAA_target_regime_message.append(f"HAA 경고: Aggressive ETF {len(Aggressive_df)}개만 있음")
                 # 있는 만큼만 균등 배분
-                top_tickers = aggresive_df['ticker'].tolist()
+                top_tickers = Aggressive_df['ticker'].tolist()
                 weights = 1.0 / len(top_tickers)
             else:
-                top_tickers = aggresive_df.head(4)['ticker'].tolist()
+                top_tickers = Aggressive_df.head(4)['ticker'].tolist()
                 weights = 0.25
 
             HAA_target = {ticker: weights for ticker in top_tickers}
@@ -1037,11 +1040,11 @@ def HAA_target_regime():
 
         # regime 음수일 때 defensive ETF의 모멘텀 점수 구하기    
         elif regime < 0:
-            defensive_df = momentum_df[momentum_df['ticker'].isin(Defensive_ETF)].copy()
-            defensive_df['rank'] = defensive_df['momentum'].rank(ascending=False)
-            defensive_df = defensive_df.sort_values('rank').reset_index(drop=True)
+            Defensive_df = momentum_df[momentum_df['ticker'].isin(Defensive_ETF)].copy()
+            Defensive_df['rank'] = Defensive_df['momentum'].rank(ascending=False)
+            Defensive_df = Defensive_df.sort_values('rank').reset_index(drop=True)
 
-            top_ticker = defensive_df.head(1)['ticker'].iloc[0]
+            top_ticker = Defensive_df.head(1)['ticker'].iloc[0]
 
             # 포트폴리오 ticker와 weights를 allocation dictionary에 기입
             if top_ticker == 'IEF':
@@ -1221,37 +1224,28 @@ if order_time['round'] == 1:
         sys.exit(1)
     
     # 계좌잔고 조회
-    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance() 
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
-    ## 헷징 모드 확인 후 비중 조정: 빈 딕셔너리 체크 (값이 모두 0인지)
-    USLA_has_position = any(qty > 0 for qty in USLA_qty.values())
-    HAA_has_position = any(qty > 0 for qty in HAA_qty.values())
-
-    if not USLA_has_position and not HAA_has_position:
-        # 둘 다 보유 없음
-        USLA_target_weight = 0.7
-        USLA_target_balance = Total_balance * USLA_target_weight
-        HAA_target_weight = 0.3
-        HAA_target_balance = Total_balance * HAA_target_weight
-    elif not USLA_has_position and HAA_has_position:
-        # USLA만 없음
-        USLA_target_balance = USD * (70/70.6)
-        USLA_target_weight = (USD * (70/70.6)) / Total_balance
-        HAA_target_balance = HAA_balance + (USD * (0.6/70.6))
-        HAA_target_weight = (HAA_balance + (USD * (0.6/70.6))) / Total_balance
-    elif USLA_has_position and not HAA_has_position:
-        # HAA만 없음
-        USLA_target_balance = USLA_balance + (USD * 1.4 / 31.4)
-        USLA_target_weight = (USLA_balance + (USD * 1.4 / 31.4)) / Total_balance
-        HAA_target_balance = USD * (30 / 31.4)
-        HAA_target_weight = (USD * (30 / 31.4)) / Total_balance
-    else:
-        # 둘 다 보유
-        USLA_target_balance = USLA_balance + (USD * 0.7)
-        USLA_target_weight = (USLA_balance + (USD * 0.7)) / Total_balance
-        HAA_target_balance = HAA_balance + (USD * 0.3)
-        HAA_target_weight = (HAA_balance + (USD * 0.3)) / Total_balance
-
+    USLA_mode = USAA_TR['USD_USLA']['mode']
+    HAA_mode = USAA_TR['USD_HAA']['mode']
+    if USLA_mode == "Aggressive" and HAA_mode == "Aggressive":
+        USD_USLA = USAA_TR['USD_USLA']['weight'] * USD
+        USD_HAA = USAA_TR['USD_HAA']['weight'] * USD
+    elif USLA_mode == "Aggressive" and HAA_mode == "Defensive":
+        USD_HAA = USAA_TR['USD_HAA']['balance']
+        USD_USLA = USD - USD_HAA    
+    elif USLA_mode == "Defensive" and HAA_mode == "Aggressive":
+        USD_USLA = USAA_TR['USD_USLA']['balance']
+        USD_HAA = USD - USD_USLA
+    elif USLA_mode == "Defensive" and HAA_mode == "Defensive":
+        USD_USLA = USAA_TR['USD_USLA']['weight'] * USD
+        USD_HAA = USAA_TR['USD_HAA']['weight'] * USD
+        
+    USLA_target_balance = USLA_balance + USD_USLA
+    USLA_target_weight = USLA_target_balance / Total_balance
+    HAA_target_balance = HAA_balance + USD_HAA
+    HAA_target_weight = HAA_target_balance / Total_balance
+    
     ## 만약 1월이라면 비중 리밸런싱
     order_time['month'] = 1 ################################ 최초 정상 실행 이후 이 라인 지울 것 ####################################
     if order_time['month'] == 1:
@@ -1390,6 +1384,21 @@ if order_time['round'] == 1:
     message.extend(order_messages)
 
     # 다음 order time으로 넘길 Trading data json 데이터 저장 및 메세지 출력
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+    ############################ USD_USLA, USD_HAA 만들기 ########################
+
+
+
+    USDX = {
+        "USD_total": USD,
+        "USD_USLA": USD_USLA,
+        "USD_HAA": USD_HAA
+    }
+    
+    
+    
+    
+    
     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
     message.extend(saveTR_message)
     TA.send_tele(message)
