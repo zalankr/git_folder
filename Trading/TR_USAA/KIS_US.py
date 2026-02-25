@@ -149,7 +149,7 @@ class KIS_API:
             price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
                 return exchange
-            time.sleep(0.1)
+            time.sleep(0.15)
 
         return "error: 거래소 조회 실패"
 
@@ -618,7 +618,7 @@ class KIS_API:
                     'response': response
                 }
                 
-                KA.SendMessage(f"주간매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
+                TA.send_tele(f"주간매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
                 return order_info
             else:
                 TA.send_tele(f"주간매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")

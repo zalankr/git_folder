@@ -236,11 +236,7 @@ def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
                     'split_index': i
                 })
             
-            # 같은 티커의 분할 주문 사이는0.2초, 다른 티커로 넘어갈 때는 0.2초
-            if i < split_count - 1:
-                time_module.sleep(0.2)
-            else:
-                time_module.sleep(0.2)
+            time_module.sleep(0.2)
     
     success_count = sum(1 for order in Sell_order if order['success'])
     total_count = len(Sell_order)
@@ -373,11 +369,8 @@ def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
                     'split_index': i
                 })
 
-            # 같은 티커의 분할 주문 사이는 0.2초, 다른 티커로 넘어갈 때는 0.2초
-            if i < split_count - 1:
-                time_module.sleep(0.2)
-            else:
-                time_module.sleep(0.2)
+            time_module.sleep(0.2)
+
 
     success_count = sum(1 for order in Buy_order if order['success'])
     total_count = len(Buy_order)
@@ -399,7 +392,7 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, start):
         "round": order_time['round'],
         "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
         "USD_total": start['USD_total'],
-        "USD_USAA": start['USD_USLA'],
+        "USD_USLA": start['USD_USLA'],
         "USD_HAA": start['USD_HAA'],
         "USLA_target_balance": start['USLA_target_balance'],
         "USLA_target_weight": start['USLA_target_weight'],
@@ -1183,6 +1176,8 @@ def split_data(round):
             buy_splits = 1
             buy_price_USLA = [1.02]
             buy_price_HAA = [1.02]
+    else:
+        raise ValueError(f"유효하지 않은 round 값: {round}")
         
     round_split = {
         "sell_splits": sell_splits, 
@@ -1235,15 +1230,8 @@ if order_time['round'] == 1:
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
     USD =float(USD)
     USD_gap = float(USD - float(TR_data['USD_total']))
-    if USD_gap > 0:
-        USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.7)
-        USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.3)
-    elif USD_gap < 0:
-        USD_USLA = float(TR_data['USD_USLA']) - (USD_gap * 0.7)
-        USD_HAA = float(TR_data['USD_HAA']) - (USD_gap * 0.3)
-    else:
-        USD_USLA = float(TR_data['USD_USLA'])
-        USD_HAA = float(TR_data['USD_HAA'])
+    USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.7)
+    USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.3)
 
     # 전략 모델별 목표 금액 및 비중
     USLA_target_balance = float(USLA_balance) + USD_USLA
@@ -1443,7 +1431,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         time_module.sleep(0.15)
         USLA[ticker]['current_price'] = current_price # 해당 티커의 현재가
         
-        if current_price <= 0:
+        if not isinstance(current_price, float) or current_price <= 0:
             message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
             USLA[ticker]['target_qty'] = int(USLA_qty.get(ticker, 0))  # ← 현재 수량 유지 (핵심!)
             USLA[ticker]['target_balance'] = 0
@@ -1467,7 +1455,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         current_price = KIS.get_US_current_price(ticker)
         time_module.sleep(0.15)
         HAA[ticker]['current_price'] = current_price # 해당 티커의 현재가
-        if current_price <= 0:
+        if not isinstance(current_price, float) or current_price <= 0:
             message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
             HAA[ticker]['target_qty'] = int(HAA_qty.get(ticker, 0))  # ← 현재 수량 유지 (핵심!)
             HAA[ticker]['target_balance'] = 0
@@ -1510,6 +1498,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
     message.extend(order_messages)
     order_messages = [] # 메세지 초기화
+    time_module.sleep(10)
     
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
