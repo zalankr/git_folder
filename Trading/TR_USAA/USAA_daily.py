@@ -36,6 +36,8 @@ def get_balance(): # 신규 생성 사용
             USLA_price[ticker] = balance.get('current_price', 0)
         else:
             eval_amount = 0  # 문자열(에러) 반환 시 처리
+            USLA_qty[ticker] = 0
+            USLA_price[ticker] = 0
         USLA_balance += eval_amount
         time.sleep(0.1)
 
@@ -50,6 +52,8 @@ def get_balance(): # 신규 생성 사용
             HAA_price[ticker] = balance.get('current_price', 0)
         else:
             eval_amount = 0  # 문자열(에러) 반환 시 처리
+            HAA_qty[ticker] = 0
+            HAA_price[ticker] = 0
         HAA_balance += eval_amount
         time.sleep(0.05)
 
@@ -77,8 +81,14 @@ try:
     
     # USD 계산
     if USLA_balance <= 0 and HAA_balance <= 0:
-        USD_HAA = float(pre_data['HAA'])
-        USD_USLA = float(USD - USD_HAA)
+        if USD >= float(pre_data['HAA']):
+            USD_HAA = float(pre_data['HAA'])
+            USD_USLA = float(USD - USD_HAA)
+        else:
+            USLA_ratio = pre_data['USLA'] / (pre_data['USLA'] + pre_data['HAA']) \
+                        if (pre_data['USLA'] + pre_data['HAA']) > 0 else 0.7
+            USD_USLA = float(USD * USLA_ratio)
+            USD_HAA = float(USD - USD_USLA)
     elif USLA_balance <= 0 and HAA_balance > 0:
         if USD >= float(pre_data['USLA']):
             USD_USLA = float(pre_data['USLA'])
@@ -104,8 +114,8 @@ try:
 
     # 전일, 월초, 연초 전월말, 전년말 잔고 업데이트
     last_day_balance = float("{:.2f}".format(pre_data.get('Total', 0.0)))
-    USLA_last_day = float("{:.2f}".format(pre_data.get('USLA_last_day', USLA_balance)))
-    HAA_last_day = float("{:.2f}".format(pre_data.get('HAA_last_day', HAA_balance)))
+    USLA_last_day = float("{:.2f}".format(pre_data.get('USLA', USLA_balance)))
+    HAA_last_day = float("{:.2f}".format(pre_data.get('HAA', HAA_balance)))
 
     if current.day == 1:  # 월초 전월 잔고 데이터 변경
         last_month_balance = last_day_balance
@@ -144,14 +154,14 @@ try:
     HAA_KRW = int(HAA_balance * exchange_rate)
     
     #월, 연 수익률 계산
-    month_ret = (Total_balance - last_month_balance) / last_month_balance * 100 if last_month_balance > 0 else 0
+    month_ret = (Total - last_month_balance) / last_month_balance * 100 if last_month_balance > 0 else 0
     month_ret = float("{:.2f}".format(month_ret))
     USLA_month_ret = (USLA_balance - USLA_last_month) / USLA_last_month * 100 if USLA_last_month > 0 else 0
     USLA_month_ret = float("{:.2f}".format(USLA_month_ret))
     HAA_month_ret = (HAA_balance - HAA_last_month) / HAA_last_month * 100 if HAA_last_month > 0 else 0
     HAA_month_ret = float("{:.2f}".format(HAA_month_ret))
     
-    year_ret = (Total_balance - last_year_balance) / last_year_balance * 100 if last_year_balance > 0 else 0
+    year_ret = (Total - last_year_balance) / last_year_balance * 100 if last_year_balance > 0 else 0
     year_ret = float("{:.2f}".format(year_ret))
     USLA_year_ret = (USLA_balance - USLA_last_year) / USLA_last_year * 100 if USLA_last_year > 0 else 0
     USLA_year_ret = float("{:.2f}".format(USLA_year_ret))
@@ -168,7 +178,7 @@ try:
         'last_year_balance': last_year_balance,
         'month_ret': month_ret,
         'year_ret': year_ret,
-        'Total_W': Total_KRW,
+        'Total_KRW': Total_KRW,
         'USLA': USLA_balance,
         'USLA_last_day': USLA_last_day,
         'USLA_last_month': USLA_last_month,
