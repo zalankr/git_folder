@@ -264,7 +264,7 @@ class KIS_API:
         
         return "KIS API 조회 실패"
     
-    # 미국 정규시장 주식 매도 주문
+    # 미국 주식 매도 주문
     def order_sell_US(self, ticker: str, quantity: int, price: float,
                         exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
         """
@@ -402,7 +402,7 @@ class KIS_API:
         order_sell_message.append(f"정규매도 주문 최종 실패: 모든 재시도 소진")
         return None, order_sell_message
 
-    # 미국 정규시장 주식 매수 주문
+    # 미국 주식 매수 주문
     def order_buy_US(self, ticker: str, quantity: int, price: float, 
                         exchange: Optional[str] = None, ord_dvsn: str = "00") -> Optional[Dict]:
         """
