@@ -1344,13 +1344,14 @@ if order_time['round'] == 1:
     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
     message.extend(order_messages)
     order_messages = [] # 메세지 초기화
+    time_module.sleep(10)
     
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
     price_error = False
     
     for ticker in USLA_ticker:
-        if USLA[ticker]['current_price'] <= 0:
+        if not isinstance(USLA[ticker]['current_price'], float) or USLA[ticker]['current_price'] <= 0:
             message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             USLA[ticker]['buy_qty'] = 0
             price_error = True
@@ -1361,7 +1362,7 @@ if order_time['round'] == 1:
     for ticker in HAA_ticker:
         if ticker == 'TIP':
             continue
-        if HAA[ticker]['current_price'] <= 0:
+        if not isinstance(HAA[ticker]['current_price'], float) or HAA[ticker]['current_price'] <= 0:
             message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             HAA[ticker]['buy_qty'] = 0
             price_error = True

@@ -362,8 +362,7 @@ class KIS_API:
                         'order_number': output.get('ODNO', ''),      # 주문번호
                         'order_time': output.get('ORD_TMD', ''),     # 주문시각
                         'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                        'message': result.get('msg1', ''),
-                        'response': response
+                        'message': result.get('msg1', '')
                     }
                     
                     order_sell_message.append(f"정규매도 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")                
@@ -377,8 +376,7 @@ class KIS_API:
                         'price': price,
                         'order_number': '',
                         'error_code': result.get('rt_cd'),
-                        'error_message': result.get('msg1', ''),
-                        'response': response
+                        'error_message': result.get('msg1', '')
                     }
                     return order_info, order_sell_message
                     
@@ -493,8 +491,7 @@ class KIS_API:
                         'order_number': output.get('ODNO', ''),
                         'order_time': output.get('ORD_TMD', ''),
                         'org_number': output.get('KRX_FWDG_ORD_ORGNO', ''),
-                        'message': result.get('msg1', ''),
-                        'response': response
+                        'message': result.get('msg1', '')
                     }
                     
                     order_buy_message.append(f"정규매수 주문: {ticker} {quantity}주 @ ${price:.2f} \n주문번호: {order_info['order_number']}")
@@ -508,8 +505,7 @@ class KIS_API:
                         'price': price,
                         'order_number': '',
                         'error_code': result.get('rt_cd'),
-                        'error_message': result.get('msg1', ''),
-                        'response': response
+                        'error_message': result.get('msg1', '')
                     }, order_buy_message
                     
             except requests.exceptions.HTTPError as e:

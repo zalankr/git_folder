@@ -58,9 +58,7 @@
     ],
     "USLA": {
         "UPRO": {
-            "hold_qty": [
-                0
-            ],
+            "hold_qty": 0,
             "current_price": 116.79,
             "target_weight": 0,
             "target_balance": 0.0,
@@ -69,9 +67,7 @@
             "sell_qty": 0
         },
         "TQQQ": {
-            "hold_qty": [
-                102
-            ],
+            "hold_qty": 102,
             "current_price": 49.7899,
             "target_weight": 0.35033197925678683,
             "target_balance": 5057.518572063507,
@@ -80,9 +76,7 @@
             "sell_qty": 1
         },
         "EDC": {
-            "hold_qty": [
-                62
-            ],
+            "hold_qty": 62,
             "current_price": 77.9489,
             "target_weight": 0.3356680207432131,
             "target_balance": 4845.824387936493,
@@ -91,9 +85,7 @@
             "sell_qty": 0
         },
         "TMV": {
-            "hold_qty": [
-                0
-            ],
+            "hold_qty": 0,
             "current_price": 34.55,
             "target_weight": 0,
             "target_balance": 0.0,
@@ -102,9 +94,7 @@
             "sell_qty": 0
         },
         "TMF": {
-            "hold_qty": [
-                0
-            ],
+            "hold_qty": 0,
             "current_price": 39.975,
             "target_weight": 0,
             "target_balance": 0.0,
