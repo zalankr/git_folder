@@ -1239,6 +1239,14 @@ if order_time['round'] == 1:
     HAA_target_balance = float(HAA_balance) + USD_HAA
     HAA_target_weight = float(HAA_target_balance) / float(Total_balance)
 
+    ## 만약 1월이라면 비중 리밸런싱
+    order_time['month'] = 1 ######## 최초 정상 실행 이후 이 라인 지울 것 #########
+    if order_time['month'] == 1:
+        USLA_target_weight = 0.7
+        USLA_target_balance = float(Total_balance * USLA_target_weight)
+        HAA_target_weight = 0.3
+        HAA_target_balance = float(Total_balance * HAA_target_weight)
+
     # 초기 데이터
     start = {
         "USD_total": USD,
@@ -1249,14 +1257,6 @@ if order_time['round'] == 1:
         "HAA_target_balance": HAA_target_balance,
         "HAA_target_weight": HAA_target_weight
     }
-    
-    ## 만약 1월이라면 비중 리밸런싱
-    order_time['month'] = 1 ######## 최초 정상 실행 이후 이 라인 지울 것 #########
-    if order_time['month'] == 1:
-        USLA_target_weight = 0.7
-        USLA_target_balance = float(Total_balance * USLA_target_weight)
-        HAA_target_weight = 0.3
-        HAA_target_balance = float(Total_balance * HAA_target_weight)
 
     USLA = {}
     for ticker in USLA_ticker:
@@ -1272,7 +1272,7 @@ if order_time['round'] == 1:
                 'sell_qty': int(USLA_qty.get(ticker, 0)) # 해당 티커의 매도 수량
             }
         elif ticker in USLA_target:
-            if USLA_price[ticker] <= 0:
+            if not isinstance(USLA_price[ticker], float) or USLA_price[ticker] <= 0:
                 USLA_target_qty = 0
             else:
                 USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.98) / USLA_price[ticker])  # 2% 거래 안정성 마진 적용
@@ -1302,7 +1302,7 @@ if order_time['round'] == 1:
                 'sell_qty': int(HAA_qty.get(ticker, 0)) # 해당 티커의 매도 수량                
             }
         elif ticker in HAA_target:
-            if HAA_price[ticker] <= 0:
+            if not isinstance(HAA_price[ticker], float) or HAA_price[ticker] <= 0:
                 HAA_target_qty = 0
             else:
                 HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.98) / HAA_price[ticker])  # 2% 거래 안정성 마진 적용
@@ -1603,24 +1603,24 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
         # USD 계산
         USD = float(USD)
-        if USLA_balance == 0 and HAA_balance == 0:
+        if USLA_balance <= 0 and HAA_balance <= 0:
             USD_USLA = float(TR_data['USLA_target_weight'] * USD)
             USD_HAA = float(USD - USD_USLA)
-        elif USLA_balance == 0 and HAA_balance > 0:
+        elif USLA_balance <= 0 and HAA_balance > 0:
             if USD >= float(TR_data['USLA_target_balance']):
                 USD_USLA = float(TR_data['USLA_target_balance'])
                 USD_HAA = float(USD - USD_USLA)
             else:
                 USD_USLA = USD
                 USD_HAA = 0.00
-        elif USLA_balance > 0 and HAA_balance == 0:
+        elif USLA_balance > 0 and HAA_balance <= 0:
             if USD >= float(TR_data['HAA_target_balance']):
                 USD_HAA = float(TR_data['HAA_target_balance'])
                 USD_USLA = float(USD - USD_HAA)
             else:
                 USD_HAA = USD
                 USD_USLA = 0.00
-        elif USLA_balance > 0 and HAA_balance > 0:
+        else:
             USD_USLA = float(USD * float(TR_data['USLA_target_weight']))
             USD_HAA = float(USD - USD_USLA)
 
