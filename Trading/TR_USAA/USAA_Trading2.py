@@ -1228,7 +1228,7 @@ if order_time['round'] == 1:
     
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-    USD =float(USD)
+    USD = float(USD)
     USD_gap = float(USD - float(TR_data['USD_total']))
     USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.7)
     USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.3)
@@ -1582,7 +1582,6 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         # 계좌잔고 조회
         USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
         
-
         USLA_target, USLA_regime, USLA_message = USLA_target_regime()
         message.append(f"USLA Regime: {USLA_regime}")
         for i in USLA_target.keys():
@@ -1604,23 +1603,17 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
         # USD 계산
         USD = float(USD)
-        # USD_gap = float(USD - float(TR_data['USD_total']))
-        if USLA_balance <= 0 and HAA_balance <= 0:
-            if USD >= float(TR_data['USLA_target_balance']):
-                USD_USLA = float(TR_data['USLA_target_balance'] * USD)
-                USD_HAA = float(USD - USD_USLA)
-            else:
-                USD_USLA_weight = float(TR_data['USLA_target_weight'])
-                USD_USLA = float(USD * USD_USLA_weight)
-                USD_HAA = float(USD - USD_USLA)
-        elif USLA_balance <= 0 and HAA_balance > 0:
+        if USLA_balance == 0 and HAA_balance == 0:
+            USD_USLA = float(TR_data['USLA_target_weight'] * USD)
+            USD_HAA = float(USD - USD_USLA)
+        elif USLA_balance == 0 and HAA_balance > 0:
             if USD >= float(TR_data['USLA_target_balance']):
                 USD_USLA = float(TR_data['USLA_target_balance'])
                 USD_HAA = float(USD - USD_USLA)
             else:
                 USD_USLA = USD
                 USD_HAA = 0.00
-        elif USLA_balance > 0 and HAA_balance <= 0:
+        elif USLA_balance > 0 and HAA_balance == 0:
             if USD >= float(TR_data['HAA_target_balance']):
                 USD_HAA = float(TR_data['HAA_target_balance'])
                 USD_USLA = float(USD - USD_HAA)
@@ -1635,10 +1628,10 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             "USD_total": USD,
             "USD_USLA": USD_USLA,
             "USD_HAA": USD_HAA,
-            "USLA_target_balance": TR_data['USLA_target_balance'],
-            "USLA_target_weight": TR_data['USLA_target_weight'],
-            "HAA_target_balance": TR_data['HAA_target_balance'],
-            "HAA_target_weight": TR_data['HAA_target_weight']
+            "USLA_target_balance": float(USLA_balance + USD_USLA),
+            "USLA_target_weight": float((USLA_balance + USD_USLA) / Total_balance),
+            "HAA_target_balance": float(HAA_balance + USD_HAA),
+            "HAA_target_weight": float((HAA_balance + USD_HAA) / Total_balance)
         }        
 
         saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, start)
