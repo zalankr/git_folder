@@ -1506,7 +1506,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     price_error = False
     
     for ticker in USLA_ticker:
-        if USLA[ticker]['current_price'] <= 0:
+        if not isinstance(USLA[ticker]['current_price'], float) or USLA[ticker]['current_price'] <= 0:
             message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             USLA[ticker]['buy_qty'] = 0
             price_error = True
@@ -1517,7 +1517,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     for ticker in HAA_ticker:
         if ticker == 'TIP':
             continue
-        if HAA[ticker]['current_price'] <= 0:
+        if not isinstance(HAA[ticker]['current_price'], float) or HAA[ticker]['current_price'] <= 0:
             message.append(f"USAA: ⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
             HAA[ticker]['buy_qty'] = 0
             price_error = True

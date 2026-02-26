@@ -819,8 +819,7 @@ class KIS_API:
                     'success': True,
                     'ticker': ticker,
                     'order_number': order_number,
-                    'message': result.get('msg1', ''),
-                    'response': response
+                    'message': result.get('msg1', '')
                 }
             else:
                 # print(f"주문 취소 실패: {result.get('msg1', '알 수 없는 오류')}")
@@ -828,8 +827,7 @@ class KIS_API:
                     'success': False,
                     'ticker': ticker,
                     'order_number': order_number,
-                    'error_message': result.get('msg1', ''),
-                    'response': response
+                    'error_message': result.get('msg1', '')
                 }
                 
         except Exception as e:
