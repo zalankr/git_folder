@@ -66,6 +66,8 @@ if position["position"] in ["Buy full", "Buy half"]:
             message.append(Redeem_message)
             now = datetime.now() # 현재시간 확인
             time_module.sleep(120) # 타임 슬립 120초
+        TA.send_tele("\n".join(message))  # ← 추가
+        message = []
 
     except Exception as e:
         now = datetime.now() # 현재시간 확인
@@ -124,9 +126,9 @@ elif position["position"] == "Sell half":
 
 time_module.sleep(0.5) # 타임슬립
 
-# 시분할 10회 주문하기 > 18회로 증회
+# 시분할 10회 주문하기
 try:
-    no = 10 # 10회로 변경 가능
+    no = 10 # 변경 가능
     for num in range(no):
         num = num + 1
         now = datetime.now() # 현재시간 확인
@@ -252,7 +254,7 @@ try:
         json.dump(binance_data, f, ensure_ascii=False, indent=4)
     time_module.sleep(0.5)
 
-    # KakaoTalk 메시지 보내기
+    # 메시지 보내기
     
     message.append(f"Binance finish: {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 트레이딩 완료")
     message.append(f"Binance 일수익률: {Daily_return:.2f}% \n월수익률: {Monthly_return:.2f}% \n연수익률: {Yearly_return:.2f}% \n환산잔고: {Total_balance:.2f}$ \nBTC: {BTC:.8f} \nUSDT: {USDT:.2f}$")
@@ -263,7 +265,7 @@ try:
     # Google Spreadsheet에 데이터 추가   
     # 설정값
     credentials_file = "/var/autobot/gspread/service_account.json" # 구글 서비스 계정 JSON 파일 경로
-    spreadsheet_name = "2025_TR_Binance" # 스프레드시트 이름
+    spreadsheet_name = "2025_TR_Binance" # 2026스프레드시트 만들기 >>> 사ㅛㅇ전
         
     # 구글 스프레드시트 연결
     spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
@@ -275,7 +277,8 @@ try:
     GU.save_to_sheets(spreadsheet, binance_data, current_month)
 
 except Exception as e:
-    message.append(f"Binance 기록 {now.strftime('%Y-%m-%d %H:%M:%S')} \n 당일 data 기록 중 예외 오류: {e}")
-    TA.send_tele(message)
+    now = datetime.now()  # except 내부에서 재취득
+    message.append(f"Binance 기록 {now.strftime('%Y-%m-%d %H:%M:%S')} \n당일 data 기록 중 예외 오류: {e}")
+    TA.send_tele("\n".join(message))
 
 sys.exit(0)
