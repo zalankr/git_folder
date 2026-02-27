@@ -562,7 +562,7 @@ if order['round'] == 1 or order['round'] == 8:
             "weight": row["weight"],     # float
         }
 
-    # 총 원화 평가금액 > 투자금액(99%) 산출 ########################################
+    # 총 원화 평가금액 > 투자금액(99%) 산출
     account = KIS.get_KR_account_summary()
     if isinstance(account, dict):
         total_invest = account['total_krw_asset'] * 0.99 # cash는 1%유지
@@ -574,11 +574,14 @@ if order['round'] == 1 or order['round'] == 8:
     target_code = list(target.keys())
     for i in code:
         price = int(KIS.get_KR_current_price(i))
+        if price == 0 or not isinstance(price, int):
+            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            sys.exit(0)
         target[i]['target_invest'] = int(target[i]['weight'] * total_invest)
         target[i]['target_qty'] = int(target[i]['target_invest'] / price)
         time_module.sleep(0.1)
 
-    # 당일 target 저장하기
+    # 당일 target 저장하기 ########################################
     json_message = save_json(target, KRQT_target_path)
     message.append(json_message)
 else:

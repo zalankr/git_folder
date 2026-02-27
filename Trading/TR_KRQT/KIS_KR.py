@@ -140,7 +140,7 @@ class KIS_API:
             raise RuntimeError(f"Hashkey 생성 실패: {e}")  # 빈 문자열 반환 시 주문이 진행되므로 예외로 차단
     
     # 국내 주식 현재가 조회
-    def get_KR_current_price(self, ticker: str) -> Union[float, str]:
+    def get_KR_current_price(self, ticker: str) -> Union[float, str]: #
         """
         국내 주식 현재가 조회
         Parameters:
@@ -172,7 +172,7 @@ class KIS_API:
             data = res.json()
 
             if data.get("rt_cd") == "0":
-                return float(data["output"]["stck_prpr"])  # 주식 현재가
+                return int(data["output"]["stck_prpr"])  # 주식 현재가
             else:
                 return f"현재가 조회 실패: {data.get('msg1', '알 수 없는 오류')}"
 
