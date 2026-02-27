@@ -108,20 +108,20 @@ try:
         USD_HAA = float(USD - USD_USLA)
 
     # 당일 평가금 산출
-    Total = float("{:.2f}".format(Total_balance))
-    USLA_balance = float("{:.2f}".format(USLA_balance + USD_USLA))
-    HAA_balance = float("{:.2f}".format(HAA_balance + USD_HAA))
+    Total = float("{:,.2f}".format(Total_balance))
+    USLA_balance = float("{:,.2f}".format(USLA_balance + USD_USLA))
+    HAA_balance = float("{:,.2f}".format(HAA_balance + USD_HAA))
 
     # 전일, 월초, 연초 전월말, 전년말 잔고 업데이트
-    last_day_balance = float("{:.2f}".format(pre_data.get('Total', 0.0)))
-    USLA_last_day = float("{:.2f}".format(pre_data.get('USLA', USLA_balance)))
-    HAA_last_day = float("{:.2f}".format(pre_data.get('HAA', HAA_balance)))
+    last_day_balance = float("{:,.2f}".format(pre_data.get('Total', 0.0)))
+    USLA_last_day = float("{:,.2f}".format(pre_data.get('USLA', USLA_balance)))
+    HAA_last_day = float("{:,.2f}".format(pre_data.get('HAA', HAA_balance)))
 
     if current.day == 1:  # 월초 전월 잔고 데이터 변경
         last_month_balance = last_day_balance
         USLA_last_month = USLA_last_day
         HAA_last_month = HAA_last_day
-        message.append(f"USAA: 월초, 전월 전체잔고를 {last_month_balance}원으로 업데이트했습니다.")
+        message.append(f"USAA: 월초, 전월 전체잔고를 {last_month_balance:,.2f}$로 업데이트했습니다.")
     else:
         last_month_balance = pre_data.get('last_month_balance', Total_balance)
         USLA_last_month = pre_data.get('USLA_last_month', USLA_balance)
@@ -131,12 +131,12 @@ try:
         last_year_balance = last_day_balance
         USLA_last_year = USLA_last_day
         HAA_last_year = HAA_last_day
-        message.append(f"USAA: 연초, 전년 전체잔고를 {last_year_balance}원으로 업데이트했습니다.")
+        message.append(f"USAA: 연초, 전년 전체잔고를 {last_year_balance:,.2f}$로 업데이트했습니다.")
     else:
         last_year_balance = pre_data.get('last_year_balance', Total_balance)
         USLA_last_year = pre_data.get('USLA_last_year', USLA_balance)
         HAA_last_year = pre_data.get('HAA_last_year', HAA_balance)
-
+        
     # 환율 조회
     try:
         USD_balance = KIS.get_US_dollar_balance()

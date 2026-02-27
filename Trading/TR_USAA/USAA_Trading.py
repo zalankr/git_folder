@@ -1265,8 +1265,8 @@ if order_time['round'] == 1:
             USLA[ticker] = {
                 'hold_qty': int(USLA_qty.get(ticker, 0)), # 현재 보유량
                 'current_price': USLA_price[ticker] if ticker in USLA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                'target_weight': 0, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
-                'target_balance': 0, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
+                'target_weight': 0, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+                'target_balance': 0, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
                 'target_qty': 0, # 해당 티커의 목표수량
                 'buy_qty': 0, # 해당 티커의 매수 수량
                 'sell_qty': int(USLA_qty.get(ticker, 0)) # 해당 티커의 매도 수량
@@ -1275,12 +1275,12 @@ if order_time['round'] == 1:
             if not isinstance(USLA_price[ticker], float) or USLA_price[ticker] <= 0:
                 USLA_target_qty = 0
             else:
-                USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.98) / USLA_price[ticker])  # 2% 거래 안정성 마진 적용
+                USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.99) / USLA_price[ticker])  # 1% 거래 안정성 마진 적용
             USLA[ticker] = {
                 'hold_qty': int(USLA_qty.get(ticker, 0)), # 현재 보유량
                 'current_price': USLA_price[ticker] if ticker in USLA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                'target_weight': USLA_target[ticker] * USLA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
-                'target_balance': USLA_target[ticker] * USLA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
+                'target_weight': USLA_target[ticker] * USLA_target_weight * 0.99, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+                'target_balance': USLA_target[ticker] * USLA_target_balance * 0.99, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
                 'target_qty': USLA_target_qty, # 해당 티커의 목표수량
                 'buy_qty': int(USLA_target_qty - USLA_qty.get(ticker, 0) if USLA_target_qty > USLA_qty.get(ticker, 0) else 0), # 해당 티커의 매수 수량
                 'sell_qty': int(USLA_qty.get(ticker, 0) - USLA_target_qty if USLA_target_qty < USLA_qty.get(ticker, 0) else 0) # 해당 티커의 매도 수량
@@ -1295,8 +1295,8 @@ if order_time['round'] == 1:
             HAA[ticker] = {
                 'hold_qty': int(HAA_qty.get(ticker, 0)), # 현재 보유량
                 'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                'target_weight': 0, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
-                'target_balance': 0, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
+                'target_weight': 0, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+                'target_balance': 0, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
                 'target_qty': 0, # 해당 티커의 목표수량
                 'buy_qty': 0, # 해당 티커의 매수 수량
                 'sell_qty': int(HAA_qty.get(ticker, 0)) # 해당 티커의 매도 수량                
@@ -1305,12 +1305,12 @@ if order_time['round'] == 1:
             if not isinstance(HAA_price[ticker], float) or HAA_price[ticker] <= 0:
                 HAA_target_qty = 0
             else:
-                HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.98) / HAA_price[ticker])  # 2% 거래 안정성 마진 적용
+                HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.99) / HAA_price[ticker])  # 1% 거래 안정성 마진 적용
             HAA[ticker] = {
                 'hold_qty': int(HAA_qty.get(ticker, 0)), # 현재 보유량
                 'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                'target_weight': HAA_target[ticker] * HAA_target_weight * 0.98, # 해당 티커의 목표비중 (2% 거래 안정성 마진 적용)
-                'target_balance': HAA_target[ticker] * HAA_target_balance * 0.98, # 해당 티커의 목표투자금 (2% 거래 안정성 마진 적용)
+                'target_weight': HAA_target[ticker] * HAA_target_weight * 0.99, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+                'target_balance': HAA_target[ticker] * HAA_target_balance * 0.99, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
                 'target_qty': HAA_target_qty, # 해당 티커의 목표수량
                 'buy_qty': int(HAA_target_qty - HAA_qty.get(ticker, 0) if HAA_target_qty > HAA_qty.get(ticker, 0) else 0), # 해당 티커의 매수 수량
                 'sell_qty': int(HAA_qty.get(ticker, 0) - HAA_target_qty if HAA_target_qty < HAA_qty.get(ticker, 0) else 0) # 해당 티커의 매도 수량                
@@ -1584,7 +1584,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
         
         USLA_target, USLA_regime, USLA_message = USLA_target_regime()
-        message.append(f"USLA Regime: {USLA_regime}")
+        message.append(f"USLA Regime: {USLA_regime:.2f}")
         for i in USLA_target.keys():
             if i == 'CASH':
                 message.append(f"USLA CASH - weight:{USLA_target[i]:.2%}")
@@ -1593,7 +1593,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             weight = float(balance) / float(Total_balance) if Total_balance > 0 else 0
             message.append(f"USLA {i} - weight:{weight:.2%}, qty:{int(USLA_qty.get(i, 0))}")
         HAA_target, HAA_regime, HAA_message = HAA_target_regime()
-        message.append(f"HAA Regime: {HAA_regime}")
+        message.append(f"HAA Regime: {HAA_regime:.2f}")
         for i in HAA_target.keys():
             if i == 'CASH':
                 message.append(f"HAA CASH - weight:{HAA_target[i]:.2%}")
