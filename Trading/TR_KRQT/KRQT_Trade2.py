@@ -423,7 +423,7 @@ def save_json(data, path): #
             message.append(f"KRQT {data}백업 파일 생성: {backup_path}")
         except Exception as backup_error:
             message.append(f"KRQT {data}백업 파일 생성도 실패: {backup_error}")
-            # 최후의 수단: 카카오로 데이터 전송
+            # 최후의 수단: 텔레그램으로 데이터 전송
             message.append(f"KRQT {data}백업: {json.dumps(data, ensure_ascii=False)[:1000]}")
 
     return message
@@ -581,7 +581,7 @@ if order['round'] == 1 or order['round'] == 8:
         target[i]['target_qty'] = int(target[i]['target_invest'] / price)
         time_module.sleep(0.1)
 
-    # 당일 target 저장하기 ########################################
+    # 당일 target 저장하기
     json_message = save_json(target, KRQT_target_path)
     message.append(json_message)
 else:
@@ -591,12 +591,12 @@ else:
         with open(KRQT_target_path, 'r', encoding='utf-8') as f:
             target = json.load(f)
     except Exception as e:
-        KA.SendMessage(f"KRQT_target.json 파일 오류: {e}")
+        TA.send_tele(f"KRQT_target.json 파일 오류: {e}")
         sys.exit(0)
     target_code = list(target.keys())
 
 # 보유 종목 잔고 불러오기
-stocks = KIS.get_KR_stock_balance()
+stocks = KIS.get_KR_stock_balance() ###########################################################################
 if not isinstance(stocks, list):
     KA.SendMessage(f"KRQT: 잔고 조회 불가로 종료합니다. ({stocks})")
     sys.exit(0)
