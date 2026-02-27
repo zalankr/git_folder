@@ -1,6 +1,6 @@
 import sys
 import json
-import kakao_alert as KA
+import telegram_alert as TA
 from datetime import datetime, timedelta as time_obj
 import pandas as pd
 import requests
@@ -12,7 +12,7 @@ import KIS_KR
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    KA.SendMessage("KRQT: 이미 실행 중입니다.")
+    TA.send_tele("KRQT: 이미 실행 중입니다.")
     sys.exit(0)
 
 # KIS instance 생성
@@ -39,7 +39,7 @@ def order_time(day=1): #
     order_time = {
         'date': current_date,
         'time': current_time,
-        'TR_day': day,          # 기본값
+        'day': day,          # 기본값
         'round': 0,        # 기본값
         'total_round': 14  # 기본값
     }
@@ -58,7 +58,7 @@ def health_check(): #
     
     # 1. API 토큰 유효성
     if not KIS.access_token:
-        checks.append("KRQT 체크: API 토큰 없음")
+        checks.append("KRQT체크: API 토큰 없음")
     
     # 2. data 파일 존재
     import os
@@ -68,17 +68,17 @@ def health_check(): #
     ]
     for f in files:
         if not os.path.exists(f):
-            checks.append(f"KRQT 체크: data파일 없음: {f}")
+            checks.append(f"KRQT체크: data파일 없음: {f}")
     
     # 3. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("KRQT 체크: KIS API 서버 접속 불가")
+        checks.append("KRQT체크: KIS API 서버 접속 불가")
     
     if checks:
-        KA.SendMessage("\n".join(checks))
+        TA.send_tele("\n".join(checks))
         sys.exit(1)
 
 def get_balance():
@@ -510,30 +510,12 @@ def split_data(round): #
 
     return round_split
 
-def send_messages_in_chunks(message, max_length=1000):
-    current_chunk = []
-    current_length = 0
-    
-    for msg in message:
-        msg_length = len(msg) + 1  # \n 포함
-        if current_length + msg_length > max_length:
-            KA.SendMessage("\n".join(current_chunk))
-            time_module.sleep(1)
-            current_chunk = [msg]
-            current_length = msg_length
-        else:
-            current_chunk.append(msg)
-            current_length += msg_length
-    
-    if current_chunk:
-        KA.SendMessage("\n".join(current_chunk))
-
 # ============================================
 # 메인 로직 # 분기 리밸런싱
 # ============================================
 checkday = KIS.is_KR_trading_day()
 # if checkday == False:
-#     send_messages_in_chunks("KR: 거래일이 아닙니다.")
+#     TA.send_tele("KR: 거래일이 아닙니다.")
 #     sys.exit(0)
 health_check() # 시스템 상태 확인
 message = [] # 출력메시지 LIST 생성
@@ -543,18 +525,21 @@ try:
     with open(KRQT_TR_path, 'r', encoding='utf-8') as f:
         TR = json.load(f)
 except Exception as e:
-    send_messages_in_chunks(f"KRQT_TR JSON 파일 오류: {e}")
+    TA.send_tele(f"KRQT_TR JSON 파일 오류: {e}")
     sys.exit(0)
     
 # 일자와 회차 시간데이터 불러오기
-order = order_time(day=TR['TR_day'])
-message.append(f"KRQT: {order['day']}일차 {order['round']}회차 매매를 시작합니다.")
+order = order_time(day=TR['day'])
+message.append(f"KRQT: {order['day']}일차 {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
-summary, messages = KIS.cancel_all_KR_unfilled_orders(side = 'all')
-message.extend(messages)
+summary = KIS.cancel_all_KR_unfilled_orders(side = 'all')
+if isinstance(summary, dict):
+    message.append(f"{summary['success']}/{summary['total']} 주문 취소 성공")
+else:
+    message.append(f"주문 취소 에러발생")
 
-# 회차별 target 데이터 불러오기
+# 회차별 target 데이터 불러오기 (1, 8회차는 불러오기 및 계산)
 if order['round'] == 1 or order['round'] == 8:
     # 목표종목 csv파일 불러오기 > Dic, JSON 변환
     try:
@@ -565,8 +550,8 @@ if order['round'] == 1 or order['round'] == 8:
                 "weight": float # 비중 > 실수
             })
     except Exception as e:
-        message.append(f"KRQT_stock.csv 파일 오류: {e}")
-        sys.exit(0)
+        TA.send_tele(f"KRQT_stock.csv 파일 오류: {e}")
+        sys.exit(1)
 
     # day별 목표 수량 산출(1회차, 8회차)
     target = {}
@@ -577,9 +562,13 @@ if order['round'] == 1 or order['round'] == 8:
             "weight": row["weight"],     # float
         }
 
-    # 총 원화 평가금액 > 투자금액(99%) 산출
+    # 총 원화 평가금액 > 투자금액(99%) 산출 ########################################
     account = KIS.get_KR_account_summary()
-    total_invest = account['total_krw_asset'] * 0.99 # cash는 1%유지
+    if isinstance(account, dict):
+        total_invest = account['total_krw_asset'] * 0.99 # cash는 1%유지
+    else:
+        TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
+        sys.exit(0)
 
     # 종목별 목표 투자금액 및 수량 산출 
     target_code = list(target.keys())

@@ -1,7 +1,7 @@
 import requests
 import json
 from datetime import datetime, timedelta
-import kakao_alert as KA
+import telegram_alert as TA
 import sys
 import os
 from typing import Union, Optional, Dict, List, Tuple
@@ -10,7 +10,7 @@ import time
 class KIS_API:
     """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
     
-    def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
+    def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str): #
         self.key_file_path = key_file_path
         self.token_file_path = token_file_path
         self.cano = cano
@@ -23,10 +23,10 @@ class KIS_API:
         self.buy_fee_tax = 0.00014  # 매수 수수료 0.014% KRQT 계좌
 
         self.last_api_call = 0
-        self.api_interval = 0.07 # 초당 ~14회 요청 인터벌
+        self.api_interval = 0.1 # 초당 ~10회 요청 인터벌
 
     # API 간격 제어
-    def _rate_limit_sleep(self):
+    def _rate_limit_sleep(self): #
         """API 호출 간격 제어 (Rate Limit 대응)"""
         elapsed = time.time() - self.last_api_call
         if elapsed < self.api_interval:
@@ -34,30 +34,30 @@ class KIS_API:
         self.last_api_call = time.time()
 
     # API-Key 로드 
-    def _load_api_keys(self):
+    def _load_api_keys(self): #
         try:
             with open(self.key_file_path) as f:
                 self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
         except FileNotFoundError:
-            KA.SendMessage(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
+            TA.send_tele(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
             sys.exit(1)
         except Exception as e:
-            KA.SendMessage(f"API Key 로드 실패: {e}")
+            TA.send_tele(f"API Key 로드 실패: {e}")
             sys.exit(1)
     
     # 토큰 로드
-    def load_token(self) -> Optional[Dict]:
+    def load_token(self) -> Optional[Dict]: #
         try:
             if os.path.exists(self.token_file_path):
                 with open(self.token_file_path, 'r') as f:
                     return json.load(f)
             return None
         except Exception as e:
-            KA.SendMessage(f"KIS 토큰 로드 오류: {e}")
+            TA.send_tele(f"KIS 토큰 로드 오류: {e}")
             return None
     
     # 토큰 저장
-    def save_token(self, access_token: str, expires_in: int = 86400) -> bool:
+    def save_token(self, access_token: str, expires_in: int = 86400) -> bool: #
         try:
             token_data = {
                 "access_token": access_token,
@@ -68,11 +68,11 @@ class KIS_API:
                 json.dump(token_data, f, indent=2)
             return True
         except Exception as e:
-            KA.SendMessage(f"KIS 토큰 저장 오류: {e}")
+            TA.send_tele(f"KIS 토큰 저장 오류: {e}")
             return False
     
     # 토큰 유효성 확인
-    def is_token_valid(self, token_data: Dict) -> bool:
+    def is_token_valid(self, token_data: Dict) -> bool: #
         if not token_data or 'access_token' not in token_data:
             return False
         
@@ -88,7 +88,7 @@ class KIS_API:
             return False
     
     # 토큰 발급
-    def get_new_token(self) -> Optional[str]:
+    def get_new_token(self) -> Optional[str]: #
         headers = {"content-type": "application/json"}
         path = "oauth2/tokenP"
         body = {
@@ -110,12 +110,11 @@ class KIS_API:
             self.save_token(access_token, expires_in)
             return access_token
         except Exception as e:
-            KA.SendMessage(f"KIS 토큰 발급 실패: {e}")
+            TA.send_tele(f"KIS 토큰 발급 실패: {e}")
             sys.exit(0)
-            # return None
 
     # 토큰 접속
-    def get_access_token(self) -> Optional[str]:
+    def get_access_token(self) -> Optional[str]: #
         token_data = self.load_token()
         
         if token_data and self.is_token_valid(token_data):
@@ -124,7 +123,7 @@ class KIS_API:
         return self.get_new_token()
     
     # Hash-Key 생성
-    def hashkey(self, datas: Dict) -> str:
+    def hashkey(self, datas: Dict) -> str: #
         path = "uapi/hashkey"
         url = f"{self.url_base}/{path}"
         headers = {
@@ -137,7 +136,7 @@ class KIS_API:
             res.raise_for_status()
             return res.json()["HASH"]
         except Exception as e:
-            KA.SendMessage(f"Hashkey 생성 실패: {e}")
+            TA.send_tele(f"Hashkey 생성 실패: {e}")
             raise RuntimeError(f"Hashkey 생성 실패: {e}")  # 빈 문자열 반환 시 주문이 진행되므로 예외로 차단
     
     # 국내 주식 현재가 조회
@@ -270,7 +269,7 @@ class KIS_API:
         return None  # 미보유 종목
 
     # 한국 주식 계좌 원화 평가금 요약        
-    def get_KR_account_summary(self) -> Optional[Dict]:
+    def get_KR_account_summary(self) -> Optional[Dict]: #
         """
         한국주식 계좌 원화 자산 요약
         Returns:
@@ -313,7 +312,7 @@ class KIS_API:
             data = response.json()
 
             if data.get('rt_cd') != '0':
-                KA.SendMessage(f"계좌요약 API 오류: {data.get('msg1')}")
+                TA.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
                 return None
 
             # output2는 연속조회 무관하게 첫 번째 응답에 계좌 전체 합산값 반환
@@ -331,7 +330,7 @@ class KIS_API:
             }
 
         except Exception as e:
-            KA.SendMessage(f"계좌요약 조회 오류: {e}")
+            TA.send_tele(f"계좌요약 조회 오류: {e}")
             return None
         
     # 한국 주식 매수 가능 원화 예수금 조회    
@@ -663,7 +662,7 @@ class KIS_API:
             return None
 
     # 한국 주식 미체결 주문 조회
-    def get_KR_unfilled_orders(self) -> List[Dict]:
+    def get_KR_unfilled_orders(self) -> List[Dict]: #
         """
         한국 주식 당일 미체결 주문 전체 조회
 
@@ -710,7 +709,7 @@ class KIS_API:
                 result = response.json()
 
                 if result.get("rt_cd") != "0":
-                    KA.SendMessage(f"미체결 조회 실패: {result.get('msg1')}")
+                    TA.send_tele(f"미체결 조회 실패: {result.get('msg1')}")
                     return []
 
                 for order in result.get("output", []):
@@ -739,7 +738,7 @@ class KIS_API:
             return unfilled
 
         except Exception as e:
-            KA.SendMessage(f"미체결 조회 오류: {e}")
+            TA.send_tele(f"미체결 조회 오류: {e}")
             return []
 
     # 한국 주식 개별 주문 취소
@@ -815,7 +814,7 @@ class KIS_API:
             return None
 
     # 한국 주식 전체 주문 취소
-    def cancel_all_KR_unfilled_orders(self, side: str = "all") -> Optional[Dict]:
+    def cancel_all_KR_unfilled_orders(self, side: str = "all") -> Optional[Dict]: #
         if side not in ("buy", "sell", "all"):
             raise ValueError(f"side는 'buy', 'sell', 'all' 중 하나여야 합니다: {side}")
 
@@ -869,7 +868,7 @@ class KIS_API:
         return summary
     
     # 한국 주식 시장 거래일 여부
-    def is_KR_trading_day(self, date: Optional[datetime] = None) -> bool:
+    def is_KR_trading_day(self, date: Optional[datetime] = None) -> bool: #
         """
         한국 주식시장 거래일 여부 확인 (KIS API 휴장일 조회 기반)
 
@@ -911,7 +910,7 @@ class KIS_API:
                 data = res.json()
 
                 if data.get("rt_cd") != "0":
-                    KA.SendMessage(f"거래일 조회 실패: {data.get('msg1')}")
+                    TA.send_tele(f"거래일 조회 실패: {data.get('msg1')}")
                     return False
 
                 for item in data.get("output", []):
@@ -924,7 +923,7 @@ class KIS_API:
                 if attempt < 2:
                     time.sleep(2)
                     continue
-                KA.SendMessage(f"거래일 조회 오류 (3회 실패): {e}")
+                TA.send_tele(f"거래일 조회 오류 (3회 실패): {e}")
                 return False
             
     def round_to_tick(self, price: float, market: str = "KR") -> int:
