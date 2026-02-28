@@ -1240,7 +1240,7 @@ if order_time['round'] == 1:
     HAA_target_weight = float(HAA_target_balance) / float(Total_balance)
 
     ## 만약 1월이라면 비중 리밸런싱
-    order_time['month'] = 1 ######## 최초 정상 실행 이후 이 라인 지울 것 #########
+    order_time['month'] = 1 ######## 최초 4월 실행 후 이 라인은 지울 것 #########
     if order_time['month'] == 1:
         USLA_target_weight = 0.7
         USLA_target_balance = float(Total_balance * USLA_target_weight)
