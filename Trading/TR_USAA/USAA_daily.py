@@ -108,14 +108,14 @@ try:
         USD_HAA = float(USD - USD_USLA)
 
     # 당일 평가금 산출
-    Total = float("{:,.2f}".format(Total_balance))
-    USLA_balance = float("{:,.2f}".format(USLA_balance + USD_USLA))
-    HAA_balance = float("{:,.2f}".format(HAA_balance + USD_HAA))
+    Total = float("{:.2f}".format(Total_balance))
+    USLA_balance = float("{:.2f}".format(USLA_balance + USD_USLA))
+    HAA_balance = float("{:.2f}".format(HAA_balance + USD_HAA))
 
     # 전일, 월초, 연초 전월말, 전년말 잔고 업데이트
-    last_day_balance = float("{:,.2f}".format(pre_data.get('Total', 0.0)))
-    USLA_last_day = float("{:,.2f}".format(pre_data.get('USLA', USLA_balance)))
-    HAA_last_day = float("{:,.2f}".format(pre_data.get('HAA', HAA_balance)))
+    last_day_balance = float("{:.2f}".format(pre_data.get('Total', 0.0)))
+    USLA_last_day = float("{:.2f}".format(pre_data.get('USLA', USLA_balance)))
+    HAA_last_day = float("{:.2f}".format(pre_data.get('HAA', HAA_balance)))
 
     if current.day == 1:  # 월초 전월 잔고 데이터 변경
         last_month_balance = last_day_balance
@@ -169,6 +169,32 @@ try:
     HAA_year_ret = float("{:.2f}".format(HAA_year_ret))
 
     # 새로운 USAA data 생성
+    str_USAA_data = {
+        'date': str(current_date),
+        'exchange_rate': str("{:,.2f}".format(exchange_rate)),
+        'Total': str("{:,.2f}".format(Total)),
+        'last_day_balance': str("{:,.2f}".format(last_day_balance)),
+        'last_month_balance': str("{:,.2f}".format(last_month_balance)),
+        'last_year_balance': str("{:,.2f}".format(last_year_balance)),
+        'month_ret': f"{month_ret:.2f}%",
+        'year_ret': f"{year_ret:.2f}%",
+        'Total_KRW': str("{:,.0f}".format(Total_KRW)),
+        'USLA': str("{:,.2f}".format(USLA_balance)),
+        'USLA_last_day': str("{:,.2f}".format(USLA_last_day)),
+        'USLA_last_month': str("{:,.2f}".format(USLA_last_month)),
+        'USLA_last_year': str("{:,.2f}".format(USLA_last_year)),
+        'USLA_month_ret': f"{USLA_month_ret:.2f}%",
+        'USLA_year_ret': f"{USLA_year_ret:.2f}%",
+        'USLA_KRW': str("{:,.0f}".format(USLA_KRW)),
+        'HAA': str("{:,.2f}".format(HAA_balance)),
+        'HAA_last_day': str("{:,.2f}".format(HAA_last_day)),
+        'HAA_last_month': str("{:,.2f}".format(HAA_last_month)),
+        'HAA_last_year': str("{:,.2f}".format(HAA_last_year)),
+        'HAA_month_ret': f"{HAA_month_ret:.2f}%",
+        'HAA_year_ret': f"{HAA_year_ret:.2f}%",
+        'HAA_KRW': str("{:,.0f}".format(HAA_KRW))
+    }
+
     new_USAA_data = {
         'date': str(current_date),
         'exchange_rate': exchange_rate,
@@ -200,7 +226,7 @@ try:
         json.dump(new_USAA_data, f, indent=4, ensure_ascii=False)
 
     # Telegram 알림
-    for key, value in new_USAA_data.items():
+    for key, value in str_USAA_data.items():
         message.append(f"{key}: {value}")
     TA.send_tele(message)
 
@@ -216,7 +242,7 @@ try:
         current_month = current_date.month
 
         # 데이터 저장
-        GU.save_to_sheets(spreadsheet, new_USAA_data, current_month)
+        GU.save_to_sheets(spreadsheet, str_USAA_data, current_month)
     except Exception as e:
         error_msg = f"Google Sheet 업로드 실패: {e}"
         TA.send_tele(error_msg)
