@@ -140,13 +140,13 @@ class KIS_API:
             raise RuntimeError(f"Hashkey 생성 실패: {e}")  # 빈 문자열 반환 시 주문이 진행되므로 예외로 차단
     
     # 국내 주식 현재가 조회
-    def get_KR_current_price(self, ticker: str) -> Union[float, str]: #
+    def get_KR_current_price(self, ticker: str) -> Union[int, str]: #
         """
         국내 주식 현재가 조회
         Parameters:
             ticker (str): 종목코드 (예: "005930" 삼성전자)
         Returns:
-            float: 현재가
+            int: 현재가
             str: 에러 메시지
         """
         if not ticker:
@@ -180,7 +180,7 @@ class KIS_API:
             return f"현재가 조회 오류: {e}"
 
     # 한국 주식 계좌 잔고 조회
-    def get_KR_stock_balance(self) -> Union[List[Dict], str]:
+    def get_KR_stock_balance(self) -> Union[List[Dict], str]: #
         """한국 주식 종목별 잔고 조회"""
         path = "uapi/domestic-stock/v1/trading/inquire-balance"
         url = f"{self.url_base}/{path}"
@@ -334,7 +334,7 @@ class KIS_API:
             return None
         
     # 한국 주식 매수 가능 원화 예수금 조회    
-    def get_KR_orderable_cash(self) -> Optional[float]:
+    def get_KR_orderable_cash(self) -> Optional[float]: #
         """
         한국주식 매수 가능 원화 예수금 조회
         TR: TTTC8908R (실전) / VTTC8908R (모의)
@@ -370,18 +370,18 @@ class KIS_API:
             data = response.json()
 
             if data.get('rt_cd') != '0':
-                KA.SendMessage(f"매수가능조회 API 오류: {data.get('msg1')}")
+                TA.send_tele(f"매수가능조회 API 오류: {data.get('msg1')}")
                 return None
 
             return float(data['output'].get('ord_psbl_cash', 0))
 
         except Exception as e:
-            KA.SendMessage(f"매수가능현금 조회 오류: {e}")
+            TA.send_tele(f"매수가능현금 조회 오류: {e}")
             return None
 
     # 한국 주식 매수 주문
     def order_buy_KR(self, ticker: str, quantity: int, price: int = 0,
-                     ord_dvsn: str = "00") -> Optional[Dict]:
+                     ord_dvsn: str = "00") -> Optional[Dict]: #
         """
         한국 주식 매수 주문
 
@@ -427,7 +427,7 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey":        self.app_key,
             "appSecret":     self.app_secret,
-            "tr_id":         "TTTC0802U",  # 실전: TTTC0802U / 모의: VTTC0802U
+            "tr_id":         "TTTC0802U",
             "custtype":      "P",
             "hashkey":       self.hashkey(data)
         }
@@ -471,7 +471,7 @@ class KIS_API:
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
-                    KA.SendMessage("500 에러 발생, 재시도 중...")
+                    TA.send_tele("500 에러 발생, 재시도 중...")
                     continue
                 return None
 
@@ -484,7 +484,7 @@ class KIS_API:
 
     # 한국 주식 매도 주문
     def order_sell_KR(self, ticker: str, quantity: int, price: int = 0,
-                      ord_dvsn: str = "00") -> Optional[Dict]:
+                      ord_dvsn: str = "00") -> Optional[Dict]: #
         """
         한국 주식 매도 주문
 
@@ -501,7 +501,7 @@ class KIS_API:
         """
 
         if not ticker or quantity <= 0:
-            KA.SendMessage("종목코드 또는 수량이 올바르지 않습니다.")
+            TA.send_tele("종목코드 또는 수량이 올바르지 않습니다.")
             return None
 
         path = "uapi/domestic-stock/v1/trading/order-cash"
@@ -521,7 +521,7 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey":        self.app_key,
             "appSecret":     self.app_secret,
-            "tr_id":         "TTTC0801U",  # 실전: TTTC0801U / 모의: VTTC0801U
+            "tr_id":         "TTTC0801U",
             "custtype":      "P",
             "hashkey":       self.hashkey(data)
         }
@@ -565,7 +565,7 @@ class KIS_API:
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
-                    KA.SendMessage("500 에러 발생, 재시도 중...")
+                    TA.send_tele("500 에러 발생, 재시도 중...")
                     continue
                 return None
 
@@ -743,7 +743,7 @@ class KIS_API:
 
     # 한국 주식 개별 주문 취소
     def cancel_KR_order(self, order_number: str, ticker: str,
-                         quantity: int) -> Optional[Dict]:
+                         quantity: int) -> Optional[Dict]: #
         """
         한국 주식 개별 주문 취소
 
@@ -810,7 +810,7 @@ class KIS_API:
                 }
 
         except Exception as e:
-            KA.SendMessage(f"주문 취소 오류: {e}")
+            TA.send_tele(f"주문 취소 오류: {e}")
             return None
 
     # 한국 주식 전체 주문 취소
@@ -926,7 +926,7 @@ class KIS_API:
                 TA.send_tele(f"거래일 조회 오류 (3회 실패): {e}")
                 return False
             
-    def round_to_tick(self, price: float, market: str = "KR") -> int:
+    def round_to_tick(self, price: float, market: str = "KR") -> int: #
         """
         주문 가격을 시장별 호가 단위에 맞게 변환
         

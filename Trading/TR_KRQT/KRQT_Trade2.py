@@ -24,7 +24,7 @@ KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 sell_tax = KIS.sell_fee_tax  # 매도 수수료 0.014% + 세금 0.2% KRQT계좌
 buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
-KRQT_TR_path = "/var/autobot/TR_KRQT/KRQT_TR.json" # json
+KRQT_day_path = "/var/autobot/TR_KRQT/KRQT_day.json" # json
 KRQT_target_path = "/var/autobot/TR_KRQT/KRQT_target.json" # json
 KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
 
@@ -80,327 +80,6 @@ def health_check(): #
     if checks:
         TA.send_tele("\n".join(checks))
         sys.exit(1)
-
-def get_balance():
-    # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
-    USD_account = KIS.get_US_dollar_balance()
-    if USD_account:
-        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
-    else:
-        USD = 0  # API 호출 실패 시 처리
-    time_module.sleep(0.1)
-
-    USLA_balance = 0 # 해당 모델 현재 달러화 잔고
-    USLA_qty = {} # 해당 티커 현재 보유량
-    USLA_price  = {} # 해당 티커 현재 가격
-    for ticker in USLA_ticker:
-        balance = KIS.get_ticker_balance(ticker)
-        if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
-            eval_amount = balance.get('eval_amount', 0)
-            USLA_qty[ticker] = balance.get('holding_qty', 0)
-            USLA_price[ticker] = balance.get('current_price', 0)
-        else:
-            eval_amount = 0  # 문자열(에러) 반환 시 처리
-            USLA_qty[ticker] = 0
-            USLA_price[ticker] = 0
-        USLA_balance += eval_amount
-        time_module.sleep(0.1)
-
-    HAA_balance = 0 # 해당 모델 현재 달러화 잔고
-    HAA_qty = {} # 해당 티커 현재 보유량
-    HAA_price  = {} # 해당 티커 현재 가격
-    for ticker in HAA_ticker:
-        if ticker == 'TIP':
-            continue # TIP은 Regime signal 확인용으로 투자, 보유용이 아니라서 제외
-        balance = KIS.get_ticker_balance(ticker)
-        if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
-            eval_amount = balance.get('eval_amount', 0)
-            HAA_qty[ticker] = balance.get('holding_qty', 0)
-            HAA_price[ticker] = balance.get('current_price', 0)
-        else:
-            eval_amount = 0  # 문자열(에러) 반환 시 처리
-            HAA_qty[ticker] = 0
-            HAA_price[ticker] = 0
-        HAA_balance += eval_amount
-        time_module.sleep(0.1)
-
-    Total_balance = USLA_balance + HAA_balance + USD # 전체 잔고
-
-    return USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance
-
-def Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time):
-    """
-    매도 주문 실행 함수 - 개선버전 (메시지 통합)
-    
-    Parameters:
-    - USLA: USLA 모델 내 티커별 트레이딩 딕셔너리
-    - HAA: HAA 모델 내 티커별 트레이딩 딕셔너리
-    - sell_split_USLA: USLA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
-    - sell_split_HAA: HAA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
-    - order_time: 현재 주문 시간 정보 딕셔너리  # 추가
-    
-    Returns:
-    - Sell_order: 주문 결과 리스트 (성공/실패 모두 포함)
-    """  
-    Sell_order = []
-    order_messages = []
-    
-    # 수정: 함수 내부에서 호출하지 않고 매개변수로 받음
-    round_info = f"{order_time['round']}/{order_time['total_round']}회 매도주문"
-    order_messages.append(round_info)
-
-    Sell_USLA = {}
-    for ticker in USLA.keys():
-        if USLA[ticker]['sell_qty'] > 0:
-            Sell_USLA[ticker] = int(USLA[ticker]['sell_qty'])
-
-    Sell_HAA = {}
-    for ticker in HAA.keys():
-        if HAA[ticker]['sell_qty'] > 0:
-            Sell_HAA[ticker] = int(HAA[ticker]['sell_qty'])
-
-    Sell = {**Sell_USLA, **Sell_HAA}
-
-    if len(Sell.keys()) == 0:
-        order_messages.append("매도 종목이 없습니다.")
-        return Sell_order, order_messages
-
-    for ticker in Sell.keys():
-        if Sell[ticker] == 0:
-            continue
-        
-        # ✅ 핵심 수정: 티커별로 올바른 분할 설정 사용
-        if ticker in USLA_ticker:
-            split_count = sell_split_USLA[0]
-            price_multipliers = sell_split_USLA[1]
-        else:
-            split_count = sell_split_HAA[0]
-            price_multipliers = sell_split_HAA[1]
-        
-        qty_per_split = int(Sell[ticker] // split_count)
-
-        if ticker in USLA_ticker:
-            current_price = USLA[ticker].get("current_price", 0)
-        else:
-            current_price = HAA[ticker].get("current_price", 0)
-
-        if not isinstance(current_price, (int, float)) or current_price <= 0:
-            error_msg = f"{ticker} 가격 조회 실패 - 매도 주문 스킵"
-            order_messages.append(error_msg)
-            Sell_order.append({
-                'success': False,
-                'ticker': ticker,
-                'quantity': Sell[ticker],
-                'price': 0,
-                'order_number': '',
-                'order_time': datetime.now().strftime('%H%M%S'),
-                'error_message': error_msg,
-                'split_index': -1
-            })
-            continue
-
-        for i in range(split_count):
-            if i == split_count - 1:
-                quantity = int(Sell[ticker] - qty_per_split * (split_count - 1))
-            else:
-                quantity = qty_per_split
-            
-            if quantity == 0:
-                continue
-
-            price = round(current_price * price_multipliers[i], 2)
-                
-            try:
-                order_info, order_sell_message = KIS.order_sell_US(ticker, quantity, price)
-                order_messages.extend(order_sell_message)
-                
-                if order_info and order_info.get('success') == True:
-                    order_info = {
-                        'success': True,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': order_info.get('order_number', ''),
-                        'order_time': order_info.get('order_time', ''),
-                        'org_number': order_info.get('org_number', ''),
-                        'message': order_info.get('message', ''),
-                        'split_index': i
-                    }
-                    Sell_order.append(order_info)
-                else:
-                    error_msg = order_info.get('error_message', 'Unknown error') if order_info else 'API 호출 실패'
-                    Sell_order.append({
-                        'success': False,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': '',
-                        'order_time': datetime.now().strftime('%H%M%S'),
-                        'error_message': error_msg,
-                        'split_index': i
-                    })
-            except Exception as e:
-                error_msg = f"Exception: {str(e)}"
-                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
-                Sell_order.append({
-                    'success': False,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': '',
-                    'order_time': datetime.now().strftime('%H%M%S'),
-                    'error_message': error_msg,
-                    'split_index': i
-                })
-            
-            # 같은 티커의 분할 주문 사이는0.2초, 다른 티커로 넘어갈 때는 0.2초
-            if i < split_count - 1:
-                time_module.sleep(0.2)
-            else:
-                time_module.sleep(0.2)
-    
-    success_count = sum(1 for order in Sell_order if order['success'])
-    total_count = len(Sell_order)
-    order_messages.append(f"매도 주문: {success_count}/{total_count} 완료")
-    
-    return Sell_order, order_messages
-
-def Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time):
-    """
-    매수 주문 실행 함수 - 버그 수정 버전
-    
-    Parameters:
-    - USLA: USLA 모델 내 티커별 트레이딩 딕셔너리
-    - HAA: HAA 모델 내 티커별 트레이딩 딕셔너리
-    - buy_split_USLA: USLA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
-    - buy_split_HAA: HAA 모델의 분할 정보 [분할횟수, [가격조정비율 리스트]]
-    - order_time: 현재 주문 시간 정보 딕셔너리
-    
-    Returns:
-    - Buy_order: 주문 결과 리스트 (성공/실패 모두 포함)
-    """
-    Buy_order = []
-    order_messages = []
-
-    round_info = f"{order_time['round']}/{order_time['total_round']}회 매수주문"
-    order_messages.append(round_info)    
-    
-    Buy_USLA = {}
-    for ticker in USLA.keys():
-        if USLA[ticker]['buy_qty'] > 0:
-            Buy_USLA[ticker] = int(USLA[ticker]['buy_qty'])
-
-    Buy_HAA = {}
-    for ticker in HAA.keys():
-        if HAA[ticker]['buy_qty'] > 0:
-            Buy_HAA[ticker] = int(HAA[ticker]['buy_qty'])
-
-    Buy = {**Buy_USLA, **Buy_HAA}
-    
-    if len(Buy.keys()) == 0:
-        order_messages.append("매수할 종목이 없습니다.")
-        return Buy_order, order_messages
-    
-    for ticker in Buy.keys():
-        if Buy[ticker] == 0:
-            order_messages.append(f"{ticker} 매수 수량 0")
-            continue
-        
-        # ✅ 핵심 수정: 티커별로 올바른 분할 설정 사용
-        if ticker in USLA_ticker:
-            split_count = buy_split_USLA[0]
-            price_multipliers = buy_split_USLA[1]
-        else:
-            split_count = buy_split_HAA[0]
-            price_multipliers = buy_split_HAA[1]
-        
-        qty_per_split = int(Buy[ticker] // split_count)
-
-        if ticker in USLA_ticker:
-            current_price = USLA[ticker].get("current_price", 0)
-        else:
-            current_price = HAA[ticker].get("current_price", 0)
-        
-        if not isinstance(current_price, (int, float)) or current_price <= 0:
-            error_msg = f"{ticker} 가격 조회 실패 - 주문 스킵"
-            order_messages.append(error_msg)
-            Buy_order.append({
-                'success': False,
-                'ticker': ticker,
-                'quantity': Buy[ticker],
-                'price': 0,
-                'order_number': '',
-                'order_time': datetime.now().strftime('%H%M%S'),
-                'error_message': error_msg,
-                'split_index': -1
-            })
-            continue
-
-        for i in range(split_count):
-            if i == split_count - 1:
-                quantity = int(Buy[ticker] - qty_per_split * (split_count - 1))
-            else:
-                quantity = qty_per_split
-            
-            if quantity == 0:
-                continue
-
-            price = round(current_price * price_multipliers[i], 2)
-                
-            try:
-                order_info, order_buy_message = KIS.order_buy_US(ticker, quantity, price)
-                order_messages.extend(order_buy_message)
-                
-                if order_info and order_info.get('success') == True:
-                    order_info = {
-                        'success': True,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': order_info.get('order_number', ''),
-                        'order_time': order_info.get('order_time', ''),
-                        'org_number': order_info.get('org_number', ''),
-                        'message': order_info.get('message', ''),
-                        'split_index': i
-                    }
-                    Buy_order.append(order_info)
-                else:
-                    error_msg = order_info.get('error_message', 'Unknown error') if order_info else 'API 호출 실패'
-                    Buy_order.append({
-                        'success': False,
-                        'ticker': ticker,
-                        'quantity': quantity,
-                        'price': price,
-                        'order_number': '',
-                        'order_time': datetime.now().strftime('%H%M%S'),
-                        'error_message': error_msg,
-                        'split_index': i
-                    })
-            except Exception as e:
-                error_msg = f"Exception: {str(e)}"
-                order_messages.append(f"❌ {ticker} {quantity}주 @${price} - {error_msg}")
-                Buy_order.append({
-                    'success': False,
-                    'ticker': ticker,
-                    'quantity': quantity,
-                    'price': price,
-                    'order_number': '',
-                    'order_time': datetime.now().strftime('%H%M%S'),
-                    'error_message': error_msg,
-                    'split_index': i
-                })
-
-            # 같은 티커의 분할 주문 사이는 0.2초, 다른 티커로 넘어갈 때는 0.2초
-            if i < split_count - 1:
-                time_module.sleep(0.2)
-            else:
-                time_module.sleep(0.2)
-
-    success_count = sum(1 for order in Buy_order if order['success'])
-    total_count = len(Buy_order)
-    order_messages.append(f"매수 주문: {success_count}/{total_count} 완료")
-
-    return Buy_order, order_messages
 
 def save_json(data, path): #
     """
@@ -522,11 +201,11 @@ message = [] # 출력메시지 LIST 생성
 
 # KRQT_TR.json 불러오기
 try:
-    with open(KRQT_TR_path, 'r', encoding='utf-8') as f:
+    with open(KRQT_day_path, 'r', encoding='utf-8') as f:
         TR = json.load(f)
 except Exception as e:
-    TA.send_tele(f"KRQT_TR JSON 파일 오류: {e}")
-    sys.exit(0)
+    TA.send_tele(f"KRQT_day.json 파일 오류: {e}")
+    sys.exit(1)
     
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
@@ -535,32 +214,42 @@ message.append(f"KRQT: {order['day']}일차 {order['round']}/{order['total_round
 # 전회 주문 취소
 summary = KIS.cancel_all_KR_unfilled_orders(side = 'all')
 if isinstance(summary, dict):
-    message.append(f"{summary['success']}/{summary['total']} 주문 취소 성공")
+    message.append(f"KRQT: {summary['success']}/{summary['total']} 주문 취소 성공")
 else:
-    message.append(f"주문 취소 에러발생")
+    message.append(f"KRQT: 주문 취소 에러발생")
 
-# 회차별 target 데이터 불러오기 (1, 8회차는 불러오기 및 계산)
+# 회차별 target 데이터 불러오기 (1, 8회차 불러오기와 계산)
 if order['round'] == 1 or order['round'] == 8:
     # 목표종목 csv파일 불러오기 > Dic, JSON 변환
     try:
         with open(KRQT_stock_path, 'r', encoding='utf-8') as f:
             Target = pd.read_csv(f, dtype={
-                "code": str,    # 코드 > 문자열
-                "name": str,    # 종목 > 문자열
-                "weight": float # 비중 > 실수
+                "code": str,
+                "name": str,
+                "weight": float,
+                "category": str
             })
     except Exception as e:
         TA.send_tele(f"KRQT_stock.csv 파일 오류: {e}")
         sys.exit(1)
 
-    # day별 목표 수량 산출(1회차, 8회차)
-    target = {}
-    for _, row in Target.iterrows():
-        code = row["code"][1:]
-        target[code] = {       # str
-            "name":   row["name"],       # str
-            "weight": row["weight"],     # float
+    # 중복 종목 비중 합산
+    Target["code"] = Target["code"].str[1:]
+
+    grouped = Target.groupby("code").agg(
+        name=("name", "first"),
+        weight=("weight", "sum"),
+        categories=("category", list)  # 전략 목록 보존
+    ).reset_index()
+
+    target = {
+        str(row["code"]): {
+            "name":       str(row["name"]),
+            "weight":     float(row["weight"]),
+            "categories": [str(c) for c in row["categories"]],  # ['모멘텀'] or ['모멘텀', '피크']
         }
+        for _, row in grouped.iterrows()
+    }
 
     # 총 원화 평가금액 > 투자금액(99%) 산출
     account = KIS.get_KR_account_summary()
@@ -568,12 +257,12 @@ if order['round'] == 1 or order['round'] == 8:
         total_invest = account['total_krw_asset'] * 0.99 # cash는 1%유지
     else:
         TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
-        sys.exit(0)
+        sys.exit(1)
 
     # 종목별 목표 투자금액 및 수량 산출 
     target_code = list(target.keys())
-    for i in code:
-        price = int(KIS.get_KR_current_price(i))
+    for i in target_code:
+        price = KIS.get_KR_current_price(i)
         if price == 0 or not isinstance(price, int):
             TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(0)
@@ -583,8 +272,9 @@ if order['round'] == 1 or order['round'] == 8:
 
     # 당일 target 저장하기
     json_message = save_json(target, KRQT_target_path)
-    message.append(json_message)
-else:
+    message.extend(json_message)
+
+else: # 1회, 8회차가 아닌 경우 불러오기만 시행
     # 당일 target 불러오기
     target = {}
     try:
@@ -592,14 +282,14 @@ else:
             target = json.load(f)
     except Exception as e:
         TA.send_tele(f"KRQT_target.json 파일 오류: {e}")
-        sys.exit(0)
+        sys.exit(1)
     target_code = list(target.keys())
 
 # 보유 종목 잔고 불러오기
-stocks = KIS.get_KR_stock_balance() ###########################################################################
+stocks = KIS.get_KR_stock_balance()
 if not isinstance(stocks, list):
-    KA.SendMessage(f"KRQT: 잔고 조회 불가로 종료합니다. ({stocks})")
-    sys.exit(0)
+    TA.send_tele(f"KRQT: 잔고 조회 불가로 종료합니다. ({stocks})")
+    sys.exit(1)
 
 hold = {}
 for stock in stocks:
@@ -637,264 +327,111 @@ buy_split = [round_split["buy_splits"], round_split["buy_price"]]
 sell_code = list(sell.keys())
 
 if len(sell_code) == 0:
-    message.append("매도 종목 없음")
+    message.append("KRQT:매도 종목 없음")
 
 elif len(sell_code) > 0 and sell_split[0] > 0:
-    message.append(f"-매도 주문-")
-    for ticker in sell_code:
-        total_qty = sell[ticker]
-        split_qty = int(total_qty // sell_split[0])
+    message.append(f"KRQT: {order_time['round']}회차 - 매도 주문")
+    for code, qty in sell.items():
+        split_qty = int(qty // sell_split[0])
         if split_qty < 1:
             sell_split[0] = 1
             sell_split[1] = [0.99]
+            split_qty = int(qty)
 
-        current_price = int(KIS.get_KR_current_price(ticker))
+        price = KIS.get_KR_current_price(code)
+        if price == 0 or not isinstance(price, int):
+            message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            sys.exit(1)
 
         for i in range(sell_split[0]):
-            split_price = float(current_price * sell_split[1][i])
+            split_price = float(price * sell_split[1][i])
             order_price= KIS.round_to_tick(price=split_price, market="KR") 
-            order_info, order_message = KIS.order_sell_KR(ticker, split_qty, order_price, "00")
-            message.extend(order_message)
-            order_message - [] # 메세지 초기화
+            order_info = KIS.order_sell_KR(code, split_qty, order_price, "00")
+            message.extend(order_info)
             time_module.sleep(0.125)
 
 # 매도 매수 시간딜레이
 time_module.sleep(600)
-
+# 매수구간 전환
 # 주문가능 금액 조회 및 주문수량 구하기
 KRW = KIS.get_KR_orderable_cash()
-
 if not isinstance(KRW, float):
-    KA.SendMessage(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({KRW})")
-    sys.exit(0)
+    TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({KRW})")
+    sys.exit(1)
 
 # 주문가능금액에 맞춰 매수잔고 재조정
-"""
-매수금액 합계보다 주문가능 금액이 모자라면 
-"""
+orderable_KRW = KRW
+target_KRW = 0
 
+for code, qty in buy.items():
+    price = KIS.get_KR_current_price(code)
+    if not isinstance(price, int) or price == 0:
+        message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+        sys.exit(1)
+    ticker_invest = price * qty
+    target_KRW += ticker_invest
+    time_module.sleep(0.125)
 
-
-
+if target_KRW > orderable_KRW:
+    adjust_rate = orderable_KRW / target_KRW
+    for ticker, ticker_qty in buy.items():
+        buy[ticker] = int(ticker_qty * adjust_rate)
+else:
+    pass # 예수금이 충분할 경우 조정 없음
 
 # 매수주문
 buy_code = list(buy.keys())
 
+if len(buy_code) == 0:
+    message.append("KRQT:매수 종목 없음")
 
-    
-#     # 예수금에 맞는 주문수량 구하기
-#     FULL_BUYUSD = 0
-#     price_error = False
-    
-#     for ticker in USLA_ticker:
-#         if USLA[ticker]['current_price'] <= 0:
-#             message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
-#             USLA[ticker]['buy_qty'] = 0
-#             price_error = True
-#             continue
-#         invest = USLA[ticker]['buy_qty'] * USLA[ticker]['current_price']
-#         FULL_BUYUSD += invest
-        
-#     for ticker in HAA_ticker:
-#         if ticker == 'TIP':
-#             continue
-#         if HAA[ticker]['current_price'] <= 0:
-#             message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
-#             HAA[ticker]['buy_qty'] = 0
-#             price_error = True
-#             continue
-#         invest = HAA[ticker]['buy_qty'] * HAA[ticker]['current_price']
-#         FULL_BUYUSD += invest
-        
-#     if price_error:
-#         message.append("⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
-        
-#     if FULL_BUYUSD > USD:
-#         ADJUST_RATE = USD / FULL_BUYUSD
-#         for ticker in USLA_ticker:
-#             USLA[ticker]['buy_qty'] = int(USLA[ticker]['buy_qty'] * ADJUST_RATE)
-#         for ticker in HAA_ticker:
-#             HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
-#     else:
-#         pass  # 예수금이 충분할 경우 조정 없음
+elif len(buy_code) > 0 and buy_split[0] > 0:
+    message.append(f"KRQT: {order_time['round']}회차 - 매수 주문")
+    for code, qty in buy.items():
+        split_qty = int(qty // sell_split[0])
+        if split_qty < 1:
+            sell_split[0] = 1
+            sell_split[1] = [1.01]
+            split_qty = int(qty)
 
-#     # 매수주문
-#     Buy_order, order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
-#     message.extend(order_messages)
+        price = KIS.get_KR_current_price(ticker)
+        if not isinstance(price, int) or price == 0:
+            message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            sys.exit(1)
 
-#     # 다음 order time으로 넘길 Trading data json 데이터 저장
-#     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
-#     message.extend(saveTR_message)
-#     send_messages_in_chunks(message, max_length=1000)
+        for i in range(buy_split[0]):
+            split_price = float(price * sell_split[1][i])
+            order_price= KIS.round_to_tick(price=split_price, market="KR") 
+            order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")
+            message.extend(order_info)
+            time_module.sleep(0.125)
 
-#     sys.exit(0)
+# 7회차에는 day = 2로 전환
+if order_time['round'] == 7:
+    TR = {
+        "day": 2
+    }
+    json_message = save_json(TR, KRQT_day_path)
+    message.extend(json_message)
 
-# elif order_time['round'] in range(2, 25):  # Round 2~24회차
-#     # ====================================
-#     # 1단계: 지난 라운드 TR_data 불러오기
-#     # ====================================
-#     try:
-#         with open(USAA_TR_path, 'r', encoding='utf-8') as f:
-#             TR_data = json.load(f)
-#     except Exception as e:
-#         message.append(f"USAA_TR JSON 파일 오류: {e}")
-#         sys.exit(0)
+# 14회차에는 day = 1로 전환 및 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
+if order_time['round'] == 14:
+    TR = {
+        "day": 1
+    }
+    json_message = save_json(TR, KRQT_day_path)
+    message.extend(json_message)
 
-#     # ============================================
-#     # 2단계: 미체결 주문 취소
-#     # ============================================
-#     try:
-#         cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
-#         message.extend(cancel_messages)
-#         if cancel_summary['total'] > 0:
-#             message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
-#     except Exception as e:
-#         message.append(f"USAA 주문 취소 오류: {e}")
 
-#     # ============================================
-#     # 3단계: 새로운 주문 준비 및 실행
-#     # ============================================
-#     # 계좌잔고 조회
-#     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-    
-#     # 목표 비중 만들기
-#     USLA = TR_data["USLA"]
-#     for ticker in USLA_ticker:
-#         USLA[ticker]['hold_qty'] = int(USLA_qty.get(ticker, 0)), # 현재 보유량 업데이트
-#         current_price = KIS.get_US_current_price(ticker)
-#         time_module.sleep(0.15)
-#         USLA[ticker]['current_price'] = current_price # 해당 티커의 현재가
-        
-#         if current_price <= 0:
-#             message.append(f"⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
-#             USLA[ticker]['target_qty'] = int(USLA_qty.get(ticker, 0))  # ← 현재 수량 유지 (핵심!)
-#             USLA[ticker]['target_balance'] = 0
-#             USLA[ticker]['buy_qty'] = 0
-#             USLA[ticker]['sell_qty'] = 0
-#             continue
 
-#         USLA_target_qty = int((USLA[ticker]['target_weight'] * Total_balance) / USLA[ticker]['current_price'])
-#         USLA_target_balance = USLA[ticker]['target_weight'] * Total_balance
-#         USLA[ticker]['target_balance'] = USLA_target_balance  # 목표투자금 업데이트
-#         USLA[ticker]['target_qty'] = USLA_target_qty  # 목표수량 업데이트
-#         USLA[ticker]['buy_qty'] = int(USLA_target_qty - USLA_qty[ticker] if USLA_target_qty > USLA_qty[ticker] else 0)  # 매수 수량 업데이트
-#         USLA[ticker]['sell_qty'] = int(USLA_qty[ticker] - USLA_target_qty if USLA_target_qty < USLA_qty[ticker] else 0)  # 매도 수량 업데이트
 
-#     HAA = TR_data["HAA"]
-#     for ticker in HAA_ticker:
-#         # TIP은 건너뛰기
-#         if ticker == 'TIP':
-#             continue
-#         HAA[ticker]['hold_qty'] = int(HAA_qty.get(ticker, 0))  # 현재 보유량 업데이트
-#         current_price = KIS.get_US_current_price(ticker)
-#         time_module.sleep(0.15)
-#         HAA[ticker]['current_price'] = current_price # 해당 티커의 현재가
-#         if current_price <= 0:
-#             HAA_target_qty = 0
-#             message.append(f"⚠️ {ticker} 가격 조회 실패 - 거래 스킵")
-#             HAA[ticker]['target_qty'] = int(HAA_qty.get(ticker, 0))  # ← 현재 수량 유지 (핵심!)
-#             HAA[ticker]['target_balance'] = 0
-#             HAA[ticker]['buy_qty'] = 0
-#             HAA[ticker]['sell_qty'] = 0
-#             continue
 
-#         HAA_target_qty = int((HAA[ticker]['target_weight'] * Total_balance) / HAA[ticker]['current_price'])
-#         HAA_target_balance = HAA[ticker]['target_weight'] * Total_balance
-#         HAA[ticker]['target_balance'] = HAA_target_balance  # 목표투자금 업데이트
-#         HAA[ticker]['target_qty'] = HAA_target_qty  # 목표수량 업데이트
-#         HAA[ticker]['buy_qty'] = int(HAA_target_qty - HAA_qty[ticker] if HAA_target_qty > HAA_qty[ticker] else 0)  # 매수 수량 업데이트
-#         HAA[ticker]['sell_qty'] = int(HAA_qty[ticker] - HAA_target_qty if HAA_target_qty < HAA_qty[ticker] else 0)  # 매도 수량 업데이트
 
-#     # 목표비중 합계 검증
-#     total_weight = 0
-#     for ticker in USLA.keys():
-#         total_weight += USLA[ticker].get('target_weight', 0)
-#     for ticker in HAA.keys():
-#         total_weight += HAA[ticker].get('target_weight', 0)
 
-#     if total_weight > 1.01:
-#         error_msg = f"❌ 목표 비중 초과: {total_weight:.2%}"
-#         message.append(error_msg)
-#         KA.SendMessage("\n".join(message))
-#         sys.exit(1)
-#     elif total_weight < 0.90:
-#         message.append(f"⚠️ 목표 비중 부족: {total_weight:.2%}")
-#     else:
-#         message.append(f"✓ 목표 비중 합계: {total_weight:.2%}")
-
-#     # 회차별 분할 데이터 트레이딩
-#     round_split = split_data(order_time['round'])
-#     sell_split_USLA = [round_split["sell_splits"], round_split["sell_price_USLA"]]
-#     buy_split_USLA = [round_split["buy_splits"], round_split["buy_price_USLA"]]
-#     sell_split_HAA = [round_split["sell_splits"], round_split["sell_price_HAA"]]
-#     buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
-
-#     # 매도주문
-#     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
-#     message.extend(order_messages)
-#     order_messages = [] # 메세지 초기화
-    
-#     # 예수금에 맞는 주문수량 구하기
-#     FULL_BUYUSD = 0
-#     price_error = False
-    
-#     for ticker in USLA_ticker:
-#         if USLA[ticker]['current_price'] <= 0:
-#             message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
-#             USLA[ticker]['buy_qty'] = 0
-#             price_error = True
-#             continue
-#         invest = USLA[ticker]['buy_qty'] * USLA[ticker]['current_price']
-#         FULL_BUYUSD += invest
-
-#     for ticker in HAA_ticker:
-#         if ticker == 'TIP':
-#             continue
-#         if HAA[ticker]['current_price'] <= 0:
-#             message.append(f"⚠️ {ticker} 가격 조회 실패 - 매수 스킵")
-#             HAA[ticker]['buy_qty'] = 0
-#             price_error = True
-#             continue
-#         invest = HAA[ticker]['buy_qty'] * HAA[ticker]['current_price']
-#         FULL_BUYUSD += invest
-
-#     if price_error:
-#         message.append("⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
-        
-#     if FULL_BUYUSD > USD:
-#         ADJUST_RATE = USD / FULL_BUYUSD
-#         for ticker in USLA_ticker:
-#             USLA[ticker]['buy_qty'] = int(USLA[ticker]['buy_qty'] * ADJUST_RATE)
-#         for ticker in HAA_ticker:
-#             HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
-#     else:
-#         pass  # 예수금이 충분할 경우 조정 없음
-    
-#     # 매수주문
-#     Buy_order, buy_order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
-#     message.extend(buy_order_messages)
-
-#     # 다음 order time으로 넘길 Trading data json 데이터 저장
-#     saveTR_message = save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA)
-#     message.extend(saveTR_message)
-
-#     # 메세지 출력
-#     send_messages_in_chunks(message, max_length=1000)
 
 #     sys.exit(0)
 
 # elif order_time['round'] == 25:  # 최종기록
-#     # ============================================
-#     # 1단계: 최종 미체결 주문 취소
-#     # ============================================
-#     try:
-#         cancel_summary, cancel_messages = KIS.cancel_all_unfilled_orders()
-#         message.extend(cancel_messages)
-#         if cancel_summary['total'] > 0:
-#             message.append(f"미체결 주문 취소: {cancel_summary['success']}/{cancel_summary['total']}")
-#     except Exception as e:
-#         message.append(f"USAA 주문 취소 오류: {e}")
-        
 #     # ============================================
 #     # 2단계: 최종 데이터 출력
 #     # ============================================
@@ -926,14 +463,24 @@ buy_code = list(buy.keys())
 #     sys.exit(0)
 # sys.exit(0)
 
-# price = int(KIS.get_KR_current_price("005930"))
-# print(f"삼성전자현재가: {price}원")
-# result = KIS.get_KR_stock_balance()
-# print("\n".join(result))
-# balance = KIS.get_KR_account_summary()
-# socksbalance = balance['stock_eval_amt']
-# cash_balance = balance['cash_balance']
-# total_krw_asset = balance['total_krw_asset']
-# print(f"주식평가금액: {socksbalance}원 \n원화 잔고: {cash_balance}원 \n전체 원화자산: {total_krw_asset}원")
-# KRW =KIS.get_KR_orderable_cash()
-# print(f"원화주문가능금액: {KRW}원")
+
+
+
+
+
+"""
+수익률 추적 시에는 categories를 기준으로 전략별로 역산하면 됩니다.
+예: 전략별 종목/비중 역산
+중복 종목의 경우 합산 비중(0.2)을 전략 수(2)로 나눠 각 전략에 원래 비중(0.1)을 돌려놓는 방식이라
+나중에 전략별 수익률 계산할 때 비중 왜곡 없이 쓸 수 있어요.
+
+strategy_stocks = {}
+for code, info in target.items():
+    for cat in info["categories"]:
+        if cat not in strategy_stocks:
+            strategy_stocks[cat] = {}
+        strategy_stocks[cat][code] = {
+            "name": info["name"],
+            "weight": info["weight"] / len(info["categories"])  # 전략별 원래 비중으로 분리
+        } 
+"""
