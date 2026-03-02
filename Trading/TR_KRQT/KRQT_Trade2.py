@@ -3,8 +3,7 @@ import json
 import telegram_alert as TA
 from datetime import datetime, timedelta as time_obj
 import pandas as pd
-import requests
-import calendar
+from collections import defaultdict
 import time as time_module
 from tendo import singleton
 import KIS_KR
@@ -26,9 +25,10 @@ sell_tax = KIS.sell_fee_tax  # 매도 수수료 0.014% + 세금 0.2% KRQT계좌
 buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
 KRQT_day_path = "/var/autobot/TR_KRQT/KRQT_day.json" # json
 KRQT_target_path = "/var/autobot/TR_KRQT/KRQT_target.json" # json
+KRQT_result_path = "/var/autobot/TR_KRQT/KRQT_result.json" # json
 KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
 
-def order_time(day=1): #
+def order_time(day=1):
     """거래일자와 거래회차 확인""" 
     # 현재 날짜와 시간 확인 UTC시간대
     now = datetime.now()
@@ -52,7 +52,7 @@ def order_time(day=1): #
 
     return order_time
 
-def health_check(): #
+def health_check():
     """시스템 상태 확인"""
     checks = []
     
@@ -81,7 +81,7 @@ def health_check(): #
         TA.send_tele("\n".join(checks))
         sys.exit(1)
 
-def save_json(data, path): #
+def save_json(data, path):
     """
     저장 실패 시에도 백업 파일 생성
     """  
@@ -107,7 +107,7 @@ def save_json(data, path): #
 
     return message
     
-def split_data(round): #
+def split_data(round):
     '''회차별 분할횟수와 분할당 가격산출'''
     if round == 1:
         sell_splits = 5
@@ -189,6 +189,15 @@ def split_data(round): #
 
     return round_split
 
+def cancel_orders(side: str="all"):
+    """모든 주문 취소"""
+    summary = KIS.cancel_all_KR_unfilled_orders(side)
+    if isinstance(summary, dict):
+        cancel_message = f"KRQT: {summary['success']}/{summary['total']} 주문 취소 성공"
+    else:
+        cancel_message = f"KRQT: 주문 취소 에러발생"
+    return cancel_message
+
 # ============================================
 # 메인 로직 # 분기 리밸런싱
 # ============================================
@@ -212,11 +221,8 @@ order = order_time(day=TR['day'])
 message.append(f"KRQT: {order['day']}일차 {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
-summary = KIS.cancel_all_KR_unfilled_orders(side = 'all')
-if isinstance(summary, dict):
-    message.append(f"KRQT: {summary['success']}/{summary['total']} 주문 취소 성공")
-else:
-    message.append(f"KRQT: 주문 취소 에러발생")
+cancel_message = cancel_orders(side='all')
+message.append(cancel_message)
 
 # 회차별 target 데이터 불러오기 (1, 8회차 불러오기와 계산)
 if order['round'] == 1 or order['round'] == 8:
@@ -414,7 +420,7 @@ if order_time['round'] == 7:
     json_message = save_json(TR, KRQT_day_path)
     message.extend(json_message)
 
-# 14회차에는 day = 1로 전환 및 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
+# 14회차에는 day = 1로 전환
 if order_time['round'] == 14:
     TR = {
         "day": 1
@@ -422,65 +428,153 @@ if order_time['round'] == 14:
     json_message = save_json(TR, KRQT_day_path)
     message.extend(json_message)
 
+# 회차별 매매 메세지 telegram 출력
+TA.send_tele(message)
+message = []
 
+# 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
+if order_time['round'] == 14:
+    time_module.sleep(200)
+    # 전회 주문 취소
+    cancel_message = cancel_orders(side='all')
+    message.append(cancel_message)
+    message.append(f"KRQT {order_time['date']} 리밸런싱 종료")
 
+    # 시작목표 불러오기
+    try:
+        with open(KRQT_stock_path, 'r', encoding='utf-8') as f:
+            plan = pd.read_csv(f, dtype={
+                "code": str,
+                "name": str,
+                "weight": float,
+                "category": str
+            })
+    except Exception as e:
+        TA.send_tele(f"KRQT_stock.csv 파일 오류: {e}")
+        sys.exit(1)
 
+    plan["code"] = plan["code"].str[1:]
 
+    plan_raw = defaultdict(list)
+    for _, row in plan.iterrows():
+        plan_raw[str(row["category"])].append({
+            "code": str(row["code"]),
+            "name": str(row["name"]),
+            "weight": float(row["weight"]),
+        })
 
+    plan = dict(plan_raw)
 
+    # 보유 종목 잔고 불러오기
+    stocks = KIS.get_KR_stock_balance()
+    if not isinstance(stocks, list):
+        TA.send_tele(f"KRQT: 잔고 조회 불가로 종료합니다. ({stocks})")
+        sys.exit(1)
 
-#     sys.exit(0)
+    hold = {}
+    for stock in stocks:
+        code = stock["종목코드"]
+        hold[code] = {
+            "name": stock["종목명"],
+            "hold_balance": stock["평가금액"],
+            "hold_qty": stock["보유수량"],
+        }
 
-# elif order_time['round'] == 25:  # 최종기록
-#     # ============================================
-#     # 2단계: 최종 데이터 출력
-#     # ============================================
-#     message.append(f"USAA {order_time['date']} 리밸런싱 종료")
+    hold_code = list(hold.keys())
+
+    result = {} 
+    # 중복종목 category 비중 적용 result
+    for category in plan.keys:
+        for stock in plan[category]:
+            if stock['code'] not in hold_code:
+                result[category] = {
+                    "code": stock['code'],
+                    "name": stock['name'],
+                    "qty": 0,
+                    "balance": 0,
+                    "weight": stock['weight'],
+                    "status": "리밸런싱 매수실패"
+                }
+            else:
+                split_weight = stock['weight'] / target[stock['code']]['weight']
+                result[category] = {
+                    "code": stock['code'],
+                    "name": stock['name'],
+                    "qty": hold[code]['hold_qty'] * split_weight,
+                    "balance": hold[code]['hold_balance'],
+                    "weight": stock['weight'],
+                    "status": "리밸런싱"
+                }
+
+    for code in hold_code:
+        if code not in target_code:
+            result["remain_last"] = {
+                "code": code,
+                "name": hold[code]['name'],
+                "qty": hold[code]['hold_qty'],
+                "balance": hold[code]['hold_balance'],
+                "weight": 0,
+                "status": "리밸런싱 매도실패"
+            }
+
+    for category, info in result.items():
+        message.append(f"{order_time['date']}일 리밸런싱 전략명:{category} 결과")
+        for name, qty, balance, status in info['name'], info['qty'], info['balance'], info['status']:
+            qty = int(info['qty'])
+            balance = str("{:,.0f}".format(info['balance']))
+            message.append(f"종목명: {name}, 잔고: {qty}주, 평가금: {balance}원, 상태: {status}")
+
+    # 전략결과 저장
+    json_message = save_json(result, KRQT_result_path)
+    message.extend(json_message)
+
+    # daily balance
+    # 전체 자산
+    daily_data = []
+    all_balance = KIS.get_KR_account_summary()
+    if isinstance(balance, dict):
+        daily_data.append(total_stocks = all_balance['stock_eval_amt'])
+        daily_data.append(total_cash = all_balance['cash_balance'])  
+        daily_data.append(total_asset = all_balance['total_krw_asset'])
+    else:
+        message.append(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
+        sys.exit(1)
+
+    # category별 자산
+    for category, info in result.items():
+        category_balance = 0
+        for balance in info['balance']:
+            category_balance += balance
+        daily_data.append(category = category_balance)
+
+    # daily balance google sheet 저장
     
-#     # 계좌잔고 조회
-#     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
 
-#     USLA_target, USLA_regime, USLA_message = USLA_target_regime()
-#     message.append(f"USLA Regime: {USLA_regime}")
-#     for i in USLA_target.keys():
-#         balance = float(USLA_qty[i]) * float(USLA_price[i])
-#         weight = float(balance) / float(Total_balance)
-#         message.append(f"USLA {i} - weight:{weight:.2%}, qty:{int(USLA_qty[i])}")
-#     HAA_target, HAA_regime, HAA_message = HAA_target_regime()
-#     message.append(f"HAA Regime: {HAA_regime}")
-#     for i in HAA_target.keys():
-#         balance = float(HAA_qty[i]) * float(HAA_price[i])
-#         weight = float(balance) / float(Total_balance)
-#         message.append(f"HAA {i} - weight:{weight:.2%}, qty:{int(HAA_qty[i])}")
-#     message.append(f"USLA 평가금: {USLA_balance:,.2f} USD")
-#     message.append(f"HAA 평가금: {HAA_balance:,.2f} USD")
-#     message.append(f"USD 평가금: {USD:,.2f} USD")
-#     message.append(f"총 평가금: {Total_balance:,.2f} USD")
 
-#     # 카톡 리밸 종료 결과 보내기
-#     send_messages_in_chunks(message, max_length=1000)
+
     
-#     sys.exit(0)
-# sys.exit(0)
+
+
+    
+
+
+
+
+    TA.send_tele(message)
+
+
+
+
+        
 
 
 
 
 
 
-"""
-수익률 추적 시에는 categories를 기준으로 전략별로 역산하면 됩니다.
-예: 전략별 종목/비중 역산
-중복 종목의 경우 합산 비중(0.2)을 전략 수(2)로 나눠 각 전략에 원래 비중(0.1)을 돌려놓는 방식이라
-나중에 전략별 수익률 계산할 때 비중 왜곡 없이 쓸 수 있어요.
 
-strategy_stocks = {}
-for code, info in target.items():
-    for cat in info["categories"]:
-        if cat not in strategy_stocks:
-            strategy_stocks[cat] = {}
-        strategy_stocks[cat][code] = {
-            "name": info["name"],
-            "weight": info["weight"] / len(info["categories"])  # 전략별 원래 비중으로 분리
-        } 
-"""
+
+
+    message = []
+
+sys.exit(0)
