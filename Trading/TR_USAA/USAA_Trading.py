@@ -64,50 +64,93 @@ def health_check():
         TA.send_tele(checks)
         sys.exit(1)
 
-def get_balance():
-    # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
-    USD_account = KIS.get_US_dollar_balance()
-    if USD_account:
-        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
-    else:
-        USD = 0  # API 호출 실패 시 처리
-    time_module.sleep(0.1)
-
-    USLA_balance = 0 # 해당 모델 현재 달러화 잔고
-    USLA_qty = {} # 해당 티커 현재 보유량
-    USLA_price  = {} # 해당 티커 현재 가격
-    for ticker in USLA_ticker:
-        balance = KIS.get_ticker_balance(ticker)
-        if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
-            eval_amount = balance.get('eval_amount', 0)
-            USLA_qty[ticker] = balance.get('holding_qty', 0)
-            USLA_price[ticker] = balance.get('current_price', 0)
+def get_balance(prev_total=None, retry=3):
+    """
+    현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
+    
+    Parameters:
+    - prev_total: 이전 총잔고 (이상 감지용). None이면 검증 생략.
+    - retry: API 재시도 횟수 (기본 3회)
+    
+    Returns:
+    - USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance
+    """
+    for attempt in range(retry):
+        # ── 달러 예수금 조회 ──────────────────────────────────────────────
+        USD_account = KIS.get_US_dollar_balance()
+        if USD_account:
+            # withdrawable(출금가능액)과 deposit(외화예수금) 중 더 보수적인 값 사용
+            # 미체결 매도 주문이 있을 경우 withdrawable이 실제보다 크게 표시될 수 있음
+            withdrawable = float(USD_account.get('withdrawable', 0))
+            deposit = float(USD_account.get('deposit', 0))
+            # 두 값의 최솟값을 사용 (더 보수적)
+            USD = min(withdrawable, deposit) if deposit > 0 else withdrawable
         else:
-            eval_amount = 0  # 문자열(에러) 반환 시 처리
-            USLA_qty[ticker] = 0
-            USLA_price[ticker] = 0
-        USLA_balance += eval_amount
+            USD = 0
         time_module.sleep(0.1)
 
-    HAA_balance = 0 # 해당 모델 현재 달러화 잔고
-    HAA_qty = {} # 해당 티커 현재 보유량
-    HAA_price  = {} # 해당 티커 현재 가격
-    for ticker in HAA_ticker:
-        if ticker == 'TIP':
-            continue # TIP은 Regime signal 확인용으로 투자, 보유용이 아니라서 제외
-        balance = KIS.get_ticker_balance(ticker)
-        if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
-            eval_amount = balance.get('eval_amount', 0)
-            HAA_qty[ticker] = balance.get('holding_qty', 0)
-            HAA_price[ticker] = balance.get('current_price', 0)
-        else:
-            eval_amount = 0  # 문자열(에러) 반환 시 처리
-            HAA_qty[ticker] = 0
-            HAA_price[ticker] = 0
-        HAA_balance += eval_amount
-        time_module.sleep(0.1)
+        # ── USLA 잔고 조회 ────────────────────────────────────────────────
+        USLA_balance = 0
+        USLA_qty = {}
+        USLA_price = {}
+        for ticker in USLA_ticker:
+            balance = KIS.get_ticker_balance(ticker)
+            if isinstance(balance, dict):
+                eval_amount = balance.get('eval_amount', 0)
+                USLA_qty[ticker] = balance.get('holding_qty', 0)
+                USLA_price[ticker] = balance.get('current_price', 0)
+            else:
+                eval_amount = 0
+                USLA_qty[ticker] = 0
+                USLA_price[ticker] = 0
+            USLA_balance += eval_amount
+            time_module.sleep(0.1)
 
-    Total_balance = USLA_balance + HAA_balance + USD # 전체 잔고
+        # ── HAA 잔고 조회 ─────────────────────────────────────────────────
+        HAA_balance = 0
+        HAA_qty = {}
+        HAA_price = {}
+        for ticker in HAA_ticker:
+            if ticker == 'TIP':
+                continue
+            balance = KIS.get_ticker_balance(ticker)
+            if isinstance(balance, dict):
+                eval_amount = balance.get('eval_amount', 0)
+                HAA_qty[ticker] = balance.get('holding_qty', 0)
+                HAA_price[ticker] = balance.get('current_price', 0)
+            else:
+                eval_amount = 0
+                HAA_qty[ticker] = 0
+                HAA_price[ticker] = 0
+            HAA_balance += eval_amount
+            time_module.sleep(0.1)
+
+        Total_balance = USLA_balance + HAA_balance + USD
+
+        # ── 잔고 이상 감지 ────────────────────────────────────────────────
+        # 이전 총잔고 대비 60% 미만이거나 200% 초과하면 재시도
+        if prev_total and prev_total > 0:
+            ratio = Total_balance / prev_total
+            if ratio < 0.6 or ratio > 2.0:
+                if attempt < retry - 1:
+                    TA.send_tele(
+                        f"USAA ⚠️ 잔고 이상 감지 (시도 {attempt+1}/{retry}): "
+                        f"현재 {Total_balance:,.2f} vs 이전 {prev_total:,.2f} (비율 {ratio:.1%})\n"
+                        f"  USD={USD:.2f}, USLA={USLA_balance:.2f}, HAA={HAA_balance:.2f}\n"
+                        f"  30초 후 재조회..."
+                    )
+                    time_module.sleep(30)
+                    continue
+                else:
+                    # 최종 시도에서도 이상이면 경고만 하고 계속
+                    TA.send_tele(
+                        f"USAA ❌ 잔고 이상 지속 ({retry}회 재시도 후):\n"
+                        f"  현재 총잔고 {Total_balance:,.2f} vs 이전 {prev_total:,.2f} (비율 {ratio:.1%})\n"
+                        f"  USD={USD:.2f}, USLA={USLA_balance:.2f}, HAA={HAA_balance:.2f}\n"
+                        f"  ⛔ 수동 확인 필요 - 이전 잔고로 계속 진행"
+                    )
+        # 정상이면 반환
+        break
 
     return USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance
 
@@ -1226,8 +1269,22 @@ if order_time['round'] == 1:
         TA.send_tele(message)
         sys.exit(1)
     
-    # 계좌잔고 조회
-    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+    # 계좌잔고 조회 (이전 총잔고 전달 → 이상 감지용)
+    prev_total = float(TR_data.get('USLA_target_balance', 0)) + float(TR_data.get('HAA_target_balance', 0)) + float(TR_data.get('USD_total', 0))
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance(prev_total=prev_total)
+
+    # 잔고 이상 시 비상 중단 (이전 대비 50% 미만이면 실행 차단)
+    if prev_total > 0 and Total_balance < prev_total * 0.5:
+        error_msg = (
+            f"USAA ⛔ Round1 잔고 이상으로 실행 중단\n"
+            f"  조회 잔고: {Total_balance:,.2f} USD\n"
+            f"  이전 잔고: {prev_total:,.2f} USD\n"
+            f"  수동 확인 후 재실행 필요"
+        )
+        message.append(error_msg)
+        TA.send_tele(message)
+        sys.exit(1)
+
     USD = float(USD)
     USD_gap = float(USD - float(TR_data['USD_total']))
     USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.7)
@@ -1346,6 +1403,28 @@ if order_time['round'] == 1:
     order_messages = [] # 메세지 초기화
     time_module.sleep(10)
     
+    # ─────────────────────────────────────────────────────────
+    # 매수 가능 금액 산출
+    # Round 1에서는 매도 주문이 미체결 상태일 수 있으므로
+    # 현재 예수금(USD) + 금번 매도 예정 금액을 합산하여 사용
+    # ─────────────────────────────────────────────────────────
+    SELL_AMOUNT_USLA = sum(
+        USLA[t]['sell_qty'] * USLA[t]['current_price']
+        for t in USLA_ticker
+        if isinstance(USLA[t]['current_price'], float) and USLA[t]['current_price'] > 0
+    )
+    SELL_AMOUNT_HAA = sum(
+        HAA[t]['sell_qty'] * HAA[t]['current_price']
+        for t in HAA_ticker
+        if t != 'TIP' and isinstance(HAA[t]['current_price'], float) and HAA[t]['current_price'] > 0
+    )
+    SELL_AMOUNT = SELL_AMOUNT_USLA + SELL_AMOUNT_HAA
+    # 수수료 차감 (매도 금액의 수수료만큼 보수적으로 산정)
+    AVAILABLE_USD = USD + SELL_AMOUNT * (1 - fee_rate)
+    message.append(
+        f"USAA: 매수가능금액 산정\n  현재예수금: ${USD:,.2f}\n  매도예정금: ${SELL_AMOUNT:,.2f} (수수료 후: ${SELL_AMOUNT*(1-fee_rate):,.2f})\n  합계: ${AVAILABLE_USD:,.2f}"
+    )
+
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
     price_error = False
@@ -1371,10 +1450,13 @@ if order_time['round'] == 1:
         FULL_BUYUSD += invest
         
     if price_error:
-        message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
+        message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")
+
+    message.append(f"USAA: 총 매수예정금: ${FULL_BUYUSD:,.2f} / 매수가능금: ${AVAILABLE_USD:,.2f}")
         
-    if FULL_BUYUSD > USD:
-        ADJUST_RATE = USD / FULL_BUYUSD
+    if FULL_BUYUSD > AVAILABLE_USD:
+        ADJUST_RATE = AVAILABLE_USD / FULL_BUYUSD
+        message.append(f"USAA: ⚠️ 매수 수량 조정 (비율 {ADJUST_RATE:.3f})")
         for ticker in USLA_ticker:
             USLA[ticker]['buy_qty'] = int(USLA[ticker]['buy_qty'] * ADJUST_RATE)
         for ticker in HAA_ticker:
@@ -1382,7 +1464,7 @@ if order_time['round'] == 1:
                 continue
             HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
     else:
-        pass  # 예수금이 충분할 경우 조정 없음
+        message.append("USAA: ✓ 매수 수량 조정 없음 (예수금 충분)")
 
     # 매수주문
     Buy_order, order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
@@ -1421,9 +1503,22 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     # ============================================
     # 3단계: 새로운 주문 준비 및 실행
     # ============================================
-    # 계좌잔고 조회
-    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-    
+    # 계좌잔고 조회 (이전 총잔고 전달 → 이상 감지용)
+    prev_total = float(TR_data.get('USLA_target_balance', 0)) + float(TR_data.get('HAA_target_balance', 0)) + float(TR_data.get('USD_total', 0))
+    USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance(prev_total=prev_total)
+
+    # 잔고 이상 시 비상 중단 (이전 대비 50% 미만이면 실행 차단)
+    if prev_total > 0 and Total_balance < prev_total * 0.5:
+        error_msg = (
+            f"USAA ⛔ Round{order_time['round']} 잔고 이상으로 실행 중단\n"
+            f"  조회 잔고: {Total_balance:,.2f} USD\n"
+            f"  이전 잔고: {prev_total:,.2f} USD\n"
+            f"  수동 확인 후 재실행 필요"
+        )
+        message.append(error_msg)
+        TA.send_tele(message)
+        sys.exit(1)
+
     # 목표 비중 만들기
     USLA = TR_data["USLA"]
     for ticker in USLA_ticker:
@@ -1501,6 +1596,27 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     order_messages = [] # 메세지 초기화
     time_module.sleep(10)
     
+    # ─────────────────────────────────────────────────────────
+    # 매수 가능 금액 산출
+    # 현재 예수금(USD) + 금번 매도 예정 금액을 합산
+    # (매도 주문이 미체결 상태일 경우 예수금에 미반영)
+    # ─────────────────────────────────────────────────────────
+    SELL_AMOUNT_USLA = sum(
+        USLA[t]['sell_qty'] * USLA[t]['current_price']
+        for t in USLA_ticker
+        if isinstance(USLA[t]['current_price'], float) and USLA[t]['current_price'] > 0
+    )
+    SELL_AMOUNT_HAA = sum(
+        HAA[t]['sell_qty'] * HAA[t]['current_price']
+        for t in HAA_ticker
+        if t != 'TIP' and isinstance(HAA[t]['current_price'], float) and HAA[t]['current_price'] > 0
+    )
+    SELL_AMOUNT = SELL_AMOUNT_USLA + SELL_AMOUNT_HAA
+    AVAILABLE_USD = USD + SELL_AMOUNT * (1 - fee_rate)
+    message.append(
+        f"USAA: 매수가능금액 산정\n  현재예수금: ${USD:,.2f}\n  매도예정금: ${SELL_AMOUNT:,.2f} (수수료 후: ${SELL_AMOUNT*(1-fee_rate):,.2f})\n  합계: ${AVAILABLE_USD:,.2f}"
+    )
+
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
     price_error = False
@@ -1526,10 +1642,13 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
         FULL_BUYUSD += invest
 
     if price_error:
-        message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
+        message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")
+
+    message.append(f"USAA: 총 매수예정금: ${FULL_BUYUSD:,.2f} / 매수가능금: ${AVAILABLE_USD:,.2f}")
         
-    if FULL_BUYUSD > USD:
-        ADJUST_RATE = USD / FULL_BUYUSD
+    if FULL_BUYUSD > AVAILABLE_USD:
+        ADJUST_RATE = AVAILABLE_USD / FULL_BUYUSD
+        message.append(f"USAA: ⚠️ 매수 수량 조정 (비율 {ADJUST_RATE:.3f})")
         for ticker in USLA_ticker:
             USLA[ticker]['buy_qty'] = int(USLA[ticker]['buy_qty'] * ADJUST_RATE)
         for ticker in HAA_ticker:
@@ -1537,7 +1656,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
                 continue
             HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
     else:
-        pass  # 예수금이 충분할 경우 조정 없음
+        message.append("USAA: ✓ 매수 수량 조정 없음 (예수금 충분)")
     
     # 매수주문
     Buy_order, buy_order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
