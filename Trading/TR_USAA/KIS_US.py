@@ -629,17 +629,67 @@ class KIS_API:
             output2 = data.get('output2', [])
             if not output2:
                 return None
-            
+
             usd_info = output2[0]
-            
+            deposit      = float(usd_info.get('frcr_dncl_amt_2', 0))      # 외화예수금 (T+2 미결제 제외)
+            sll_amt_smtl = float(usd_info.get('frcr_sll_amt_smtl', 0))    # 외화매도금액합계 (T+2 미결제 매도금 전체)
+            # 주의: sll_amt_smtl은 총 매도금이며 이미 재매수에 사용된 금액 포함
+            # 정확한 현재 주문가능금액은 TTTS3007R(get_US_order_available)로 조회
             return {
                 'currency': usd_info.get('crcy_cd', 'USD'),
-                'deposit': float(usd_info.get('frcr_dncl_amt_2', 0)),
-                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)), # 출금가능액, 정확한 거래가능금액
+                'deposit': deposit,
+                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)),
+                'sll_amt_smtl': sll_amt_smtl,      # T+2 미결제 매도금 전체 (참조용)
                 'exchange_rate': float(usd_info.get('frst_bltn_exrt', 0)),
                 'krw_value': float(usd_info.get('frcr_evlu_amt2', 0))
             }
         except:
+            return None
+
+
+    def get_US_order_available(self):
+        """
+        해외주식 매수가능금액 조회 (TTTS3007R)
+        MTS 주문화면 '주문가능금액'과 동일한 값 반환
+        = 외화예수금 + 매도재사용가능금액(T+2 미결제) - 당일 이미 매수에 사용된 금액
+        AAPL(NASD) / 100달러 고정 조회 (주문가능금액은 종목/가격 무관)
+        """
+        path = 'uapi/overseas-stock/v1/trading/inquire-psamount'
+        url  = f'{self.url_base}/{path}'
+        headers = {
+            'Content-Type': 'application/json',
+            'authorization': f'Bearer {self.access_token}',
+            'appKey': self.app_key,
+            'appSecret': self.app_secret,
+            'tr_id': 'TTTS3007R'
+        }
+        params = {
+            'CANO': self.cano,
+            'ACNT_PRDT_CD': self.acnt_prdt_cd,
+            'OVRS_EXCG_CD': 'NASD',  # AAPL 거래소 고정
+            'ITEM_CD': 'AAPL',       # 대표 종목 고정
+            'OVRS_ORD_UNPR': '100'   # 주문단가 고정 (금액 계산에 무관)
+        }
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+            if data.get('rt_cd') != '0':
+                TA.send_tele(f"TTTS3007R 오류: {data.get('msg1','')}")
+                return None
+            output = data.get('output', {})
+            # result = {
+            #     'currency': output.get('tr_crcy_cd', 'USD'),
+            #     '주문가능외화금액': float(output.get('ord_psbl_frcr_amt', 0)),
+            #     '매도재사용가능금액': float(output.get('sll_ruse_psbl_amt', 0)),
+            #     '해외주문가능금액': float(output.get('ovrs_ord_psbl_amt', 0)),
+            #     'exchange_rate': float(output.get('exrt', 0)),
+            #     '외화주문가능금액1': float(output.get('frcr_ord_psbl_amt1', 0))
+            # }
+            USD = float(output.get('ovrs_ord_psbl_amt', 0))
+            return USD if USD > 0 else None
+        except Exception as e:
+            TA.send_tele(f'매수가능금액 조회 오류: {e}')
             return None
 
     # 체결내역 확인

@@ -66,12 +66,10 @@ def health_check():
 
 def get_balance():
     # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
-    USD_account = KIS.get_US_dollar_balance()
-    if USD_account:
-        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
-    else:
-        USD = 0  # API 호출 실패 시 처리
-    time_module.sleep(0.1)
+    USD = KIS.get_US_order_available()
+    if USD == None:
+        TA.send_tele("USAA: USD잔고 확인 오류")
+        sys.exit(1)
 
     USLA_balance = 0 # 해당 모델 현재 달러화 잔고
     USLA_qty = {} # 해당 티커 현재 보유량
@@ -1228,7 +1226,6 @@ if order_time['round'] == 1:
     
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-    USD = float(USD)
     USD_gap = float(USD - float(TR_data['USD_total']))
     USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.7)
     USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.3)
@@ -1240,7 +1237,8 @@ if order_time['round'] == 1:
     HAA_target_weight = float(HAA_target_balance) / float(Total_balance)
 
     ## 만약 1월이라면 비중 리밸런싱
-    order_time['month'] = 1 ######## 최초 4월 실행 후 이 라인은 지울 것 #########
+    order_time['month'] = 1 ######## 최초 4월 실행 후 이 라인은 지울 것 ###################################################
+
     if order_time['month'] == 1:
         USLA_target_weight = 0.7
         USLA_target_balance = float(Total_balance * USLA_target_weight)
@@ -1344,10 +1342,10 @@ if order_time['round'] == 1:
     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
     message.extend(order_messages)
     order_messages = [] # 메세지 초기화
-    time_module.sleep(10)
+    time_module.sleep(20)
     
     # 예수금에 맞는 주문수량 구하기
-    FULL_BUYUSD = 0
+    FULL_BUYUSD = 0.0
     price_error = False
     
     for ticker in USLA_ticker:
@@ -1373,6 +1371,12 @@ if order_time['round'] == 1:
     if price_error:
         message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
         
+    # ADJUST_RATE
+    USD = KIS.get_US_order_available()
+    if USD == None:
+        TA.send_tele("USAA: USD잔고 확인 오류")
+        sys.exit(1)
+    
     if FULL_BUYUSD > USD:
         ADJUST_RATE = USD / FULL_BUYUSD
         for ticker in USLA_ticker:
@@ -1382,7 +1386,7 @@ if order_time['round'] == 1:
                 continue
             HAA[ticker]['buy_qty'] = int(HAA[ticker]['buy_qty'] * ADJUST_RATE)
     else:
-        pass  # 예수금이 충분할 경우 조정 없음
+        pass  # 예수금이 충분할 경우 조정 없음    
 
     # 매수주문
     Buy_order, order_messages = Buying(USLA, HAA, buy_split_USLA, buy_split_HAA, order_time)
@@ -1528,6 +1532,12 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     if price_error:
         message.append("USAA: ⚠️ 일부 종목 가격 조회 실패로 매수 수량 조정됨")   
         
+    # ADJUST_RATE
+    USD = KIS.get_US_order_available()
+    if USD == None:
+        TA.send_tele("USAA: USD잔고 확인 오류")
+        sys.exit(1)
+    
     if FULL_BUYUSD > USD:
         ADJUST_RATE = USD / FULL_BUYUSD
         for ticker in USLA_ticker:
