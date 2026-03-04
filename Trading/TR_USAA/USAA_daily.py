@@ -12,54 +12,61 @@ token_file_path = "/var/autobot/TR_USAA/kis63604155_token.json"
 cano = "63604155"
 acnt_prdt_cd = "01"
 KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
+
 USAA_data_path = "/var/autobot/TR_USAA/USAA_data.json"
+USAA_TR_path = "/var/autobot/TR_USAA/USAA_TR.json"
 USLA_ticker = ['UPRO', 'TQQQ', 'EDC', 'TMV', 'TMF']
 HAA_ticker = ['SPY', 'IWM', 'VEA', 'VWO', 'PDBC', 'VNQ', 'TLT', 'IEF', 'BIL']
 
-def get_balance(): # 신규 생성 사용
+def get_balance():
     # 현재의 종합잔고를 USLA, HAA, CASH별로 산출 & 총잔고 계산
-    USD_account = KIS.get_US_dollar_balance()
-    if USD_account:
-        USD = USD_account.get('withdrawable', 0)  # 키가 없을 경우 0 반환
-    else:
-        USD = 0.00  # API 호출 실패 시 처리
+    USD = KIS.get_US_order_available()
+    if USD == None:
+        TA.send_tele("USAA: USD잔고 확인 오류")
+        sys.exit(1)
+    try:
+        with open(USAA_TR_path, 'r') as f:
+            TR = json.load(f)
+    except Exception as e:
+        TA.send_tele(f"USAA_TR JSON 파일 오류: {e}")
+        sys.exit(1)
+    USD_USLA_weight = TR["USD_USLA"] / TR["USD_total"]
+    USD_HAA_weight = TR["USD_HAA"] / TR["USD_total"]
+    USD_USLA = USD * USD_USLA_weight
+    USD_HAA = USD * USD_HAA_weight
     time.sleep(0.1)
 
-    USLA_balance = 0 # 해당 모델 현재 달러화 잔고
-    USLA_qty = {} # 해당 티커 현재 보유량
-    USLA_price  = {} # 해당 티커 현재 가격
+    USLA_stocks = 0 # 해당 모델 현재 달러화 잔고
     for ticker in USLA_ticker:
         balance = KIS.get_ticker_balance(ticker)
         if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
             eval_amount = balance.get('eval_amount', 0)
-            USLA_qty[ticker] = balance.get('holding_qty', 0)
-            USLA_price[ticker] = balance.get('current_price', 0)
         else:
             eval_amount = 0  # 문자열(에러) 반환 시 처리
-            USLA_qty[ticker] = 0
-            USLA_price[ticker] = 0
-        USLA_balance += eval_amount
+        USLA_stocks += eval_amount
         time.sleep(0.1)
 
-    HAA_balance = 0 # 해당 모델 현재 달러화 잔고
-    HAA_qty = {} # 해당 티커 현재 보유량
-    HAA_price  = {} # 해당 티커 현재 가격
+    HAA_stocks = 0 # 해당 모델 현재 달러화 잔고
     for ticker in HAA_ticker:
         balance = KIS.get_ticker_balance(ticker)
         if isinstance(balance, dict):  # 딕셔너리인 경우만 처리
             eval_amount = balance.get('eval_amount', 0)
-            HAA_qty[ticker] = balance.get('holding_qty', 0)
-            HAA_price[ticker] = balance.get('current_price', 0)
         else:
             eval_amount = 0  # 문자열(에러) 반환 시 처리
-            HAA_qty[ticker] = 0
-            HAA_price[ticker] = 0
-        HAA_balance += eval_amount
-        time.sleep(0.05)
+        HAA_stocks += eval_amount
+        time.sleep(0.1)
 
-    Total_balance = USLA_balance + HAA_balance + USD # 전체 잔고
-
-    return USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance
+    Total_balance = USLA_stocks + HAA_stocks + USD # 전체 잔고
+    
+    balance = {
+        "USD": USD,
+        "USLA_stocks": USLA_stocks,
+        "USLA_USD": USD_USLA,
+        "HAA_stocks": HAA_stocks,
+        "HAA_USD": USD_HAA,
+        "Total_balance": Total_balance
+    }
+    return balance
 
 message = []
 try:
@@ -72,45 +79,22 @@ try:
     current_date = current.date()
 
     # USAA 계좌잔고 조회
-    try:
-        USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-    except Exception as e:
-        error_msg = f"USAA: 계좌 잔고 조회 실패: {e}"
-        TA.send_tele(error_msg)
-        sys.exit(1)
-    
-    # USD 계산
-    if USLA_balance <= 0 and HAA_balance <= 0:
-        if USD >= float(pre_data['HAA']):
-            USD_HAA = float(pre_data['HAA'])
-            USD_USLA = float(USD - USD_HAA)
-        else:
-            USLA_ratio = pre_data['USLA'] / (pre_data['USLA'] + pre_data['HAA']) \
-                        if (pre_data['USLA'] + pre_data['HAA']) > 0 else 0.7
-            USD_USLA = float(USD * USLA_ratio)
-            USD_HAA = float(USD - USD_USLA)
-    elif USLA_balance <= 0 and HAA_balance > 0:
-        if USD >= float(pre_data['USLA']):
-            USD_USLA = float(pre_data['USLA'])
-            USD_HAA = float(USD - USD_USLA)
-        else:
-            USD_USLA = USD
-            USD_HAA = 0.00
-    elif USLA_balance > 0 and HAA_balance <= 0:
-        if USD >= float(pre_data['HAA']):
-            USD_HAA = float(pre_data['HAA'])
-            USD_USLA = float(USD - USD_HAA)
-        else:
-            USD_HAA = USD
-            USD_USLA = 0.00
-    else:
-        USD_USLA = float(USD * float(pre_data['USLA']/(pre_data['USLA']+pre_data['HAA'])))
-        USD_HAA = float(USD - USD_USLA)
+    balance = get_balance()
+    USLA_stocks = balance["USLA_stocks"]
+    HAA_stocks = balance["HAA_stocks"]
+    USLA_USD = balance["USLA_USD"]
+    HAA_USD = balance["HAA_USD"]
+    USD = balance["USD"]
+    USLA_balance = float("{:.2f}".format(USLA_stocks + USLA_USD))
+    HAA_balance = float("{:.2f}".format(HAA_stocks + HAA_USD))
+    Total_balance = float("{:.2f}".format(balance["Total_balance"]))
 
-    # 당일 평가금 산출
-    Total = float("{:.2f}".format(Total_balance))
-    USLA_balance = float("{:.2f}".format(USLA_balance + USD_USLA))
-    HAA_balance = float("{:.2f}".format(HAA_balance + USD_HAA))
+    # 계산오류 확인
+    if Total_balance == USLA_balance + HAA_balance:
+        pass
+    else:
+        TA.send_tele("USAA daily 잔고 계산 오류")
+        sys.exit(1)
 
     # 전일, 월초, 연초 전월말, 전년말 잔고 업데이트
     last_day_balance = float("{:.2f}".format(pre_data.get('Total', 0.0)))
@@ -139,8 +123,8 @@ try:
         
     # 환율 조회
     try:
-        USD_balance = KIS.get_US_dollar_balance()
-        exchange_rate = USD_balance['exchange_rate']
+        result = KIS.get_US_dollar_balance()
+        exchange_rate = result['exchange_rate']
     except Exception as e:
         error_msg = f"USAA: 환율 조회 실패: {e}"
         TA.send_tele(error_msg)
@@ -149,19 +133,19 @@ try:
     time.sleep(0.5)
     
     # 평가금 KRW 환산
-    Total_KRW = int(Total * exchange_rate)
+    Total_KRW = int(Total_balance * exchange_rate)
     USLA_KRW = int(USLA_balance * exchange_rate)
     HAA_KRW = int(HAA_balance * exchange_rate)
     
     #월, 연 수익률 계산
-    month_ret = (Total - last_month_balance) / last_month_balance * 100 if last_month_balance > 0 else 0
+    month_ret = (Total_balance - last_month_balance) / last_month_balance * 100 if last_month_balance > 0 else 0
     month_ret = float("{:.2f}".format(month_ret))
     USLA_month_ret = (USLA_balance - USLA_last_month) / USLA_last_month * 100 if USLA_last_month > 0 else 0
     USLA_month_ret = float("{:.2f}".format(USLA_month_ret))
     HAA_month_ret = (HAA_balance - HAA_last_month) / HAA_last_month * 100 if HAA_last_month > 0 else 0
     HAA_month_ret = float("{:.2f}".format(HAA_month_ret))
     
-    year_ret = (Total - last_year_balance) / last_year_balance * 100 if last_year_balance > 0 else 0
+    year_ret = (Total_balance - last_year_balance) / last_year_balance * 100 if last_year_balance > 0 else 0
     year_ret = float("{:.2f}".format(year_ret))
     USLA_year_ret = (USLA_balance - USLA_last_year) / USLA_last_year * 100 if USLA_last_year > 0 else 0
     USLA_year_ret = float("{:.2f}".format(USLA_year_ret))
@@ -172,7 +156,7 @@ try:
     str_USAA_data = {
         'date': str(current_date),
         'exchange_rate': str("{:,.2f}".format(exchange_rate)),
-        'Total': str("{:,.2f}".format(Total)),
+        'Total': str("{:,.2f}".format(Total_balance)),
         'last_day_balance': str("{:,.2f}".format(last_day_balance)),
         'last_month_balance': str("{:,.2f}".format(last_month_balance)),
         'last_year_balance': str("{:,.2f}".format(last_year_balance)),
@@ -198,7 +182,7 @@ try:
     new_USAA_data = {
         'date': str(current_date),
         'exchange_rate': exchange_rate,
-        'Total': Total,
+        'Total': Total_balance,
         'last_day_balance': last_day_balance,
         'last_month_balance': last_month_balance,
         'last_year_balance': last_year_balance,
@@ -229,6 +213,9 @@ try:
     for key, value in str_USAA_data.items():
         message.append(f"{key}: {value}")
     TA.send_tele(message)
+
+    for i in message: # 직접 실행 시 테스트
+        print(i)
 
     # Google Sheet 업로드
     try:

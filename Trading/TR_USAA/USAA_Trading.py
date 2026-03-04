@@ -70,6 +70,7 @@ def get_balance():
     if USD == None:
         TA.send_tele("USAA: USD잔고 확인 오류")
         sys.exit(1)
+    time_module.sleep(0.1)
 
     USLA_balance = 0 # 해당 모델 현재 달러화 잔고
     USLA_qty = {} # 해당 티커 현재 보유량
