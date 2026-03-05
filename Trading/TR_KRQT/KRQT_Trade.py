@@ -352,7 +352,7 @@ elif sell_split[0] > 0:
 
         price = KIS.get_KR_current_price(code)
         if price == 0 or not isinstance(price, int):
-            message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
         for i in range(local_split_count):
@@ -386,7 +386,7 @@ target_KRW = 0
 for code, qty in buy.items():
     price = KIS.get_KR_current_price(code)
     if not isinstance(price, int) or price == 0:
-        message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+        TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
         sys.exit(1)
     ticker_invest = price * qty
     target_KRW += ticker_invest
