@@ -275,7 +275,7 @@ if order['round'] == 1 or order['round'] == 8:
         price = KIS.get_KR_current_price(i)
         if price == 0 or not isinstance(price, int):
             TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
-            sys.exit(0)
+            sys.exit(1)
         target[i]['target_invest'] = int(target[i]['weight'] * total_invest)
         target[i]['target_qty'] = int(target[i]['target_invest'] / price)
         time_module.sleep(0.1)
@@ -339,7 +339,7 @@ sell_code = list(sell.keys())
 if len(sell_code) == 0:
     message.append("KRQT:매도 종목 없음")
 
-elif len(sell_code) > 0 and sell_split[0] > 0:
+elif sell_split[0] > 0:
     message.append(f"KRQT: {order['round']}회차 - 매도 주문")
     for code, qty in sell.items():
         local_split_count = sell_split[0]    # 루프마다 원본에서 복사
@@ -366,18 +366,21 @@ elif len(sell_code) > 0 and sell_split[0] > 0:
             else:
                 message.append(f"매도 실패 {code}: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
+else:
+    # 14회차: 잔량 있어도 매도 스킵 — 알림만
+    message.append(f"KRQT: {order['round']}회차 매도 스킵 - 미처분 잔량: {list(sell.keys())}")    
 
 # 매도 매수 시간딜레이
 time_module.sleep(600)
 # 매수구간 전환
 # 주문가능 금액 조회 및 주문수량 구하기
 KRW = KIS.get_KR_orderable_cash()
-if not isinstance(KRW, float):
+if not isinstance(KRW, (int, float)):
     TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({KRW})")
     sys.exit(1)
 
 # 주문가능금액에 맞춰 매수잔고 재조정
-orderable_KRW = KRW
+orderable_KRW = float(KRW) # 이후 계산을 float으로 통일
 target_KRW = 0
 
 for code, qty in buy.items():
@@ -519,7 +522,13 @@ if order['round'] == 14:
                     "status":  "리밸런싱 매수실패"
                 })
             else:
-                split_weight = stock['weight'] / target[stock_code]['weight']
+                total_w = target[stock_code]['weight']
+                if total_w == 0:
+                    split_weight = 1.0   # 단일 전략 종목으로 처리
+                    message.append(f"경고: {stock_code} weight=0, split_weight=1.0으로 처리")
+                else:
+                    split_weight = stock['weight'] / total_w
+                    
                 result[category].append({
                     "code":    stock_code,
                     "name":    stock['name'],
@@ -529,11 +538,10 @@ if order['round'] == 14:
                     "status":  "리밸런싱"
                 })
 
-    if "remain_last" not in result:
-        result["remain_last"] = []
+    remain_items = []
     for code in hold_code:
         if code not in target_code:
-            result["remain_last"].append({    # list.append로 복수 처리
+            remain_items.append({
                 "code":    code,
                 "name":    hold[code]['name'],
                 "qty":     hold[code]['hold_qty'],
@@ -541,6 +549,8 @@ if order['round'] == 14:
                 "weight":  0,
                 "status":  "리밸런싱 매도실패"
             })
+    if remain_items:                      # 항목이 있을 때만 result에 추가
+        result["remain_last"] = remain_items
 
     for category, stocks_list in result.items():
         message.append(f"{order['date']}일 리밸런싱 전략명:{category} 결과")
@@ -565,7 +575,7 @@ if order['round'] == 14:
             "total_asset_ret":  0.0
         }
     else:
-        message.append(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
+        TA.send_tele(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
         sys.exit(1)
 
     # category별 자산
