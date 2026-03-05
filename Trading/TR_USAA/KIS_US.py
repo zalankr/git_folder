@@ -595,7 +595,7 @@ class KIS_API:
             TA.send_tele(f"잔고 조회 오류: {e}")
             return None
 
-    # 미국 달러 예수금
+    # 미국 달러 예수금 X
     def get_US_dollar_balance(self) -> Optional[Dict]:
         """미국 달러 예수금"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
@@ -646,7 +646,7 @@ class KIS_API:
         except:
             return None
 
-
+    # 미국 달러 실제주문가능금액
     def get_US_order_available(self):
         """
         해외주식 매수가능금액 조회 (TTTS3007R)
@@ -1299,6 +1299,8 @@ class KIS_API:
                         return {
                             'ticker': ticker,
                             'holding_qty': holding_qty,
+                            'ovrs_cblc_qty': int(float(item.get('ovrs_cblc_qty', 0))),
+                            'ord_psbl_qty': int(float(item.get('ord_psbl_qty', 0))),
                             'avg_price': float(item.get('pchs_avg_pric', '0')),
                             'current_price': float(item.get('now_pric2', '0')),
                             'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')),
