@@ -37,7 +37,7 @@ def order_time(day=1):
     current_time = now.time()
 
     # 수정: 모든 키를 미리 초기화
-    order_time = {
+    result = {
         'date': current_date,
         'time': current_time,
         'day': day,          # 기본값
@@ -49,9 +49,9 @@ def order_time(day=1):
     start = time_obj(0, 0)   # OTC+9 09:00
     end = time_obj(6, 35)    # OTC+15 15:30    
     if start <= current < end:
-        order_time['round'] = (current_time.hour + 1) + (day * 7 - 7)
+        result['round'] = (current_time.hour + 1) + (day * 7 - 7)
 
-    return order_time
+    return result
 
 def health_check():
     """시스템 상태 확인"""
@@ -64,7 +64,7 @@ def health_check():
     # 2. data 파일 존재
     import os
     files = [
-        "/var/autobot/TR_KRQT/KRQT_TR.json",
+        "/var/autobot/TR_KRQT/KRQT_day.json",
         "/var/autobot/TR_KRQT/KRQT_stock.csv"
     ]
     for f in files:
@@ -82,34 +82,31 @@ def health_check():
         TA.send_tele("\n".join(checks))
         sys.exit(1)
 
-def save_json(data, path):
+def save_json(data, path, order):
     """
     저장 실패 시에도 백업 파일 생성
-    """  
+    """
+    result_msgs = []
     try:
-        # 정상
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        message.append(f"{order_time['time']} {order_time['round']}/{order_time['total_round']}회차 {data} 저장 완료")
-        
+        result_msgs.append(f"{order['time']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
     except Exception as e:
-        # 저장 실패 시 백업 파일 생성
-        message.append(f"{data} 저장 실패: {e}")
-        
-        backup_path = f"/var/autobot/TR_KRQT/{data}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        result_msgs.append(f"{path} 저장 실패: {e}")
+        backup_path = f"/var/autobot/TR_KRQT/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         try:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
-            message.append(f"KRQT {data}백업 파일 생성: {backup_path}")
+            result_msgs.append(f"백업 파일 생성: {backup_path}")
         except Exception as backup_error:
-            message.append(f"KRQT {data}백업 파일 생성도 실패: {backup_error}")
-            # 최후의 수단: 텔레그램으로 데이터 전송
-            message.append(f"KRQT {data}백업: {json.dumps(data, ensure_ascii=False)[:1000]}")
-
-    return message
+            result_msgs.append(f"백업 실패: {backup_error}")
+    return result_msgs   # 새 리스트 반환
     
 def split_data(round):
     '''회차별 분할횟수와 분할당 가격산출'''
+    if round == 0 or round not in range(1, 15):
+        TA.send_tele("KRQT: 회차 계산 오류 또는 거래시간이 아님")
+        sys.exit(1)
     if round == 1:
         sell_splits = 5
         sell_price = [1.020, 1.015, 1.010, 1.005, 0.990]
@@ -278,7 +275,7 @@ if order['round'] == 1 or order['round'] == 8:
         time_module.sleep(0.1)
 
     # 당일 target 저장하기
-    json_message = save_json(target, KRQT_target_path)
+    json_message = save_json(target, KRQT_target_path, order)
     message.extend(json_message)
 
 else: # 1회, 8회차가 아닌 경우 불러오기만 시행
@@ -326,7 +323,7 @@ for code in target_code:
         buy[code] = target[code]["target_qty"]
 
 # 분할 주문 수량 구하기
-round_split = split_data(order_time['round'])
+round_split = split_data(order['round'])
 sell_split = [round_split["sell_splits"], round_split["sell_price"]]
 buy_split = [round_split["buy_splits"], round_split["buy_price"]]
 
@@ -337,7 +334,7 @@ if len(sell_code) == 0:
     message.append("KRQT:매도 종목 없음")
 
 elif len(sell_code) > 0 and sell_split[0] > 0:
-    message.append(f"KRQT: {order_time['round']}회차 - 매도 주문")
+    message.append(f"KRQT: {order['round']}회차 - 매도 주문")
     for code, qty in sell.items():
         split_qty = int(qty // sell_split[0])
         if split_qty < 1:
@@ -354,7 +351,12 @@ elif len(sell_code) > 0 and sell_split[0] > 0:
             split_price = float(price * sell_split[1][i])
             order_price= KIS.round_to_tick(price=split_price, market="KR") 
             order_info = KIS.order_sell_KR(code, split_qty, order_price, "00")
-            message.extend(order_info)
+            if order_info is None:
+                message.append(f"KRQT 매도 오류: {code} API 응답 없음")
+            elif order_info.get("success"):
+                message.append(f"매도 {code} {split_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
+            else:
+                message.append(f"매도 실패 {code}: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
 
 # 매도 매수 시간딜레이
@@ -382,7 +384,11 @@ for code, qty in buy.items():
 if target_KRW > orderable_KRW:
     adjust_rate = orderable_KRW / target_KRW
     for ticker, ticker_qty in buy.items():
-        buy[ticker] = int(ticker_qty * adjust_rate)
+        adjusted = int(ticker_qty * adjust_rate)
+        buy[ticker] = adjusted
+
+    buy = {ticker: qty for ticker, qty in buy.items() if qty > 0}   # 0주 제거
+    buy_code = list(buy.keys())
 else:
     pass # 예수금이 충분할 경우 조정 없음
 
@@ -393,40 +399,45 @@ if len(buy_code) == 0:
     message.append("KRQT:매수 종목 없음")
 
 elif len(buy_code) > 0 and buy_split[0] > 0:
-    message.append(f"KRQT: {order_time['round']}회차 - 매수 주문")
+    message.append(f"KRQT: {order['round']}회차 - 매수 주문")
     for code, qty in buy.items():
-        split_qty = int(qty // sell_split[0])
+        split_qty = int(qty // buy_split[0])
         if split_qty < 1:
-            sell_split[0] = 1
-            sell_split[1] = [1.01]
+            buy_split[0] = 1
+            buy_split[1] = [1.01]
             split_qty = int(qty)
 
-        price = KIS.get_KR_current_price(ticker)
+        price = KIS.get_KR_current_price(code)
         if not isinstance(price, int) or price == 0:
             message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
         for i in range(buy_split[0]):
-            split_price = float(price * sell_split[1][i])
+            split_price = float(price * buy_split[1][i])
             order_price= KIS.round_to_tick(price=split_price, market="KR") 
             order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")
-            message.extend(order_info)
+            if order_info is None:
+                message.append(f"KRQT 매수 오류: {code} API 응답 없음")
+            elif order_info.get("success"):
+                message.append(f"매수 {code} {split_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
+            else:
+                message.append(f"매수 실패 {code}: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
 
 # 7회차에는 day = 2로 전환
-if order_time['round'] == 7:
+if order['round'] == 7:
     TR = {
         "day": 2
     }
-    json_message = save_json(TR, KRQT_day_path)
+    json_message = save_json(TR, KRQT_day_path, order)
     message.extend(json_message)
 
 # 14회차에는 day = 1로 전환
-if order_time['round'] == 14:
+if order['round'] == 14:
     TR = {
         "day": 1
     }
-    json_message = save_json(TR, KRQT_day_path)
+    json_message = save_json(TR, KRQT_day_path, order)
     message.extend(json_message)
 
 # 회차별 매매 메세지 telegram 출력
@@ -434,12 +445,12 @@ TA.send_tele(message)
 message = []
 
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
-if order_time['round'] == 14:
+if order['round'] == 14:
     time_module.sleep(200)
     # 전회 주문 취소
     cancel_message = cancel_orders(side='all')
     message.append(cancel_message)
-    message.append(f"KRQT {order_time['date']} 리밸런싱 종료")
+    message.append(f"KRQT {order['date']} 리밸런싱 종료")
 
     # 시작목표 불러오기
     try:
@@ -483,73 +494,76 @@ if order_time['round'] == 14:
 
     hold_code = list(hold.keys())
 
-    result = {} 
-    # 중복종목 category 비중 적용 result
-    for category in plan.keys:
+    result = {}
+    for category in plan.keys():
+        result[category] = []       # 카테고리별 리스트로 초기화
         for stock in plan[category]:
-            if stock['code'] not in hold_code:
-                result[category] = {
-                    "code": stock['code'],
-                    "name": stock['name'],
-                    "qty": 0,
+            stock_code = stock['code']
+            if stock_code not in hold_code:
+                result[category].append({
+                    "code":    stock_code,
+                    "name":    stock['name'],
+                    "qty":     0,
                     "balance": 0,
-                    "weight": stock['weight'],
-                    "status": "리밸런싱 매수실패"
-                }
+                    "weight":  stock['weight'],
+                    "status":  "리밸런싱 매수실패"
+                })
             else:
-                split_weight = stock['weight'] / target[stock['code']]['weight']
-                result[category] = {
-                    "code": stock['code'],
-                    "name": stock['name'],
-                    "qty": hold[code]['hold_qty'] * split_weight,
-                    "balance": hold[code]['hold_balance'],
-                    "weight": stock['weight'],
-                    "status": "리밸런싱"
-                }
+                split_weight = stock['weight'] / target[stock_code]['weight']
+                result[category].append({
+                    "code":    stock_code,
+                    "name":    stock['name'],
+                    "qty":     hold[stock_code]['hold_qty'] * split_weight,  # stock_code 사용
+                    "balance": hold[stock_code]['hold_balance'],              # stock_code 사용
+                    "weight":  stock['weight'],
+                    "status":  "리밸런싱"
+                })
 
+    if "remain_last" not in result:
+        result["remain_last"] = []
     for code in hold_code:
         if code not in target_code:
-            result["remain_last"] = {
-                "code": code,
-                "name": hold[code]['name'],
-                "qty": hold[code]['hold_qty'],
+            result["remain_last"].append({    # list.append로 복수 처리
+                "code":    code,
+                "name":    hold[code]['name'],
+                "qty":     hold[code]['hold_qty'],
                 "balance": hold[code]['hold_balance'],
-                "weight": 0,
-                "status": "리밸런싱 매도실패"
-            }
+                "weight":  0,
+                "status":  "리밸런싱 매도실패"
+            })
 
-    for category, info in result.items():
-        message.append(f"{order_time['date']}일 리밸런싱 전략명:{category} 결과")
-        for name, qty, balance, status in info['name'], info['qty'], info['balance'], info['status']:
-            qty = int(info['qty'])
-            balance = str("{:,.0f}".format(info['balance']))
-            message.append(f"종목명: {name}, 잔고: {qty}주, 평가금: {balance}원, 상태: {status}")
+    for category, stocks_list in result.items():
+        message.append(f"{order['date']}일 리밸런싱 전략명:{category} 결과")
+        for item in stocks_list:
+            qty     = int(item['qty'])
+            balance = f"{int(item['balance']):,}"
+            message.append(f"종목명: {item['name']}, 잔고: {qty}주, 평가금: {balance}원, 상태: {item['status']}")
 
     # 전략결과 저장
-    json_message = save_json(result, KRQT_result_path)
+    json_message = save_json(result, KRQT_result_path, order)
     message.extend(json_message)
 
     # 최종 daily balance
     # 전체 자산
     daily_data = []
     all_balance = KIS.get_KR_account_summary()
-    if isinstance(balance, dict):
-        daily_data.append(total_stocks = all_balance['stock_eval_amt'])
-        daily_data.append(total_stocks_ret = 0.0)
-        daily_data.append(total_cash = all_balance['cash_balance'])  
-        daily_data.append(total_asset = all_balance['total_krw_asset'])
-        daily_data.append(total_asset_ret = 0.0)
+    if isinstance(all_balance, dict):
+        daily_data = {
+            "total_stocks":     all_balance['stock_eval_amt'],
+            "total_stocks_ret": 0.0,
+            "total_cash":       all_balance['cash_balance'],
+            "total_asset":      all_balance['total_krw_asset'],
+            "total_asset_ret":  0.0
+        }
     else:
         message.append(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
         sys.exit(1)
 
     # category별 자산
-    for category, info in result.items():
-        category_balance = 0
-        for balance in info['balance']:
-            category_balance += balance
-        daily_data.append(category = category_balance)
-        daily_data.append(category_ret = 0.0)
+    for category, stocks_list in result.items():
+        category_balance = sum(item['balance'] for item in stocks_list)
+        daily_data[category]            = category_balance
+        daily_data[f"{category}_ret"]   = 0.0
 
     # daily balance google sheet 저장
     try:
