@@ -47,7 +47,7 @@ def order_time(day=1):
     
     current = time_obj(current_time.hour, current_time.minute)
     start = time_obj(0, 0)   # OTC+9 09:00
-    end = time_obj(6, 35)    # OTC+15 15:30    
+    end = time_obj(6, 30)    # OTC+15 15:30    
     if start <= current < end:
         result['round'] = (current_time.hour + 1) + (day * 7 - 7)
 
@@ -104,9 +104,6 @@ def save_json(data, path, order):
     
 def split_data(round):
     '''회차별 분할횟수와 분할당 가격산출'''
-    if round == 0 or round not in range(1, 15):
-        TA.send_tele("KRQT: 회차 계산 오류 또는 거래시간이 아님")
-        sys.exit(1)
     if round == 1:
         sell_splits = 5
         sell_price = [1.020, 1.015, 1.010, 1.005, 0.990]
@@ -216,6 +213,9 @@ except Exception as e:
     
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
+if order['round'] == 0:
+    TA.send_tele(f"KRQT: 매매시간이 아닙니다.")
+    sys.exit(0)
 message.append(f"KRQT: {order['day']}일차 {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
@@ -265,6 +265,12 @@ if order['round'] == 1 or order['round'] == 8:
 
     # 종목별 목표 투자금액 및 수량 산출 
     target_code = list(target.keys())
+    
+    total_weight = sum(v['weight'] for v in target.values())
+    if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
+        TA.send_tele(f"KRQT 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
+        message.append(f"weight 합계 경고: {total_weight:.3f}")
+    
     for i in target_code:
         price = KIS.get_KR_current_price(i)
         if price == 0 or not isinstance(price, int):
@@ -336,10 +342,12 @@ if len(sell_code) == 0:
 elif len(sell_code) > 0 and sell_split[0] > 0:
     message.append(f"KRQT: {order['round']}회차 - 매도 주문")
     for code, qty in sell.items():
-        split_qty = int(qty // sell_split[0])
+        local_split_count = sell_split[0]    # 루프마다 원본에서 복사
+        local_split_price = sell_split[1][:]
+        split_qty = int(qty // local_split_count)
         if split_qty < 1:
-            sell_split[0] = 1
-            sell_split[1] = [0.99]
+            local_split_count = 1
+            local_split_price = [0.99]
             split_qty = int(qty)
 
         price = KIS.get_KR_current_price(code)
@@ -347,8 +355,8 @@ elif len(sell_code) > 0 and sell_split[0] > 0:
             message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
-        for i in range(sell_split[0]):
-            split_price = float(price * sell_split[1][i])
+        for i in range(local_split_count):
+            split_price = float(price * local_split_price[i])
             order_price= KIS.round_to_tick(price=split_price, market="KR") 
             order_info = KIS.order_sell_KR(code, split_qty, order_price, "00")
             if order_info is None:
@@ -401,10 +409,12 @@ if len(buy_code) == 0:
 elif len(buy_code) > 0 and buy_split[0] > 0:
     message.append(f"KRQT: {order['round']}회차 - 매수 주문")
     for code, qty in buy.items():
-        split_qty = int(qty // buy_split[0])
+        local_split_count = buy_split[0]
+        local_split_price = buy_split[1][:]
+        split_qty = int(qty // local_split_count)
         if split_qty < 1:
-            buy_split[0] = 1
-            buy_split[1] = [1.01]
+            local_split_count = 1
+            local_split_price = [1.01]
             split_qty = int(qty)
 
         price = KIS.get_KR_current_price(code)
@@ -412,8 +422,8 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
-        for i in range(buy_split[0]):
-            split_price = float(price * buy_split[1][i])
+        for i in range(local_split_count):
+            split_price = float(price * local_split_price[i])
             order_price= KIS.round_to_tick(price=split_price, market="KR") 
             order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")
             if order_info is None:
@@ -514,7 +524,7 @@ if order['round'] == 14:
                     "code":    stock_code,
                     "name":    stock['name'],
                     "qty":     hold[stock_code]['hold_qty'] * split_weight,  # stock_code 사용
-                    "balance": hold[stock_code]['hold_balance'],              # stock_code 사용
+                    "balance": hold[stock_code]['hold_balance'] * split_weight,  # stock_code 사용
                     "weight":  stock['weight'],
                     "status":  "리밸런싱"
                 })
@@ -545,7 +555,6 @@ if order['round'] == 14:
 
     # 최종 daily balance
     # 전체 자산
-    daily_data = []
     all_balance = KIS.get_KR_account_summary()
     if isinstance(all_balance, dict):
         daily_data = {
