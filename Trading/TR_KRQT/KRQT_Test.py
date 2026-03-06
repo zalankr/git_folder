@@ -378,6 +378,7 @@ message = []
 
 # 매도 매수 시간딜레이
 time_module.sleep(600)
+
 # 매수구간 전환
 # 주문가능 금액 조회 및 주문수량 구하기
 KRW = KIS.get_KR_orderable_cash()
@@ -386,15 +387,18 @@ if not isinstance(KRW, (int, float)):
     sys.exit(1)
 
 # 주문가능금액에 맞춰 매수잔고 재조정
-orderable_KRW = float(KRW) # 이후 계산을 float으로 통일
+orderable_KRW = float(KRW)
 target_KRW = 0
+buy_prices = {}                              # 현재가 저장 (매수 루프에서 재사용)
+buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0  # 최대 배율 기준
 
 for code, qty in buy.items():
     price = KIS.get_KR_current_price(code)
     if not isinstance(price, int) or price == 0:
         TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
         sys.exit(1)
-    ticker_invest = price * qty
+    buy_prices[code] = price                 # 저장
+    ticker_invest = price * buy_price_rate * qty  # 최대 배율 반영
     target_KRW += ticker_invest
     time_module.sleep(0.125)
 
@@ -426,14 +430,14 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             local_split_price = [1.01]
             split_qty = int(qty)
 
-        price = KIS.get_KR_current_price(code)
+        price = buy_prices.get(code)         # 재조회 없이 저장값 사용
         if not isinstance(price, int) or price == 0:
-            message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
         for i in range(local_split_count):
             split_price = float(price * local_split_price[i])
-            order_price= KIS.round_to_tick(price=split_price, market="KR") 
+            order_price = KIS.round_to_tick(price=split_price, market="KR")
             order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")
             if order_info is None:
                 message.append(f"KRQT 매수 오류: {code} API 응답 없음")
