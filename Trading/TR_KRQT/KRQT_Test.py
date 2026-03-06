@@ -106,14 +106,14 @@ def split_data(round):
     '''회차별 분할횟수와 분할당 가격산출'''
     if round == 1:
         sell_splits = 5
-        sell_price = [1.020, 1.015, 1.010, 1.005, 0.990]
+        sell_price = [1.020, 1.015, 1.010, 1.005, 0.995]
         buy_splits = 5
         buy_price = [0.980, 0.985, 0.990, 0.995, 0.9975]
     elif round == 2:
         sell_splits = 4
         sell_price = [1.020, 1.015, 1.010, 1.005]
         buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 1.010]
+        buy_price = [0.980, 0.985, 0.990, 0.995, 1.005]
     elif round == 3:
         sell_splits = 4
         sell_price = [1.015, 1.010, 1.005, 1.0025]
@@ -121,14 +121,14 @@ def split_data(round):
         buy_price = [0.980, 0.985, 0.990, 0.995]
     elif round == 4:
         sell_splits = 4
-        sell_price = [1.015, 1.010, 1.005, 0.990]
+        sell_price = [1.015, 1.010, 1.005, 0.995]
         buy_splits = 4
         buy_price = [0.985, 0.990, 0.995, 0.9975]
     elif round == 5:
         sell_splits = 3
         sell_price = [1.015, 1.010, 1.005]
         buy_splits = 4
-        buy_price = [0.985, 0.990, 0.995, 1.010]
+        buy_price = [0.985, 0.990, 0.995, 1.005]
     elif round == 6:
         sell_splits = 3
         sell_price = [1.010, 1.005, 1.0025]
@@ -136,14 +136,14 @@ def split_data(round):
         buy_price = [0.985, 0.990, 0.995]
     elif round == 7:
         sell_splits = 3
-        sell_price = [1.010, 1.005, 0.990]
+        sell_price = [1.010, 1.005, 0.995]
         buy_splits = 3
         buy_price = [0.990, 0.995, 0.9975]
     elif round == 8:
         sell_splits = 2
         sell_price = [1.010, 1.005]
         buy_splits = 3
-        buy_price = [0.990, 0.995, 1.010]
+        buy_price = [0.990, 0.995, 1.005]
     elif round == 9:
         sell_splits = 2
         sell_price = [1.005, 1.0025]
@@ -151,14 +151,14 @@ def split_data(round):
         buy_price = [0.990, 0.995]
     elif round == 10:
         sell_splits = 2
-        sell_price = [1.005, 0.990]
+        sell_price = [1.005, 0.995]
         buy_splits = 2
         buy_price = [0.995, 0.9975]
     elif round == 11:
         sell_splits = 1
         sell_price = [1.005]
         buy_splits = 2
-        buy_price = [0.995, 1.010]
+        buy_price = [0.995, 1.005]
     elif round == 12:
         sell_splits = 1
         sell_price = [1.0025]
@@ -166,14 +166,14 @@ def split_data(round):
         buy_price = [0.995]
     elif round == 13:
         sell_splits = 1
-        sell_price = [0.970]
+        sell_price = [0.980]
         buy_splits = 1
         buy_price = [0.9975]
     elif round == 14:
         sell_splits = 0
         sell_price = []
         buy_splits = 1
-        buy_price = [1.030]
+        buy_price = [1.020]
         
     round_split = {
         "sell_splits": sell_splits, 
