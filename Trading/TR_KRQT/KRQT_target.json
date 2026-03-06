@@ -1,0 +1,84 @@
+{
+    "031980": {
+        "name": "피에스케이홀딩스",
+        "weight": 0.1,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 17
+    },
+    "036930": {
+        "name": "주성엔지니어링",
+        "weight": 0.1,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 30
+    },
+    "064760": {
+        "name": "티씨케이",
+        "weight": 0.1,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 7
+    },
+    "095340": {
+        "name": "ISC",
+        "weight": 0.1,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 9
+    },
+    "194480": {
+        "name": "데브시스터즈",
+        "weight": 0.1,
+        "categories": [
+            "밸류"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 50
+    },
+    "221840": {
+        "name": "하이즈항공",
+        "weight": 0.1,
+        "categories": [
+            "밸류"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 776
+    },
+    "253590": {
+        "name": "네오셈",
+        "weight": 0.1,
+        "categories": [
+            "밸류"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 110
+    },
+    "272210": {
+        "name": "한화시스템",
+        "weight": 0.2,
+        "categories": [
+            "피크",
+            "밸류"
+        ],
+        "target_invest": 3960000,
+        "target_qty": 24
+    },
+    "440110": {
+        "name": "파두",
+        "weight": 0.1,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 1980000,
+        "target_qty": 28
+    }
+}

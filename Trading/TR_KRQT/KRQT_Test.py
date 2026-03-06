@@ -90,7 +90,7 @@ def save_json(data, path, order):
     try:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        result_msgs.append(f"{order['time']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
+        result_msgs.append(f"{order['date']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
     except Exception as e:
         result_msgs.append(f"{path} 저장 실패: {e}")
         backup_path = f"/var/autobot/TR_KRQT/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -108,7 +108,7 @@ def split_data(round):
         sell_splits = 5
         sell_price = [1.020, 1.015, 1.010, 1.005, 0.990]
         buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 1.000]
+        buy_price = [0.980, 0.985, 0.990, 0.995, 0.9975]
     elif round == 2:
         sell_splits = 4
         sell_price = [1.020, 1.015, 1.010, 1.005]
@@ -116,14 +116,14 @@ def split_data(round):
         buy_price = [0.980, 0.985, 0.990, 0.995, 1.010]
     elif round == 3:
         sell_splits = 4
-        sell_price = [1.015, 1.010, 1.005, 1.000]
+        sell_price = [1.015, 1.010, 1.005, 1.0025]
         buy_splits = 4
         buy_price = [0.980, 0.985, 0.990, 0.995]
     elif round == 4:
         sell_splits = 4
         sell_price = [1.015, 1.010, 1.005, 0.990]
         buy_splits = 4
-        buy_price = [0.985, 0.990, 0.995, 1.000]
+        buy_price = [0.985, 0.990, 0.995, 0.9975]
     elif round == 5:
         sell_splits = 3
         sell_price = [1.015, 1.010, 1.005]
@@ -131,14 +131,14 @@ def split_data(round):
         buy_price = [0.985, 0.990, 0.995, 1.010]
     elif round == 6:
         sell_splits = 3
-        sell_price = [1.010, 1.005, 1.000]
+        sell_price = [1.010, 1.005, 1.0025]
         buy_splits = 3
         buy_price = [0.985, 0.990, 0.995]
     elif round == 7:
         sell_splits = 3
         sell_price = [1.010, 1.005, 0.990]
         buy_splits = 3
-        buy_price = [0.990, 0.995, 1.000]
+        buy_price = [0.990, 0.995, 0.9975]
     elif round == 8:
         sell_splits = 2
         sell_price = [1.010, 1.005]
@@ -146,14 +146,14 @@ def split_data(round):
         buy_price = [0.990, 0.995, 1.010]
     elif round == 9:
         sell_splits = 2
-        sell_price = [1.005, 1.000]
+        sell_price = [1.005, 1.0025]
         buy_splits = 2
         buy_price = [0.990, 0.995]
     elif round == 10:
         sell_splits = 2
         sell_price = [1.005, 0.990]
         buy_splits = 2
-        buy_price = [0.995, 1.000]
+        buy_price = [0.995, 0.9975]
     elif round == 11:
         sell_splits = 1
         sell_price = [1.005]
@@ -161,14 +161,14 @@ def split_data(round):
         buy_price = [0.995, 1.010]
     elif round == 12:
         sell_splits = 1
-        sell_price = [1.000]
+        sell_price = [1.0025]
         buy_splits = 1
         buy_price = [0.995]
     elif round == 13:
         sell_splits = 1
         sell_price = [0.970]
         buy_splits = 1
-        buy_price = [1.000]
+        buy_price = [0.9975]
     elif round == 14:
         sell_splits = 0
         sell_price = []
@@ -198,7 +198,7 @@ def cancel_orders(side: str="all"):
 # ============================================
 checkday = KIS.is_KR_trading_day()
 if checkday == False:
-    TA.send_tele("KR: 거래일이 아닙니다.")
+    TA.send_tele("KRQT: 거래일이 아닙니다.")
     sys.exit(0)
 health_check() # 시스템 상태 확인
 message = [] # 출력메시지 LIST 생성
@@ -213,7 +213,7 @@ except Exception as e:
 
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
-order['round'] = 1 ######################################################Test후 삭제########################
+
 if order['round'] == 0:
     TA.send_tele(f"KRQT: 매매시간이 아닙니다.")
     sys.exit(0)
@@ -263,17 +263,8 @@ if order['round'] == 1 or order['round'] == 8:
         total_invest = account['total_krw_asset'] * 0.99 # cash는 1%유지
     else:
         TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
-        sys.exit(1)
-        
-    ###############################
-    for j in range(len(message)):
-        print(message[j]) ###
-    for k, i in target.items():
-        print(k, i)
-    print(total_invest)
-    ###############################         
-                
-"""
+        sys.exit(1)      
+
     # 종목별 목표 투자금액 및 수량 산출 
     target_code = list(target.keys())
     
@@ -305,7 +296,7 @@ else: # 1회, 8회차가 아닌 경우 불러오기만 시행
         TA.send_tele(f"KRQT_target.json 파일 오류: {e}")
         sys.exit(1)
     target_code = list(target.keys())
-
+    
 # 보유 종목 잔고 불러오기
 stocks = KIS.get_KR_stock_balance()
 if not isinstance(stocks, list):
@@ -342,8 +333,8 @@ for code in target_code:
 # 분할 주문 수량 구하기
 round_split = split_data(order['round'])
 sell_split = [round_split["sell_splits"], round_split["sell_price"]]
-buy_split = [round_split["buy_splits"], round_split["buy_price"]]
-
+buy_split = [round_split["buy_splits"], round_split["buy_price"]]   
+    
 # 매도주문
 sell_code = list(sell.keys())
 
@@ -380,6 +371,10 @@ elif sell_split[0] > 0:
 else:
     # 14회차: 잔량 있어도 매도 스킵 — 알림만
     message.append(f"KRQT: {order['round']}회차 매도 스킵 - 미처분 잔량: {list(sell.keys())}")    
+
+# 회차별 매도 메세지 telegram 출력
+TA.send_tele(message)
+message = []
 
 # 매도 매수 시간딜레이
 time_module.sleep(600)
@@ -464,7 +459,7 @@ if order['round'] == 14:
     json_message = save_json(TR, KRQT_day_path, order)
     message.extend(json_message)
 
-# 회차별 매매 메세지 telegram 출력
+# 회차별 매수 메세지 telegram 출력
 TA.send_tele(message)
 message = []
 
@@ -579,6 +574,7 @@ if order['round'] == 14:
     all_balance = KIS.get_KR_account_summary()
     if isinstance(all_balance, dict):
         daily_data = {
+            "date":             order['date'],
             "total_stocks":     all_balance['stock_eval_amt'],
             "total_stocks_ret": 0.0,
             "total_cash":       all_balance['cash_balance'],
@@ -617,6 +613,6 @@ if order['round'] == 14:
     TA.send_tele(message)
 
 message = []
-"""
+
  
 sys.exit(0)
