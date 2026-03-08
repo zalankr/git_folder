@@ -483,7 +483,7 @@ message = []
 
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
 if order['round'] == 14:
-    time_module.sleep(200)
+    time_module.sleep(300)
     # 전회 주문 취소
     cancel_message = cancel_orders(side='all')
     message.append(cancel_message)
