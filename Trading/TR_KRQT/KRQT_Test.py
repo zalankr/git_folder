@@ -258,13 +258,19 @@ if order['round'] == 1 or order['round'] == 8:
 
     # 총 원화 평가금액 > 투자금액(99%) 산출
     account = KIS.get_KR_account_summary()
-    if isinstance(account, dict):
-        cash_weight = target["CASH"]["weight"] if "CASH" in target else 0.0
-        stock_weight = 1.0 - cash_weight          # 주식에 투자할 비중 (예: 0.75), 최소현금 2%유지
-        total_invest = account['total_krw_asset'] * stock_weight
-    else:
+    if not isinstance(account, dict):
         TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
-        sys.exit(1)      
+        sys.exit(1)
+
+    orderable_cash_init = KIS.get_KR_orderable_cash()    # 수수료·세금 반영 실투자가능금액
+    if not isinstance(orderable_cash_init, (int, float)):
+        TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({orderable_cash_init})")
+        sys.exit(1)
+
+    total_krw_asset = account['stock_eval_amt'] + float(orderable_cash_init)  # 총자산 재산출
+    cash_weight = target["CASH"]["weight"] if "CASH" in target else 0.0
+    stock_weight = 1.0 - cash_weight
+    total_invest = total_krw_asset * stock_weight           # 주문가능현금 기준 투자금 산출
 
     # 종목별 목표 투자금액 및 수량 산출 
     target_code = list(target.keys())
@@ -276,7 +282,7 @@ if order['round'] == 1 or order['round'] == 8:
     
     for i in target_code:
         if i == "CASH":                        # CASH는 주식 아님 → 스킵
-            target[i]['target_invest'] = int(target[i]['weight'] * account['total_krw_asset'])
+            target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
             target[i]['target_qty'] = 0
             continue
         price = KIS.get_KR_current_price(i)
@@ -438,9 +444,9 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             local_split_price = [1.01]
             split_qty = int(qty)
 
-        price = KIS.get_KR_current_price(code)
+        price = buy_prices.get(code)
         if not isinstance(price, int) or price == 0:
-            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"KRQT: 현재가 없음으로 종료합니다. ({code})")
             sys.exit(1)
 
         for i in range(local_split_count):
@@ -598,7 +604,7 @@ if order['round'] == 14:
         sys.exit(1)
 
     daily_data = {
-        "date":             order['date'],
+        "date": str(order['date']),
         "total_stocks":     all_balance['stock_eval_amt'],
         "total_stocks_ret": 0.0,
         "total_cash":       float(orderable_cash),                          # ← 주문가능현금
