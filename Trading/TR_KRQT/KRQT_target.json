@@ -5,7 +5,7 @@
         "categories": [
             "피크"
         ],
-        "target_invest": 1980000,
+        "target_invest": 2052297,
         "target_qty": 17
     },
     "036930": {
@@ -14,7 +14,7 @@
         "categories": [
             "피크"
         ],
-        "target_invest": 1980000,
+        "target_invest": 2052297,
         "target_qty": 30
     },
     "064760": {
@@ -23,7 +23,7 @@
         "categories": [
             "피크"
         ],
-        "target_invest": 1980000,
+        "target_invest": 2052297,
         "target_qty": 7
     },
     "095340": {
@@ -32,7 +32,7 @@
         "categories": [
             "피크"
         ],
-        "target_invest": 1980000,
+        "target_invest": 2052297,
         "target_qty": 9
     },
     "194480": {
@@ -41,8 +41,8 @@
         "categories": [
             "밸류"
         ],
-        "target_invest": 1980000,
-        "target_qty": 50
+        "target_invest": 2052297,
+        "target_qty": 51
     },
     "221840": {
         "name": "하이즈항공",
@@ -50,8 +50,8 @@
         "categories": [
             "밸류"
         ],
-        "target_invest": 1980000,
-        "target_qty": 776
+        "target_invest": 2052297,
+        "target_qty": 798
     },
     "253590": {
         "name": "네오셈",
@@ -59,8 +59,8 @@
         "categories": [
             "밸류"
         ],
-        "target_invest": 1980000,
-        "target_qty": 110
+        "target_invest": 2052297,
+        "target_qty": 111
     },
     "272210": {
         "name": "한화시스템",
@@ -69,8 +69,8 @@
             "피크",
             "밸류"
         ],
-        "target_invest": 3960000,
-        "target_qty": 24
+        "target_invest": 4104595,
+        "target_qty": 26
     },
     "440110": {
         "name": "파두",
@@ -78,7 +78,7 @@
         "categories": [
             "피크"
         ],
-        "target_invest": 1980000,
-        "target_qty": 28
+        "target_invest": 2052297,
+        "target_qty": 29
     }
 }
