@@ -256,11 +256,12 @@ if order['round'] == 1 or order['round'] == 8:
         for _, row in grouped.iterrows()
     }
 
-
     # 총 원화 평가금액 > 투자금액(99%) 산출
     account = KIS.get_KR_account_summary()
     if isinstance(account, dict):
-        total_invest = account['total_krw_asset'] * 0.99 # cash는 1%유지
+        cash_weight = target["CASH"]["weight"] if "CASH" in target else 0.0
+        stock_weight = 1.0 - cash_weight          # 주식에 투자할 비중 (예: 0.75), 최소현금 2%유지
+        total_invest = account['total_krw_asset'] * stock_weight
     else:
         TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
         sys.exit(1)      
@@ -274,6 +275,10 @@ if order['round'] == 1 or order['round'] == 8:
         message.append(f"weight 합계 경고: {total_weight:.3f}")
     
     for i in target_code:
+        if i == "CASH":                        # CASH는 주식 아님 → 스킵
+            target[i]['target_invest'] = int(target[i]['weight'] * account['total_krw_asset'])
+            target[i]['target_qty'] = 0
+            continue
         price = KIS.get_KR_current_price(i)
         if price == 0 or not isinstance(price, int):
             TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
@@ -319,6 +324,8 @@ buy = {}
 sell = {}
 for code in hold_code:
     if code in target_code:
+        if code == "CASH":                 # CASH는 매매 대상 아님
+            continue
         if target[code]["target_qty"] > hold[code]["hold_qty"]:
             buy[code] = target[code]["target_qty"] - hold[code]["hold_qty"]
         elif target[code]["target_qty"] < hold[code]["hold_qty"]:
@@ -327,6 +334,8 @@ for code in hold_code:
         sell[code] = hold[code]["hold_qty"]
 
 for code in target_code:
+    if code == "CASH":                     # CASH는 매매 대상 아님
+        continue
     if code not in hold_code:
         buy[code] = target[code]["target_qty"]
 
@@ -386,15 +395,18 @@ if not isinstance(KRW, (int, float)):
     sys.exit(1)
 
 # 주문가능금액에 맞춰 매수잔고 재조정
-orderable_KRW = float(KRW) # 이후 계산을 float으로 통일
+orderable_KRW = float(KRW)
 target_KRW = 0
+buy_prices = {}                                              # 현재가 저장
+buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0  # 최대 배율 기준
 
 for code, qty in buy.items():
     price = KIS.get_KR_current_price(code)
     if not isinstance(price, int) or price == 0:
         TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
         sys.exit(1)
-    ticker_invest = price * qty
+    buy_prices[code] = price                                 # 저장
+    ticker_invest = price * buy_price_rate * qty             # 최대 배율 반영
     target_KRW += ticker_invest
     time_module.sleep(0.125)
 
@@ -428,7 +440,7 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
 
         price = KIS.get_KR_current_price(code)
         if not isinstance(price, int) or price == 0:
-            message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
         for i in range(local_split_count):
@@ -488,6 +500,10 @@ if order['round'] == 14:
 
     plan_raw = defaultdict(list)
     for _, row in plan.iterrows():
+        if str(row["code"]) == "CASH":        # CASH는 결과 리포트 대상 아님
+            continue
+        if pd.isna(row["category"]):          # category 빈값 행 스킵
+            continue
         plan_raw[str(row["category"])].append({
             "code": str(row["code"]),
             "name": str(row["name"]),
@@ -572,18 +588,23 @@ if order['round'] == 14:
     # 최종 daily balance
     # 전체 자산
     all_balance = KIS.get_KR_account_summary()
-    if isinstance(all_balance, dict):
-        daily_data = {
-            "date":             order['date'],
-            "total_stocks":     all_balance['stock_eval_amt'],
-            "total_stocks_ret": 0.0,
-            "total_cash":       all_balance['cash_balance'],
-            "total_asset":      all_balance['total_krw_asset'],
-            "total_asset_ret":  0.0
-        }
-    else:
+    if not isinstance(all_balance, dict):
         TA.send_tele(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
         sys.exit(1)
+
+    orderable_cash = KIS.get_KR_orderable_cash()    # 주문가능현금 추가 조회
+    if not isinstance(orderable_cash, (int, float)):
+        TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({orderable_cash})")
+        sys.exit(1)
+
+    daily_data = {
+        "date":             order['date'],
+        "total_stocks":     all_balance['stock_eval_amt'],
+        "total_stocks_ret": 0.0,
+        "total_cash":       float(orderable_cash),                          # ← 주문가능현금
+        "total_asset":      all_balance['stock_eval_amt'] + float(orderable_cash),  # ← 재산출
+        "total_asset_ret":  0.0
+    }
 
     # category별 자산
     for category, stocks_list in result.items():
@@ -614,5 +635,4 @@ if order['round'] == 14:
 
 message = []
 
- 
 sys.exit(0)
