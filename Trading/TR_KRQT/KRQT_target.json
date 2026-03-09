@@ -1,84 +1,93 @@
 {
-    "031980": {
-        "name": "피에스케이홀딩스",
-        "weight": 0.1,
-        "categories": [
-            "피크"
-        ],
-        "target_invest": 2052297,
-        "target_qty": 17
-    },
     "036930": {
         "name": "주성엔지니어링",
-        "weight": 0.1,
+        "weight": 0.05,
         "categories": [
             "피크"
         ],
-        "target_invest": 2052297,
-        "target_qty": 30
-    },
-    "064760": {
-        "name": "티씨케이",
-        "weight": 0.1,
-        "categories": [
-            "피크"
-        ],
-        "target_invest": 2052297,
+        "target_invest": 481245,
         "target_qty": 7
+    },
+    "042700": {
+        "name": "한미반도체",
+        "weight": 0.05,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 481245,
+        "target_qty": 1
     },
     "095340": {
         "name": "ISC",
-        "weight": 0.1,
+        "weight": 0.05,
         "categories": [
             "피크"
         ],
-        "target_invest": 2052297,
-        "target_qty": 9
-    },
-    "194480": {
-        "name": "데브시스터즈",
-        "weight": 0.1,
-        "categories": [
-            "밸류"
-        ],
-        "target_invest": 2052297,
-        "target_qty": 51
+        "target_invest": 481245,
+        "target_qty": 2
     },
     "221840": {
         "name": "하이즈항공",
-        "weight": 0.1,
+        "weight": 0.05,
         "categories": [
             "밸류"
         ],
-        "target_invest": 2052297,
-        "target_qty": 798
+        "target_invest": 481245,
+        "target_qty": 192
     },
     "253590": {
         "name": "네오셈",
-        "weight": 0.1,
+        "weight": 0.05,
         "categories": [
             "밸류"
         ],
-        "target_invest": 2052297,
-        "target_qty": 111
+        "target_invest": 481245,
+        "target_qty": 27
     },
     "272210": {
         "name": "한화시스템",
-        "weight": 0.2,
-        "categories": [
-            "피크",
-            "밸류"
-        ],
-        "target_invest": 4104595,
-        "target_qty": 26
-    },
-    "440110": {
-        "name": "파두",
         "weight": 0.1,
+        "categories": [
+            "밸류",
+            "피크"
+        ],
+        "target_invest": 962490,
+        "target_qty": 5
+    },
+    "319660": {
+        "name": "피에스케이",
+        "weight": 0.05,
         "categories": [
             "피크"
         ],
-        "target_invest": 2052297,
-        "target_qty": 29
+        "target_invest": 481245,
+        "target_qty": 7
+    },
+    "440110": {
+        "name": "파두",
+        "weight": 0.05,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 481245,
+        "target_qty": 7
+    },
+    "950160": {
+        "name": "코오롱티슈진",
+        "weight": 0.05,
+        "categories": [
+            "피크"
+        ],
+        "target_invest": 481245,
+        "target_qty": 4
+    },
+    "CASH": {
+        "name": "CASH",
+        "weight": 0.5,
+        "categories": [
+            "nan"
+        ],
+        "target_invest": 9624904,
+        "target_qty": 0
     }
 }
