@@ -27,6 +27,7 @@ buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
 KRQT_day_path = "/var/autobot/TR_KRQT/KRQT_day.json" # json
 KRQT_target_path = "/var/autobot/TR_KRQT/KRQT_target.json" # json
 KRQT_result_path = "/var/autobot/TR_KRQT/KRQT_result.json" # json
+KRQT_daily_path = "/var/autobot/TR_KRQT/KRQT_daily.json" # json
 KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
 
 def order_time(day=1):
@@ -606,7 +607,6 @@ if order['round'] == 14:
     daily_data = {
         "date": str(order['date']),
         "total_stocks":     all_balance['stock_eval_amt'],
-        "total_stocks_ret": 0.0,
         "total_cash":       float(orderable_cash),                          # ← 주문가능현금
         "total_asset":      all_balance['stock_eval_amt'] + float(orderable_cash),  # ← 재산출
         "total_asset_ret":  0.0
@@ -617,6 +617,28 @@ if order['round'] == 14:
         category_balance = sum(item['balance'] for item in stocks_list)
         daily_data[category]            = category_balance
         daily_data[f"{category}_ret"]   = 0.0
+        
+    # KRQT_daily.json 저장
+    try:
+        json_message = save_json(daily_data, KRQT_daily_path, order)
+        message.extend(json_message)
+    except Exception as e:
+        error_msg = f"KRQT_daily.json 저장 실패: {e}"
+        TA.send_tele(error_msg)
+        
+    # data 정제
+    daily = {
+        "date": daily_data["date"],
+        "total_stocks":     f"{int(daily_data['total_stocks'])}원",
+        "total_cash":       f"{int(daily_data['total_cash'])}원",
+        "total_asset":      f"{int(daily_data['total_asset'])}원",  
+        "total_asset_ret":  f"{float(daily_data['total_asset_ret']*100):.2f}%"
+    }
+    
+    for category, stocks_list in result.items():
+        category_balance = sum(item['balance'] for item in stocks_list)
+        daily_data[category]            = f"int{category_balance}원"
+        daily_data[f"{category}_ret"]   = 0.00+"%"
 
     # daily balance google sheet 저장
     try:
@@ -631,12 +653,15 @@ if order['round'] == 14:
         current_month = current_date.month
 
         # 데이터 저장
-        GU.save_to_sheets(spreadsheet, daily_data, current_month)
+        GU.save_to_sheets(spreadsheet, daily, current_month)
     except Exception as e:
         error_msg = f"Google Sheet 업로드 실패: {e}"
         TA.send_tele(error_msg)
         # Google Sheet 업로드 실패는 전체 프로세스를 중단하지 않음
-
+    
+    # telegram message
+    for k, v in daily.items():
+        message.append(f"{k} : {v}")
     TA.send_tele(message)
 
 message = []
