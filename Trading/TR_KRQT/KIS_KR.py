@@ -473,7 +473,20 @@ class KIS_API:
                 if e.response.status_code == 500 and attempt < max_retries:
                     TA.send_tele("500 에러 발생, 재시도 중...")
                     continue
-                return None
+                try:
+                    err_body = e.response.json()
+                    return {
+                        "success":       False,
+                        "ticker":        ticker,
+                        "quantity":      quantity,
+                        "price":         price,
+                        "order_number":  "",
+                        "error_code":    str(e.response.status_code),
+                        "error_message": err_body.get("msg1", str(e)),
+                        "response":      e.response
+                    }
+                except Exception:
+                    return None
 
             except Exception as e:
                 if attempt < max_retries:
@@ -637,7 +650,7 @@ class KIS_API:
             result = response.json()
 
             if result.get("rt_cd") != "0":
-                KA.SendMessage(f"국내 체결확인 조회 실패: {result.get('msg1')}")
+                TA.send_tele(f"국내 체결확인 조회 실패: {result.get('msg1')}")
                 return None
 
             orders = result.get("output1", [])
@@ -654,11 +667,11 @@ class KIS_API:
                         "order_type":   order.get("sll_buy_dvsn_cd_name", "알 수 없음")
                     }
 
-            KA.SendMessage(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
+            TA.send_tele(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
             return None
 
         except Exception as e:
-            KA.SendMessage(f"국내 체결 확인 오류: {e}")
+            TA.send_tele(f"국내 체결 확인 오류: {e}")
             return None
 
     # 한국 주식 미체결 주문 조회

@@ -58,24 +58,36 @@ if not isinstance(orderable_cash, (int, float)):
 
 # 전체 자산 data 정리
 total_asset = float(balance['stock_eval_amt'] + orderable_cash)
+last_total = last_daily.get('total_asset', total_asset)
 daily_data = {
     "date": str(current_date),
     "total_stocks":     float(balance['stock_eval_amt']),
     "total_cash":       float(orderable_cash),                        # ← 주문가능현금
     "total_asset":      total_asset,  # ← 재산출
-    "total_asset_ret":  float(total_asset / last_daily['total_asset'] - 1)
+    "total_asset_ret":  float(total_asset / last_total - 1) if last_total else 0.0
 }
 
 # category별 자산
 for category, stocks_list in result.items():
     category_balance = 0.0
-    for i in stocks_list:
-        price = KIS.get_KR_current_price(stocks_list[i]['code'])
-        stock_balance = stocks_list[i]['qty'] * price
-        category_balance += stock_balance
+    for stock in stocks_list:                  # ✅ 리스트 직접 순회
+        if stock['qty'] == 0:                  # ✅ 매수실패 종목 스킵
+            time_module.sleep(0.125)
+            continue
+        try:
+            price = KIS.get_KR_current_price(stock['code'])
+            if not isinstance(price, (int, float)) or price <= 0:
+                raise ValueError(f"비정상 가격: {price}")
+            stock_balance = stock['qty'] * price
+            category_balance += stock_balance
+        except Exception as e:
+            TA.send_tele(f"KRQT: {stock['code']} 현재가 조회 실패: {e}")
+            sys.exit(1)
         time_module.sleep(0.125)
-    daily_data[category]            = float(category_balance)  # category_balance
-    daily_data[f"{category}_ret"]   = float(category_balance / last_daily[category] - 1)
+
+    last_cat = last_daily.get(category, category_balance)
+    daily_data[category]          = float(category_balance)
+    daily_data[f"{category}_ret"] = float(category_balance / last_cat - 1) if last_cat else 0.0
 
 # KRQT_daily.json 저장
 try:
@@ -85,6 +97,7 @@ try:
 except Exception as e:
     error_msg = f"KRQT_daily.json 저장 실패: {e}"
     TA.send_tele(error_msg)
+    sys.exit(1)
 
 # data 정제
 daily = {
@@ -95,15 +108,9 @@ daily = {
     "total_asset_ret":  f"{float(daily_data['total_asset_ret']*100):.2f}%"
 }
 
-for category, stocks_list in result.items():
-    category_balance = 0.0
-    for i in stocks_list:
-        price = KIS.get_KR_current_price(stocks_list[i]['code'])
-        stock_balance = stocks_list[i]['qty'] * price
-        category_balance += stock_balance
-        time_module.sleep(0.125)
-    daily[category]            = f"{int(category_balance)}원"  # category_balance
-    daily[f"{category}_ret"]   = f"{float(daily_data[f'{category}_ret']*100):.2f}%"  # float(category_balance / last_daily[category] - 1)
+for category in result:
+    daily[category]          = f"{int(daily_data[category])}원"
+    daily[f"{category}_ret"] = f"{float(daily_data[f'{category}_ret']*100):.2f}%"
 
 # daily balance google sheet 저장
 try:

@@ -214,7 +214,7 @@ except Exception as e:
 
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
-
+order['round'] = 1 ##############################################################test##############
 if order['round'] == 0:
     TA.send_tele(f"KRQT: 매매시간이 아닙니다.")
     sys.exit(0)
@@ -263,12 +263,9 @@ if order['round'] == 1 or order['round'] == 8:
         TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
         sys.exit(1)
 
-    orderable_cash_init = KIS.get_KR_orderable_cash()    # 수수료·세금 반영 실투자가능금액
-    if not isinstance(orderable_cash_init, (int, float)):
-        TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({orderable_cash_init})")
-        sys.exit(1)
+    total_krw_asset = account['total_krw_asset']  # stock_eval_amt + dnca_tot_amt (예수금 총액)
+    message.append(f"KRQT 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
 
-    total_krw_asset = account['stock_eval_amt'] + float(orderable_cash_init)  # 총자산 재산출
     cash_weight = target["CASH"]["weight"] if "CASH" in target else 0.0
     stock_weight = 1.0 - cash_weight
     total_invest = total_krw_asset * stock_weight           # 주문가능현금 기준 투자금 산출
@@ -402,7 +399,15 @@ if not isinstance(KRW, (int, float)):
     sys.exit(1)
 
 # 주문가능금액에 맞춰 매수잔고 재조정
-orderable_KRW = float(KRW)
+# 매도 미체결 대금을 ord_psbl_cash가 미반영 → 수동 보정
+sell_proceeds = 0.0
+for code, qty in sell.items():
+    sell_price = KIS.get_KR_current_price(code)
+    if isinstance(sell_price, int) and sell_price > 0:
+        sell_proceeds += qty * sell_price * (1 - sell_tax)
+    time_module.sleep(0.125)
+
+orderable_KRW = float(KRW) + sell_proceeds   # ← 매도 예정 수령액 보정
 target_KRW = 0
 buy_prices = {}                                              # 현재가 저장
 buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0  # 최대 배율 기준
@@ -429,6 +434,7 @@ else:
     pass # 예수금이 충분할 경우 조정 없음
 
 # 매수주문
+buy = {code: qty for code, qty in buy.items() if qty > 0}  # 방어적 0주 제거
 buy_code = list(buy.keys())
 
 if len(buy_code) == 0:
@@ -441,6 +447,9 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
         local_split_price = buy_split[1][:]
         split_qty = int(qty // local_split_count)
         if split_qty < 1:
+            if qty < 1:                   # qty 자체가 0이면 주문 스킵
+                message.append(f"KRQT 매수 스킵: {code} 수량 0주 (조정후 제거대상)")
+                continue
             local_split_count = 1
             local_split_price = [1.01]
             split_qty = int(qty)
@@ -455,11 +464,14 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             order_price= KIS.round_to_tick(price=split_price, market="KR") 
             order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")
             if order_info is None:
-                message.append(f"KRQT 매수 오류: {code} API 응답 없음")
+                time_module.sleep(2)
+                order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")  # 1회 재시도
+            if order_info is None:
+                message.append(f"KRQT 매수 오류: {code} {split_qty}주 {order_price:,}원 API 응답 없음")
             elif order_info.get("success"):
                 message.append(f"매수 {code} {split_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
             else:
-                message.append(f"매수 실패 {code}: {order_info.get('error_message','')}")
+                message.append(f"매수 실패 {code} {split_qty}주 {order_price:,}원: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
 
 # 7회차에는 day = 2로 전환
