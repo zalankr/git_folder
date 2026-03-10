@@ -306,27 +306,44 @@ class KIS_API:
         }
 
         try:
-            self._rate_limit_sleep()
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+            stock_eval_amt = 0.0
+            cash_balance   = 0.0
 
-            if data.get('rt_cd') != '0':
-                TA.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
-                return None
+            while True:
+                self._rate_limit_sleep()
+                response = requests.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
 
-            # output2는 연속조회 무관하게 첫 번째 응답에 계좌 전체 합산값 반환
-            output2 = data.get('output2', [{}])
-            summary = output2[0] if output2 else {}
+                if data.get('rt_cd') != '0':
+                    TA.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
+                    return None
 
-            stock_eval_amt  = float(summary.get('scts_evlu_amt', 0))   # 주식 평가금액 합계
-            cash_balance    = float(summary.get('dnca_tot_amt', 0))     # 예수금 총금액
-            total_krw_asset = stock_eval_amt + cash_balance
+                # output1: 종목별 평가금액 직접 합산 (페이지마다 누적)
+                # scts_evlu_amt(output2)는 첫 페이지 종목만 반영하므로 사용 안 함
+                for stock in data.get('output1', []):
+                    if int(stock.get('hldg_qty', 0)) == 0:
+                        continue
+                    stock_eval_amt += float(stock.get('evlu_amt', 0))
+
+                # output2: 현금잔고는 매 페이지 동일값 → 마지막 페이지 값으로 덮어씀
+                output2 = data.get('output2', [{}])
+                summary = output2[0] if output2 else {}
+                cash_balance = float(summary.get('dnca_tot_amt', 0))
+
+                FK100 = data.get('ctx_area_fk100', '').strip()
+                NK100 = data.get('ctx_area_nk100', '').strip()
+                if FK100 == '' or NK100 == '':
+                    break
+
+                params['CTX_AREA_FK100'] = FK100
+                params['CTX_AREA_NK100'] = NK100
+                time.sleep(0.1)
 
             return {
                 'stock_eval_amt':  stock_eval_amt,
                 'cash_balance':    cash_balance,
-                'total_krw_asset': total_krw_asset
+                'total_krw_asset': stock_eval_amt + cash_balance
             }
 
         except Exception as e:
