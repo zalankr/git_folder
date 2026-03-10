@@ -214,7 +214,7 @@ except Exception as e:
 
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
-order['round'] = 1 ##############################################################test##############
+
 if order['round'] == 0:
     TA.send_tele(f"KRQT: 매매시간이 아닙니다.")
     sys.exit(0)
@@ -263,21 +263,21 @@ if order['round'] == 1 or order['round'] == 8:
         TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
         sys.exit(1)
 
-    total_krw_asset = account['total_krw_asset']  # stock_eval_amt + dnca_tot_amt (예수금 총액)
+    total_krw_asset = account['total_krw_asset']  # nass_amt (주식평가금 + D+2 현금 합계)
     message.append(f"KRQT 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
 
-    cash_weight = target["CASH"]["weight"] if "CASH" in target else 0.0
-    stock_weight = 1.0 - cash_weight
-    total_invest = total_krw_asset * stock_weight           # 주문가능현금 기준 투자금 산출
-
-    # 종목별 목표 투자금액 및 수량 산출 
+    # 종목별 목표 투자금액 및 수량 산출
+    # ✅ 각 종목의 weight는 전체 자산 대비 비중 (CASH 포함 합계 = 100%)
+    #    → target_invest = total_krw_asset × weight  (직접 곱)
+    # ❌ total_invest(= total_krw_asset × stock_weight)를 경유하면 이중 축소됨
+    #    예) CASH=50%, 종목 각 5% → total_invest×5% = 총자산×2.5% (의도의 절반)
     target_code = list(target.keys())
-    
+
     total_weight = sum(v['weight'] for v in target.values())
     if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
         TA.send_tele(f"KRQT 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
         message.append(f"weight 합계 경고: {total_weight:.3f}")
-    
+
     for i in target_code:
         if i == "CASH":                        # CASH는 주식 아님 → 스킵
             target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
@@ -287,7 +287,7 @@ if order['round'] == 1 or order['round'] == 8:
         if price == 0 or not isinstance(price, int):
             TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
-        target[i]['target_invest'] = int(target[i]['weight'] * total_invest)
+        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # ✅ 전체 자산 기준
         target[i]['target_qty'] = int(target[i]['target_invest'] / price)
         time_module.sleep(0.1)
 
@@ -393,21 +393,14 @@ message = []
 time_module.sleep(600)
 # 매수구간 전환
 # 주문가능 금액 조회 및 주문수량 구하기
+# ✅ get_KR_orderable_cash()는 nrcvb_buy_amt (미수없는 매수가능금액) 반환
+#    → D+2 정산대금 포함, 당일 매도 체결분도 반영 → 수동 보정 불필요
 KRW = KIS.get_KR_orderable_cash()
 if not isinstance(KRW, (int, float)):
     TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({KRW})")
     sys.exit(1)
 
-# 주문가능금액에 맞춰 매수잔고 재조정
-# 매도 미체결 대금을 ord_psbl_cash가 미반영 → 수동 보정
-sell_proceeds = 0.0
-for code, qty in sell.items():
-    sell_price = KIS.get_KR_current_price(code)
-    if isinstance(sell_price, int) and sell_price > 0:
-        sell_proceeds += qty * sell_price * (1 - sell_tax)
-    time_module.sleep(0.125)
-
-orderable_KRW = float(KRW) + sell_proceeds   # ← 매도 예정 수령액 보정
+orderable_KRW = float(KRW)   # nrcvb_buy_amt: 미수없는 매수가능금액 (D+2 정산 포함)
 target_KRW = 0
 buy_prices = {}                                              # 현재가 저장
 buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0  # 최대 배율 기준
@@ -422,6 +415,13 @@ for code, qty in buy.items():
     target_KRW += ticker_invest
     time_module.sleep(0.125)
 
+# ── 디버그: 매수 가능금액 vs 목표 매수금 비교 로그 ──────────────────────────
+message.append(
+    f"KRQT 매수가능: {int(orderable_KRW):,}원 | 목표매수금: {int(target_KRW):,}원"
+    + (f" | 조정비율: {orderable_KRW/target_KRW:.4f}" if target_KRW > 0 else "")
+)
+# ────────────────────────────────────────────────────────────────────────────
+
 if target_KRW > orderable_KRW:
     adjust_rate = orderable_KRW / target_KRW
     for ticker, ticker_qty in buy.items():
@@ -430,8 +430,9 @@ if target_KRW > orderable_KRW:
 
     buy = {ticker: qty for ticker, qty in buy.items() if qty > 0}   # 0주 제거
     buy_code = list(buy.keys())
+    message.append(f"KRQT 매수수량 조정 완료 (adjust_rate={adjust_rate:.4f})")
 else:
-    pass # 예수금이 충분할 경우 조정 없음
+    message.append("KRQT 매수가능금 충분 → 수량 조정 없음")
 
 # 매수주문
 buy = {code: qty for code, qty in buy.items() if qty > 0}  # 방어적 0주 제거

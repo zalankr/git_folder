@@ -274,10 +274,19 @@ class KIS_API:
         한국주식 계좌 원화 자산 요약
         Returns:
             {
-                'stock_eval_amt': 한국주식 평가금액 합계 (원),
-                'cash_balance':   원화 예수금 잔고 (원),
-                'total_krw_asset': 계좌 전체 원화자산 (주식평가금+예수금)
+                'stock_eval_amt':  한국주식 평가금액 합계 (원),
+                'cash_balance':    D+2 정산 포함 주문가능현금 (원),
+                'total_krw_asset': 계좌 전체 원화자산 = nass_amt (주식평가금 + D+2 현금)
             }
+
+        ※ 필드 구조:
+            - nass_amt      : 순자산금액 = 주식평가금 + D+2 정산현금 합계 → total_krw_asset ✅
+            - stock_eval_amt: output1에서 직접 합산한 주식 평가금액
+            - cash_balance  : nass_amt - stock_eval_amt (파생값, 표시용)
+
+        ※ 이전 오류 패턴 (절대 반복 금지):
+            - dnca_tot_amt를 cash로, stock_eval_amt와 합산 → D+0만 반영, 미정산분 누락 ❌
+            - nass_amt를 cash로, stock_eval_amt와 합산 → 주식이 이중 계산됨 ❌
         """
         path = "uapi/domestic-stock/v1/trading/inquire-balance"
         url = f"{self.url_base}/{path}"
@@ -307,7 +316,7 @@ class KIS_API:
 
         try:
             stock_eval_amt = 0.0
-            cash_balance   = 0.0
+            total_krw_asset = 0.0  # nass_amt (순자산 = 주식 + D+2 현금 합계)
 
             while True:
                 self._rate_limit_sleep()
@@ -326,10 +335,13 @@ class KIS_API:
                         continue
                     stock_eval_amt += float(stock.get('evlu_amt', 0))
 
-                # output2: 현금잔고는 매 페이지 동일값 → 마지막 페이지 값으로 덮어씀
+                # output2: nass_amt = 순자산금액 (주식평가금 + D+2 정산현금 합계)
+                # → total_krw_asset로 직접 사용, cash_balance는 파생값으로 계산
+                # ✅ nass_amt를 total로 쓰고 stock을 빼서 cash를 구함
+                # ❌ nass_amt + stock_eval_amt 하면 주식이 이중 계산됨
                 output2 = data.get('output2', [{}])
                 summary = output2[0] if output2 else {}
-                cash_balance = float(summary.get('dnca_tot_amt', 0))
+                total_krw_asset = float(summary.get('nass_amt', 0))
 
                 FK100 = data.get('ctx_area_fk100', '').strip()
                 NK100 = data.get('ctx_area_nk100', '').strip()
@@ -340,10 +352,12 @@ class KIS_API:
                 params['CTX_AREA_NK100'] = NK100
                 time.sleep(0.1)
 
+            cash_balance = total_krw_asset - stock_eval_amt  # D+2 정산 포함 현금 (파생값)
+
             return {
                 'stock_eval_amt':  stock_eval_amt,
                 'cash_balance':    cash_balance,
-                'total_krw_asset': stock_eval_amt + cash_balance
+                'total_krw_asset': total_krw_asset   # = nass_amt, 주식+D+2현금 합계
             }
 
         except Exception as e:
@@ -353,10 +367,14 @@ class KIS_API:
     # 한국 주식 매수 가능 원화 예수금 조회    
     def get_KR_orderable_cash(self) -> Optional[float]: #
         """
-        한국주식 매수 가능 원화 예수금 조회
+        한국주식 매수 가능 원화 예수금 조회 (D+2 정산 포함)
         TR: TTTC8908R (실전) / VTTC8908R (모의)
         Returns:
             float: 주문가능현금 (원) / None: 오류
+
+        ※ 필드 선택 기준:
+            - ord_psbl_cash  : D+0 주문가능현금 → 당일 매도 미정산분 제외, 실제보다 적음 ❌
+            - nrcvb_buy_amt  : 미수없는 매수가능금액 = D+2 정산 포함 실제 주문가능금액 ✅
         """
         path = "uapi/domestic-stock/v1/trading/inquire-psbl-order"
         url = f"{self.url_base}/{path}"
@@ -390,7 +408,9 @@ class KIS_API:
                 TA.send_tele(f"매수가능조회 API 오류: {data.get('msg1')}")
                 return None
 
-            return float(data['output'].get('ord_psbl_cash', 0))
+            # ✅ nrcvb_buy_amt: 미수없는 매수가능금액 (D+2 정산대금 포함, 실제 주문가능금액)
+            # ❌ ord_psbl_cash: D+0 현금만 반영 → 당일 매도 미정산분 누락으로 실제보다 적게 나옴
+            return float(data['output'].get('nrcvb_buy_amt', 0))
 
         except Exception as e:
             TA.send_tele(f"매수가능현금 조회 오류: {e}")
