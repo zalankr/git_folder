@@ -21,7 +21,7 @@ acnt_prdt_cd = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 KRQT_result_path = "/var/autobot/TR_KRQT/KRQT_result.json" # json
-KRQT_daily_path = "/var/autobot/TR_KRQT/KRQT_rdaily.json" # json
+KRQT_daily_path = "/var/autobot/TR_KRQT/KRQT_daily.json" # json
 message = []
 
 # 현재 일자 산출

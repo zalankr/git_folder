@@ -497,7 +497,7 @@ message = []
 
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
 if order['round'] == 14:
-    time_module.sleep(300)
+    time_module.sleep(120)
     # 전회 주문 취소
     cancel_message = cancel_orders(side='all')
     message.append(cancel_message)
@@ -604,6 +604,9 @@ if order['round'] == 14:
     # 전략결과 저장
     json_message = save_json(result, KRQT_result_path, order)
     message.extend(json_message)
+    TA.send_tele(message)
+    message = []
+    time_module.sleep(1.0)
 
     # 최종 daily balance
     # 전체 자산
@@ -638,6 +641,9 @@ if order['round'] == 14:
     except Exception as e:
         error_msg = f"KRQT_daily.json 저장 실패: {e}"
         TA.send_tele(error_msg)
+    TA.send_tele(message)
+    message = []
+    time_module.sleep(1.0)
         
     # data 정제
     daily = {
@@ -667,16 +673,21 @@ if order['round'] == 14:
 
         # 데이터 저장
         GU.save_to_sheets(spreadsheet, daily, current_month)
+        TA.send_tele(f"2026_KRQT_daily Google Sheet 업로드 완료")
+        message = []
     except Exception as e:
         error_msg = f"Google Sheet 업로드 실패: {e}"
         TA.send_tele(error_msg)
+        message = []
+        
         # Google Sheet 업로드 실패는 전체 프로세스를 중단하지 않음
     
     # telegram message
     for k, v in daily.items():
         message.append(f"{k} : {v}")
-    TA.send_tele(message)
 
+time_module.sleep(1.0)   
+TA.send_tele(message)
 message = []
-
+########################### 리밸런싱 후 메세지 확인 필수
 sys.exit(0)
