@@ -25,62 +25,60 @@ KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 # 매매데이터
 sell_fee_tax = 0.0021  # 매도 세금 0.014% + ISA계좌  0.0042087%
 buy_fee_tax = 0.0001  # 매수 수수료 0.014% ISA계좌
-
-ISAYS_target_path = "/var/autobot/TR_ISA/ISAYS_target.json" # json
 ISAYS_result_path = "/var/autobot/TR_ISA/ISAYS_result.json" # json
 ISAYS_daily_path = "/var/autobot/TR_ISA/ISAYS_daily.json"   # json
 
 # 포트폴리오 목표비중
-target = {
-    "441800": {
+portfolio = [
+    {
+        "code": "441800",
         "name": "TIME Korea플러스배당액티브",
         "weight": 0.17,
-        "price": 26510,
-        "qty": 0
+        "price": 26510
     },
-    "426030": {
+    {
+        "code": "426030",
         "name": "TIME 미국나스닥100액티브",
         "weight": 0.17,
-        "price": 37485,
-        "qty": 0
+        "price": 37485
     },
-    "371160": {
+    {
+        "code": "371160",
         "name": "TIGER 차이나항셍테크",
         "weight": 0.06,
-        "price": 8185,
-        "qty": 0
+        "price": 8185
     },
-    "411060": {
+    {
+        "code": "411060",
         "name": "ACE KRX금현물",
         "weight": 0.14,
-        "price": 33935,
-        "qty": 0
+        "price": 33935
     },
-    "490490": {
+    {
+        "code": "490490",
         "name": "SOL 미국배당미국채혼합50",
         "weight": 0.20,
-        "price": 11445,
-        "qty": 0
+        "price": 11445
     },
-    "148070": {
+    {
+        "code": "148070",
         "name": "KIWOOM 국고채10년",
         "weight": 0.20,
-        "price": 107775,
-        "qty": 0
+        "price": 107775
     },
-    "261220": {
+    {
+        "code": "261220",
         "name": "KODEX WTI원유선물(H)",
         "weight": 0.05,
-        "price": 22735,
-        "qty": 0
+        "price": 22725
     },
-    "CASH": {
+    {
+        "code": "CASH",
         "name": "CASH",
         "weight": 0.01,
-        "price": 1,
-        "qty": 0
+        "price": 1
     }
-}
+]
 
 def order_time():
     """거래회차 확인 1~12회차""" 
@@ -252,7 +250,7 @@ message.append(cancel_message)
 # 총 원화 평가금액 불러오기
 account = KIS.get_KR_account_summary()
 if not isinstance(account, dict):
-    TA.send_tele(f"ISAYS: 총 원화평가금 조회 불가로 종료합니다. ({account})")
+    TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
     sys.exit(1)
 
 total_krw_asset = account['total_krw_asset']  # nass_amt (주식평가금 + D+2 현금 합계)
@@ -265,38 +263,49 @@ message.append(f"ISAYS 총자산: {int(total_krw_asset):,}원 (주식:{int(accou
 #    예) CASH=50%, 종목 각 5% → total_invest×5% = 총자산×2.5% (의도의 절반)
 
 target_code = list(target.keys())
-total_weight = sum(v['weight'] for v in target.values())
-if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
-    TA.send_tele(f"ISAYS 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
 
-for i in target_code:
-    if i == "CASH":                                   # CASH는 주식 아님 → 스킵
-        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
-        target[i]['target_qty'] = 0
-        continue
-    price = KIS.get_KR_current_price(i)
-    if price == 0 or not isinstance(price, int):
-        TA.send_tele(f"ISAYS: 현재가 조회 불가로 종료합니다. ({price})")
+
+
+
+
+    total_weight = sum(v['weight'] for v in target.values())
+    if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
+        TA.send_tele(f"KRQT 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
+        message.append(f"weight 합계 경고: {total_weight:.3f}")
+
+    for i in target_code:
+        if i == "CASH":                        # CASH는 주식 아님 → 스킵
+            target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
+            target[i]['target_qty'] = 0
+            continue
+        price = KIS.get_KR_current_price(i)
+        if price == 0 or not isinstance(price, int):
+            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            sys.exit(1)
+        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # ✅ 전체 자산 기준
+        target[i]['target_qty'] = int(target[i]['target_invest'] / price)
+        time_module.sleep(0.1)
+
+    # 당일 target 저장하기
+    json_message = save_json(target, KRQT_target_path, order)
+    message.extend(json_message)
+
+else: # 1회, 8회차가 아닌 경우 불러오기만 시행
+    # 당일 target 불러오기
+    target = {}
+    try:
+        with open(KRQT_target_path, 'r', encoding='utf-8') as f:
+            target = json.load(f)
+    except Exception as e:
+        TA.send_tele(f"KRQT_target.json 파일 오류: {e}")
         sys.exit(1)
-    target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # 전체 자산 기준
-    target[i]['target_qty'] = target[i]['target_invest'] // price
-    time_module.sleep(0.1)
-
-# 당일 target 저장하기
-json_message = save_json(target, ISAYS_target_path, order)
-message.extend(json_message)
-
+    target_code = list(target.keys())
+    
 # 보유 종목 잔고 불러오기
 stocks = KIS.get_KR_stock_balance()
 if not isinstance(stocks, list):
-    TA.send_tele(f"ISAYS: 잔고 조회 불가로 종료합니다. ({stocks})")
+    TA.send_tele(f"KRQT: 잔고 조회 불가로 종료합니다. ({stocks})")
     sys.exit(1)
-
-
-
-
-
-
 
 hold = {}
 for stock in stocks:
