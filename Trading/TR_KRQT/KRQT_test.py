@@ -27,6 +27,7 @@ buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
 KRQT_day_path = "/var/autobot/TR_KRQT/KRQT_day.json" # json
 KRQT_target_path = "/var/autobot/TR_KRQT/KRQT_target.json" # json
 KRQT_result_path = "/var/autobot/TR_KRQT/KRQT_result.json" # json
+KRQT_daily_path = "/var/autobot/TR_KRQT/KRQT_daily.json" # json
 KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
 
 def order_time(day=1):
@@ -90,7 +91,7 @@ def save_json(data, path, order):
     try:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        result_msgs.append(f"{order['time']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
+        result_msgs.append(f"{order['date']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
     except Exception as e:
         result_msgs.append(f"{path} 저장 실패: {e}")
         backup_path = f"/var/autobot/TR_KRQT/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -106,74 +107,74 @@ def split_data(round):
     '''회차별 분할횟수와 분할당 가격산출'''
     if round == 1:
         sell_splits = 5
-        sell_price = [1.020, 1.015, 1.010, 1.005, 0.990]
+        sell_price = [1.020, 1.015, 1.010, 1.005, 0.995]
         buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 1.000]
+        buy_price = [0.980, 0.985, 0.990, 0.995, 0.9975]
     elif round == 2:
         sell_splits = 4
         sell_price = [1.020, 1.015, 1.010, 1.005]
         buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 1.010]
+        buy_price = [0.980, 0.985, 0.990, 0.995, 1.005]
     elif round == 3:
         sell_splits = 4
-        sell_price = [1.015, 1.010, 1.005, 1.000]
+        sell_price = [1.015, 1.010, 1.005, 1.0025]
         buy_splits = 4
         buy_price = [0.980, 0.985, 0.990, 0.995]
     elif round == 4:
         sell_splits = 4
-        sell_price = [1.015, 1.010, 1.005, 0.990]
+        sell_price = [1.015, 1.010, 1.005, 0.995]
         buy_splits = 4
-        buy_price = [0.985, 0.990, 0.995, 1.000]
+        buy_price = [0.985, 0.990, 0.995, 0.9975]
     elif round == 5:
         sell_splits = 3
         sell_price = [1.015, 1.010, 1.005]
         buy_splits = 4
-        buy_price = [0.985, 0.990, 0.995, 1.010]
+        buy_price = [0.985, 0.990, 0.995, 1.005]
     elif round == 6:
         sell_splits = 3
-        sell_price = [1.010, 1.005, 1.000]
+        sell_price = [1.010, 1.005, 1.0025]
         buy_splits = 3
         buy_price = [0.985, 0.990, 0.995]
     elif round == 7:
         sell_splits = 3
-        sell_price = [1.010, 1.005, 0.990]
+        sell_price = [1.010, 1.005, 0.995]
         buy_splits = 3
-        buy_price = [0.990, 0.995, 1.000]
+        buy_price = [0.990, 0.995, 0.9975]
     elif round == 8:
         sell_splits = 2
         sell_price = [1.010, 1.005]
         buy_splits = 3
-        buy_price = [0.990, 0.995, 1.010]
+        buy_price = [0.990, 0.995, 1.005]
     elif round == 9:
         sell_splits = 2
-        sell_price = [1.005, 1.000]
+        sell_price = [1.005, 1.0025]
         buy_splits = 2
         buy_price = [0.990, 0.995]
     elif round == 10:
         sell_splits = 2
-        sell_price = [1.005, 0.990]
+        sell_price = [1.005, 0.995]
         buy_splits = 2
-        buy_price = [0.995, 1.000]
+        buy_price = [0.995, 0.9975]
     elif round == 11:
         sell_splits = 1
         sell_price = [1.005]
         buy_splits = 2
-        buy_price = [0.995, 1.010]
+        buy_price = [0.995, 1.005]
     elif round == 12:
         sell_splits = 1
-        sell_price = [1.000]
+        sell_price = [1.0025]
         buy_splits = 1
         buy_price = [0.995]
     elif round == 13:
         sell_splits = 1
-        sell_price = [0.970]
+        sell_price = [0.980]
         buy_splits = 1
-        buy_price = [1.000]
+        buy_price = [0.9975]
     elif round == 14:
         sell_splits = 0
         sell_price = []
         buy_splits = 1
-        buy_price = [1.030]
+        buy_price = [1.020]
         
     round_split = {
         "sell_splits": sell_splits, 
@@ -197,9 +198,9 @@ def cancel_orders(side: str="all"):
 # 메인 로직 # 분기 리밸런싱
 # ============================================
 checkday = KIS.is_KR_trading_day()
-# if checkday == False:
-#     TA.send_tele("KR: 거래일이 아닙니다.")
-#     sys.exit(0)
+if checkday == False:
+    TA.send_tele("KRQT: 거래일이 아닙니다.")
+    sys.exit(0)
 health_check() # 시스템 상태 확인
 message = [] # 출력메시지 LIST 생성
 
@@ -210,9 +211,10 @@ try:
 except Exception as e:
     TA.send_tele(f"KRQT_day.json 파일 오류: {e}")
     sys.exit(1)
-    
+
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
+
 if order['round'] == 0:
     TA.send_tele(f"KRQT: 매매시간이 아닙니다.")
     sys.exit(0)
@@ -257,26 +259,35 @@ if order['round'] == 1 or order['round'] == 8:
 
     # 총 원화 평가금액 > 투자금액(99%) 산출
     account = KIS.get_KR_account_summary()
-    if isinstance(account, dict):
-        total_invest = account['total_krw_asset'] * 0.99 # cash는 1%유지
-    else:
+    if not isinstance(account, dict):
         TA.send_tele(f"KRQT: 총 원화평가금 조회 불가로 종료합니다. ({account})")
         sys.exit(1)
 
-    # 종목별 목표 투자금액 및 수량 산출 
+    total_krw_asset = account['total_krw_asset']  # nass_amt (주식평가금 + D+2 현금 합계)
+    message.append(f"KRQT 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
+
+    # 종목별 목표 투자금액 및 수량 산출
+    # ✅ 각 종목의 weight는 전체 자산 대비 비중 (CASH 포함 합계 = 100%)
+    #    → target_invest = total_krw_asset × weight  (직접 곱)
+    # ❌ total_invest(= total_krw_asset × stock_weight)를 경유하면 이중 축소됨
+    #    예) CASH=50%, 종목 각 5% → total_invest×5% = 총자산×2.5% (의도의 절반)
     target_code = list(target.keys())
-    
+
     total_weight = sum(v['weight'] for v in target.values())
     if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
         TA.send_tele(f"KRQT 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
         message.append(f"weight 합계 경고: {total_weight:.3f}")
-    
+
     for i in target_code:
+        if i == "CASH":                        # CASH는 주식 아님 → 스킵
+            target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
+            target[i]['target_qty'] = 0
+            continue
         price = KIS.get_KR_current_price(i)
         if price == 0 or not isinstance(price, int):
             TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
-        target[i]['target_invest'] = int(target[i]['weight'] * total_invest)
+        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # ✅ 전체 자산 기준
         target[i]['target_qty'] = int(target[i]['target_invest'] / price)
         time_module.sleep(0.1)
 
@@ -294,7 +305,7 @@ else: # 1회, 8회차가 아닌 경우 불러오기만 시행
         TA.send_tele(f"KRQT_target.json 파일 오류: {e}")
         sys.exit(1)
     target_code = list(target.keys())
-
+    
 # 보유 종목 잔고 불러오기
 stocks = KIS.get_KR_stock_balance()
 if not isinstance(stocks, list):
@@ -317,6 +328,8 @@ buy = {}
 sell = {}
 for code in hold_code:
     if code in target_code:
+        if code == "CASH":                 # CASH는 매매 대상 아님
+            continue
         if target[code]["target_qty"] > hold[code]["hold_qty"]:
             buy[code] = target[code]["target_qty"] - hold[code]["hold_qty"]
         elif target[code]["target_qty"] < hold[code]["hold_qty"]:
@@ -325,14 +338,16 @@ for code in hold_code:
         sell[code] = hold[code]["hold_qty"]
 
 for code in target_code:
+    if code == "CASH":                     # CASH는 매매 대상 아님
+        continue
     if code not in hold_code:
         buy[code] = target[code]["target_qty"]
 
 # 분할 주문 수량 구하기
 round_split = split_data(order['round'])
 sell_split = [round_split["sell_splits"], round_split["sell_price"]]
-buy_split = [round_split["buy_splits"], round_split["buy_price"]]
-
+buy_split = [round_split["buy_splits"], round_split["buy_price"]]   
+    
 # 매도주문
 sell_code = list(sell.keys())
 
@@ -370,27 +385,42 @@ else:
     # 14회차: 잔량 있어도 매도 스킵 — 알림만
     message.append(f"KRQT: {order['round']}회차 매도 스킵 - 미처분 잔량: {list(sell.keys())}")    
 
+# 회차별 매도 메세지 telegram 출력
+TA.send_tele(message)
+message = []
+
 # 매도 매수 시간딜레이
 time_module.sleep(600)
 # 매수구간 전환
 # 주문가능 금액 조회 및 주문수량 구하기
+# ✅ get_KR_orderable_cash()는 nrcvb_buy_amt (미수없는 매수가능금액) 반환
+#    → D+2 정산대금 포함, 당일 매도 체결분도 반영 → 수동 보정 불필요
 KRW = KIS.get_KR_orderable_cash()
 if not isinstance(KRW, (int, float)):
     TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({KRW})")
     sys.exit(1)
 
-# 주문가능금액에 맞춰 매수잔고 재조정
-orderable_KRW = float(KRW) # 이후 계산을 float으로 통일
+orderable_KRW = float(KRW)   # nrcvb_buy_amt: 미수없는 매수가능금액 (D+2 정산 포함)
 target_KRW = 0
+buy_prices = {}                                              # 현재가 저장
+buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0  # 최대 배율 기준
 
 for code, qty in buy.items():
     price = KIS.get_KR_current_price(code)
     if not isinstance(price, int) or price == 0:
         TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
         sys.exit(1)
-    ticker_invest = price * qty
+    buy_prices[code] = price                                 # 저장
+    ticker_invest = price * buy_price_rate * qty             # 최대 배율 반영
     target_KRW += ticker_invest
     time_module.sleep(0.125)
+
+# ── 디버그: 매수 가능금액 vs 목표 매수금 비교 로그 ──────────────────────────
+message.append(
+    f"KRQT 매수가능: {int(orderable_KRW):,}원 | 목표매수금: {int(target_KRW):,}원"
+    + (f" | 조정비율: {orderable_KRW/target_KRW:.4f}" if target_KRW > 0 else "")
+)
+# ────────────────────────────────────────────────────────────────────────────
 
 if target_KRW > orderable_KRW:
     adjust_rate = orderable_KRW / target_KRW
@@ -400,10 +430,12 @@ if target_KRW > orderable_KRW:
 
     buy = {ticker: qty for ticker, qty in buy.items() if qty > 0}   # 0주 제거
     buy_code = list(buy.keys())
+    message.append(f"KRQT 매수수량 조정 완료 (adjust_rate={adjust_rate:.4f})")
 else:
-    pass # 예수금이 충분할 경우 조정 없음
+    message.append("KRQT 매수가능금 충분 → 수량 조정 없음")
 
 # 매수주문
+buy = {code: qty for code, qty in buy.items() if qty > 0}  # 방어적 0주 제거
 buy_code = list(buy.keys())
 
 if len(buy_code) == 0:
@@ -416,13 +448,16 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
         local_split_price = buy_split[1][:]
         split_qty = int(qty // local_split_count)
         if split_qty < 1:
+            if qty < 1:                   # qty 자체가 0이면 주문 스킵
+                message.append(f"KRQT 매수 스킵: {code} 수량 0주 (조정후 제거대상)")
+                continue
             local_split_count = 1
             local_split_price = [1.01]
             split_qty = int(qty)
 
-        price = KIS.get_KR_current_price(code)
+        price = buy_prices.get(code)
         if not isinstance(price, int) or price == 0:
-            message.append(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"KRQT: 현재가 없음으로 종료합니다. ({code})")
             sys.exit(1)
 
         for i in range(local_split_count):
@@ -430,11 +465,14 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             order_price= KIS.round_to_tick(price=split_price, market="KR") 
             order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")
             if order_info is None:
-                message.append(f"KRQT 매수 오류: {code} API 응답 없음")
+                time_module.sleep(2)
+                order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")  # 1회 재시도
+            if order_info is None:
+                message.append(f"KRQT 매수 오류: {code} {split_qty}주 {order_price:,}원 API 응답 없음")
             elif order_info.get("success"):
                 message.append(f"매수 {code} {split_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
             else:
-                message.append(f"매수 실패 {code}: {order_info.get('error_message','')}")
+                message.append(f"매수 실패 {code} {split_qty}주 {order_price:,}원: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
 
 # 7회차에는 day = 2로 전환
@@ -453,13 +491,13 @@ if order['round'] == 14:
     json_message = save_json(TR, KRQT_day_path, order)
     message.extend(json_message)
 
-# 회차별 매매 메세지 telegram 출력
+# 회차별 매수 메세지 telegram 출력
 TA.send_tele(message)
 message = []
 
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
 if order['round'] == 14:
-    time_module.sleep(200)
+    time_module.sleep(120)
     # 전회 주문 취소
     cancel_message = cancel_orders(side='all')
     message.append(cancel_message)
@@ -482,6 +520,10 @@ if order['round'] == 14:
 
     plan_raw = defaultdict(list)
     for _, row in plan.iterrows():
+        if str(row["code"]) == "CASH":        # CASH는 결과 리포트 대상 아님
+            continue
+        if pd.isna(row["category"]):          # category 빈값 행 스킵
+            continue
         plan_raw[str(row["category"])].append({
             "code": str(row["code"]),
             "name": str(row["name"]),
@@ -562,27 +604,60 @@ if order['round'] == 14:
     # 전략결과 저장
     json_message = save_json(result, KRQT_result_path, order)
     message.extend(json_message)
+    TA.send_tele(message)
+    message = []
+    time_module.sleep(1.0)
 
     # 최종 daily balance
     # 전체 자산
     all_balance = KIS.get_KR_account_summary()
-    if isinstance(all_balance, dict):
-        daily_data = {
-            "total_stocks":     all_balance['stock_eval_amt'],
-            "total_stocks_ret": 0.0,
-            "total_cash":       all_balance['cash_balance'],
-            "total_asset":      all_balance['total_krw_asset'],
-            "total_asset_ret":  0.0
-        }
-    else:
+    if not isinstance(all_balance, dict):
         TA.send_tele(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
         sys.exit(1)
+
+    orderable_cash = KIS.get_KR_orderable_cash()    # 주문가능현금 추가 조회
+    if not isinstance(orderable_cash, (int, float)):
+        TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({orderable_cash})")
+        sys.exit(1)
+
+    daily_data = {
+        "date": str(order['date']),
+        "total_stocks":     all_balance['stock_eval_amt'],
+        "total_cash":       float(orderable_cash),                          # ← 주문가능현금
+        "total_asset":      all_balance['stock_eval_amt'] + float(orderable_cash),  # ← 재산출
+        "total_asset_ret":  0.0
+    }
 
     # category별 자산
     for category, stocks_list in result.items():
         category_balance = sum(item['balance'] for item in stocks_list)
         daily_data[category]            = category_balance
         daily_data[f"{category}_ret"]   = 0.0
+        
+    # KRQT_daily.json 저장
+    try:
+        json_message = save_json(daily_data, KRQT_daily_path, order)
+        message.extend(json_message)
+    except Exception as e:
+        error_msg = f"KRQT_daily.json 저장 실패: {e}"
+        TA.send_tele(error_msg)
+    TA.send_tele(message)
+    message = []
+    time_module.sleep(1.0)
+        
+    # data 정제
+    daily = {
+        "date": daily_data["date"],
+        "total_stocks":     f"{int(daily_data['total_stocks'])}원",
+        "total_cash":       f"{int(daily_data['total_cash'])}원",
+        "total_asset":      f"{int(daily_data['total_asset'])}원",  
+        "total_asset_ret":  f"{float(daily_data['total_asset_ret']*100):.2f}%"
+    }
+    
+    for category, stocks_list in result.items():
+        category_balance = sum(item['balance'] for item in stocks_list)
+        daily_data[category]            = f"int{category_balance}원"
+        daily_data[f"{category}_ret"]   = 0.00+"%"
 
     # daily balance google sheet 저장
     try:
@@ -597,13 +672,22 @@ if order['round'] == 14:
         current_month = current_date.month
 
         # 데이터 저장
-        GU.save_to_sheets(spreadsheet, daily_data, current_month)
+        GU.save_to_sheets(spreadsheet, daily, current_month)
+        TA.send_tele(f"2026_KRQT_daily Google Sheet 업로드 완료")
+        message = []
     except Exception as e:
         error_msg = f"Google Sheet 업로드 실패: {e}"
         TA.send_tele(error_msg)
+        message = []
+        
         # Google Sheet 업로드 실패는 전체 프로세스를 중단하지 않음
+    
+    # telegram message
+    for k, v in daily.items():
+        message.append(f"{k} : {v}")
 
-    TA.send_tele(message)
-
-message = [] 
+time_module.sleep(1.0)   
+TA.send_tele(message)
+message = []
+########################### 리밸런싱 후 메세지 확인 필수
 sys.exit(0)
