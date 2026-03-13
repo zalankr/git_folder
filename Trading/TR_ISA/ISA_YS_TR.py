@@ -16,22 +16,20 @@ except singleton.SingleInstanceException:
     sys.exit(0)
 
 # KIS instance 생성
-key_file_path = "/var/autobot/TR_KRQT/kis43018646nkr.txt"
-token_file_path = "/var/autobot/TR_KRQT/kis43018646_token.json"
-cano = "43018646"
+key_file_path = "/var/autobot/TR_ISA/kis00000000lys.txt"
+token_file_path = "/var/autobot/TR_ISA/kis00000000_token.json"
+cano = "00000000"
 acnt_prdt_cd = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
-sell_tax = KIS.sell_fee_tax  # 매도 수수료 0.014% + 세금 0.2% KRQT계좌
-buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
-KRQT_day_path = "/var/autobot/TR_KRQT/KRQT_day.json" # json
-KRQT_target_path = "/var/autobot/TR_KRQT/KRQT_target.json" # json
-KRQT_result_path = "/var/autobot/TR_KRQT/KRQT_result.json" # json
-KRQT_daily_path = "/var/autobot/TR_KRQT/KRQT_daily.json" # json
-KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
+sell_fee_tax = 0.0021  # 매도 세금 0.014% + ISA계좌  0.0042087%
+buy_fee_tax = 0.0001  # 매수 수수료 0.014% ISA계좌
 
-def order_time(day=1):
-    """거래일자와 거래회차 확인""" 
+ISAYS_result_path = "/var/autobot/TR_ISA/ISAYS_result.json" # json
+ISAYS_daily_path = "/var/autobot/TR_ISA/ISAYS_daily.json"   # json
+
+def order_time():
+    """거래회차 확인 1~12회차""" 
     # 현재 날짜와 시간 확인 UTC시간대
     now = datetime.now()
     current_date = now.date()
@@ -41,16 +39,17 @@ def order_time(day=1):
     result = {
         'date': current_date,
         'time': current_time,
-        'day': day,          # 기본값
         'round': 0,        # 기본값
-        'total_round': 14  # 기본값
+        'total_round': 12  # 기본값
     }
     
     current = time_obj(current_time.hour, current_time.minute)
     start = time_obj(0, 0)   # OTC+9 09:00
-    end = time_obj(6, 30)    # OTC+15 15:30    
+    end = time_obj(6, 0)    # OTC+15 15:00    
     if start <= current < end:
-        result['round'] = (current_time.hour + 1) + (day * 7 - 7)
+        result['round'] = (current_time.hour * 2) + (current_time.minute // 30)
+    else:
+        result['round'] = 0
 
     return result
 
@@ -60,24 +59,14 @@ def health_check():
     
     # 1. API 토큰 유효성
     if not KIS.access_token:
-        checks.append("KRQT체크: API 토큰 없음")
+        checks.append("ISAYS체크: API 토큰 없음")
     
-    # 2. data 파일 존재
-    import os
-    files = [
-        "/var/autobot/TR_KRQT/KRQT_day.json",
-        "/var/autobot/TR_KRQT/KRQT_stock.csv"
-    ]
-    for f in files:
-        if not os.path.exists(f):
-            checks.append(f"KRQT체크: data파일 없음: {f}")
-    
-    # 3. 네트워크 연결
+    # 2. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("KRQT체크: KIS API 서버 접속 불가")
+        checks.append("ISAYS체크: KIS API 서버 접속 불가")
     
     if checks:
         TA.send_tele("\n".join(checks))
@@ -107,19 +96,16 @@ def split_data(round):
     '''회차별 분할횟수와 분할당 가격산출'''
     if round == 1:
         sell_splits = 5
-        sell_price = [1.020, 1.015, 1.010, 1.005, 0.995]
-        buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 0.9975]
+        sell_price = [1.025, 1.020, 1.015, 1.010, 1.005]
+        buy_splits = 6
+        buy_price = [0.970, 0.975, 0.980, 0.985, 0.990, 1.000]
     elif round == 2:
-        sell_splits = 4
-        sell_price = [1.020, 1.015, 1.010, 1.005]
+        sell_splits = 5
+        sell_price = [0.025, 1.020, 1.015, 1.010, 1.000]
         buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 1.005]
-    elif round == 3:
-        sell_splits = 4
-        sell_price = [1.015, 1.010, 1.005, 1.0025]
-        buy_splits = 4
-        buy_price = [0.980, 0.985, 0.990, 0.995]
+        buy_price = [0.975, 0.980, 0.985, 0.990, 0.995]
+        
+        
     elif round == 4:
         sell_splits = 4
         sell_price = [1.015, 1.010, 1.005, 0.995]
