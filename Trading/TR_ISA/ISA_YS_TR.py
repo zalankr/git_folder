@@ -110,7 +110,7 @@ def health_check():
     if checks:
         TA.send_tele(checks)
         TA2.send_tele(checks)
-        sys.exit(1)
+        sys.exit(0)
     
 def save_json(data, path, order):
     """
@@ -273,9 +273,9 @@ health_check() # 시스템 상태 확인
 order = order_time() 
 if order['round'] == 0:
     TA.send_tele(f"ISAYS: 매매시간이 아닙니다.")
-    TA2.send_tele(f"ISAYS: 매매시간이 아닙입니다.")
+    TA2.send_tele(f"ISAYS: 매매시간이 아닙니다.")
     sys.exit(0)
-message.append(f"ISAYS: {order['date']}, {order['time']}{order['round']}/{order['total_round']}회차 매매를 시작합니다.")
+message.append(f"ISAYS: {order['date']}, {order['time']}, {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
 cancel_message = cancel_orders(side='all')
@@ -292,6 +292,11 @@ message.append(f"ISAYS 총자산: {int(total_krw_asset):,}원 (주식:{int(accou
 
 # 당일 target 불러오고 저장하기
 target, target_code = target_invest(target, total_krw_asset)
+# message 중간 전송 후 hold_invest 호출
+TA.send_tele(message)
+TA2.send_tele(message)
+message = []
+
 hold, hold_code = hold_invest()
 
 # 투자수량과 잔고수량 비교해서 매수매도수량 산출하기
@@ -312,7 +317,8 @@ for code in target_code:
     if code == "CASH":                     # CASH는 매매 대상 아님
         continue
     if code not in hold_code:
-        buy[code] = target[code]["target_qty"]
+        if target[code]["target_qty"] > 0:   # ← 0주 방어
+            buy[code] = target[code]["target_qty"]
 
 # 분할 주문 수량 구하기
 try:
@@ -359,13 +365,17 @@ elif sell_split[0] > 0:
                 message.append(f"매도 실패 {code}: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
 
+else:
+    # sell_code가 있지만 이 회차는 매도 주문 안 함 (12회차 등)
+    message.append(f"ISAYS: {order['round']}회차 - 매도 주문 없음 (분할횟수 0)")
+
 # 회차별 매도 메세지 telegram 출력
 TA.send_tele(message)
 TA2.send_tele(message)
 message = []
 
 # 매도 매수 시간딜레이
-time_module.sleep(420)
+time_module.sleep(600)
 # 매수구간 전환
 # 주문가능 금액 조회 및 주문수량 구하기
 # ✅ get_KR_orderable_cash()는 nrcvb_buy_amt (미수없는 매수가능금액) 반환
@@ -460,7 +470,7 @@ message = []
 
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
 if order['round'] == 12:
-    time_module.sleep(180)
+    time_module.sleep(300)
     # 전회 주문 취소
     cancel_message = cancel_orders(side='all')
     message.append(cancel_message)
@@ -544,8 +554,19 @@ if order['round'] == 12:
         } 
 
     # telegram message
-    for k, v in tele_data.items():
-        message.append(f"{k} : {v}")
+    message.append(
+        f"📊 ISAYS 최종잔고 {tele_data['total']['date']}\n"
+        f"총자산: {tele_data['total']['total_balance']} | "
+        f"주식: {tele_data['total']['stock_eval_amt']} | "
+        f"현금: {tele_data['total']['cash_balance']}"
+    )
+    # 종목별 출력
+    for code, info in tele_data["stocks"].items():
+        message.append(
+            f"{info['name']}({code}): "
+            f"{info['hold_qty']}주 {info['hold_balance']} "
+            f"[목표:{info['target_weight']} 실제:{info['hold_weight']}]"
+        )
 
     TA.send_tele(message)
     TA2.send_tele(message)
