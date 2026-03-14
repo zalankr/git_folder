@@ -69,7 +69,7 @@ def order_time():
     # 수정: 모든 키를 미리 초기화
     result = {
         'date': current_date,
-        'time': current_time,
+        'time': current_time.strftime("%H:%M:%S"),
         'round': 0,        # 기본값
         'total_round': 12  # 기본값
     }
@@ -515,7 +515,7 @@ if order['round'] == 12:
             "hold_balance": stock["평가금액"],
             "hold_qty": stock["보유수량"],
             "target_weight": target_weight,
-            "hold_weight": hold_weight
+            "hold_weight": round(hold_weight, 4)
         }
 
     # 전략결과 저장
