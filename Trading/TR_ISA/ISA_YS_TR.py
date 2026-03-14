@@ -76,8 +76,8 @@ def order_time():
     
     # UTC 기준: 1회차=00:05, 12회차=05:35, 30분 간격
     current_total_min = current_time.hour * 60 + current_time.minute
-    start_min = 0 * 60    # UTC 00:00 (KST 09:00)
-    end_min   = 5 * 60 + 40   # UTC 05:40 (KST 14:40)
+    start_min = 0 * 60    # UTC 00:00 (KST 09:00) 시작시간 crontab 조정 시 유연하게
+    end_min   = 5 * 60 + 40   # UTC 05:40 (KST 14:40) 종료시간 crontab 조정 시 유연하게
 
     if start_min <= current_total_min <= end_min:
         result['round'] = ((current_total_min - start_min) // 30) + 1
@@ -226,6 +226,7 @@ def target_invest(target: dict, total_krw_asset: float):
     total_weight = sum(v['weight'] for v in target.values())
     if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
         TA.send_tele(f"ISAYS 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
+        TA2.send_tele(f"ISAYS 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
 
     for i in target_code:
         if i == "CASH":                                   # CASH는 주식 아님 → 스킵
@@ -272,6 +273,7 @@ health_check() # 시스템 상태 확인
 order = order_time() 
 if order['round'] == 0:
     TA.send_tele(f"ISAYS: 매매시간이 아닙니다.")
+    TA2.send_tele(f"ISAYS: 매매시간이 아닙입니다.")
     sys.exit(0)
 message.append(f"ISAYS: {order['date']}, {order['time']}{order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
@@ -313,7 +315,12 @@ for code in target_code:
         buy[code] = target[code]["target_qty"]
 
 # 분할 주문 수량 구하기
-round_split = split_data(order['round'])
+try:
+    round_split = split_data(order['round'])
+except ValueError as e:
+    TA.send_tele(f"ISAYS: {e}")
+    TA2.send_tele(f"ISAYS: {e}")
+    sys.exit(1)
 sell_split = [round_split["sell_splits"], round_split["sell_price"]]
 buy_split = [round_split["buy_splits"], round_split["buy_price"]]   
 
@@ -358,7 +365,7 @@ TA2.send_tele(message)
 message = []
 
 # 매도 매수 시간딜레이
-time_module.sleep(600)
+time_module.sleep(420)
 # 매수구간 전환
 # 주문가능 금액 조회 및 주문수량 구하기
 # ✅ get_KR_orderable_cash()는 nrcvb_buy_amt (미수없는 매수가능금액) 반환
@@ -532,8 +539,8 @@ if order['round'] == 12:
             "name": stock["종목명"],
             "hold_balance": f"{int(stock['평가금액'])}원",
             "hold_qty": int(stock["보유수량"]),
-            "target_weight": f"{float(target_weight*100)}%",
-            "hold_weight": f"{float(hold_weight*100)}%"
+            "target_weight": f"{target_weight*100:.1f}%",
+            "hold_weight":   f"{hold_weight*100:.1f}%"
         } 
 
     # telegram message
