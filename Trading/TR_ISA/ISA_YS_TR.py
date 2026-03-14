@@ -216,6 +216,50 @@ def cancel_orders(side: str="all"):
         cancel_message = f"ISAYS: 주문 취소 에러발생"
     return cancel_message
 
+def target_invest(target: dict):
+    # 종목별 목표 투자금액 및 수량 산출
+    # ✅ 각 종목의 weight는 전체 자산 대비 비중 (CASH 포함 합계 = 100%)
+    #    → target_invest = total_krw_asset × weight  (직접 곱)
+    # ❌ total_invest(= total_krw_asset × stock_weight)를 경유하면 이중 축소됨
+    #    예) CASH=50%, 종목 각 5% → total_invest×5% = 총자산×2.5% (의도의 절반)
+    target_code = list(target.keys())
+    total_weight = sum(v['weight'] for v in target.values())
+    if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
+        TA.send_tele(f"ISAYS 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
+
+    for i in target_code:
+        if i == "CASH":                                   # CASH는 주식 아님 → 스킵
+            target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
+            target[i]['target_qty'] = 0
+            continue
+        price = KIS.get_KR_current_price(i)
+        if price == 0 or not isinstance(price, int):
+            TA.send_tele(f"ISAYS: 현재가 조회 불가로 종료합니다. ({price})")
+            sys.exit(1)
+        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # 전체 자산 기준
+        target[i]['target_qty'] = target[i]['target_invest'] // price
+        time_module.sleep(0.1)   
+    return target, target_code
+
+def hold_invest():
+    # 보유 종목 잔고 불러오기
+    stocks = KIS.get_KR_stock_balance()
+    if not isinstance(stocks, list):
+        TA.send_tele(f"ISAYS: 잔고 조회 불가로 종료합니다. ({stocks})")
+        sys.exit(1)
+
+    hold = {}
+    for stock in stocks:
+        code = stock["종목코드"]
+        hold[code] = {
+            "name": stock["종목명"],
+            "hold_balance": stock["평가금액"],
+            "hold_qty": stock["보유수량"],
+        }
+
+    hold_code = list(hold.keys())
+    return hold, hold_code
+
 # ==========================
 # 메인 로직 # 리밸런싱
 # ==========================
@@ -241,50 +285,11 @@ if not isinstance(account, dict):
 total_krw_asset = account['total_krw_asset']  # nass_amt (주식평가금 + D+2 현금 합계)
 message.append(f"ISAYS 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
 
-# 종목별 목표 투자금액 및 수량 산출
-# ✅ 각 종목의 weight는 전체 자산 대비 비중 (CASH 포함 합계 = 100%)
-#    → target_invest = total_krw_asset × weight  (직접 곱)
-# ❌ total_invest(= total_krw_asset × stock_weight)를 경유하면 이중 축소됨
-#    예) CASH=50%, 종목 각 5% → total_invest×5% = 총자산×2.5% (의도의 절반)
-
-target_code = list(target.keys())
-total_weight = sum(v['weight'] for v in target.values())
-if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
-    TA.send_tele(f"ISAYS 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
-
-for i in target_code:
-    if i == "CASH":                                   # CASH는 주식 아님 → 스킵
-        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
-        target[i]['target_qty'] = 0
-        continue
-    price = KIS.get_KR_current_price(i)
-    if price == 0 or not isinstance(price, int):
-        TA.send_tele(f"ISAYS: 현재가 조회 불가로 종료합니다. ({price})")
-        sys.exit(1)
-    target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # 전체 자산 기준
-    target[i]['target_qty'] = target[i]['target_invest'] // price
-    time_module.sleep(0.1)
-
-# 당일 target 저장하기
+# 당일 target 불러오고 저장하기
+target, target_code = target_invest(target)
+hold, hold_code = hold_invest()
 json_message = save_json(target, ISAYS_target_path, order)
 message.extend(json_message)
-
-# 보유 종목 잔고 불러오기
-stocks = KIS.get_KR_stock_balance()
-if not isinstance(stocks, list):
-    TA.send_tele(f"ISAYS: 잔고 조회 불가로 종료합니다. ({stocks})")
-    sys.exit(1)
-
-hold = {}
-for stock in stocks:
-    code = stock["종목코드"]
-    hold[code] = {
-        "name": stock["종목명"],
-        "hold_balance": stock["평가금액"],
-        "hold_qty": stock["보유수량"],
-    }
-
-hold_code = list(hold.keys())
 
 # 투자수량과 잔고수량 비교해서 매수매도수량 산출하기
 buy = {}
@@ -438,7 +443,7 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
 # 회차별 매수 메세지 telegram 출력
 TA.send_tele(message)
 message = []
-############################################################################################################
+
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
 if order['round'] == 12:
     time_module.sleep(180)
@@ -452,150 +457,67 @@ if order['round'] == 12:
     if not isinstance(stocks, list):
         TA.send_tele(f"ISAYS: 잔고 조회 불가로 종료합니다. ({stocks})")
         sys.exit(1)
-
-    hold = {}
-    for stock in stocks:
-        code = stock["종목코드"]
-        hold[code] = {
-            "name": stock["종목명"],
-            "hold_balance": stock["평가금액"],
-            "hold_qty": stock["보유수량"]
-        }
-
-    hold_code = list(hold.keys())
+    account = KIS.get_KR_account_summary()
+    if not isinstance(account, dict):
+        TA.send_tele(f"ISAYS: 총 원화평가금 조회 불가로 종료합니다. ({account})")
+        sys.exit(1)
+    total_asset = account["total_krw_asset"]
+    cash_balance = account["cash_balance"]
+    stock_eval_amt = account["stock_eval_amt"]
 
     result = {}
-    for category in plan.keys():
-        result[category] = []       # 카테고리별 리스트로 초기화
-        for stock in plan[category]:
-            stock_code = stock['code']
-            if stock_code not in hold_code:
-                result[category].append({
-                    "code":    stock_code,
-                    "name":    stock['name'],
-                    "qty":     0,
-                    "balance": 0,
-                    "weight":  stock['weight'],
-                    "status":  "리밸런싱 매수실패"
-                })
-            else:
-                total_w = target[stock_code]['weight']
-                if total_w == 0:
-                    split_weight = 1.0   # 단일 전략 종목으로 처리
-                    message.append(f"경고: {stock_code} weight=0, split_weight=1.0으로 처리")
-                else:
-                    split_weight = stock['weight'] / total_w
-                    
-                result[category].append({
-                    "code":    stock_code,
-                    "name":    stock['name'],
-                    "qty":     hold[stock_code]['hold_qty'] * split_weight,  # stock_code 사용
-                    "balance": hold[stock_code]['hold_balance'] * split_weight,  # stock_code 사용
-                    "weight":  stock['weight'],
-                    "status":  "리밸런싱"
-                })
-
-    remain_items = []
-    for code in hold_code:
-        if code not in target_code:
-            remain_items.append({
-                "code":    code,
-                "name":    hold[code]['name'],
-                "qty":     hold[code]['hold_qty'],
-                "balance": hold[code]['hold_balance'],
-                "weight":  0,
-                "status":  "리밸런싱 매도실패"
-            })
-    if remain_items:                      # 항목이 있을 때만 result에 추가
-        result["remain_last"] = remain_items
-
-    for category, stocks_list in result.items():
-        message.append(f"{order['date']}일 리밸런싱 전략명:{category} 결과")
-        for item in stocks_list:
-            qty     = int(item['qty'])
-            balance = f"{int(item['balance']):,}"
-            message.append(f"종목명: {item['name']}, 잔고: {qty}주, 평가금: {balance}원, 상태: {item['status']}")
+    result["total"] = {
+        "date": str(order['date']),
+        "total_balance": total_asset,
+        "cash_balance": cash_balance,
+        "stock_eval_amt": stock_eval_amt
+    }
+    for stock in stocks:
+        code = stock["종목코드"]
+        target_weight = target[code]['weight']
+        hold_weight = float(stock["평가금액"] / total_asset)
+        result["code"] = {
+            "name": stock["종목명"],
+            "hold_balance": stock["평가금액"],
+            "hold_qty": stock["보유수량"],
+            "target_weight": target_weight,
+            "hold_weight": hold_weight
+        }
 
     # 전략결과 저장
-    json_message = save_json(result, KRQT_result_path, order)
-    message.extend(json_message)
-    time_module.sleep(1.0)
-
-    # 최종 daily balance
-    # 전체 자산
-    all_balance = KIS.get_KR_account_summary()
-    if not isinstance(all_balance, dict):
-        TA.send_tele(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
-        sys.exit(1)
-
-    orderable_cash = KIS.get_KR_orderable_cash()    # 주문가능현금 추가 조회
-    if not isinstance(orderable_cash, (int, float)):
-        TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({orderable_cash})")
-        sys.exit(1)
-
-    daily_data = {
-        "date": str(order['date']),
-        "total_stocks":     all_balance['stock_eval_amt'],
-        "total_cash":       float(orderable_cash),                          # ← 주문가능현금
-        "total_asset":      all_balance['stock_eval_amt'] + float(orderable_cash),  # ← 재산출
-        "total_asset_ret":  0.0
-    }
-
-    # category별 자산
-    for category, stocks_list in result.items():
-        category_balance = sum(item['balance'] for item in stocks_list)
-        daily_data[category]            = category_balance
-        daily_data[f"{category}_ret"]   = 0.0
-        
-    # KRQT_daily.json 저장
     try:
-        json_message = save_json(daily_data, KRQT_daily_path, order)
+        json_message = save_json(result, ISAYS_result_path, order)
         message.extend(json_message)
     except Exception as e:
-        error_msg = f"KRQT_daily.json 저장 실패: {e}"
+        error_msg = f"ISAYS_result.json 저장 실패: {e}"
         TA.send_tele(error_msg)
     time_module.sleep(1.0)
         
     # data 정제
-    daily = {
-        "date": daily_data["date"],
-        "total_stocks":     f"{int(daily_data['total_stocks'])}원",
-        "total_cash":       f"{int(daily_data['total_cash'])}원",
-        "total_asset":      f"{int(daily_data['total_asset'])}원",  
-        "total_asset_ret":  f"{float(daily_data['total_asset_ret']*100):.2f}%"
+    tele_data = {
+        "total": {
+            "date": result["total"]["date"],
+            "total_balance": f"{int(total_asset)}원",
+            "cash_balance": f"{int(cash_balance)}원",
+            "stock_eval_amt": f"{int(stock_eval_amt)}원"
+        }
     }
-    
-    for category, stocks_list in result.items():
-        category_balance = sum(item['balance'] for item in stocks_list)
-        daily[category]            = f"{int(category_balance)}원"
-        daily[f"{category}_ret"]   = "0.00%"
+    for stock in stocks:
+        code = stock["종목코드"]
+        target_weight = target[code]['weight']
+        hold_weight = float(stock["평가금액"] / total_asset)
+        tele_data["code"] = {
+            "name": stock["종목명"],
+            "hold_balance": f"{int(stock['평가금액'])}원",
+            "hold_qty": int(stock["보유수량"]),
+            "target_weight": f"{float(target_weight*100)}%",
+            "hold_weight": f"{float(hold_weight*100)}%"
+        } 
 
-    # daily balance google sheet 저장
-    try:
-        credentials_file = "/var/autobot/gspread/service_account.json"
-        spreadsheet_name = "2026_KRQT_daily"
-
-        # Google 스프레드시트 연결
-        spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
-
-        # 현재 월 계산
-        current_date = datetime.now()
-        current_month = current_date.month
-
-        # 데이터 저장
-        GU.save_to_sheets(spreadsheet, daily, current_month)
-        message.append(f"2026_KRQT_daily Google Sheet 업로드 완료")
-        
-    except Exception as e:
-        error_msg = f"Google Sheet 업로드 실패: {e}"
-        TA.send_tele(error_msg)
-        # Google Sheet 업로드 실패는 전체 프로세스를 중단하지 않음
-    
     # telegram message
-    for k, v in daily.items():
+    for k, v in tele_data.items():
         message.append(f"{k} : {v}")
 
     TA.send_tele(message)
-    message = []
 
 sys.exit(0)
