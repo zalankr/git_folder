@@ -2,14 +2,14 @@ import requests
 import json
 from datetime import datetime, timedelta
 import telegram_alert as TA
+import telegram_alert_YS as TA2
 import sys
 import os
 from typing import Union, Optional, Dict, List, Tuple
 import time
 
 class KIS_API:
-    """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
-    
+    """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""  
     def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str): #
         self.key_file_path = key_file_path
         self.token_file_path = token_file_path
@@ -40,9 +40,11 @@ class KIS_API:
                 self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
         except FileNotFoundError:
             TA.send_tele(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
+            TA2.send_tele(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
             sys.exit(1)
         except Exception as e:
             TA.send_tele(f"API Key 로드 실패: {e}")
+            TA2.send_tele(f"API Key 로드 실패: {e}")
             sys.exit(1)
     
     # 토큰 로드
@@ -54,6 +56,7 @@ class KIS_API:
             return None
         except Exception as e:
             TA.send_tele(f"KIS 토큰 로드 오류: {e}")
+            TA2.send_tele(f"KIS 토큰 로드 오류: {e}")
             return None
     
     # 토큰 저장
@@ -69,6 +72,7 @@ class KIS_API:
             return True
         except Exception as e:
             TA.send_tele(f"KIS 토큰 저장 오류: {e}")
+            TA2.send_tele(f"KIS 토큰 저장 오류: {e}")
             return False
     
     # 토큰 유효성 확인
@@ -111,6 +115,7 @@ class KIS_API:
             return access_token
         except Exception as e:
             TA.send_tele(f"KIS 토큰 발급 실패: {e}")
+            TA2.send_tele(f"KIS 토큰 발급 실패: {e}")
             sys.exit(0)
 
     # 토큰 접속
@@ -137,6 +142,7 @@ class KIS_API:
             return res.json()["HASH"]
         except Exception as e:
             TA.send_tele(f"Hashkey 생성 실패: {e}")
+            TA2.send_tele(f"Hashkey 생성 실패: {e}")
             raise RuntimeError(f"Hashkey 생성 실패: {e}")  # 빈 문자열 반환 시 주문이 진행되므로 예외로 차단
     
     # 국내 주식 현재가 조회
@@ -326,6 +332,7 @@ class KIS_API:
 
                 if data.get('rt_cd') != '0':
                     TA.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
+                    TA2.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
                     return None
 
                 # output1: 종목별 평가금액 직접 합산 (페이지마다 누적)
@@ -362,6 +369,7 @@ class KIS_API:
 
         except Exception as e:
             TA.send_tele(f"계좌요약 조회 오류: {e}")
+            TA2.send_tele(f"계좌요약 조회 오류: {e}")
             return None
         
     # 한국 주식 매수 가능 원화 예수금 조회    
@@ -406,6 +414,7 @@ class KIS_API:
 
             if data.get('rt_cd') != '0':
                 TA.send_tele(f"매수가능조회 API 오류: {data.get('msg1')}")
+                TA2.send_tele(f"매수가능조회 API 오류: {data.get('msg1')}")
                 return None
 
             # ✅ nrcvb_buy_amt: 미수없는 매수가능금액 (D+2 정산대금 포함, 실제 주문가능금액)
@@ -414,6 +423,7 @@ class KIS_API:
 
         except Exception as e:
             TA.send_tele(f"매수가능현금 조회 오류: {e}")
+            TA2.send_tele(f"매수가능현금 조회 오류: {e}")
             return None
 
     # 한국 주식 매수 주문
@@ -509,6 +519,7 @@ class KIS_API:
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
                     TA.send_tele("500 에러 발생, 재시도 중...")
+                    TA2.send_tele("500 에러 발생, 재시도 중...")
                     continue
                 try:
                     err_body = e.response.json()
@@ -616,6 +627,7 @@ class KIS_API:
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
                     TA.send_tele("500 에러 발생, 재시도 중...")
+                    TA2.send_tele("500 에러 발생, 재시도 중...")
                     continue
                 return None
 
@@ -705,10 +717,12 @@ class KIS_API:
                     }
 
             TA.send_tele(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
+            TA2.send_tele(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
             return None
 
         except Exception as e:
             TA.send_tele(f"국내 체결 확인 오류: {e}")
+            TA2.send_tele(f"국내 체결 확인 오류: {e}")
             return None
 
     # 한국 주식 미체결 주문 조회
@@ -760,6 +774,7 @@ class KIS_API:
 
                 if result.get("rt_cd") != "0":
                     TA.send_tele(f"미체결 조회 실패: {result.get('msg1')}")
+                    TA2.send_tele(f"미체결 조회 실패: {result.get('msg1')}")
                     return []
 
                 for order in result.get("output", []):
@@ -789,6 +804,7 @@ class KIS_API:
 
         except Exception as e:
             TA.send_tele(f"미체결 조회 오류: {e}")
+            TA2.send_tele(f"미체결 조회 오류: {e}")
             return []
 
     # 한국 주식 개별 주문 취소
@@ -861,6 +877,7 @@ class KIS_API:
 
         except Exception as e:
             TA.send_tele(f"주문 취소 오류: {e}")
+            TA2.send_tele(f"주문 취소 오류: {e}")
             return None
 
     # 한국 주식 전체 주문 취소
@@ -961,6 +978,7 @@ class KIS_API:
 
                 if data.get("rt_cd") != "0":
                     TA.send_tele(f"거래일 조회 실패: {data.get('msg1')}")
+                    TA2.send_tele(f"거래일 조회 실패: {data.get('msg1')}")
                     return False
 
                 for item in data.get("output", []):
@@ -974,6 +992,7 @@ class KIS_API:
                     time.sleep(2)
                     continue
                 TA.send_tele(f"거래일 조회 오류 (3회 실패): {e}")
+                TA2.send_tele(f"거래일 조회 오류 (3회 실패): {e}")
                 return False
             
     def round_to_tick(self, price: float, market: str = "KR") -> int: #
