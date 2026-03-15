@@ -543,6 +543,8 @@ if order['round'] == 12:
         f"주식: {tele_data['total']['stock_eval_amt']} | "
         f"현금: {tele_data['total']['cash_balance']}"
     )
+    for i in message: ####
+        print(i)
 
     # 종목별 출력
     for code, info in tele_data["stocks"].items():
