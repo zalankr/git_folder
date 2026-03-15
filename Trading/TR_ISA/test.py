@@ -20,8 +20,6 @@ acnt_prdt_cd = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 ISAYS_result_path = "/var/autobot/TR_ISAYS/ISAYS_result.json" # json
-ISAYS_target_path = "/var/autobot/TR_ISAYS/ISAYS_target.json" # json
-now_invest = 10000000 # 금회 추가 투입 금액
 
 # 포트폴리오 목표비중
 target = {
@@ -122,7 +120,7 @@ def save_json(data, path, order):
         result_msgs.append(f"{order['date']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
     except Exception as e:
         result_msgs.append(f"{path} 저장 실패: {e}")
-        backup_path = f"/var/autobot/TR_ISAYS/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        backup_path = f"/var/autobot/TR_ISA/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         try:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
@@ -215,11 +213,11 @@ def cancel_orders(side: str="all"):
         cancel_message = f"ISAYS: 주문 취소 에러발생"
     return cancel_message
 
-def target_invest(target: dict, this_krw_asset: float):
+def target_invest(target: dict, total_krw_asset: float):
     # 종목별 목표 투자금액 및 수량 산출
     # ✅ 각 종목의 weight는 전체 자산 대비 비중 (CASH 포함 합계 = 100%)
-    #    → target_invest = this_krw_asset × weight  (직접 곱)
-    # ❌ total_invest(= this_krw_asset × stock_weight)를 경유하면 이중 축소됨
+    #    → target_invest = total_krw_asset × weight  (직접 곱)
+    # ❌ total_invest(= total_krw_asset × stock_weight)를 경유하면 이중 축소됨
     #    예) CASH=50%, 종목 각 5% → total_invest×5% = 총자산×2.5% (의도의 절반)
     target_code = list(target.keys())
     total_weight = sum(v['weight'] for v in target.values())
@@ -228,14 +226,14 @@ def target_invest(target: dict, this_krw_asset: float):
 
     for i in target_code:
         if i == "CASH":                                   # CASH는 주식 아님 → 스킵
-            target[i]['target_invest'] = int(target[i]['weight'] * this_krw_asset)
+            target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
             target[i]['target_qty'] = 0
             continue
         price = KIS.get_KR_current_price(i)
         if price == 0 or not isinstance(price, int):
             TA.send_tele(f"ISAYS: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
-        target[i]['target_invest'] = int(target[i]['weight'] * this_krw_asset)  # 투자 금액(현금+주식) 기준
+        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # 전체 자산 기준
         target[i]['target_qty'] = target[i]['target_invest'] // price
         time_module.sleep(0.1)   
     return target, target_code
@@ -263,62 +261,34 @@ def hold_invest():
 # 메인 로직 # 리밸런싱
 # ==========================
 message = [] # 출력메시지 LIST 생성
-health_check() # 시스템 상태 확인
+# health_check() # 시스템 상태 확인 ######################################################################################
 
 # 일자와 회차 시간데이터 불러오기
 order = order_time() 
-if order['round'] == 0:
-    TA.send_tele(f"ISAYS: 매매시간이 아닙니다.")
-    sys.exit(0)
+# if order['round'] == 0: ################################################################################################
+#     TA.send_tele(f"ISAYS: 매매시간이 아닙니다.")########################################################################
+#     sys.exit(0)         ################################################################################################
+order['round'] = 12 ################################## 삭제 ###############################################################
 message.append(f"ISAYS: {order['date']}, {order['time']}, {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
 cancel_message = cancel_orders(side='all')
 message.append(cancel_message)
 
-# 1회차 투자 목표 매매 수량 파악
-if order['round'] == 1:
-    # 총 원화 평가금액 불러오기
-    account = KIS.get_KR_account_summary()
-    if not isinstance(account, dict):
-        TA.send_tele(f"ISAYS: 총 원화평가금 조회 불가로 종료합니다. ({account})")
-        sys.exit(1)
-    total_krw_asset = account['total_krw_asset']  # nass_amt (주식평가금 + D+2 현금 합계)
-    message.append(f"ISAYS 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
+# 총 원화 평가금액 불러오기
+account = KIS.get_KR_account_summary()
+if not isinstance(account, dict):
+    TA.send_tele(f"ISAYS: 총 원화평가금 조회 불가로 종료합니다. ({account})")
+    sys.exit(1)
+total_krw_asset = account['total_krw_asset']  # nass_amt (주식평가금 + D+2 현금 합계)
+message.append(f"ISAYS 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
 
-    # 당일 target 투자금액 및 목표 산출 및 저장하기
-    this_krw_asset = account['stock_eval_amt'] + now_invest
-    message.append(f"ISAYS 이번 투자기준금: {int(this_krw_asset):,}원 "
-                f"(주식평가:{int(account['stock_eval_amt']):,} + 추가:{now_invest:,})")
+# 당일 target 불러오고 저장하기
+target, target_code = target_invest(target, total_krw_asset)
+# message 중간 전송 후 hold_invest 호출
+TA.send_tele(message)
+message = []
 
-    target, target_code = target_invest(target, this_krw_asset)
-
-    # 당일 target 저장하기
-    json_message = save_json(target, ISAYS_target_path, order)
-    message.extend(json_message)
-
-    # message 타겟 산출 메세지 전송
-    TA.send_tele(message)
-    time_module.sleep(1.0)
-    message = []
-
-# 2회~12회차 투자 목표 매매 수량 불러오기
-elif order['round'] > 1:
-    TA.send_tele(message)
-    time_module.sleep(1.0)
-    message = []
-    try:
-        with open(ISAYS_target_path, 'r', encoding='utf-8') as f:
-            target = json.load(f)
-        target_code = list(target.keys())
-        for code in target_code:
-            if "target_qty" in target[code]:
-                target[code]["target_qty"] = int(target[code]["target_qty"])
-    except Exception as e:
-        TA.send_tele(f"ISAYS_target.json 파일 오류: {e}")
-        sys.exit(1)
-
-# 현재 잔고 수량 불러오기
 hold, hold_code = hold_invest()
 
 # 투자수량과 잔고수량 비교해서 매수매도수량 산출하기
@@ -349,8 +319,9 @@ except ValueError as e:
     TA.send_tele(f"ISAYS: {e}")
     sys.exit(1)
 sell_split = [round_split["sell_splits"], round_split["sell_price"]]
-buy_split = [round_split["buy_splits"], round_split["buy_price"]]   
+buy_split = [round_split["buy_splits"], round_split["buy_price"]]
 
+"""
 # 매도주문
 sell_code = list(sell.keys())
 
@@ -482,14 +453,14 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
 # 회차별 매수 메세지 telegram 출력
 TA.send_tele(message)
 message = []
-
+"""
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
 if order['round'] == 12:
-    time_module.sleep(300)
+    # time_module.sleep(300) ################################################
     # 전회 주문 취소
-    cancel_message = cancel_orders(side='all')
-    message.append(cancel_message)
-    message.append(f"ISAYS {order['date']} 리밸런싱 종료")
+    # cancel_message = cancel_orders(side='all')
+    # message.append(cancel_message)
+    # message.append(f"ISAYS {order['date']} 리밸런싱 종료")  ###############
 
     # 보유 종목 잔고 불러오기
     stocks = KIS.get_KR_stock_balance()
@@ -513,6 +484,7 @@ if order['round'] == 12:
         "cash_balance": cash_balance,
         "stock_eval_amt": stock_eval_amt
     }
+
     result["stocks"] = {}
     target_code = list(target.keys())
     for stock in stocks:
@@ -538,7 +510,7 @@ if order['round'] == 12:
         error_msg = f"ISAYS_result.json 저장 실패: {e}"
         TA.send_tele(error_msg)
     time_module.sleep(1.0)
-        
+
     # data 정제
     tele_data = {
         "total": {
@@ -562,7 +534,7 @@ if order['round'] == 12:
             "hold_qty": int(stock["보유수량"]),
             "target_weight": f"{target_weight*100:.1f}%",
             "hold_weight":   f"{hold_weight*100:.1f}%"
-        } 
+        }
 
     # telegram message
     message.append(
@@ -571,6 +543,7 @@ if order['round'] == 12:
         f"주식: {tele_data['total']['stock_eval_amt']} | "
         f"현금: {tele_data['total']['cash_balance']}"
     )
+
     # 종목별 출력
     for code, info in tele_data["stocks"].items():
         message.append(
@@ -578,7 +551,8 @@ if order['round'] == 12:
             f"{info['hold_qty']}주 {info['hold_balance']} "
             f"[목표:{info['target_weight']} 실제:{info['hold_weight']}]"
         )
-
+    for i in message: #####
+        print(i)
     TA.send_tele(message)
 
 sys.exit(0)

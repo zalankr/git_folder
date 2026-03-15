@@ -1,0 +1,9 @@
+{
+    "total": {
+        "date": "2026-03-15",
+        "total_balance": 20000001.0,
+        "cash_balance": 20000001.0,
+        "stock_eval_amt": 0.0
+    },
+    "stocks": {}
+}
