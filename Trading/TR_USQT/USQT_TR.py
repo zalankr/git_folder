@@ -16,11 +16,11 @@ except singleton.SingleInstanceException:
     sys.exit(0)
 
 # ============================================
-# KIS instance 생성 (수동으로 키/계좌 변경)
+# KIS instance 생성
 # ============================================
-key_file_path = "/var/autobot/TR_USQT/kis_usqt.txt"
-token_file_path = "/var/autobot/TR_USQT/kis_usqt_token.json"
-cano = "XXXXXXXX"       # ← 계좌번호 수동 입력
+key_file_path = "/var/autobot/TR_USQT/kis63604155nkr.txt"       # 트레이딩 계쫘(수수료할인)
+token_file_path = "/var/autobot/TR_USQT/kis63604155_token.json" # 트레이딩 계쫘(수수료할인)
+cano = "63604155"      # ← 계좌번호 수동 입력
 acnt_prdt_cd = "01"
 KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
@@ -62,7 +62,6 @@ def check_dst():
         from datetime import datetime as dt, timezone
         month = dt.now(timezone.utc).month
         return 3 <= month <= 10
-
 
 def order_time(day=1):
     """
@@ -112,7 +111,6 @@ def order_time(day=1):
 
     return result
 
-
 def health_check():
     """시스템 상태 확인"""
     checks = []
@@ -136,7 +134,6 @@ def health_check():
         TA.send_tele("\n".join(checks))
         sys.exit(1)
 
-
 def save_json(data, path, order):
     """저장 실패 시에도 백업 파일 생성"""
     result_msgs = []
@@ -155,8 +152,7 @@ def save_json(data, path, order):
             result_msgs.append(f"백업 실패: {backup_error}")
     return result_msgs
 
-
-def split_data(round):
+def split_data(round): #############################체크########
     """
     회차별 분할횟수와 분할당 가격 산출
     미국주식: 가격 변동폭이 크므로 KRQT보다 넓은 가격 범위 적용
