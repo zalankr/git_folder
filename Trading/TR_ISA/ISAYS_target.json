@@ -1,0 +1,50 @@
+{
+    "441800": {
+        "name": "TIME Korea플러스배당액티브",
+        "weight": 0.17,
+        "target_invest": 3400000,
+        "target_qty": 119
+    },
+    "426030": {
+        "name": "TIME 미국나스닥100액티브",
+        "weight": 0.17,
+        "target_invest": 3400000,
+        "target_qty": 86
+    },
+    "371160": {
+        "name": "TIGER 차이나항셍테크",
+        "weight": 0.06,
+        "target_invest": 1200000,
+        "target_qty": 144
+    },
+    "411060": {
+        "name": "ACE KRX금현물",
+        "weight": 0.14,
+        "target_invest": 2800000,
+        "target_qty": 84
+    },
+    "490490": {
+        "name": "SOL 미국배당미국채혼합50",
+        "weight": 0.2,
+        "target_invest": 4000000,
+        "target_qty": 347
+    },
+    "148070": {
+        "name": "KIWOOM 국고채10년",
+        "weight": 0.2,
+        "target_invest": 4000000,
+        "target_qty": 37
+    },
+    "261220": {
+        "name": "KODEX WTI원유선물(H)",
+        "weight": 0.05,
+        "target_invest": 1000000,
+        "target_qty": 44
+    },
+    "CASH": {
+        "name": "CASH",
+        "weight": 0.01,
+        "target_invest": 200000,
+        "target_qty": 0
+    }
+}

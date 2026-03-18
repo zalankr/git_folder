@@ -20,6 +20,8 @@ acnt_prdt_cd = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 ISAYS_result_path = "/var/autobot/TR_ISAYS/ISAYS_result.json" # json
+ISAYS_target_path = "/var/autobot/TR_ISAYS/ISAYS_target.json" # json
+now_invest = 10000000 # 금회 추가 투입 금액
 
 # 포트폴리오 목표비중
 target = {
@@ -268,7 +270,7 @@ order = order_time()
 # if order['round'] == 0: ################################################################################################
 #     TA.send_tele(f"ISAYS: 매매시간이 아닙니다.")########################################################################
 #     sys.exit(0)         ################################################################################################
-order['round'] = 12 ################################## 삭제 ###############################################################
+order['round'] = 1 ################################## 삭제 ###############################################################
 message.append(f"ISAYS: {order['date']}, {order['time']}, {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
@@ -285,8 +287,14 @@ message.append(f"ISAYS 총자산: {int(total_krw_asset):,}원 (주식:{int(accou
 
 # 당일 target 불러오고 저장하기
 target, target_code = target_invest(target, total_krw_asset)
+
+# 당일 target 저장하기
+json_message = save_json(target, ISAYS_target_path, order)
+message.extend(json_message)
+
 # message 중간 전송 후 hold_invest 호출
-TA.send_tele(message)
+for i in message:
+    print(i)
 message = []
 
 hold, hold_code = hold_invest()
@@ -320,6 +328,10 @@ except ValueError as e:
     sys.exit(1)
 sell_split = [round_split["sell_splits"], round_split["sell_price"]]
 buy_split = [round_split["buy_splits"], round_split["buy_price"]]
+
+print(buy)
+print(sell)
+
 
 """
 # 매도주문
@@ -453,7 +465,7 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
 # 회차별 매수 메세지 telegram 출력
 TA.send_tele(message)
 message = []
-"""
+
 # 최종 매매 데이터 telegram 출력 및 Google sheet 전략별 잔고 - 종목별 매입량 매입가 기록
 if order['round'] == 12:
     # time_module.sleep(300) ################################################
@@ -556,5 +568,5 @@ if order['round'] == 12:
     for i in message: #####
         print(i)
     TA.send_tele(message)
-
+"""
 sys.exit(0)

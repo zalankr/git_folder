@@ -1,0 +1,12 @@
+code,name,weight,category
+CASH,CASH,0.50,
+AAPL,Apple Inc,0.05,모멘텀
+MSFT,Microsoft Corp,0.05,모멘텀
+NVDA,NVIDIA Corp,0.05,모멘텀
+AMZN,Amazon.com Inc,0.05,밸류
+GOOGL,Alphabet Inc,0.05,밸류
+META,Meta Platforms Inc,0.05,밸류
+AVGO,Broadcom Inc,0.05,피크
+LLY,Eli Lilly and Co,0.05,피크
+JPM,JPMorgan Chase,0.05,피크
+V,Visa Inc,0.05,피크
