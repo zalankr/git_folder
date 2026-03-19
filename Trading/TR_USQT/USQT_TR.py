@@ -152,81 +152,84 @@ def save_json(data, path, order):
             result_msgs.append(f"백업 실패: {backup_error}")
     return result_msgs
 
-def split_data(round):
+def split_data(round_num):
     """
     회차별 분할횟수와 분할당 가격 산출
     소수점 2자리 가격 → 배율로 처리 후 round(price, 2)
     """
-    if round == 1:
+    if round_num == 1:
         sell_splits = 5
         sell_price = [1.020, 1.015, 1.010, 1.005, 0.995]
         buy_splits = 5
         buy_price = [0.980, 0.985, 0.990, 0.995, 0.9975]
-    elif round == 2:
+    elif round_num == 2:
         sell_splits = 4
         sell_price = [1.020, 1.015, 1.010, 1.005]
         buy_splits = 5
         buy_price = [0.980, 0.985, 0.990, 0.995, 1.005]
-    elif round == 3:
+    elif round_num == 3:
         sell_splits = 4
         sell_price = [1.015, 1.010, 1.005, 1.0025]
         buy_splits = 4
         buy_price = [0.980, 0.985, 0.990, 0.995]
-    elif round == 4:
+    elif round_num == 4:
         sell_splits = 4
         sell_price = [1.015, 1.010, 1.005, 0.995]
         buy_splits = 4
         buy_price = [0.985, 0.990, 0.995, 0.9975]
-    elif round == 5:
+    elif round_num == 5:
         sell_splits = 3
         sell_price = [1.015, 1.010, 1.005]
         buy_splits = 4
         buy_price = [0.985, 0.990, 0.995, 1.005]
-    elif round == 6:
+    elif round_num == 6:
         sell_splits = 3
         sell_price = [1.010, 1.005, 1.0025]
         buy_splits = 3
         buy_price = [0.985, 0.990, 0.995]
-    elif round == 7:
+    elif round_num == 7:
         sell_splits = 3
         sell_price = [1.010, 1.005, 0.995]
         buy_splits = 3
         buy_price = [0.990, 0.995, 0.9975]
-    elif round == 8:
+    elif round_num == 8:
         sell_splits = 2
         sell_price = [1.010, 1.005]
         buy_splits = 3
         buy_price = [0.990, 0.995, 1.005]
-    elif round == 9:
+    elif round_num == 9:
         sell_splits = 2
         sell_price = [1.005, 1.0025]
         buy_splits = 2
         buy_price = [0.990, 0.995]
-    elif round == 10:
+    elif round_num == 10:
         sell_splits = 2
         sell_price = [1.005, 0.995]
         buy_splits = 2
         buy_price = [0.995, 0.9975]
-    elif round == 11:
+    elif round_num == 11:
         sell_splits = 1
         sell_price = [1.005]
         buy_splits = 2
         buy_price = [0.995, 1.005]
-    elif round == 12:
+    elif round_num == 12:
         sell_splits = 1
         sell_price = [1.0025]
         buy_splits = 1
         buy_price = [0.995]
-    elif round == 13:
+    elif round_num == 13:
         sell_splits = 1
         sell_price = [0.980]
         buy_splits = 1
         buy_price = [0.9975]
-    elif round == 14:
+    elif round_num == 14:
         sell_splits = 0
         sell_price = []
         buy_splits = 1
         buy_price = [1.020]
+    else:
+        TA.send_tele(f"USQT: 유효하지 않은 round 값: {round}")
+        sys.exit(1)
 
     round_split = {
         "sell_splits": sell_splits,
@@ -493,7 +496,10 @@ elif sell_split[0] > 0:
             sys.exit(1)
 
         # 보유 종목의 거래소 코드가 있으면 전달 (API 호출 절약)
-        ticker_exchange = hold.get(ticker, {}).get("exchange", None)
+        raw_excd = hold.get(ticker, {}).get("exchange", "")
+        excd_map = {"NAS": "NASD", "NYS": "NYSE", "AMS": "AMEX",
+                    "NASD": "NASD", "NYSE": "NYSE", "AMEX": "AMEX"}
+        ticker_exchange = excd_map.get(raw_excd, None)
 
         for i in range(local_split_count):
             # 마지막 분할: 잔여 수량 처리 (정수 나눗셈 나머지 보정)
