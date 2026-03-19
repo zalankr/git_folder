@@ -152,75 +152,71 @@ def save_json(data, path, order):
             result_msgs.append(f"백업 실패: {backup_error}")
     return result_msgs
 
-def split_data(round): #############################체크########
+def split_data(round):
     """
     회차별 분할횟수와 분할당 가격 산출
-    미국주식: 가격 변동폭이 크므로 KRQT보다 넓은 가격 범위 적용
     소수점 2자리 가격 → 배율로 처리 후 round(price, 2)
-    
-    1~7회차: day1 (초반 공격적, 후반 수렴)
-    8~14회차: day2 (초반 약간 넓은 범위, 후반 시장가 근접)
     """
     if round == 1:
-        sell_splits = 4
-        sell_price = [1.025, 1.020, 1.015, 1.010]
-        buy_splits = 4
-        buy_price = [0.975, 0.980, 0.985, 0.990]
+        sell_splits = 5
+        sell_price = [1.020, 1.015, 1.010, 1.005, 0.995]
+        buy_splits = 5
+        buy_price = [0.980, 0.985, 0.990, 0.995, 0.9975]
     elif round == 2:
         sell_splits = 4
         sell_price = [1.020, 1.015, 1.010, 1.005]
-        buy_splits = 4
-        buy_price = [0.980, 0.985, 0.990, 0.995]
+        buy_splits = 5
+        buy_price = [0.980, 0.985, 0.990, 0.995, 1.005]
     elif round == 3:
-        sell_splits = 3
-        sell_price = [1.015, 1.010, 1.005]
+        sell_splits = 4
+        sell_price = [1.015, 1.010, 1.005, 1.0025]
         buy_splits = 4
         buy_price = [0.980, 0.985, 0.990, 0.995]
     elif round == 4:
-        sell_splits = 3
-        sell_price = [1.015, 1.010, 1.005]
-        buy_splits = 3
-        buy_price = [0.985, 0.990, 0.995]
+        sell_splits = 4
+        sell_price = [1.015, 1.010, 1.005, 0.995]
+        buy_splits = 4
+        buy_price = [0.985, 0.990, 0.995, 0.9975]
     elif round == 5:
         sell_splits = 3
-        sell_price = [1.010, 1.005, 1.0025]
-        buy_splits = 3
-        buy_price = [0.985, 0.990, 0.995]
-    elif round == 6:
-        sell_splits = 2
-        sell_price = [1.010, 1.005]
-        buy_splits = 2
-        buy_price = [0.990, 0.995]
-    elif round == 7:
-        sell_splits = 2
-        sell_price = [1.005, 0.995]
-        buy_splits = 2
-        buy_price = [0.995, 1.005]
-    elif round == 8:
-        sell_splits = 4
-        sell_price = [1.020, 1.015, 1.010, 1.005]
-        buy_splits = 4
-        buy_price = [0.980, 0.985, 0.990, 0.995]
-    elif round == 9:
-        sell_splits = 3
         sell_price = [1.015, 1.010, 1.005]
-        buy_splits = 3
-        buy_price = [0.985, 0.990, 0.995]
-    elif round == 10:
+        buy_splits = 4
+        buy_price = [0.985, 0.990, 0.995, 1.005]
+    elif round == 6:
         sell_splits = 3
         sell_price = [1.010, 1.005, 1.0025]
+        buy_splits = 3
+        buy_price = [0.985, 0.990, 0.995]
+    elif round == 7:
+        sell_splits = 3
+        sell_price = [1.010, 1.005, 0.995]
         buy_splits = 3
         buy_price = [0.990, 0.995, 0.9975]
-    elif round == 11:
+    elif round == 8:
+        sell_splits = 2
+        sell_price = [1.010, 1.005]
+        buy_splits = 3
+        buy_price = [0.990, 0.995, 1.005]
+    elif round == 9:
         sell_splits = 2
         sell_price = [1.005, 1.0025]
         buy_splits = 2
         buy_price = [0.990, 0.995]
-    elif round == 12:
+    elif round == 10:
         sell_splits = 2
         sell_price = [1.005, 0.995]
         buy_splits = 2
+        buy_price = [0.995, 0.9975]
+    elif round == 11:
+        sell_splits = 1
+        sell_price = [1.005]
+        buy_splits = 2
         buy_price = [0.995, 1.005]
+    elif round == 12:
+        sell_splits = 1
+        sell_price = [1.0025]
+        buy_splits = 1
+        buy_price = [0.995]
     elif round == 13:
         sell_splits = 1
         sell_price = [0.980]
@@ -331,10 +327,6 @@ if order['round'] == 1 or order['round'] == 8:
         sys.exit(1)
 
     # 미국주식: 코드 앞 'A' 접두어 없음 → 별도 처리 불필요
-    # 혹시 한국 형식(A접두어)으로 되어 있다면 제거
-    if Target["code"].str.startswith("A").any():
-        Target["code"] = Target["code"].str.replace(r"^A", "", regex=True)
-
     # 중복 종목 비중 합산 (여러 카테고리에 동일 종목이 있을 수 있음)
     grouped = Target.groupby("code").agg(
         name=("name", "first"),
