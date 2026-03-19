@@ -775,7 +775,7 @@ if order['round'] == 14:
     time_module.sleep(1.0)
 
     # ============================================
-    # 최종 daily balance
+    # 최종 결과 저장
     # ============================================
     final_stocks = KIS.get_US_stock_balance()
     if not isinstance(final_stocks, list):
@@ -827,7 +827,8 @@ if order['round'] == 14:
         daily[category]          = f"${category_balance:,.2f}"
         daily[f"{category}_ret"] = "0.00%"
 
-    # daily balance Google Sheet 저장
+    """
+    # daily balance Google Sheet 저장 보류
     try:
         credentials_file = "/var/autobot/gspread/service_account.json"
         spreadsheet_name = "2026_USQT_daily"
@@ -841,6 +842,7 @@ if order['round'] == 14:
     except Exception as e:
         error_msg = f"Google Sheet 업로드 실패: {e}"
         TA.send_tele(error_msg)
+    """
 
     # telegram message
     for k, v in daily.items():
