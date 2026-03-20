@@ -31,7 +31,7 @@ target = {
     },
     "456600": {
         "name": "TIME 글로벌AI인공지능액티브",
-        "weight": 0.14
+        "weight": 0.15
     },
     "0035T0": {
         "name": "PLUS 글로벌휴머노이드로봇액티브",
@@ -51,7 +51,7 @@ target = {
     },
     "CASH": {
         "name": "CASH",
-        "weight": 0.02
+        "weight": 0.01
     }
 }
 

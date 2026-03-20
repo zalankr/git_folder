@@ -1,12 +1,12 @@
 code,name,weight,category
-CASH,CASH,0.5,CASH
-AAPL,Apple Inc,0.05,trend
-MSFT,Microsoft Corp,0.05,trend
-NVDA,NVIDIA Corp,0.05,trend
-AMZN,Amazon.com Inc,0.05,value
-GOOGL,Alphabet Inc,0.05,value
-META,Meta Platforms Inc,0.05,value
-AVGO,Broadcom Inc,0.05,small
-LLY,Eli Lilly and Co,0.05,small
-JPM,JPMorgan Chase,0.05,small
-V,Visa Inc,0.05,small
+CASH,CASH,0,CASH
+AAPL,Apple Inc,0.1,trend
+MSFT,Microsoft Corp,0.1,trend
+NVDA,NVIDIA Corp,0.1,trend
+AMZN,Amazon.com Inc,0.1,value
+GOOGL,Alphabet Inc,0.1,value
+META,Meta Platforms Inc,0.1,value
+AVGO,Broadcom Inc,0.1,small
+LLY,Eli Lilly and Co,0.1,small
+JPM,JPMorgan Chase,0.1,small
+V,Visa Inc,0.1,small
