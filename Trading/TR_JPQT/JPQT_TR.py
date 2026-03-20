@@ -1,86 +1,72 @@
 import sys
 import json
 import telegram_alert as TA
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta as time_obj
 import pandas as pd
 from collections import defaultdict
 import gspread_updater as GU
 import time as time_module
 from tendo import singleton
-import KIS_US
+import KIS_JP
 
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    TA.send_tele("USQT: 이미 실행 중입니다.")
+    TA.send_tele("JPQT: 이미 실행 중입니다.")
     sys.exit(0)
 
 # ============================================
 # KIS instance 생성
 # ============================================
-key_file_path = "/var/autobot/TR_USQT/kis63604155nkr.txt"       # 트레이딩 계쫘(수수료할인)
-token_file_path = "/var/autobot/TR_USQT/kis63604155_token.json" # 트레이딩 계쫘(수수료할인)
+key_file_path = "/var/autobot/TR_JPQT/kis63604155nkr.txt"       # 트레이딩 계좌(수수료할인)
+token_file_path = "/var/autobot/TR_JPQT/kis63604155_token.json" # 트레이딩 계좌(수수료할인)
 cano = "63604155"      # ← 계좌번호 수동 입력
 acnt_prdt_cd = "01"
-KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
+KIS = KIS_JP.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 fee_rate = KIS.SELL_FEE_RATE  # 0.09% 이벤트 계좌
-USQT_day_path = "/var/autobot/TR_USQT/USQT_day.json"
-USQT_target_path = "/var/autobot/TR_USQT/USQT_target.json"
-USQT_result_path = "/var/autobot/TR_USQT/USQT_result.json"
-USQT_daily_path = "/var/autobot/TR_USQT/USQT_daily.json"
-USQT_stock_path = "/var/autobot/TR_USQT/USQT_stock.csv"
+JPQT_day_path = "/var/autobot/TR_JPQT/JPQT_day.json"
+JPQT_target_path = "/var/autobot/TR_JPQT/JPQT_target.json"
+JPQT_result_path = "/var/autobot/TR_JPQT/JPQT_result.json"
+JPQT_daily_path = "/var/autobot/TR_JPQT/JPQT_daily.json"
+JPQT_stock_path = "/var/autobot/TR_JPQT/JPQT_stock.csv"
 
 # ============================================
-# CSV 형식 (KRQT_stock.csv와 동일 구조)
+# CSV 형식 (USQT_stock.csv와 동일 구조)
 # ============================================
 # code,name,weight,category
-# CASH,CASH,0.50,
-# AAPL,Apple Inc,0.05,모멘텀
-# MSFT,Microsoft Corp,0.05,밸류
+# CASH,CASH,0.00,CASH
+# 9980,Mrk Holdings,0.05,trend
+# 3932,Akatsuki,0.05,trend
 # ...
-# ※ 미국 주식은 code 앞에 'A' 접두어 없이 티커 그대로 사용
+# ※ 일본 주식은 4자리 숫자 코드 사용
+# ※ CASH 행은 현금 비중 (0이면 전액 투자)
 
 # ============================================
 # 유틸리티 함수
 # ============================================
 
-def check_dst():
-    """
-    미국이 현재 DST(서머타임)인지 판단
-    DST: 3월 둘째 일요일 02:00 ET ~ 11월 첫째 일요일 02:00 ET
-    pytz로 정확히 판단, 미설치 시 간이 판단 fallback
-    """
-    try:
-        import pytz
-        from datetime import datetime as dt, timezone
-        eastern = pytz.timezone('America/New_York')
-        now_et = dt.now(timezone.utc).astimezone(eastern)
-        return bool(now_et.dst())
-    except ImportError:
-        # pytz 미설치 시 간이 판단 (3월~10월)
-        from datetime import datetime as dt, timezone
-        month = dt.now(timezone.utc).month
-        return 3 <= month <= 10
-
 def order_time(day=1):
     """
     거래일자와 거래회차 확인 (EC2 = UTC 시간대 기준)
     
-    미국 정규장: ET 09:30~16:00
-      DST(EDT=UTC-4): UTC 13:30~20:00
-        → crontab 매 정시 30분 실행: UTC 13,14,15,16,17,18,19 = 7슬롯
-      EST(UTC-5):     UTC 14:30~21:00
-        → crontab 매 정시 30분 실행: UTC 14,15,16,17,18,19,20 = 7슬롯
+    일본 정규장 (KST): 오전 09:00~11:30, 오후 12:30~15:00
+    UTC 변환: 오전 00:00~02:30, 오후 03:30~06:00
     
     7회차 x 2일 = 총 14회차
     
-    crontab 예시 (UTC):
-      DST:  30 13-19 리밸런싱일,리밸런싱일+1 분기월 *
-      EST:  30 14-20 리밸런싱일,리밸런싱일+1 분기월 *
+    crontab (UTC):
+      0 0,1,2 리밸런싱일,리밸런싱일+1 분기월 *   → 오전 3회
+      30 3,4,5 리밸런싱일,리밸런싱일+1 분기월 *  → 오후 3회 (15:30 제외)
+      0 4 리밸런싱일,리밸런싱일+1 분기월 *        → 오후 추가 1회
+      (총 7회차 per day)
+    
+    실제 crontab 예시 (UTC):
+      0 0-2 리밸런싱일,리밸런싱일+1 분기월 *
+      30 3-5 리밸런싱일,리밸런싱일+1 분기월 *
     """
     from datetime import datetime as dt, timezone
-    now = dt.now(timezone.utc)       # EC2 기본 = UTC
+    now = dt.now(timezone.utc)
     current_date = now.date()
     current_time = now.time()
 
@@ -93,19 +79,33 @@ def order_time(day=1):
     }
 
     hour = current_time.hour
-    is_dst = check_dst()
+    minute = current_time.minute
 
-    # 정규장 시간대 round 매핑 (UTC 기준, 7회차)
-    if is_dst:
-        # DST(EDT=UTC-4): 정규장 UTC 13:30~20:00
-        # crontab 30분에 실행 → UTC 13,14,15,16,17,18,19
-        round_map = {13: 1, 14: 2, 15: 3, 16: 4, 17: 5, 18: 6, 19: 7}
+    # 일본 정규장 UTC 시간 → round 매핑
+    # 오전장 (KST 09:00~11:30 = UTC 00:00~02:30)
+    #   UTC 00:00 → round 1
+    #   UTC 01:00 → round 2
+    #   UTC 02:00 → round 3
+    # 오후장 (KST 12:30~15:00 = UTC 03:30~06:00)
+    #   UTC 03:30 → round 4
+    #   UTC 04:00 → round 5  (또는 04:30)
+    #   UTC 04:30 → round 6  (또는 05:00)
+    #   UTC 05:30 → round 7
+    
+    # 오전장: 정시 실행 (minute == 0)
+    if minute < 15:  # 정시 실행 윈도우
+        am_round_map = {0: 1, 1: 2, 2: 3}
+        base_round = am_round_map.get(hour, 0)
+    elif minute >= 25 and minute <= 40:  # 30분 실행 윈도우
+        pm_round_map = {3: 4, 4: 5, 5: 6}
+        base_round = pm_round_map.get(hour, 0)
     else:
-        # EST(UTC-5): 정규장 UTC 14:30~21:00
-        # crontab 30분에 실행 → UTC 14,15,16,17,18,19,20
-        round_map = {14: 1, 15: 2, 16: 3, 17: 4, 18: 5, 19: 6, 20: 7}
+        base_round = 0
+    
+    # 오후장 마지막 슬롯: UTC 05:00 정시도 포함
+    if hour == 5 and minute < 15:
+        base_round = 7
 
-    base_round = round_map.get(hour, 0)
     if base_round > 0:
         result['round'] = base_round + (day * 7 - 7)  # day=1: 1~7, day=2: 8~14
 
@@ -116,19 +116,19 @@ def health_check():
     checks = []
     
     if not KIS.access_token:
-        checks.append("USQT체크: API 토큰 없음")
+        checks.append("JPQT체크: API 토큰 없음")
     
     import os
-    files = [USQT_day_path, USQT_stock_path]
+    files = [JPQT_day_path, JPQT_stock_path]
     for f in files:
         if not os.path.exists(f):
-            checks.append(f"USQT체크: data파일 없음: {f}")
+            checks.append(f"JPQT체크: data파일 없음: {f}")
     
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("USQT체크: KIS API 서버 접속 불가")
+        checks.append("JPQT체크: KIS API 서버 접속 불가")
     
     if checks:
         TA.send_tele("\n".join(checks))
@@ -143,7 +143,7 @@ def save_json(data, path, order):
         result_msgs.append(f"{order['date']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
     except Exception as e:
         result_msgs.append(f"{path} 저장 실패: {e}")
-        backup_path = f"/var/autobot/TR_USQT/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        backup_path = f"/var/autobot/TR_JPQT/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         try:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
@@ -154,8 +154,8 @@ def save_json(data, path, order):
 
 def split_data(round_num):
     """
-    회차별 분할횟수와 분할당 가격 산출
-    소수점 2자리 가격 → 배율로 처리 후 round(price, 2)
+    회차별 분할횟수와 분할당 가격 배율 산출
+    일본주식은 정수가격 → 배율 적용 후 int() 처리
     """
     if round_num == 1:
         sell_splits = 5
@@ -228,7 +228,7 @@ def split_data(round_num):
         buy_splits = 1
         buy_price = [1.020]
     else:
-        TA.send_tele(f"USQT: 유효하지 않은 round 값: {round_num}")
+        TA.send_tele(f"JPQT: 유효하지 않은 round 값: {round_num}")
         sys.exit(1)
 
     round_split = {
@@ -239,74 +239,68 @@ def split_data(round_num):
     }
     return round_split
 
-
 def cancel_orders():
     """모든 미체결 주문 취소"""
     try:
         summary, cancel_msgs = KIS.cancel_all_unfilled_orders()
-        cancel_message = f"USQT: {summary['success']}/{summary['total']} 주문 취소 성공"
+        cancel_message = f"JPQT: {summary['success']}/{summary['total']} 주문 취소 성공"
     except Exception as e:
-        cancel_message = f"USQT: 주문 취소 에러발생 ({e})"
+        cancel_message = f"JPQT: 주문 취소 에러발생 ({e})"
     return cancel_message
 
-
-def is_US_trading_day():
+def is_JP_trading_day():
     """
-    미국 거래일 확인 (exchange_calendars 활용)
-    EC2 = UTC 시간대이므로 datetime.now()는 UTC
-    UTC→ET 변환하여 ET 기준 날짜로 거래일 체크
-    (UTC 20시 이후 실행 시 ET은 아직 당일 정규장임)
+    일본 거래일 확인 (exchange_calendars 활용)
+    EC2 = UTC이므로 UTC→JST 변환하여 JST 기준 날짜로 체크
+    (UTC 00시 실행 = JST 09시이므로 날짜 차이 없음)
     """
     try:
         import exchange_calendars as xcals
         import pytz
-        cal = xcals.get_calendar("XNYS")
-        eastern = pytz.timezone('America/New_York')
+        cal = xcals.get_calendar("XTKS")  # 도쿄증권거래소
+        jst = pytz.timezone('Asia/Tokyo')
         from datetime import timezone
-        today_et = datetime.now(timezone.utc).astimezone(eastern).date()
-        return cal.is_session(pd.Timestamp(today_et))
+        today_jst = datetime.now(timezone.utc).astimezone(jst).date()
+        return cal.is_session(pd.Timestamp(today_jst))
     except ImportError:
-        # exchange_calendars 미설치 시 평일 체크로 대체
         try:
             import pytz
-            eastern = pytz.timezone('America/New_York')
+            jst = pytz.timezone('Asia/Tokyo')
             from datetime import timezone
-            weekday = datetime.now(timezone.utc).astimezone(eastern).weekday()
+            weekday = datetime.now(timezone.utc).astimezone(jst).weekday()
         except ImportError:
-            # pytz도 없으면 UTC 기준 평일 체크 (UTC와 ET 날짜가 다를 수 있으나 최선)
-            weekday = datetime.now(timezone.utc).weekday()
+            weekday = datetime.utcnow().weekday()
         return weekday < 5  # 월~금
     except Exception:
         return True  # 확인 불가 시 진행
 
-
 # ============================================
-# 메인 로직 # 분기 리밸런싱 (미국주식)
+# 메인 로직 # 분기 리밸런싱 (일본주식)
 # ============================================
 
-checkday = is_US_trading_day()
+checkday = is_JP_trading_day()
 if not checkday:
-    TA.send_tele("USQT: 미국 거래일이 아닙니다.")
+    TA.send_tele("JPQT: 일본 거래일이 아닙니다.")
     sys.exit(0)
 
 health_check()
 message = []
 
-# USQT_day.json 불러오기
+# JPQT_day.json 불러오기
 try:
-    with open(USQT_day_path, 'r', encoding='utf-8') as f:
+    with open(JPQT_day_path, 'r', encoding='utf-8') as f:
         TR = json.load(f)
 except Exception as e:
-    TA.send_tele(f"USQT_day.json 파일 오류: {e}")
+    TA.send_tele(f"JPQT_day.json 파일 오류: {e}")
     sys.exit(1)
 
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
 
 if order['round'] == 0:
-    TA.send_tele("USQT: 매매시간이 아닙니다.")
+    TA.send_tele("JPQT: 매매시간이 아닙니다.")
     sys.exit(0)
-message.append(f"USQT: {order['day']}일차 {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
+message.append(f"JPQT: {order['day']}일차 {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
 cancel_message = cancel_orders()
@@ -318,7 +312,7 @@ message.append(cancel_message)
 if order['round'] == 1 or order['round'] == 8:
     # 목표종목 csv파일 불러오기
     try:
-        with open(USQT_stock_path, 'r', encoding='utf-8') as f:
+        with open(JPQT_stock_path, 'r', encoding='utf-8') as f:
             Target = pd.read_csv(f, dtype={
                 "code": str,
                 "name": str,
@@ -326,10 +320,9 @@ if order['round'] == 1 or order['round'] == 8:
                 "category": str
             })
     except Exception as e:
-        TA.send_tele(f"USQT_stock.csv 파일 오류: {e}")
+        TA.send_tele(f"JPQT_stock.csv 파일 오류: {e}")
         sys.exit(1)
 
-    # 미국주식: 코드 앞 'A' 접두어 없음 → 별도 처리 불필요
     # 중복 종목 비중 합산 (여러 카테고리에 동일 종목이 있을 수 있음)
     grouped = Target.groupby("code").agg(
         name=("name", "first"),
@@ -347,28 +340,27 @@ if order['round'] == 1 or order['round'] == 8:
     }
 
     # ============================================
-    # 총 USD 평가금액 산출
+    # 총 JPY 평가금액 산출
     # ============================================
-    # 미국주식 총자산 = 주식평가금(USD) + 주문가능현금(USD)
-    stocks_list = KIS.get_US_stock_balance()
+    # 일본주식 총자산 = 주식평가금(JPY) + 주문가능현금(JPY)
+    stocks_list = KIS.get_JP_stock_balance()
     if not isinstance(stocks_list, list):
-        TA.send_tele(f"USQT: 잔고 조회 불가로 종료합니다. ({stocks_list})")
+        TA.send_tele(f"JPQT: 잔고 조회 불가로 종료합니다. ({stocks_list})")
         sys.exit(1)
 
-    stock_eval_usd = sum(s['eval_amt'] for s in stocks_list)
+    stock_eval_jpy = sum(s['eval_amt'] for s in stocks_list)
     time_module.sleep(0.2)
 
-    # ✅ get_US_order_available(): TTTS3007R → MTS 주문가능금액과 동일
-    #    = 외화예수금 + 매도재사용가능금액(T+2 미결제) - 당일 이미 매수에 사용된 금액
-    orderable_usd = KIS.get_US_order_available()
-    if orderable_usd is None:
-        TA.send_tele("USQT: USD 주문가능금액 조회 불가로 종료합니다.")
+    # ✅ get_JP_order_available(): TTTS3007R(TKSE) → MTS 주문가능금액과 동일 (엔화)
+    orderable_jpy = KIS.get_JP_order_available()
+    if orderable_jpy is None:
+        TA.send_tele("JPQT: JPY 주문가능금액 조회 불가로 종료합니다.")
         sys.exit(1)
 
-    total_usd_asset = stock_eval_usd + orderable_usd
+    total_jpy_asset = stock_eval_jpy + orderable_jpy
     message.append(
-        f"USQT 총자산: ${total_usd_asset:,.2f} "
-        f"(주식:${stock_eval_usd:,.2f} + 현금:${orderable_usd:,.2f})"
+        f"JPQT 총자산: ¥{total_jpy_asset:,.0f} "
+        f"(주식:¥{stock_eval_jpy:,.0f} + 현금:¥{orderable_jpy:,.0f})"
     )
 
     # ============================================
@@ -378,27 +370,28 @@ if order['round'] == 1 or order['round'] == 8:
 
     total_weight = sum(v['weight'] for v in target.values())
     if abs(total_weight - 1.0) > 0.01:
-        TA.send_tele(f"USQT 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
+        TA.send_tele(f"JPQT 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
         message.append(f"weight 합계 경고: {total_weight:.3f}")
 
     for ticker in target_code:
         if ticker == "CASH":
-            target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_usd_asset)
+            target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_jpy_asset)
             target[ticker]['target_qty'] = 0
             continue
 
-        price = KIS.get_US_current_price(ticker)
+        price = KIS.get_JP_current_price(ticker)
         if not isinstance(price, float) or price <= 0:
-            TA.send_tele(f"USQT: {ticker} 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"JPQT: {ticker} 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
         target[ticker]['current_price'] = price
-        target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_usd_asset)
-        target[ticker]['target_qty'] = int(target[ticker]['target_invest'] / price)
+        target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_jpy_asset)
+        # ★ 일본주식: 100주 단위 매매 (TSE 매매단위)
+        raw_qty = int(target[ticker]['target_invest'] / price)
+        target[ticker]['target_qty'] = (raw_qty // 100) * 100  # 100주 단위 절사
         time_module.sleep(0.15)
 
     # 당일 target 저장하기
-    # JSON 직렬화를 위해 float/int 명시 변환
     target_serializable = {}
     for k, v in target.items():
         target_serializable[k] = {
@@ -407,26 +400,26 @@ if order['round'] == 1 or order['round'] == 8:
                   val)
             for key, val in v.items()
         }
-    json_message = save_json(target_serializable, USQT_target_path, order)
+    json_message = save_json(target_serializable, JPQT_target_path, order)
     message.extend(json_message)
-    target_code = list(target.keys())  # 공통 영역에서도 사용하므로 여기서 정의
+    target_code = list(target.keys())
 
 else:
     # 1회, 8회차가 아닌 경우 불러오기만 시행
     try:
-        with open(USQT_target_path, 'r', encoding='utf-8') as f:
+        with open(JPQT_target_path, 'r', encoding='utf-8') as f:
             target = json.load(f)
     except Exception as e:
-        TA.send_tele(f"USQT_target.json 파일 오류: {e}")
+        TA.send_tele(f"JPQT_target.json 파일 오류: {e}")
         sys.exit(1)
     target_code = list(target.keys())
 
 # ============================================
 # 보유 종목 잔고 불러오기
 # ============================================
-stocks = KIS.get_US_stock_balance()
+stocks = KIS.get_JP_stock_balance()
 if not isinstance(stocks, list):
-    TA.send_tele(f"USQT: 잔고 조회 불가로 종료합니다. ({stocks})")
+    TA.send_tele(f"JPQT: 잔고 조회 불가로 종료합니다. ({stocks})")
     sys.exit(1)
 
 hold = {}
@@ -434,7 +427,7 @@ for stock in stocks:
     ticker = stock["ticker"]
     hold[ticker] = {
         "name": stock["name"],
-        "hold_balance": stock["eval_amt"],      # USD 평가금액
+        "hold_balance": stock["eval_amt"],      # JPY 평가금액
         "hold_qty": stock["quantity"],           # 체결기준 현재잔고 (ccld_qty_smtl1)
         "current_price": stock["current_price"],
         "exchange": stock["exchange"],
@@ -464,6 +457,10 @@ for ticker in target_code:
     if ticker not in hold_code:
         buy[ticker] = target[ticker]["target_qty"]
 
+# ★ 100주 단위 보정 (매수/매도 수량)
+buy = {t: (q // 100) * 100 for t, q in buy.items() if (q // 100) * 100 > 0}
+sell = {t: (q // 100) * 100 for t, q in sell.items() if (q // 100) * 100 > 0}
+
 # ============================================
 # 분할 주문 수량 구하기
 # ============================================
@@ -477,55 +474,52 @@ buy_split = [round_split["buy_splits"], round_split["buy_price"]]
 sell_code = list(sell.keys())
 
 if len(sell_code) == 0:
-    message.append("USQT: 매도 종목 없음")
+    message.append("JPQT: 매도 종목 없음")
 
 elif sell_split[0] > 0:
-    message.append(f"USQT: {order['round']}회차 - 매도 주문")
+    message.append(f"JPQT: {order['round']}회차 - 매도 주문")
     for ticker, qty in sell.items():
         local_split_count = sell_split[0]
         local_split_price = sell_split[1][:]
         split_qty = int(qty // local_split_count)
-        if split_qty < 1:
+        # ★ 100주 단위 보정
+        split_qty = (split_qty // 100) * 100
+        if split_qty < 100:
             local_split_count = 1
             local_split_price = [0.99]
-            split_qty = int(qty)
+            split_qty = (int(qty) // 100) * 100
 
-        price = KIS.get_US_current_price(ticker)
+        if split_qty < 100:
+            message.append(f"JPQT 매도 스킵: {ticker} 수량 {qty}주 (100주 미만)")
+            continue
+
+        price = KIS.get_JP_current_price(ticker)
         if not isinstance(price, float) or price <= 0:
-            TA.send_tele(f"USQT: {ticker} 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"JPQT: {ticker} 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
-        # 보유 종목의 거래소 코드가 있으면 전달 (API 호출 절약)
-        raw_excd = hold.get(ticker, {}).get("exchange", "")
-        excd_map = {"NAS": "NASD", "NYS": "NYSE", "AMS": "AMEX",
-                    "NASD": "NASD", "NYSE": "NYSE", "AMEX": "AMEX"}
-        ticker_exchange = excd_map.get(raw_excd, None)
-
         for i in range(local_split_count):
-            # 마지막 분할: 잔여 수량 처리 (정수 나눗셈 나머지 보정)
             if i == local_split_count - 1:
                 quantity = int(qty - split_qty * (local_split_count - 1))
+                quantity = (quantity // 100) * 100
             else:
                 quantity = split_qty
 
-            if quantity <= 0:
+            if quantity < 100:
                 continue
 
-            order_price = round(price * local_split_price[i], 2)
+            # ★ 일본주식: 정수 가격
+            order_price = int(round(price * local_split_price[i], 0))
 
-            order_info, order_msgs = KIS.order_sell_US(
-                ticker, quantity, order_price, exchange=ticker_exchange
-            )
+            order_info, order_msgs = KIS.order_sell_JP(ticker, quantity, order_price)
             if order_info is None:
                 time_module.sleep(2)
-                order_info, order_msgs = KIS.order_sell_US(
-                    ticker, quantity, order_price, exchange=ticker_exchange
-                )
+                order_info, order_msgs = KIS.order_sell_JP(ticker, quantity, order_price)
             if order_info is None:
-                message.append(f"USQT 매도 오류: {ticker} {quantity}주 ${order_price:.2f} API 응답 없음")
+                message.append(f"JPQT 매도 오류: {ticker} {quantity}주 ¥{order_price:,} API 응답 없음")
             elif order_info.get("success"):
                 message.append(
-                    f"매도 {ticker} {quantity}주 ${order_price:.2f} "
+                    f"매도 {ticker} {quantity}주 ¥{order_price:,} "
                     f"주문번호:{order_info.get('order_number','')}"
                 )
             else:
@@ -535,114 +529,116 @@ elif sell_split[0] > 0:
             message.extend(order_msgs)
             time_module.sleep(0.2)
 else:
-    # 14회차: 잔량 있어도 매도 스킵
-    message.append(f"USQT: {order['round']}회차 매도 스킵 - 미처분 잔량: {list(sell.keys())}")
+    message.append(f"JPQT: {order['round']}회차 매도 스킵 - 미처분 잔량: {list(sell.keys())}")
 
 # 회차별 매도 메세지 telegram 출력
 TA.send_tele(message)
 message = []
 
 # ============================================
-# 매도-매수 시간 딜레이 (미국주식: T+1 결제이나 매도재사용가능)
+# 매도-매수 시간 딜레이
+# 일본주식: T+2 결제이나 매도재사용가능
 # ============================================
 time_module.sleep(600)
 
 # ============================================
 # 매수 구간 전환
 # ============================================
-# ✅ get_US_order_available() = TTTS3007R → MTS 주문가능금액
-#    = 외화예수금 + 매도재사용가능(T+1 미결제) - 당일 이미 매수 사용분
-USD = KIS.get_US_order_available()
-if USD is None:
-    TA.send_tele("USQT: USD 주문가능금액 조회 불가로 종료합니다.")
+JPY = KIS.get_JP_order_available()
+if JPY is None:
+    TA.send_tele("JPQT: JPY 주문가능금액 조회 불가로 종료합니다.")
     sys.exit(1)
 
-orderable_USD = float(USD)
-target_USD = 0.0
+orderable_JPY = float(JPY)
+target_JPY = 0.0
 buy_prices = {}
-buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0  # 최대 배율 기준
+buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0
 
 for ticker, qty in buy.items():
-    price = KIS.get_US_current_price(ticker)
+    price = KIS.get_JP_current_price(ticker)
     if not isinstance(price, float) or price <= 0:
-        TA.send_tele(f"USQT: {ticker} 현재가 조회 불가로 종료합니다. ({price})")
+        TA.send_tele(f"JPQT: {ticker} 현재가 조회 불가로 종료합니다. ({price})")
         sys.exit(1)
     buy_prices[ticker] = price
     ticker_invest = price * buy_price_rate * qty
-    target_USD += ticker_invest
+    target_JPY += ticker_invest
     time_module.sleep(0.15)
 
-# 디버그: 매수 가능금액 vs 목표 매수금 비교 로그
 message.append(
-    f"USQT 매수가능: ${orderable_USD:,.2f} | 목표매수금: ${target_USD:,.2f}"
-    + (f" | 조정비율: {orderable_USD/target_USD:.4f}" if target_USD > 0 else "")
+    f"JPQT 매수가능: ¥{orderable_JPY:,.0f} | 목표매수금: ¥{target_JPY:,.0f}"
+    + (f" | 조정비율: {orderable_JPY/target_JPY:.4f}" if target_JPY > 0 else "")
 )
 
-if target_USD > orderable_USD:
-    adjust_rate = orderable_USD / target_USD
+if target_JPY > orderable_JPY:
+    adjust_rate = orderable_JPY / target_JPY
     for ticker, ticker_qty in buy.items():
         adjusted = int(ticker_qty * adjust_rate)
+        # ★ 100주 단위 절사
+        adjusted = (adjusted // 100) * 100
         buy[ticker] = adjusted
 
-    buy = {ticker: qty for ticker, qty in buy.items() if qty > 0}
-    message.append(f"USQT 매수수량 조정 완료 (adjust_rate={adjust_rate:.4f})")
+    buy = {ticker: qty for ticker, qty in buy.items() if qty >= 100}
+    message.append(f"JPQT 매수수량 조정 완료 (adjust_rate={adjust_rate:.4f})")
 else:
-    message.append("USQT 매수가능금 충분 → 수량 조정 없음")
+    message.append("JPQT 매수가능금 충분 → 수량 조정 없음")
 
 # ============================================
 # 매수 주문
 # ============================================
-buy = {ticker: qty for ticker, qty in buy.items() if qty > 0}  # 방어적 0주 제거
+buy = {ticker: qty for ticker, qty in buy.items() if qty >= 100}  # 방어적 100주 미만 제거
 buy_code = list(buy.keys())
 
 if len(buy_code) == 0:
-    message.append("USQT: 매수 종목 없음")
+    message.append("JPQT: 매수 종목 없음")
 
 elif len(buy_code) > 0 and buy_split[0] > 0:
-    message.append(f"USQT: {order['round']}회차 - 매수 주문")
+    message.append(f"JPQT: {order['round']}회차 - 매수 주문")
     for ticker, qty in buy.items():
         local_split_count = buy_split[0]
         local_split_price = buy_split[1][:]
         split_qty = int(qty // local_split_count)
-        if split_qty < 1:
-            if qty < 1:
-                message.append(f"USQT 매수 스킵: {ticker} 수량 0주 (조정후 제거대상)")
+        # ★ 100주 단위 보정
+        split_qty = (split_qty // 100) * 100
+        if split_qty < 100:
+            if qty < 100:
+                message.append(f"JPQT 매수 스킵: {ticker} 수량 {qty}주 (100주 미만)")
                 continue
             local_split_count = 1
             local_split_price = [1.01]
-            split_qty = int(qty)
+            split_qty = (int(qty) // 100) * 100
 
         price = buy_prices.get(ticker)
         if not isinstance(price, float) or price <= 0:
-            TA.send_tele(f"USQT: {ticker} 현재가 없음으로 종료합니다.")
+            TA.send_tele(f"JPQT: {ticker} 현재가 없음으로 종료합니다.")
             sys.exit(1)
 
         for i in range(local_split_count):
-            # 마지막 분할: 잔여 수량 처리 (정수 나눗셈 나머지 보정)
             if i == local_split_count - 1:
                 quantity = int(qty - split_qty * (local_split_count - 1))
+                quantity = (quantity // 100) * 100
             else:
                 quantity = split_qty
 
-            if quantity <= 0:
+            if quantity < 100:
                 continue
 
-            order_price = round(price * local_split_price[i], 2)
+            # ★ 일본주식: 정수 가격
+            order_price = int(round(price * local_split_price[i], 0))
 
-            order_info, order_msgs = KIS.order_buy_US(ticker, quantity, order_price)
+            order_info, order_msgs = KIS.order_buy_JP(ticker, quantity, order_price)
             if order_info is None:
                 time_module.sleep(2)
-                order_info, order_msgs = KIS.order_buy_US(ticker, quantity, order_price)  # 1회 재시도
+                order_info, order_msgs = KIS.order_buy_JP(ticker, quantity, order_price)
             if order_info is None:
-                message.append(f"USQT 매수 오류: {ticker} {quantity}주 ${order_price:.2f} API 응답 없음")
+                message.append(f"JPQT 매수 오류: {ticker} {quantity}주 ¥{order_price:,} API 응답 없음")
             elif order_info.get("success"):
                 message.append(
-                    f"매수 {ticker} {quantity}주 ${order_price:.2f} "
+                    f"매수 {ticker} {quantity}주 ¥{order_price:,} "
                     f"주문번호:{order_info.get('order_number','')}"
                 )
             else:
                 message.append(
-                    f"매수 실패 {ticker} {quantity}주 ${order_price:.2f}: "
+                    f"매수 실패 {ticker} {quantity}주 ¥{order_price:,}: "
                     f"{order_info.get('error_message','')}"
                 )
             message.extend(order_msgs)
@@ -653,12 +649,12 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
 # ============================================
 if order['round'] == 7:
     TR = {"day": 2}
-    json_message = save_json(TR, USQT_day_path, order)
+    json_message = save_json(TR, JPQT_day_path, order)
     message.extend(json_message)
 
 if order['round'] == 14:
     TR = {"day": 1}
-    json_message = save_json(TR, USQT_day_path, order)
+    json_message = save_json(TR, JPQT_day_path, order)
     message.extend(json_message)
 
 # 회차별 매수 메세지 telegram 출력
@@ -673,11 +669,11 @@ if order['round'] == 14:
     # 전회 주문 취소
     cancel_message = cancel_orders()
     message.append(cancel_message)
-    message.append(f"USQT {order['date']} 리밸런싱 종료")
+    message.append(f"JPQT {order['date']} 리밸런싱 종료")
 
     # 시작목표 불러오기
     try:
-        with open(USQT_stock_path, 'r', encoding='utf-8') as f:
+        with open(JPQT_stock_path, 'r', encoding='utf-8') as f:
             plan = pd.read_csv(f, dtype={
                 "code": str,
                 "name": str,
@@ -685,12 +681,8 @@ if order['round'] == 14:
                 "category": str
             })
     except Exception as e:
-        TA.send_tele(f"USQT_stock.csv 파일 오류: {e}")
+        TA.send_tele(f"JPQT_stock.csv 파일 오류: {e}")
         sys.exit(1)
-
-    # A접두어 제거 (혹시 있을 경우)
-    if plan["code"].str.startswith("A").any():
-        plan["code"] = plan["code"].str.replace(r"^A", "", regex=True)
 
     plan_raw = defaultdict(list)
     for _, row in plan.iterrows():
@@ -706,9 +698,9 @@ if order['round'] == 14:
     plan = dict(plan_raw)
 
     # 보유 종목 잔고 불러오기
-    stocks = KIS.get_US_stock_balance()
+    stocks = KIS.get_JP_stock_balance()
     if not isinstance(stocks, list):
-        TA.send_tele(f"USQT: 잔고 조회 불가로 종료합니다. ({stocks})")
+        TA.send_tele(f"JPQT: 잔고 조회 불가로 종료합니다. ({stocks})")
         sys.exit(1)
 
     hold = {}
@@ -770,80 +762,79 @@ if order['round'] == 14:
         message.append(f"{order['date']}일 리밸런싱 전략명:{category} 결과")
         for item in stocks_list:
             qty     = int(item['qty'])
-            balance = f"${float(item['balance']):,.2f}"
+            balance = f"¥{float(item['balance']):,.0f}"
             message.append(
                 f"종목명: {item['name']}, 잔고: {qty}주, 평가금: {balance}, 상태: {item['status']}"
             )
 
     # 전략결과 저장
-    json_message = save_json(result, USQT_result_path, order)
+    json_message = save_json(result, JPQT_result_path, order)
     message.extend(json_message)
     time_module.sleep(1.0)
 
     # ============================================
     # 최종 결과 저장
     # ============================================
-    final_stocks = KIS.get_US_stock_balance()
+    final_stocks = KIS.get_JP_stock_balance()
     if not isinstance(final_stocks, list):
-        TA.send_tele(f"USQT: 최종 잔고 조회 불가로 종료합니다. ({final_stocks})")
+        TA.send_tele(f"JPQT: 최종 잔고 조회 불가로 종료합니다. ({final_stocks})")
         sys.exit(1)
     final_stock_eval = sum(s['eval_amt'] for s in final_stocks)
     time_module.sleep(0.2)
 
-    final_usd = KIS.get_US_order_available()
-    if final_usd is None:
-        TA.send_tele("USQT: 최종 USD 주문가능금액 조회 불가로 종료합니다.")
+    final_jpy = KIS.get_JP_order_available()
+    if final_jpy is None:
+        TA.send_tele("JPQT: 최종 JPY 주문가능금액 조회 불가로 종료합니다.")
         sys.exit(1)
 
     daily_data = {
         "date": str(order['date']),
         "total_stocks":    float(final_stock_eval),
-        "total_cash":      float(final_usd),
-        "total_asset":     float(final_stock_eval) + float(final_usd),
+        "total_cash":      float(final_jpy),
+        "total_asset":     float(final_stock_eval) + float(final_jpy),
         "total_asset_ret": 0.0,
-        "currency":        "USD"
+        "currency":        "JPY"
     }
 
-    # category별 자산
     for category, stocks_list in result.items():
         category_balance = sum(float(item['balance']) for item in stocks_list)
         daily_data[category]          = float(category_balance)
         daily_data[f"{category}_ret"] = 0.0
 
-    # USQT_daily.json 저장
+    # JPQT_daily.json 저장
     try:
-        json_message = save_json(daily_data, USQT_daily_path, order)
+        json_message = save_json(daily_data, JPQT_daily_path, order)
         message.extend(json_message)
     except Exception as e:
-        error_msg = f"USQT_daily.json 저장 실패: {e}"
+        error_msg = f"JPQT_daily.json 저장 실패: {e}"
         TA.send_tele(error_msg)
     time_module.sleep(1.0)
 
     # data 정제 (표시용)
     daily = {
         "date": daily_data["date"],
-        "total_stocks":    f"${daily_data['total_stocks']:,.2f}",
-        "total_cash":      f"${daily_data['total_cash']:,.2f}",
-        "total_asset":     f"${daily_data['total_asset']:,.2f}",
+        "total_stocks":    f"¥{daily_data['total_stocks']:,.0f}",
+        "total_cash":      f"¥{daily_data['total_cash']:,.0f}",
+        "total_asset":     f"¥{daily_data['total_asset']:,.0f}",
         "total_asset_ret": f"{float(daily_data['total_asset_ret']*100):.2f}%"
     }
 
     for category, stocks_list in result.items():
         category_balance = sum(float(item['balance']) for item in stocks_list)
-        daily[category]          = f"${category_balance:,.2f}"
+        daily[category]          = f"¥{category_balance:,.0f}"
         daily[f"{category}_ret"] = "0.00%"
 
     """
     # daily balance Google Sheet 저장 보류
     try:
         credentials_file = "/var/autobot/gspread/service_account.json"
-        spreadsheet_name = "2026_USQT_daily"
+        spreadsheet_name = "2026_JPQT_daily"
 
         spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
         current_month = datetime.now().month
 
         GU.save_to_sheets(spreadsheet, daily, current_month)
-        message.append(f"2026_USQT_daily Google Sheet 업로드 완료")
+        message.append(f"2026_JPQT_daily Google Sheet 업로드 완료")
 
     except Exception as e:
         error_msg = f"Google Sheet 업로드 실패: {e}"
