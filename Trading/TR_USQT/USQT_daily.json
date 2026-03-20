@@ -1,0 +1,16 @@
+{
+    "date": "2026-03-20",
+    "total_stocks": 123576.25,
+    "total_cash": 435.02,
+    "total_asset": 124011.27,
+    "total_asset_ret": 0.0,
+    "currency": "USD",
+    "trend": 0.0,
+    "trend_ret": 0.0,
+    "value": 0.0,
+    "value_ret": 0.0,
+    "small": 0.0,
+    "small_ret": 0.0,
+    "remain_last": 123576.25,
+    "remain_last_ret": 0.0
+}

@@ -298,7 +298,7 @@ except Exception as e:
 
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
-order['round'] = 1 ############################ 테스트용
+order['round'] = 14 ############################ 테스트용
 if order['round'] == 0:
     print("USQT: 매매시간이 아닙니다.")
     sys.exit(0)
@@ -655,7 +655,7 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             
 print("\n".join(message)) ########
 message = []
-"""
+
 # ============================================
 # day 전환 (7회차→day2, 14회차→day1)
 # ============================================
@@ -669,20 +669,13 @@ if order['round'] == 14:
     json_message = save_json(TR, USQT_day_path, order)
     message.extend(json_message)
 
-# 회차별 매수 메세지 telegram 출력
-TA.send_tele(message)
+print("\n".join(message)) ########
 message = []
 
 # ============================================
 # 최종 매매 데이터 telegram 출력 및 Google Sheet 기록 (14회차)
 # ============================================
 if order['round'] == 14:
-    time_module.sleep(120)
-    # 전회 주문 취소
-    cancel_message = cancel_orders()
-    message.append(cancel_message)
-    message.append(f"USQT {order['date']} 리밸런싱 종료")
-
     # 시작목표 불러오기
     try:
         with open(USQT_stock_path, 'r', encoding='utf-8') as f:
@@ -845,8 +838,8 @@ if order['round'] == 14:
     for k, v in daily.items():
         message.append(f"{k} : {v}")
 
-    TA.send_tele(message)
+    print("\n".join(message)) ########
     message = []
-"""
+
 
 sys.exit(0)

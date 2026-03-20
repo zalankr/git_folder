@@ -1,0 +1,138 @@
+{
+    "trend": [
+        {
+            "code": "APL",
+            "name": "Apple Inc",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "MSFT",
+            "name": "Microsoft Corp",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "NVDA",
+            "name": "NVIDIA Corp",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        }
+    ],
+    "value": [
+        {
+            "code": "MZN",
+            "name": "Amazon.com Inc",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "GOOGL",
+            "name": "Alphabet Inc",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "META",
+            "name": "Meta Platforms Inc",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        }
+    ],
+    "small": [
+        {
+            "code": "VGO",
+            "name": "Broadcom Inc",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "LLY",
+            "name": "Eli Lilly and Co",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "JPM",
+            "name": "JPMorgan Chase",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "V",
+            "name": "Visa Inc",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.1,
+            "status": "리밸런싱 매수실패"
+        }
+    ],
+    "remain_last": [
+        {
+            "code": "PDBC",
+            "name": "INVESCO OPTIMUM YIELD DIVERSIFIED COMMODITY STRATEGY NO K-1",
+            "qty": 732,
+            "balance": 12605.04,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "EDC",
+            "name": "DIREXION MSCI EMERGING MARKETS DAILY 3X",
+            "qty": 609,
+            "balance": 36564.36,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "IWM",
+            "name": "ISHARES RUSSELL 2000",
+            "qty": 4,
+            "balance": 990.52,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "UPRO",
+            "name": "PROSHARES S&P 500 3X",
+            "qty": 522,
+            "balance": 53050.86,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "VEA",
+            "name": "VANGUARD FTSE DEVELOPED MARKETS",
+            "qty": 160,
+            "balance": 10265.6,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "VWO",
+            "name": "VANGUARD FTSE EMERGING MARKETS",
+            "qty": 187,
+            "balance": 10099.87,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        }
+    ]
+}
