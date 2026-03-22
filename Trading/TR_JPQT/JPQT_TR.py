@@ -56,14 +56,15 @@ def order_time(day=1):
     7회차 x 2일 = 총 14회차
     
     crontab (UTC):
-      0 0,1,2 리밸런싱일,리밸런싱일+1 분기월 *   → 오전 3회
-      30 3,4,5 리밸런싱일,리밸런싱일+1 분기월 *  → 오후 3회 (15:30 제외)
+      7 0,1,2,4 리밸런싱일,리밸런싱일+1 분기월 *   → 오전 3회
+      37 3,4,5 리밸런싱일,리밸런싱일+1 분기월 *  → 오후 3회 (15:30 제외)
       0 4 리밸런싱일,리밸런싱일+1 분기월 *        → 오후 추가 1회
       (총 7회차 per day)
     
     실제 crontab 예시 (UTC):
-      0 0-2 리밸런싱일,리밸런싱일+1 분기월 *
-      30 3-5 리밸런싱일,리밸런싱일+1 분기월 *
+      7 0,1,2,4 리밸런싱일,리밸런싱일+1 분기월 *   → 오전3 + 오후1 = 4슬롯
+      37 3-5 리밸런싱일,리밸런싱일+1 분기월 *       → 오후3슬롯
+      (총 7회차 per day × 2일 = 14회차)
     """
     from datetime import datetime as dt, timezone
     now = dt.now(timezone.utc)
@@ -81,6 +82,7 @@ def order_time(day=1):
     hour = current_time.hour
     minute = current_time.minute
 
+    base_round = 0
     # 일본 정규장 UTC 시간 → round 매핑
     # 오전장 (KST 09:00~11:30 = UTC 00:00~02:30)
     #   UTC 00:00 → round 1
@@ -92,22 +94,21 @@ def order_time(day=1):
     #   UTC 04:30 → round 6  (또는 05:00)
     #   UTC 05:30 → round 7
     
-    # 오전장: 정시 실행 (minute == 0)
-    if minute < 15:  # 정시 실행 윈도우
-        am_round_map = {0: 1, 1: 2, 2: 3}
-        base_round = am_round_map.get(hour, 0)
-    elif minute >= 25 and minute <= 40:  # 30분 실행 윈도우
-        pm_round_map = {3: 4, 4: 5, 5: 6}
-        base_round = pm_round_map.get(hour, 0)
-    else:
-        base_round = 0
-    
-    # 오후장 마지막 슬롯: UTC 05:00 정시도 포함
-    if hour == 5 and minute < 15:
-        base_round = 7
+    # 오전장: 7분 실행 (crontab: 7 0,1,2 → KST 09:07, 10:07, 11:07)
+    if 0 <= minute <= 15:
+        am_map = {0: 1, 1: 2, 2: 3}
+        base_round = am_map.get(hour, 0)
+        # 오후장 정시슬롯: 7 4 → KST 13:07
+        if hour == 4:
+            base_round = 5
+
+    # 오후장: 37분 실행 (crontab: 37 3,4,5 → KST 12:37, 13:37, 14:37)
+    elif 30 <= minute <= 45:
+        pm_map = {3: 4, 4: 6, 5: 7}
+        base_round = pm_map.get(hour, 0)
 
     if base_round > 0:
-        result['round'] = base_round + (day * 7 - 7)  # day=1: 1~7, day=2: 8~14
+        result['round'] = base_round + (day * 7 - 7)
 
     return result
 
