@@ -1,0 +1,248 @@
+{
+    "trend": [
+        {
+            "code": "9980",
+            "name": "Mrk Holdings",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "3932",
+            "name": "Akatsuki",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "6706",
+            "name": "Dkk",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "6771",
+            "name": "Ikegami Tsushink",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "6616",
+            "name": "Torex Semiconductor",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "4838",
+            "name": "Space Shower Skiyaki Holdings",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "7138",
+            "name": "Torico",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "7266",
+            "name": "Imasen Electric Industrial",
+            "qty": 200.0,
+            "balance": 179800.0,
+            "weight": 0.05,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "8864",
+            "name": "Airport Facilities",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "4579",
+            "name": "RaQualia Pharma",
+            "qty": 200.0,
+            "balance": 166600.0,
+            "weight": 0.05,
+            "status": "리밸런싱"
+        }
+    ],
+    "value": [
+        {
+            "code": "7345",
+            "name": "Ai Partners Financial",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "6046",
+            "name": "Linkbal",
+            "qty": 700.0,
+            "balance": 144200.0,
+            "weight": 0.05,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "5870",
+            "name": "Nalnet Communications",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "4476",
+            "name": "Ai Cross",
+            "qty": 200.0,
+            "balance": 192800.0,
+            "weight": 0.05,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "5491",
+            "name": "Nippon Kinzoku",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "7343",
+            "name": "Broad-Minded",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "5959",
+            "name": "Okabe",
+            "qty": 200.0,
+            "balance": 195800.0,
+            "weight": 0.05,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "5940",
+            "name": "Fujisash",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "6466",
+            "name": "Toa Valve Engineering",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "4922",
+            "name": "Kose Holdings",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        }
+    ],
+    "remain_last": [
+        {
+            "code": "2489",
+            "name": "[2489]애드웨이즈",
+            "qty": 400,
+            "balance": 107600.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "3386",
+            "name": "[3386]코스모바이오",
+            "qty": 100,
+            "balance": 131100.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "3758",
+            "name": "[3758]아에리아",
+            "qty": 400,
+            "balance": 101200.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "4192",
+            "name": "[4192]스파이더플러스",
+            "qty": 500,
+            "balance": 125500.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "4392",
+            "name": "[4392]FIG",
+            "qty": 400,
+            "balance": 123200.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "6316",
+            "name": "[6316]마루야마",
+            "qty": 100,
+            "balance": 231100.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "6472",
+            "name": "[6472]NTN",
+            "qty": 400,
+            "balance": 133720.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "6666",
+            "name": "[6666]리버일레텍",
+            "qty": 300,
+            "balance": 209400.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "7915",
+            "name": "[7915]니샤",
+            "qty": 100,
+            "balance": 127500.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        },
+        {
+            "code": "9248",
+            "name": "[9248]히토유메기주쓰그룹",
+            "qty": 100,
+            "balance": 149500.0,
+            "weight": 0,
+            "status": "리밸런싱 매도실패"
+        }
+    ]
+}

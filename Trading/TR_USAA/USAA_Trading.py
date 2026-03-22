@@ -1241,9 +1241,9 @@ if order_time['round'] == 1:
     order_time['month'] = 1 ######## 최초 4월 실행 후 이 라인은 지울 것 ###################################################
 
     if order_time['month'] == 1:
-        USLA_target_weight = 0.7
+        USLA_target_weight = 0.66
         USLA_target_balance = float(Total_balance * USLA_target_weight)
-        HAA_target_weight = 0.3
+        HAA_target_weight = 0.34
         HAA_target_balance = float(Total_balance * HAA_target_weight)
 
     # 초기 데이터
