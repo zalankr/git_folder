@@ -1,0 +1,126 @@
+{
+    "trend": [
+        {
+            "code": "01179",
+            "name": "H World Group",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "00857",
+            "name": "Petrochina H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "03969",
+            "name": "China Railway Signal Communication H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "02057",
+            "name": "ZTO Express (Cayman)",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "01816",
+            "name": "CGN Power H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "09987",
+            "name": "Yum China Holdings",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "09901",
+            "name": "New Oriental Education & Technology Group",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "03993",
+            "name": "China Molybdenum H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "00992",
+            "name": "Lenovo Group",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "00168",
+            "name": "Tsingtao Brewery H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.075,
+            "status": "리밸런싱 매수실패"
+        }
+    ],
+    "value": [
+        {
+            "code": "00576",
+            "name": "Zhejiang Expressway H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "03988",
+            "name": "Bank of China H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "01910",
+            "name": "Samsonite International",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "01398",
+            "name": "Industrial and Commercial Bank of China H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        },
+        {
+            "code": "00939",
+            "name": "China Construction Bank H",
+            "qty": 0,
+            "balance": 0,
+            "weight": 0.05,
+            "status": "리밸런싱 매수실패"
+        }
+    ]
+}

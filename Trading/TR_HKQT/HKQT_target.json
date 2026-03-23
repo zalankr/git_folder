@@ -1,0 +1,161 @@
+{
+    "00168": {
+        "name": "Tsingtao Brewery H",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 47.5,
+        "target_invest": 7500.0,
+        "target_qty": 157
+    },
+    "00576": {
+        "name": "Zhejiang Expressway H",
+        "weight": 0.05,
+        "categories": [
+            "value"
+        ],
+        "current_price": 6.8,
+        "target_invest": 5000.0,
+        "target_qty": 735
+    },
+    "00857": {
+        "name": "Petrochina H",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 10.76,
+        "target_invest": 7500.0,
+        "target_qty": 697
+    },
+    "00939": {
+        "name": "China Construction Bank H",
+        "weight": 0.05,
+        "categories": [
+            "value"
+        ],
+        "current_price": 7.79,
+        "target_invest": 5000.0,
+        "target_qty": 641
+    },
+    "00992": {
+        "name": "Lenovo Group",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 8.86,
+        "target_invest": 7500.0,
+        "target_qty": 846
+    },
+    "01179": {
+        "name": "H World Group",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 38.82,
+        "target_invest": 7500.0,
+        "target_qty": 193
+    },
+    "01398": {
+        "name": "Industrial and Commercial Bank of China H",
+        "weight": 0.05,
+        "categories": [
+            "value"
+        ],
+        "current_price": 6.37,
+        "target_invest": 5000.0,
+        "target_qty": 784
+    },
+    "01816": {
+        "name": "CGN Power H",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 3.49,
+        "target_invest": 7500.0,
+        "target_qty": 2148
+    },
+    "01910": {
+        "name": "Samsonite International",
+        "weight": 0.05,
+        "categories": [
+            "value"
+        ],
+        "current_price": 14.76,
+        "target_invest": 5000.0,
+        "target_qty": 338
+    },
+    "02057": {
+        "name": "ZTO Express (Cayman)",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 190.0,
+        "target_invest": 7500.0,
+        "target_qty": 39
+    },
+    "03969": {
+        "name": "China Railway Signal Communication H",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 3.3,
+        "target_invest": 7500.0,
+        "target_qty": 2272
+    },
+    "03988": {
+        "name": "Bank of China H",
+        "weight": 0.05,
+        "categories": [
+            "value"
+        ],
+        "current_price": 4.59,
+        "target_invest": 5000.0,
+        "target_qty": 1089
+    },
+    "03993": {
+        "name": "China Molybdenum H",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 16.11,
+        "target_invest": 7500.0,
+        "target_qty": 465
+    },
+    "09901": {
+        "name": "New Oriental Education & Technology Group",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 42.88,
+        "target_invest": 7500.0,
+        "target_qty": 174
+    },
+    "09987": {
+        "name": "Yum China Holdings",
+        "weight": 0.075,
+        "categories": [
+            "trend"
+        ],
+        "current_price": 403.6,
+        "target_invest": 7500.0,
+        "target_qty": 18
+    },
+    "CASH": {
+        "name": "CASH",
+        "weight": 0.0,
+        "categories": [
+            "CASH"
+        ],
+        "target_invest": 0.0,
+        "target_qty": 0
+    }
+}
