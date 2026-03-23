@@ -1228,8 +1228,8 @@ if order_time['round'] == 1:
     # 계좌잔고 조회
     USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
     USD_gap = float(USD - float(TR_data['USD_total']))
-    USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.7)
-    USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.3)
+    USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.66)
+    USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.34)
 
     # 전략 모델별 목표 금액 및 비중
     USLA_target_balance = float(USLA_balance) + USD_USLA
@@ -1504,7 +1504,7 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
     message.extend(order_messages)
     order_messages = [] # 메세지 초기화
-    time_module.sleep(10)
+    time_module.sleep(20)
     
     # 예수금에 맞는 주문수량 구하기
     FULL_BUYUSD = 0
