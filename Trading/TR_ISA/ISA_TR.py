@@ -21,7 +21,6 @@ KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 ISA_result_path = "/var/autobot/TR_ISA/ISA_result.json" # json
 ISA_target_path = "/var/autobot/TR_ISA/ISA_target.json" # json
-now_invest = 20000000 # 금회 추가 투입 금액
 
 # 포트폴리오 목표비중
 target = {
@@ -283,9 +282,8 @@ if order['round'] == 1:
     message.append(f"ISA 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
 
     # 당일 target 투자금액 및 목표 산출 및 저장하기
-    this_krw_asset = account['stock_eval_amt'] + now_invest
-    message.append(f"ISA 이번 투자기준금: {int(this_krw_asset):,}원 "
-                f"(주식평가:{int(account['stock_eval_amt']):,} + 추가:{now_invest:,})")
+    this_krw_asset = total_krw_asset
+    message.append(f"ISA 이번 투자기준금: {int(this_krw_asset):,}원 ")
 
     target, target_code = target_invest(target, this_krw_asset)
 
@@ -359,6 +357,13 @@ elif sell_split[0] > 0:
         local_split_count = sell_split[0]    # 루프마다 원본에서 복사
         local_split_price = sell_split[1][:]
         split_qty = int(qty // local_split_count)
+        remainder = int(qty - split_qty * local_split_count)
+        for i in range(local_split_count):
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
+                continue
+        split_qty = this_qty
+
         if split_qty < 1:
             local_split_count = 1
             local_split_price = [0.99]
@@ -447,6 +452,13 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
         local_split_count = buy_split[0]
         local_split_price = buy_split[1][:]
         split_qty = int(qty // local_split_count)
+        remainder = int(qty - split_qty * local_split_count)
+        for i in range(local_split_count):
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
+                continue
+        split_qty = this_qty
+
         if split_qty < 1:
             if qty < 1:                   # qty 자체가 0이면 주문 스킵
                 message.append(f"ISA 매수 스킵: {code} 수량 0주 (조정후 제거대상)")
@@ -548,7 +560,6 @@ if order['round'] == 12:
     for stock in stocks:
         code = stock["종목코드"]
         if code not in target_code:
-            message.append(f"ISA: {stock['종목명']}는 target 리스트에 없는 이상 종목임.({stock['종목코드']})")
             continue
         target_weight = target[code]['weight']
         hold_weight = float(stock["평가금액"] / total_asset)

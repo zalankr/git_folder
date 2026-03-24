@@ -101,7 +101,7 @@ class KIS_API:
             return access_token
         except Exception as e:
             TA.send_tele(f"KIS 토큰 발급 실패: {e}")
-            sys.exit(0)
+            sys.exit(1)
 
     def get_access_token(self) -> Optional[str]:
         token_data = self.load_token()
