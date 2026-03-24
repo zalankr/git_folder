@@ -360,6 +360,13 @@ elif sell_split[0] > 0:
         local_split_count = sell_split[0]    # 루프마다 원본에서 복사
         local_split_price = sell_split[1][:]
         split_qty = int(qty // local_split_count)
+        remainder = int(qty - split_qty * local_split_count)
+        for i in range(local_split_count):
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
+                continue
+        split_qty = this_qty
+
         if split_qty < 1:
             local_split_count = 1
             local_split_price = [0.99]
@@ -447,6 +454,13 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
         local_split_count = buy_split[0]
         local_split_price = buy_split[1][:]
         split_qty = int(qty // local_split_count)
+        remainder = int(qty - split_qty * local_split_count)
+        for i in range(local_split_count):
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
+                continue
+        split_qty = this_qty
+        
         if split_qty < 1:
             if qty < 1:                   # qty 자체가 0이면 주문 스킵
                 message.append(f"KRQT 매수 스킵: {code} 수량 0주 (조정후 제거대상)")

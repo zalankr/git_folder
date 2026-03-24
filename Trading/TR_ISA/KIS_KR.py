@@ -110,7 +110,7 @@ class KIS_API:
             return access_token
         except Exception as e:
             TA.send_tele(f"KIS 토큰 발급 실패: {e}")
-            sys.exit(0)
+            sys.exit(1)
 
     # 토큰 접속
     def get_access_token(self) -> Optional[str]: #
@@ -258,7 +258,7 @@ class KIS_API:
     def get_KR_stock_balance_by_ticker(self, ticker: str) -> Optional[Dict]:
         """한국 주식 특정 종목 잔고 조회"""
         stocks = self.get_KR_stock_balance()
-        if stocks is None:
+        if not isinstance(stocks, list):
             return None
 
         for stock in stocks:
@@ -818,8 +818,8 @@ class KIS_API:
             "KRX_FWDG_ORD_ORGNO": "",
             "ORGN_ODNO":        order_number,
             "ORD_DVSN":         "00",       # 00: 지정가로 취소
-            "RVSE_CNCL_DVSN_CD": "02",     # 02: 취소
-            "ORD_QTY":          str(quantity),
+            "RVSE_CNCL_DVSN_CD": "02",      # 02: 취소
+            "ORD_QTY":          "0",        # QTY_ALL_ORD_YN=Y 시 반드시 "0"
             "ORD_UNPR":         "0",        # 취소는 0
             "QTY_ALL_ORD_YN":   "Y",        # Y: 잔량 전부 취소
             "PDNO":             ticker
