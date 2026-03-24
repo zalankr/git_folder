@@ -13,45 +13,44 @@ except singleton.SingleInstanceException:
     sys.exit(0)
 
 # KIS instance 생성
-key_file_path = "/var/autobot/TR_PEN/kis4368595022nkr.txt"
-token_file_path = "/var/autobot/TR_PEN/kis4368595022_token.json"
+key_file_path = "/var/autobot/TR_PEN/kis43685950nkr.txt"
+token_file_path = "/var/autobot/TR_PEN/kis43685950_token.json"
 cano = "43665648"
-acnt_prdt_cd = "01"
+acnt_prdt_cd = "22" # 연금저축계좌
 KIS = KIS_PEN.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
-ISA_result_path = "/var/autobot/TR_ISA/ISA_result.json" # json
-ISA_target_path = "/var/autobot/TR_ISA/ISA_target.json" # json
-now_invest = 20000000 # 금회 추가 투입 금액
+PEN_result_path = "/var/autobot/TR_PEN/PEN_result.json" # json
+PEN_target_path = "/var/autobot/TR_PEN/PEN_target.json" # json
 
 # 포트폴리오 목표비중
 target = {
-    "0113D0": {
-        "name": "TIME 글로벌탑픽액티브",
-        "weight": 0.20
+    "441800": {
+        "name": "TIME Korea플러스배당액티브",
+        "weight": 0.18
     },
-    "456600": {
-        "name": "TIME 글로벌AI인공지능액티브",
+    "426030": {
+        "name": "TIME 미국나스닥100액티브",
+        "weight": 0.18
+    },
+    "371160": {
+        "name": "TIGER 차이나항셍테크",
+        "weight": 0.08
+    },
+    "411060": {
+        "name": "ACE KRX금현물",
         "weight": 0.15
-    },
-    "0035T0": {
-        "name": "PLUS 글로벌휴머노이드로봇액티브",
-        "weight": 0.14
-    },
-    "498400": {
-        "name": "KODEX 200타겟위클리커버드콜",
-        "weight": 0.10
-    },
-    "498410": {
-        "name": "KODEX 금융고배당TOP10타겟위클리커버드콜",
-        "weight": 0.10
     },
     "490490": {
         "name": "SOL 미국배당미국채혼합50",
-        "weight": 0.30
+        "weight": 0.18
     },
-    "CASH": {
-        "name": "CASH",
-        "weight": 0.01
+    "148070": {
+        "name": "KIWOOM 국고채10년",
+        "weight": 0.18
+    },
+    "261220": {
+        "name": "KODEX WTI원유선물(H)",
+        "weight": 0.05
     }
 }
 
@@ -70,10 +69,10 @@ def order_time():
         'total_round': 12  # 기본값
     }
     
-    # UTC 기준: 1회차=00:05, 12회차=05:35, 30분 간격
+    # UTC 기준: 1회차=00:09, 12회차=05:39, 30분 간격
     current_total_min = current_time.hour * 60 + current_time.minute
     start_min = 0 * 60    # UTC 00:00 (KST 09:00) 시작시간 crontab 조정 시 유연하게
-    end_min   = 5 * 60 + 40   # UTC 05:40 (KST 14:40) 종료시간 crontab 조정 시 유연하게
+    end_min   = 5 * 60 + 50   # UTC 05:50 (KST 14:50) 종료시간 crontab 조정 시 유연하게
 
     if start_min <= current_total_min <= end_min:
         result['round'] = ((current_total_min - start_min) // 30) + 1
