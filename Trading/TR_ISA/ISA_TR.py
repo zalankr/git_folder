@@ -21,7 +21,6 @@ KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 ISA_result_path = "/var/autobot/TR_ISA/ISA_result.json" # json
 ISA_target_path = "/var/autobot/TR_ISA/ISA_target.json" # json
-now_invest = 20000000 # 금회 추가 투입 금액
 
 # 포트폴리오 목표비중
 target = {
@@ -283,9 +282,8 @@ if order['round'] == 1:
     message.append(f"ISA 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
 
     # 당일 target 투자금액 및 목표 산출 및 저장하기
-    this_krw_asset = account['stock_eval_amt'] + now_invest
-    message.append(f"ISA 이번 투자기준금: {int(this_krw_asset):,}원 "
-                f"(주식평가:{int(account['stock_eval_amt']):,} + 추가:{now_invest:,})")
+    this_krw_asset = total_krw_asset
+    message.append(f"ISA 이번 투자기준금: {int(this_krw_asset):,}원 ")
 
     target, target_code = target_invest(target, this_krw_asset)
 
