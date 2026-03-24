@@ -15,7 +15,7 @@ except singleton.SingleInstanceException:
 # KIS instance 생성
 key_file_path = "/var/autobot/TR_PEN/kis43685950nkr.txt"
 token_file_path = "/var/autobot/TR_PEN/kis43685950_token.json"
-cano = "43665648"
+cano = "43685950"
 acnt_prdt_cd = "22" # 연금저축계좌
 KIS = KIS_PEN.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
@@ -88,19 +88,19 @@ def health_check():
     
     # 1. API 토큰 유효성
     if not KIS.access_token:
-        checks.append("ISA체크: API 토큰 없음")
+        checks.append("PEN체크: API 토큰 없음")
     
     # 2. 네트워크 연결
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("ISA체크: KIS API 서버 접속 불가")
+        checks.append("PEN체크: KIS API 서버 접속 불가")
         
     # 3. 거래가능일 체크
     checkday = KIS.is_KR_trading_day()
     if checkday == False:
-        checks.append("ISA체크: 거래일이 아닙니다.")
+        checks.append("PEN체크: 거래일이 아닙니다.")
     
     if checks:
         TA.send_tele(checks)
@@ -117,7 +117,7 @@ def save_json(data, path, order):
         result_msgs.append(f"{order['date']} {order['round']}/{order['total_round']}회차 저장 완료: {path}")
     except Exception as e:
         result_msgs.append(f"{path} 저장 실패: {e}")
-        backup_path = f"/var/autobot/TR_ISA/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        backup_path = f"/var/autobot/TR_PEN/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         try:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
@@ -205,9 +205,9 @@ def cancel_orders(side: str="all"):
     """모든 주문 취소"""
     summary = KIS.cancel_all_KR_unfilled_orders(side)
     if isinstance(summary, dict):
-        cancel_message = f"ISA: {summary['success']}/{summary['total']} 주문 취소 성공"
+        cancel_message = f"Pension: {summary['success']}/{summary['total']} 주문 취소 성공"
     else:
-        cancel_message = f"ISA: 주문 취소 에러발생"
+        cancel_message = f"Pension: 주문 취소 에러발생"
     return cancel_message
 
 def target_invest(target: dict, this_krw_asset: float):
@@ -219,7 +219,7 @@ def target_invest(target: dict, this_krw_asset: float):
     target_code = list(target.keys())
     total_weight = sum(v['weight'] for v in target.values())
     if abs(total_weight - 1.0) > 0.01:   # 1% 오차 허용
-        TA.send_tele(f"ISA 경고: weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
+        TA.send_tele(f"PEN 경고: weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
 
     for i in target_code:
         if i == "CASH":                                   # CASH는 주식 아님 → 스킵
@@ -228,7 +228,7 @@ def target_invest(target: dict, this_krw_asset: float):
             continue
         price = KIS.get_KR_current_price(i)
         if price == 0 or not isinstance(price, int):
-            TA.send_tele(f"ISA: 현재가 조회 불가로 종료합니다. ({price})")
+            TA.send_tele(f"PEN: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
         target[i]['target_invest'] = int(target[i]['weight'] * this_krw_asset)  # 투자 금액(현금+주식) 기준
         target[i]['target_qty'] = target[i]['target_invest'] // price
@@ -239,7 +239,7 @@ def hold_invest():
     # 보유 종목 잔고 불러오기
     stocks = KIS.get_KR_stock_balance()
     if not isinstance(stocks, list):
-        TA.send_tele(f"ISA: 잔고 조회 불가로 종료합니다. ({stocks})")
+        TA.send_tele(f"PEN: 잔고 조회 불가로 종료합니다. ({stocks})")
         sys.exit(1)
 
     hold = {}
@@ -263,9 +263,9 @@ health_check() # 시스템 상태 확인
 # 일자와 회차 시간데이터 불러오기
 order = order_time() 
 if order['round'] == 0:
-    TA.send_tele(f"ISA: 매매시간이 아닙니다.")
+    TA.send_tele(f"PEN: 매매시간이 아닙니다.")
     sys.exit(0)
-message.append(f"ISA: {order['date']}, {order['time']}, {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
+message.append(f"PEN: {order['date']}, {order['time']}, {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
 # 전회 주문 취소
 cancel_message = cancel_orders(side='all')
@@ -276,20 +276,20 @@ if order['round'] == 1:
     # 총 원화 평가금액 불러오기
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
-        TA.send_tele(f"ISA: 총 원화평가금 조회 불가로 종료합니다. ({account})")
+        TA.send_tele(f"PEN: 총 원화평가금 조회 불가로 종료합니다. ({account})")
         sys.exit(1)
     total_krw_asset = account['total_krw_asset']  # nass_amt (주식평가금 + D+2 현금 합계)
-    message.append(f"ISA 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
+    message.append(f"PEN 총자산: {int(total_krw_asset):,}원 (주식:{int(account['stock_eval_amt']):,} + 현금:{int(account['cash_balance']):,})")
 
     # 당일 target 투자금액 및 목표 산출 및 저장하기
     this_krw_asset = account['stock_eval_amt'] + now_invest
-    message.append(f"ISA 이번 투자기준금: {int(this_krw_asset):,}원 "
+    message.append(f"PEN 이번 투자기준금: {int(this_krw_asset):,}원 "
                 f"(주식평가:{int(account['stock_eval_amt']):,} + 추가:{now_invest:,})")
 
     target, target_code = target_invest(target, this_krw_asset)
 
     # 당일 target 저장하기
-    json_message = save_json(target, ISA_target_path, order)
+    json_message = save_json(target, PEN_target_path, order)
     message.extend(json_message)
 
     # message 타겟 산출 메세지 전송
