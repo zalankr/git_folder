@@ -13,8 +13,8 @@ except singleton.SingleInstanceException:
     sys.exit(0)
 
 # KIS instance 생성
-key_file_path = "/var/autobot/TR_IRP/kis43685950nkr.txt"
-token_file_path = "/var/autobot/TR_IRP/kis43685950_token.json"
+key_file_path = "/var/autobot/TR_PEN/kis43685950nkr.txt"
+token_file_path = "/var/autobot/TR_PEN/kis43685950_token.json"
 cano = "43685950"
 acnt_prdt_cd = "29" # IRP계좌
 KIS = KIS_IRP.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
