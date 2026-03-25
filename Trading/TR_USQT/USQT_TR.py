@@ -486,58 +486,48 @@ elif sell_split[0] > 0:
         local_split_price = sell_split[1][:]
         split_qty = int(qty // local_split_count)
         remainder = int(qty - split_qty * local_split_count)
-        for i in range(local_split_count):
-            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
-            if this_qty < 1:
-                continue
-        split_qty = this_qty
 
         if split_qty < 1:
             local_split_count = 1
             local_split_price = [0.99]
             split_qty = int(qty)
+            remainder = 0
 
         price = KIS.get_US_current_price(ticker)
         if not isinstance(price, float) or price <= 0:
             TA.send_tele(f"USQT: {ticker} 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
 
-        # 보유 종목의 거래소 코드가 있으면 전달 (API 호출 절약)
         raw_excd = hold.get(ticker, {}).get("exchange", "")
         excd_map = {"NAS": "NASD", "NYS": "NYSE", "AMS": "AMEX",
                     "NASD": "NASD", "NYSE": "NYSE", "AMEX": "AMEX"}
         ticker_exchange = excd_map.get(raw_excd, None)
 
         for i in range(local_split_count):
-            # 마지막 분할: 잔여 수량 처리 (정수 나눗셈 나머지 보정)
-            if i == local_split_count - 1:
-                quantity = int(qty - split_qty * (local_split_count - 1))
-            else:
-                quantity = split_qty
-
-            if quantity <= 0:
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
                 continue
 
             order_price = round(price * local_split_price[i], 2)
 
             order_info, order_msgs = KIS.order_sell_US(
-                ticker, quantity, order_price, exchange=ticker_exchange
+                ticker, this_qty, order_price, exchange=ticker_exchange
             )
             if order_info is None:
                 time_module.sleep(2)
                 order_info, order_msgs = KIS.order_sell_US(
-                    ticker, quantity, order_price, exchange=ticker_exchange
+                    ticker, this_qty, order_price, exchange=ticker_exchange
                 )
             if order_info is None:
-                message.append(f"USQT 매도 오류: {ticker} {quantity}주 ${order_price:.2f} API 응답 없음")
+                message.append(f"USQT 매도 오류: {ticker} {this_qty}주 ${order_price:.2f} API 응답 없음")
             elif order_info.get("success"):
                 message.append(
-                    f"매도 {ticker} {quantity}주 ${order_price:.2f} "
+                    f"매도 {ticker} {this_qty}주 ${order_price:.2f} "
                     f"주문번호:{order_info.get('order_number','')}"
                 )
             else:
                 message.append(
-                    f"매도 실패 {ticker} {quantity}주: {order_info.get('error_message','')}"
+                    f"매도 실패 {ticker} {this_qty}주: {order_info.get('error_message','')}"
                 )
             message.extend(order_msgs)
             time_module.sleep(0.2)
@@ -612,12 +602,7 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
         local_split_price = buy_split[1][:]
         split_qty = int(qty // local_split_count)
         remainder = int(qty - split_qty * local_split_count)
-        for i in range(local_split_count):
-            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
-            if this_qty < 1:
-                continue
-        split_qty = this_qty
-        
+
         if split_qty < 1:
             if qty < 1:
                 message.append(f"USQT 매수 스킵: {ticker} 수량 0주 (조정후 제거대상)")
@@ -625,6 +610,7 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             local_split_count = 1
             local_split_price = [1.01]
             split_qty = int(qty)
+            remainder = 0
 
         price = buy_prices.get(ticker)
         if not isinstance(price, float) or price <= 0:
@@ -632,31 +618,26 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
             sys.exit(1)
 
         for i in range(local_split_count):
-            # 마지막 분할: 잔여 수량 처리 (정수 나눗셈 나머지 보정)
-            if i == local_split_count - 1:
-                quantity = int(qty - split_qty * (local_split_count - 1))
-            else:
-                quantity = split_qty
-
-            if quantity <= 0:
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
                 continue
 
             order_price = round(price * local_split_price[i], 2)
 
-            order_info, order_msgs = KIS.order_buy_US(ticker, quantity, order_price)
+            order_info, order_msgs = KIS.order_buy_US(ticker, this_qty, order_price)
             if order_info is None:
                 time_module.sleep(2)
-                order_info, order_msgs = KIS.order_buy_US(ticker, quantity, order_price)  # 1회 재시도
+                order_info, order_msgs = KIS.order_buy_US(ticker, this_qty, order_price)
             if order_info is None:
-                message.append(f"USQT 매수 오류: {ticker} {quantity}주 ${order_price:.2f} API 응답 없음")
+                message.append(f"USQT 매수 오류: {ticker} {this_qty}주 ${order_price:.2f} API 응답 없음")
             elif order_info.get("success"):
                 message.append(
-                    f"매수 {ticker} {quantity}주 ${order_price:.2f} "
+                    f"매수 {ticker} {this_qty}주 ${order_price:.2f} "
                     f"주문번호:{order_info.get('order_number','')}"
                 )
             else:
                 message.append(
-                    f"매수 실패 {ticker} {quantity}주 ${order_price:.2f}: "
+                    f"매수 실패 {ticker} {this_qty}주 ${order_price:.2f}: "
                     f"{order_info.get('error_message','')}"
                 )
             message.extend(order_msgs)

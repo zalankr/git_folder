@@ -358,30 +358,29 @@ elif sell_split[0] > 0:
         local_split_price = sell_split[1][:]
         split_qty = int(qty // local_split_count)
         remainder = int(qty - split_qty * local_split_count)
-        for i in range(local_split_count):
-            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
-            if this_qty < 1:
-                continue
-        split_qty = this_qty
-
+        
         if split_qty < 1:
             local_split_count = 1
             local_split_price = [0.99]
             split_qty = int(qty)
-
+            remainder = 0  
+        
         price = KIS.get_KR_current_price(code)
         if price == 0 or not isinstance(price, int):
             TA.send_tele(f"Pension: 현재가 조회 불가로 종료합니다. ({price})")
             sys.exit(1)
-
+            
         for i in range(local_split_count):
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
+                continue
             split_price = float(price * local_split_price[i])
-            order_price= KIS.round_to_tick(price=split_price, market="KR") 
-            order_info = KIS.order_sell_KR(code, split_qty, order_price, "00")
+            order_price = KIS.round_to_tick(price=split_price, market="KR")
+            order_info = KIS.order_sell_KR(code, this_qty, order_price, "00")
             if order_info is None:
                 message.append(f"Pension 매도 오류: {code} API 응답 없음")
             elif order_info.get("success"):
-                message.append(f"매도 {code} {split_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
+                message.append(f"매도 {code} {this_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
             else:
                 message.append(f"매도 실패 {code}: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
@@ -453,38 +452,37 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
         local_split_price = buy_split[1][:]
         split_qty = int(qty // local_split_count)
         remainder = int(qty - split_qty * local_split_count)
-        for i in range(local_split_count):
-            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
-            if this_qty < 1:
-                continue
-        split_qty = this_qty
-
+        
         if split_qty < 1:
-            if qty < 1:                   # qty 자체가 0이면 주문 스킵
-                message.append(f"Pension 매수 스킵: {code} 수량 0주 (조정후 제거대상)")
+            if qty < 1:
+                message.append(f"Pension매수 스킵: {code} 수량 0주 (조정후 제거대상)")
                 continue
             local_split_count = 1
             local_split_price = [1.01]
             split_qty = int(qty)
+            remainder = 0
 
         price = buy_prices.get(code)
         if not isinstance(price, int) or price == 0:
             TA.send_tele(f"Pension: 현재가 없음으로 종료합니다. ({code})")
-            sys.exit(1)
-
+            sys.exit(1)        
+        
         for i in range(local_split_count):
+            this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
+            if this_qty < 1:
+                continue
             split_price = float(price * local_split_price[i])
-            order_price= KIS.round_to_tick(price=split_price, market="KR") 
-            order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")
+            order_price = KIS.round_to_tick(price=split_price, market="KR")
+            order_info = KIS.order_buy_KR(code, this_qty, order_price, "00")
             if order_info is None:
                 time_module.sleep(2)
-                order_info = KIS.order_buy_KR(code, split_qty, order_price, "00")  # 1회 재시도
+                order_info = KIS.order_buy_KR(code, this_qty, order_price, "00")
             if order_info is None:
-                message.append(f"Pension매수 오류: {code} {split_qty}주 {order_price:,}원 API 응답 없음")
+                message.append(f"Pension매수 오류: {code} {this_qty}주 {order_price:,}원 API 응답 없음")
             elif order_info.get("success"):
-                message.append(f"매수 {code} {split_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
+                message.append(f"매수 {code} {this_qty}주 {order_price:,}원 주문번호:{order_info.get('order_number','')}")
             else:
-                message.append(f"매수 실패 {code} {split_qty}주 {order_price:,}원: {order_info.get('error_message','')}")
+                message.append(f"매수 실패 {code} {this_qty}주 {order_price:,}원: {order_info.get('error_message','')}")
             time_module.sleep(0.125)
 
 # 회차별 매수 메세지 telegram 출력
