@@ -22,15 +22,14 @@ import json
 import os
 import re
 import requests
-import telegram_alert as TA
-from datetime import datetime, timedelta
+from datetime import datetime
 import time as time_module
 from tendo import singleton
 
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    TA.send_tele("PEAK: 이미 실행 중입니다.")
+    print("PEAK: 이미 실행 중입니다.")
     sys.exit(0)
 
 import KIS_KR
@@ -524,7 +523,7 @@ def do_trade(order: dict, target: dict):
     try:
         rs = split_data(order['round'])
     except ValueError as e:
-        TA.send_tele(f"PEAK: {e}")
+        print(f"PEAK: {e}")
         sys.exit(1)
     sell_split = [rs["sell_splits"], rs["sell_price"]]
     buy_split  = [rs["buy_splits"],  rs["buy_price"]]
@@ -692,16 +691,16 @@ if order['round'] == 1:
     print("\n".join(message))
     message = []
 
-    print("PEAK: 크롤링 완료, 5분 대기 후 매매 시작...")
-    time_module.sleep(300)   # 5분 대기
+    print("PEAK: 크롤링 완료, 3분 대기 후 매매 시작...")
+    time_module.sleep(1)   # 3분 대기
 #############################################################################################################
 # ── 2~12회차: target 로드 ──
 else:
     target = load_json(PEAK_TARGET_PATH)
     if not target:
-        TA.send_tele("PEAK: peak_target.json 없음. 1회차 미실행?")
+        print("PEAK: peak_target.json 없음. 1회차 미실행?")
         sys.exit(1)
-    TA.send_tele(message)
+    print(message)
     message = []
 
 # ── 매매 실행 ──

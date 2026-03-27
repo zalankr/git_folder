@@ -692,8 +692,8 @@ if order['round'] == 1:
     TA.send_tele(message)
     message = []
 
-    TA.send_tele("PEAK: 크롤링 완료, 5분 대기 후 매매 시작...")
-    time_module.sleep(300)   # 5분 대기
+    TA.send_tele("PEAK: 크롤링 완료, 3분 대기 후 매매 시작...")
+    time_module.sleep(180)   # 3분 대기
 
 # ── 2~12회차: target 로드 ──
 else:
