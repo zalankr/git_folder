@@ -36,7 +36,7 @@ except singleton.SingleInstanceException:
 import KIS_KR
 
 # ================================================================
-# 설정 (추후 입력)
+# 설정
 # ================================================================
 key_file_path   = "/var/autobot/TR_KRTR/kis_43018646.txt"        # PEAK
 token_file_path = "/var/autobot/TR_KRTR/kis_43018646_token.json"  # PEAK
@@ -154,11 +154,11 @@ def save_json(data: dict, path: str):
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        TA.send_tele(f"PEAK: {path} 저장 실패: {e}")
+        print(f"PEAK: {path} 저장 실패: {e}")
         backup = os.path.join(BASE_DIR, f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
         with open(backup, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        TA.send_tele(f"PEAK: 백업 저장: {backup}")
+        print(f"PEAK: 백업 저장: {backup}")
 
 
 def health_check():
@@ -173,7 +173,7 @@ def health_check():
     if not KIS.is_KR_trading_day():
         checks.append("PEAK체크: 거래일이 아닙니다.")
     if checks:
-        TA.send_tele(checks)
+        print(checks)
         sys.exit(0)
 
 
@@ -253,7 +253,7 @@ def do_crawl_and_build_target(message: list) -> dict:
     try:
         crawl = crawl_peak_strategy()
     except Exception as e:
-        TA.send_tele(f"PEAK: 크롤링 실패 - {e}")
+        print(f"PEAK: 크롤링 실패 - {e}")
         sys.exit(1)
 
     new_entries  = crawl["buy_list"]
@@ -286,7 +286,7 @@ def do_crawl_and_build_target(message: list) -> dict:
     # 계좌 조회 → 종목당 투자금
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
-        TA.send_tele(f"PEAK: 계좌요약 조회 불가 ({account})")
+        print(f"PEAK: 계좌요약 조회 불가 ({account})")
         sys.exit(1)
     total_asset = account['total_krw_asset']
     per_stock_invest = int(total_asset / MAX_HOLDINGS) if len(buy_codes) > 0 else 0
@@ -342,7 +342,7 @@ def do_crawl_and_build_target(message: list) -> dict:
         message.append(f"  매도목표: {info['name']}({code}) {info['target_qty']}주")
 
     if not buy_targets and not sell_targets:
-        TA.send_tele(message + ["PEAK: 오늘 매매 대상 없음. 종료."])
+        print(message + ["PEAK: 오늘 매매 대상 없음. 종료."])
         sys.exit(0)
 
     return target
@@ -355,7 +355,7 @@ def do_daily_settlement():
     """12회차 매매 종료 후 10분 대기 → 미체결 취소 → 잔고 저장 → Telegram 리포트"""
     message = []
     message.append("PEAK: 12회차 완료, 10분 대기 후 결산...")
-    TA.send_tele(message)
+    print(message)
     message = []
 
     time_module.sleep(600)  # 10분 대기
@@ -369,12 +369,12 @@ def do_daily_settlement():
     # 잔고 조회
     stocks = KIS.get_KR_stock_balance()
     if not isinstance(stocks, list):
-        TA.send_tele(f"PEAK결산: 잔고 조회 실패 ({stocks})")
+        print(f"PEAK결산: 잔고 조회 실패 ({stocks})")
         sys.exit(1)
 
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
-        TA.send_tele(f"PEAK결산: 계좌요약 실패 ({account})")
+        print(f"PEAK결산: 계좌요약 실패 ({account})")
         sys.exit(1)
 
     total_asset  = account['total_krw_asset']
@@ -508,7 +508,7 @@ def do_daily_settlement():
             )
 
     message.append("✅ peak_data.json 저장 완료")
-    TA.send_tele(message)
+    print(message)
 
 
 # ================================================================
@@ -574,16 +574,16 @@ def do_trade(order: dict, target: dict):
     else:
         message.append(f"PEAK: {order['round']}회차 - 매도 분할횟수 0")
 
-    TA.send_tele(message)
+    print(message)
     message = []
 
     # 매도→매수 딜레이 10분
-    time_module.sleep(600)
+    time_module.sleep(1)
 
     # ────────────── 매수 ──────────────
     KRW = KIS.get_KR_orderable_cash()
     if not isinstance(KRW, (int, float)):
-        TA.send_tele(f"PEAK: 주문가능현금 조회 불가 ({KRW})")
+        print(f"PEAK: 주문가능현금 조회 불가 ({KRW})")
         sys.exit(1)
     orderable_KRW = float(KRW)
 
@@ -666,7 +666,7 @@ def do_trade(order: dict, target: dict):
                     message.append(f"매수실패 {name}: {oi.get('error_message','')}")
                 time_module.sleep(0.125)
 
-    TA.send_tele(message)
+    print(message)
 
 
 # ================================================================
@@ -677,7 +677,7 @@ message = []
 
 order = order_time()
 if order['round'] == 0:
-    TA.send_tele("PEAK: 매매시간이 아닙니다.")
+    print("PEAK: 매매시간이 아닙니다.")
     sys.exit(0)
 
 message.append(f"PEAK: {order['date']} {order['time']} {order['round']}/{order['total_round']}회차")
@@ -689,12 +689,12 @@ message.append(cancel_msg)
 # ── 1회차: 크롤링 + target 생성 + 5분 대기 ──
 if order['round'] == 1:
     target = do_crawl_and_build_target(message)
-    TA.send_tele(message)
+    print("\n".join(message))
     message = []
 
-    TA.send_tele("PEAK: 크롤링 완료, 5분 대기 후 매매 시작...")
+    print("PEAK: 크롤링 완료, 5분 대기 후 매매 시작...")
     time_module.sleep(300)   # 5분 대기
-
+#############################################################################################################
 # ── 2~12회차: target 로드 ──
 else:
     target = load_json(PEAK_TARGET_PATH)

@@ -36,7 +36,7 @@ except singleton.SingleInstanceException:
 import KIS_KR
 
 # ================================================================
-# 설정 (추후 입력)
+# 설정
 # ================================================================
 key_file_path   = "/var/autobot/TR_KRTR/kis_43018646.txt"        # PEAK
 token_file_path = "/var/autobot/TR_KRTR/kis_43018646_token.json"  # PEAK
