@@ -200,10 +200,10 @@ def health_check():
 def order_time():
     """
     거래회차 산출 (UTC 기준)
-    1회차:  UTC 00:02 (KST 09:02)
-    2회차:  UTC 00:32 (KST 09:32)
+    1회차:  UTC 00:08 (KST 09:08)
+    2회차:  UTC 00:38 (KST 09:38)
     ...
-    12회차: UTC 05:32 (KST 14:32)
+    12회차: UTC 05:38 (KST 14:38)
     """
     now = datetime.now()
     result = {
@@ -215,7 +215,7 @@ def order_time():
     current_total_min = now.hour * 60 + now.minute
     # UTC 00:00 ~ 05:35 범위 내에서 30분 단위 회차 산출
     start_min = 0           # UTC 00:00 (KST 09:00)
-    end_min   = 5 * 60 + 35 # UTC 05:35 (KST 14:35) — 마진
+    end_min   = 5 * 60 + 40 # UTC 05:40 (KST 14:40) — 마진
 
     if start_min <= current_total_min <= end_min:
         result['round'] = (current_total_min // 30) + 1
