@@ -38,8 +38,8 @@ import KIS_KR
 # ================================================================
 # 설정
 # ================================================================
-key_file_path   = "/var/autobot/KIS/kis_43018646.txt"        # PEAK
-token_file_path = "/var/autobot/KIS/kis_43018646_token.json"  # PEAK
+key_file_path   = "/var/autobot/KIS/kis43018646nkr.txt"        # PEAK
+token_file_path = "/var/autobot/KIS/kis43018646_token.json"  # PEAK
 cano            = "43018646"   # PEAK
 acnt_prdt_cd    = "01"
 
@@ -73,7 +73,11 @@ def fetch_stockeasy_page() -> str:
     return resp.text
 
 def extract_data_from_html(html: str) -> dict:
-    """Next.js SSR __next_f.push 안의 initialData JSON 추출"""
+    """Next.js SSR __next_f.push 안의 initialData JSON 추출
+    
+    ※ 정규식 greedy 매칭은 중첩 {} 에서 범위를 잘못 잡음
+       → 중괄호 깊이 추적(brace matching)으로 정확한 JSON 범위 추출
+    """
     scripts = re.findall(r'self\.__next_f\.push\(\[1,"(.+?)"\]\)', html, re.DOTALL)
     for s in scripts:
         if 'initialData' not in s:
@@ -82,11 +86,27 @@ def extract_data_from_html(html: str) -> dict:
             decoded = json.loads('"' + s + '"')
         except Exception:
             continue
-        m = re.search(r'"initialData":(\{.+\})\}\]', decoded, re.DOTALL)
-        if not m:
+ 
+        marker = '"initialData":'
+        idx = decoded.find(marker)
+        if idx == -1:
             continue
+ 
+        start = idx + len(marker)
+        # 중괄호 깊이 추적으로 JSON 객체 끝 위치 찾기
+        depth = 0
+        end_pos = start
+        for j in range(start, len(decoded)):
+            if decoded[j] == '{':
+                depth += 1
+            elif decoded[j] == '}':
+                depth -= 1
+                if depth == 0:
+                    end_pos = j + 1
+                    break
+ 
         try:
-            return json.loads(m.group(1))
+            return json.loads(decoded[start:end_pos])
         except json.JSONDecodeError:
             continue
     return {}

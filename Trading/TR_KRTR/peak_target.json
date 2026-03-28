@@ -1,0 +1,18 @@
+{
+    "date": "2026-03-28",
+    "crawl_date": "2026-03-27",
+    "sell_codes": [],
+    "buy_codes": [
+        "066970"
+    ],
+    "buy_targets": {
+        "066970": {
+            "target_qty": 6,
+            "name": "엘앤에프"
+        }
+    },
+    "sell_targets": {},
+    "per_stock_invest": 970429,
+    "current_hold_count": 0,
+    "expected_after": 1
+}

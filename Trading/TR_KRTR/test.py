@@ -37,8 +37,8 @@ import KIS_KR
 # ================================================================
 # 설정
 # ================================================================
-key_file_path   = "/var/autobot/KIS/kis_43018646.txt"        # PEAK
-token_file_path = "/var/autobot/KIS/kis_43018646_token.json"  # PEAK
+key_file_path   = "/var/autobot/KIS/kis43018646nkr.txt"        # PEAK
+token_file_path = "/var/autobot/KIS/kis43018646_token.json"  # PEAK
 cano            = "43018646"   # PEAK
 acnt_prdt_cd    = "01"
 
@@ -72,7 +72,11 @@ def fetch_stockeasy_page() -> str:
     return resp.text
 
 def extract_data_from_html(html: str) -> dict:
-    """Next.js SSR __next_f.push 안의 initialData JSON 추출"""
+    """Next.js SSR __next_f.push 안의 initialData JSON 추출
+    
+    ※ 정규식 greedy 매칭은 중첩 {} 에서 범위를 잘못 잡음
+       → 중괄호 깊이 추적(brace matching)으로 정확한 JSON 범위 추출
+    """
     scripts = re.findall(r'self\.__next_f\.push\(\[1,"(.+?)"\]\)', html, re.DOTALL)
     for s in scripts:
         if 'initialData' not in s:
@@ -81,11 +85,27 @@ def extract_data_from_html(html: str) -> dict:
             decoded = json.loads('"' + s + '"')
         except Exception:
             continue
-        m = re.search(r'"initialData":(\{.+\})\}\]', decoded, re.DOTALL)
-        if not m:
+ 
+        marker = '"initialData":'
+        idx = decoded.find(marker)
+        if idx == -1:
             continue
+ 
+        start = idx + len(marker)
+        # 중괄호 깊이 추적으로 JSON 객체 끝 위치 찾기
+        depth = 0
+        end_pos = start
+        for j in range(start, len(decoded)):
+            if decoded[j] == '{':
+                depth += 1
+            elif decoded[j] == '}':
+                depth -= 1
+                if depth == 0:
+                    end_pos = j + 1
+                    break
+ 
         try:
-            return json.loads(m.group(1))
+            return json.loads(decoded[start:end_pos])
         except json.JSONDecodeError:
             continue
     return {}
@@ -172,7 +192,7 @@ def health_check():
         checks.append("PEAK체크: 거래일이 아닙니다.")
     if checks:
         print(checks)
-        sys.exit(0)
+        # sys.exit(0)
 
 def order_time():
     """
@@ -353,7 +373,7 @@ def do_daily_settlement():
     print(message)
     message = []
 
-    time_module.sleep(600)  # 10분 대기
+    time_module.sleep(1)  # 10분 대기
 
     # 미체결 전량 취소
     cancel_msg = cancel_orders(side='all')
@@ -503,7 +523,7 @@ def do_daily_settlement():
             )
 
     message.append("✅ peak_data.json 저장 완료")
-    print(message)
+    print("\n".join(message))
 
 
 # ================================================================
@@ -558,18 +578,18 @@ def do_trade(order: dict, target: dict):
                 if tq < 1:
                     continue
                 op = KIS.round_to_tick(price * lsp[i], "KR")
-                oi = KIS.order_sell_KR(code, tq, op, "00")
-                if oi is None:
-                    message.append(f"매도오류: {name}({code}) API 응답없음")
-                elif oi.get("success"):
-                    message.append(f"매도 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
-                else:
-                    message.append(f"매도실패 {name}: {oi.get('error_message','')}")
-                time_module.sleep(0.125)
+                print(f"매도: {name}({code}) {tq}주 {op:,}원")
+                # oi = KIS.order_sell_KR(code, tq, op, "00")
+                # if oi is None:
+                #     message.append(f"매도오류: {name}({code}) API 응답없음")
+                # elif oi.get("success"):
+                #     message.append(f"매도 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
+                # else:
+                #     message.append(f"매도실패 {name}: {oi.get('error_message','')}")
+                # time_module.sleep(0.125)
     else:
-        message.append(f"PEAK: {order['round']}회차 - 매도 분할횟수 0")
+        print(f"PEAK: {order['round']}회차 - 매도 분할횟수 0")
 
-    print(message)
     message = []
 
     # 매도→매수 딜레이 10분
@@ -649,17 +669,18 @@ def do_trade(order: dict, target: dict):
                 if tq < 1:
                     continue
                 op = KIS.round_to_tick(price * lsp[i], "KR")
-                oi = KIS.order_buy_KR(code, tq, op, "00")
-                if oi is None:
-                    time_module.sleep(2)
-                    oi = KIS.order_buy_KR(code, tq, op, "00")
-                if oi is None:
-                    message.append(f"매수오류: {name}({code}) API 응답없음")
-                elif oi.get("success"):
-                    message.append(f"매수 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
-                else:
-                    message.append(f"매수실패 {name}: {oi.get('error_message','')}")
-                time_module.sleep(0.125)
+                print(f"PEAK: 매수 {name} {tq}주 {op:,}원")
+                # oi = KIS.order_buy_KR(code, tq, op, "00")
+                # if oi is None:
+                #     time_module.sleep(2)
+                #     oi = KIS.order_buy_KR(code, tq, op, "00")
+                # if oi is None:
+                #     message.append(f"매수오류: {name}({code}) API 응답없음")
+                # elif oi.get("success"):
+                #     message.append(f"매수 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
+                # else:
+                #     message.append(f"매수실패 {name}: {oi.get('error_message','')}")
+                # time_module.sleep(0.125)
 
     print(message)
 
@@ -671,6 +692,7 @@ health_check()
 message = []
 
 order = order_time()
+order['round'] = 1
 if order['round'] == 0:
     print("PEAK: 매매시간이 아닙니다.")
     sys.exit(0)
@@ -701,13 +723,11 @@ else:
 
 print("\n".join([f"{k} : {v}" for k, v in target.items()]))
 
-"""
 # ── 매매 실행 ──
 do_trade(order, target)
 
 # ── 12회차 후 결산 ──
 if order['round'] == 12:
     do_daily_settlement()
-"""
-    
+
 sys.exit(0)
