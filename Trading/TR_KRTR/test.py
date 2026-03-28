@@ -37,8 +37,8 @@ import KIS_KR
 # ================================================================
 # 설정
 # ================================================================
-key_file_path   = "/var/autobot/TR_KRTR/kis_43018646.txt"        # PEAK
-token_file_path = "/var/autobot/TR_KRTR/kis_43018646_token.json"  # PEAK
+key_file_path   = "/var/autobot/KIS/kis_43018646.txt"        # PEAK
+token_file_path = "/var/autobot/KIS/kis_43018646_token.json"  # PEAK
 cano            = "43018646"   # PEAK
 acnt_prdt_cd    = "01"
 
@@ -159,7 +159,6 @@ def save_json(data: dict, path: str):
             json.dump(data, f, ensure_ascii=False, indent=4)
         print(f"PEAK: 백업 저장: {backup}")
 
-
 def health_check():
     checks = []
     if not KIS.access_token:
@@ -174,7 +173,6 @@ def health_check():
     if checks:
         print(checks)
         sys.exit(0)
-
 
 def order_time():
     """
@@ -200,7 +198,6 @@ def order_time():
         result['round'] = (current_total_min // 30) + 1
         result['round'] = min(result['round'], 12)
     return result
-
 
 def split_data(round_num):
     """회차별 분할횟수·가격배율"""
@@ -233,7 +230,6 @@ def split_data(round_num):
     if round_num not in table:
         raise ValueError(f"유효하지 않은 회차: {round_num}")
     return table[round_num]
-
 
 def cancel_orders(side="all"):
     summary = KIS.cancel_all_KR_unfilled_orders(side)
@@ -692,8 +688,8 @@ if order['round'] == 1:
     message = []
 
     print("PEAK: 크롤링 완료, 3분 대기 후 매매 시작...")
-    time_module.sleep(1)   # 3분 대기
-#############################################################################################################
+    time_module.sleep(10)
+
 # ── 2~12회차: target 로드 ──
 else:
     target = load_json(PEAK_TARGET_PATH)
@@ -703,11 +699,15 @@ else:
     print(message)
     message = []
 
+print("\n".join([f"{k} : {v}" for k, v in target.items()]))
+
+"""
 # ── 매매 실행 ──
 do_trade(order, target)
 
 # ── 12회차 후 결산 ──
 if order['round'] == 12:
     do_daily_settlement()
-
+"""
+    
 sys.exit(0)

@@ -18,8 +18,8 @@ except singleton.SingleInstanceException:
 # ============================================
 # KIS instance 생성
 # ============================================
-key_file_path = "/var/autobot/TR_JPQT/kis63604155nkr.txt"       # 트레이딩 계좌(수수료할인)
-token_file_path = "/var/autobot/TR_JPQT/kis63604155_token.json" # 트레이딩 계좌(수수료할인)
+key_file_path = "/var/autobot/KIS/kis63604155nkr.txt"       # 트레이딩 계좌(수수료할인)
+token_file_path = "/var/autobot/KIS/kis63604155_token.json" # 트레이딩 계좌(수수료할인)
 cano = "63604155"      # ← 계좌번호 수동 입력
 acnt_prdt_cd = "01"
 KIS = KIS_JP.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)

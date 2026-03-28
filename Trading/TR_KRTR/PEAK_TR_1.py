@@ -38,8 +38,8 @@ import KIS_KR
 # ================================================================
 # 설정
 # ================================================================
-key_file_path   = "/var/autobot/TR_KRTR/kis_43018646.txt"        # PEAK
-token_file_path = "/var/autobot/TR_KRTR/kis_43018646_token.json"  # PEAK
+key_file_path   = "/var/autobot/KIS/kis_43018646.txt"        # PEAK
+token_file_path = "/var/autobot/KIS/kis_43018646_token.json"  # PEAK
 cano            = "43018646"   # PEAK
 acnt_prdt_cd    = "01"
 

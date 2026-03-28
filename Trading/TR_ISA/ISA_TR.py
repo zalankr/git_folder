@@ -13,8 +13,8 @@ except singleton.SingleInstanceException:
     sys.exit(0)
 
 # KIS instance 생성
-key_file_path = "/var/autobot/TR_ISA/kis43665648nkr.txt"
-token_file_path = "/var/autobot/TR_ISA/kis43665648_token.json"
+key_file_path = "/var/autobot/KIS/kis43665648nkr.txt"
+token_file_path = "/var/autobot/KIS/kis43665648_token.json"
 cano = "43665648"
 acnt_prdt_cd = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)

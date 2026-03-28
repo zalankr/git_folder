@@ -7,8 +7,8 @@ import sys
 import json
 
 # KIS instance 생성
-key_file_path = "/var/autobot/TR_USAA/kis63604155nkr.txt"
-token_file_path = "/var/autobot/TR_USAA/kis63604155_token.json"
+key_file_path = "/var/autobot/KIS/kis63604155nkr.txt"
+token_file_path = "/var/autobot/KIS/kis63604155_token.json"
 cano = "63604155"
 acnt_prdt_cd = "01"
 KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
