@@ -1,12 +1,17 @@
 code,name,weight,category
-CASH,CASH,0,CASH
-AAPL,Apple Inc,0.1,trend
-MSFT,Microsoft Corp,0.1,trend
-NVDA,NVIDIA Corp,0.1,trend
-AMZN,Amazon.com Inc,0.1,value
-GOOGL,Alphabet Inc,0.1,value
-META,Meta Platforms Inc,0.1,value
-AVGO,Broadcom Inc,0.1,small
-LLY,Eli Lilly and Co,0.1,small
-JPM,JPMorgan Chase,0.1,small
-V,Visa Inc,0.1,small
+OSCR,Oscar Health Class A,0.0625,TCM
+LUMN,Lumen Technologies,0.0625,TCM
+UAA,Under Armour Class A,0.0625,TCM
+COMP,Compass Class A,0.0625,TCM
+CLOV,Clover Health Investments Class A,0.0625,TCM
+PTON,Peloton Interactive Class A,0.0625,TCM
+VSTS,Vestis,0.0625,TCM
+DOW,Dow,0.0625,TCM
+SLQT,SelectQuote,0.0625,SCG
+SNBR,Sleep Number,0.0625,SCG
+FLWS,1-800 FLOWERS.COM Class A,0.0625,SCG
+CURV,Torrid Holdings,0.0625,SCG
+DBI,Designer Brands Class A,0.0625,SCG
+MYGN,Myriad Genetics,0.0625,SCG
+BARK,Bark Class A,0.0625,SCG
+ZIP,Ziprecruiter Class A,0.0625,SCG

@@ -69,15 +69,15 @@ def order_time(day=1):
     
     미국 정규장: ET 09:30~16:00
       DST(EDT=UTC-4): UTC 13:30~20:00
-        → crontab 매 정시 30분 실행: UTC 13,14,15,16,17,18,19 = 7슬롯
+        → crontab 매 정시 32분 실행: UTC 13,14,15,16,17,18,19 = 7슬롯
       EST(UTC-5):     UTC 14:30~21:00
-        → crontab 매 정시 30분 실행: UTC 14,15,16,17,18,19,20 = 7슬롯
+        → crontab 매 정시 32분 실행: UTC 14,15,16,17,18,19,20 = 7슬롯
     
     7회차 x 2일 = 총 14회차
     
     crontab 예시 (UTC):
-      DST:  30 13-19 리밸런싱일,리밸런싱일+1 분기월 *
-      EST:  30 14-20 리밸런싱일,리밸런싱일+1 분기월 *
+      DST:  32 13-19 리밸런싱일,리밸런싱일+1 분기월 *
+      EST:  32 14-20 리밸런싱일,리밸런싱일+1 분기월 *
     """
     from datetime import datetime as dt, timezone
     now = dt.now(timezone.utc)       # EC2 기본 = UTC

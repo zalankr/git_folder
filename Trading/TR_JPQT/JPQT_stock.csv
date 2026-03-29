@@ -1,22 +1,17 @@
 code,name,weight,category
-CASH,CASH,0,CASH
-9980,Mrk Holdings,0.05,trend
-3932,Akatsuki,0.05,trend
-6706,Dkk,0.05,trend
-6771,Ikegami Tsushink,0.05,trend
-6616,Torex Semiconductor,0.05,trend
-4838,Space Shower Skiyaki Holdings,0.05,trend
-7138,Torico,0.05,trend
-7266,Imasen Electric Industrial,0.05,trend
-8864,Airport Facilities,0.05,trend
-4579,RaQualia Pharma,0.05,trend
-7345,Ai Partners Financial,0.05,value
-6046,Linkbal,0.05,value
-5870,Nalnet Communications,0.05,value
-4476,Ai Cross,0.05,value
-5491,Nippon Kinzoku,0.05,value
-7343,Broad-Minded,0.05,value
-5959,Okabe,0.05,value
-5940,Fujisash,0.05,value
-6466,Toa Valve Engineering,0.05,value
-4922,Kose Holdings,0.05,value
+CASH,CASH,0.01,CASH
+9980,Mrk Holdings,0.066,FINISH1
+6771,Ikegami Tsushink,0.066,FINISH1
+6616,Torex Semiconductor,0.066,FINISH1
+4838,Space Shower Skiyaki Holdings,0.066,FINISH1
+3386,Cosmo Bio,0.066,FINISH1
+7138,Torico,0.066,FINISH1
+7266,Imasen Electric Industrial,0.066,FINISH1
+8864,Airport Facilities,0.066,FINISH1
+4579,RaQualia Pharma,0.066,FINISH1
+7345,Ai Partners Financial,0.066,FINISH1
+6046,Linkbal,0.066,FINISH1
+5491,Nippon Kinzoku,0.066,FINISH1
+5870,Nalnet Communications,0.066,FINISH1
+5959,Okabe,0.066,FINISH1
+6666,River Eletec,0.066,FINISH1
