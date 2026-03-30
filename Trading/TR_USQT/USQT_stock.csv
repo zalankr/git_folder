@@ -1,17 +1,18 @@
 code,name,weight,category
-OSCR,Oscar Health Class A,0.0625,TCM
-LUMN,Lumen Technologies,0.0625,TCM
-UAA,Under Armour Class A,0.0625,TCM
-COMP,Compass Class A,0.0625,TCM
-CLOV,Clover Health Investments Class A,0.0625,TCM
-PTON,Peloton Interactive Class A,0.0625,TCM
-VSTS,Vestis,0.0625,TCM
-DOW,Dow,0.0625,TCM
-SLQT,SelectQuote,0.0625,SCG
-SNBR,Sleep Number,0.0625,SCG
-FLWS,1-800 FLOWERS.COM Class A,0.0625,SCG
-CURV,Torrid Holdings,0.0625,SCG
-DBI,Designer Brands Class A,0.0625,SCG
-MYGN,Myriad Genetics,0.0625,SCG
-BARK,Bark Class A,0.0625,SCG
-ZIP,Ziprecruiter Class A,0.0625,SCG
+OSCR,Oscar Health Class A,0.03,TCM
+LUMN,Lumen Technologies,0.03,TCM
+UAA,Under Armour Class A,0.03,TCM
+COMP,Compass Class A,0.03,TCM
+CLOV,Clover Health Investments Class A,0.03,TCM
+PTON,Peloton Interactive Class A,0.03,TCM
+VSTS,Vestis,0.03,TCM
+DOW,Dow,0.03,TCM
+SLQT,SelectQuote,0.03,SCG
+SNBR,Sleep Number,0.03,SCG
+FLWS,1-800 FLOWERS.COM Class A,0.03,SCG
+CURV,Torrid Holdings,0.03,SCG
+DBI,Designer Brands Class A,0.03,SCG
+MYGN,Myriad Genetics,0.03,SCG
+BARK,Bark Class A,0.03,SCG
+ZIP,Ziprecruiter Class A,0.03,SCG
+CASH,CASH,0.52,
