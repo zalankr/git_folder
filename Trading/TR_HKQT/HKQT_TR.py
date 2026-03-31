@@ -206,31 +206,31 @@ def split_data(round_num):
         sell_price = [1.0025, 1.0000]
         buy_splits = 2
         buy_price = [0.9950, 0.9975]
-    elif round_num == 10: #####################
+    elif round_num == 10:
         sell_splits = 2
-        sell_price = [1.005, 0.995]
+        sell_price = [1.0025, 0.9950]
         buy_splits = 2
-        buy_price = [0.995, 0.9975]
+        buy_price = [0.9975, 1.0000]
     elif round_num == 11:
         sell_splits = 1
-        sell_price = [1.005]
+        sell_price = [1.0025]
         buy_splits = 2
-        buy_price = [0.995, 1.005]
+        buy_price = [0.9975, 1.0050]
     elif round_num == 12:
         sell_splits = 1
-        sell_price = [1.0025]
-        buy_splits = 1
-        buy_price = [0.995]
-    elif round_num == 13:
-        sell_splits = 1
-        sell_price = [0.980]
+        sell_price = [1.0000]
         buy_splits = 1
         buy_price = [0.9975]
+    elif round_num == 13:
+        sell_splits = 1
+        sell_price = [0.9800]
+        buy_splits = 1
+        buy_price = [1.0000]
     elif round_num == 14:
         sell_splits = 0
         sell_price = []
         buy_splits = 1
-        buy_price = [1.020]
+        buy_price = [1.0200]
     else:
         TA.send_tele(f"HKQT: 유효하지 않은 round 값: {round_num}")
         sys.exit(1)

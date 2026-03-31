@@ -135,64 +135,64 @@ def split_data(round):
     '''회차별 분할횟수와 분할당 가격산출'''
     if round == 1:
         sell_splits = 5
-        sell_price = [1.025, 1.020, 1.015, 1.010, 1.005]
+        sell_price = [1.0125, 1.0100, 1.0075, 1.0050, 1.0025]
         buy_splits = 6
-        buy_price = [0.970, 0.975, 0.980, 0.985, 0.990, 1.000]
+        buy_price = [0.9850, 0.9875, 0.9900, 0.9925, 0.9950, 1.0000]
     elif round == 2:
         sell_splits = 5
-        sell_price = [1.025, 1.020, 1.015, 1.010, 1.000]
+        sell_price = [1.0125, 1.0100, 1.0075, 1.0050, 1.0000]
         buy_splits = 5
-        buy_price = [0.975, 0.980, 0.985, 0.990, 0.995]
+        buy_price = [0.9875, 0.9900, 0.9925, 0.9950, 0.9975]
     elif round == 3:
         sell_splits = 4
-        sell_price = [1.020, 1.015, 1.010, 1.005]
+        sell_price = [1.0100, 1.0075, 1.0050, 1.0025]
         buy_splits = 5
-        buy_price = [0.975, 0.980, 0.985, 0.990, 1.000]
+        buy_price = [0.9875, 0.9900, 0.9925, 0.9950, 1.0000]
     elif round == 4:
         sell_splits = 4
-        sell_price = [1.020, 1.015, 1.010, 1.000]
+        sell_price = [1.0100, 1.0075, 1.0050, 1.0000]
         buy_splits = 4
-        buy_price = [0.980, 0.985, 0.990, 0.995]
+        buy_price = [0.9900, 0.9925, 0.9950, 0.9975]
     elif round == 5:
         sell_splits = 3
-        sell_price = [1.015, 1.010, 1.005]
+        sell_price = [1.0075, 1.0050, 1.0025]
         buy_splits = 4
-        buy_price = [0.980, 0.985, 0.990, 1.000]
+        buy_price = [0.9900, 0.9925, 0.9950, 1.0000]
     elif round == 6:
         sell_splits = 3
-        sell_price = [1.015, 1.010, 1.000]
+        sell_price = [1.0075, 1.0050, 1.0000]
         buy_splits = 3
-        buy_price = [0.985, 0.990, 0.995]
+        buy_price = [0.9925, 0.9950, 0.9975]
     elif round == 7:
         sell_splits = 2
-        sell_price = [1.010, 1.005]
+        sell_price = [1.0050, 1.0025]
         buy_splits = 3
-        buy_price = [0.985, 0.990, 1.000]
+        buy_price = [0.9925, 0.9950, 1.0000]
     elif round == 8:
         sell_splits = 2
-        sell_price = [1.010, 1.000]
+        sell_price = [1.0050, 1.0000]
         buy_splits = 2
-        buy_price = [0.990, 0.995]
+        buy_price = [0.9950, 0.9975]
     elif round == 9:
         sell_splits = 1
-        sell_price = [1.005]
+        sell_price = [1.0025]
         buy_splits = 2
-        buy_price = [0.990, 1.000]
+        buy_price = [0.9950, 1.0000]
     elif round == 10:
         sell_splits = 1
-        sell_price = [1.000]
+        sell_price = [1.0000]
         buy_splits = 1
-        buy_price = [0.995]
+        buy_price = [0.9975]
     elif round == 11:
         sell_splits = 1
-        sell_price = [0.980]
+        sell_price = [0.9800]
         buy_splits = 1
-        buy_price = [1.000]
+        buy_price = [1.0000]
     elif round == 12:
         sell_splits = 0 # 12회차은 매도 주문은 없음
         sell_price = []
         buy_splits = 1
-        buy_price = [1.020]
+        buy_price = [1.0200]
     else:
         # 유효하지 않은 회차
         raise ValueError(f"유효하지 않은 회차: {round}")

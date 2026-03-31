@@ -160,74 +160,74 @@ def split_data(round_num):
     """
     if round_num == 1:
         sell_splits = 5
-        sell_price = [1.020, 1.015, 1.010, 1.005, 0.995]
+        sell_price = [1.0100, 1.0075, 1.0050, 1.0025, 0.9950]
         buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 0.9975]
+        buy_price = [0.9900, 0.9925, 0.9950, 0.9975, 1.0000]
     elif round_num == 2:
         sell_splits = 4
-        sell_price = [1.020, 1.015, 1.010, 1.005]
+        sell_price = [1.0100, 1.0075, 1.0050, 1.0025]
         buy_splits = 5
-        buy_price = [0.980, 0.985, 0.990, 0.995, 1.005]
+        buy_price = [0.9900, 0.9925, 0.9950, 0.9975, 1.0050]
     elif round_num == 3:
         sell_splits = 4
-        sell_price = [1.015, 1.010, 1.005, 1.0025]
+        sell_price = [1.0075, 1.0050, 1.0025, 1.0000]
         buy_splits = 4
-        buy_price = [0.980, 0.985, 0.990, 0.995]
+        buy_price = [0.9900, 0.9925, 0.9950, 0.9975]
     elif round_num == 4:
         sell_splits = 4
-        sell_price = [1.015, 1.010, 1.005, 0.995]
+        sell_price = [1.0075, 1.0050, 1.0025, 0.9950]
         buy_splits = 4
-        buy_price = [0.985, 0.990, 0.995, 0.9975]
+        buy_price = [0.9925, 0.9950, 0.9975, 1.0000]
     elif round_num == 5:
         sell_splits = 3
-        sell_price = [1.015, 1.010, 1.005]
+        sell_price = [1.0075, 1.0050, 1.0025]
         buy_splits = 4
-        buy_price = [0.985, 0.990, 0.995, 1.005]
+        buy_price = [0.9925, 0.9950, 0.9975, 1.0050]
     elif round_num == 6:
         sell_splits = 3
-        sell_price = [1.010, 1.005, 1.0025]
+        sell_price = [1.0050, 1.0025, 1.0000]
         buy_splits = 3
-        buy_price = [0.985, 0.990, 0.995]
-    elif round_num == 7:
+        buy_price = [0.9925, 0.9950, 0.9975]
+    elif round_num == 7: 
         sell_splits = 3
-        sell_price = [1.010, 1.005, 0.995]
+        sell_price = [1.0050, 1.0025, 0.9950]
         buy_splits = 3
-        buy_price = [0.990, 0.995, 0.9975]
-    elif round_num == 8:
+        buy_price = [0.9950, 0.9975, 1.0000]
+    elif round_num == 8: 
         sell_splits = 2
-        sell_price = [1.010, 1.005]
+        sell_price = [1.0050, 1.0025]
         buy_splits = 3
-        buy_price = [0.990, 0.995, 1.005]
-    elif round_num == 9:
+        buy_price = [0.9950, 0.9975, 1.0050]
+    elif round_num == 9: 
         sell_splits = 2
-        sell_price = [1.005, 1.0025]
+        sell_price = [1.0025, 1.0000]
         buy_splits = 2
-        buy_price = [0.990, 0.995]
+        buy_price = [0.9950, 0.9975]
     elif round_num == 10:
         sell_splits = 2
-        sell_price = [1.005, 0.995]
+        sell_price = [1.0025, 0.9950]
         buy_splits = 2
-        buy_price = [0.995, 0.9975]
+        buy_price = [0.9975, 1.0000]
     elif round_num == 11:
         sell_splits = 1
-        sell_price = [1.005]
+        sell_price = [1.0025]
         buy_splits = 2
-        buy_price = [0.995, 1.005]
+        buy_price = [0.9975, 1.0050]
     elif round_num == 12:
         sell_splits = 1
-        sell_price = [1.0025]
-        buy_splits = 1
-        buy_price = [0.995]
-    elif round_num == 13:
-        sell_splits = 1
-        sell_price = [0.980]
+        sell_price = [1.0000]
         buy_splits = 1
         buy_price = [0.9975]
+    elif round_num == 13:
+        sell_splits = 1
+        sell_price = [0.9800]
+        buy_splits = 1
+        buy_price = [1.0000]
     elif round_num == 14:
         sell_splits = 0
         sell_price = []
         buy_splits = 1
-        buy_price = [1.020]
+        buy_price = [1.0200]
     else:
         TA.send_tele(f"JPQT: 유효하지 않은 round 값: {round_num}")
         sys.exit(1)
