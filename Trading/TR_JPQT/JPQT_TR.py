@@ -162,67 +162,67 @@ def split_data(round_num):
         sell_splits = 5
         sell_price = [1.0100, 1.0075, 1.0050, 1.0025, 0.9950]
         buy_splits = 5
-        buy_price = [0.9900, 0.9925, 0.9950, 0.9975, 1.0000]
+        buy_price = [0.9875, 0.9900, 0.9925, 0.9950, 0.9975]
     elif round_num == 2:
         sell_splits = 4
         sell_price = [1.0100, 1.0075, 1.0050, 1.0025]
         buy_splits = 5
-        buy_price = [0.9900, 0.9925, 0.9950, 0.9975, 1.0050]
+        buy_price = [0.9900, 0.9925, 0.9950, 0.9975, 1.0000]
     elif round_num == 3:
         sell_splits = 4
-        sell_price = [1.0075, 1.0050, 1.0025, 1.0000]
+        sell_price = [1.0100, 1.0075, 1.0050, 1.0025]
         buy_splits = 4
         buy_price = [0.9900, 0.9925, 0.9950, 0.9975]
     elif round_num == 4:
         sell_splits = 4
-        sell_price = [1.0075, 1.0050, 1.0025, 0.9950]
+        sell_price = [1.0075, 1.0050, 1.0025, 1.0000]
         buy_splits = 4
-        buy_price = [0.9925, 0.9950, 0.9975, 1.0000]
+        buy_price = [0.9900, 0.9925, 0.9950, 0.9975]
     elif round_num == 5:
         sell_splits = 3
         sell_price = [1.0075, 1.0050, 1.0025]
         buy_splits = 4
-        buy_price = [0.9925, 0.9950, 0.9975, 1.0050]
+        buy_price = [0.9925, 0.9950, 0.9975, 1.0000]
     elif round_num == 6:
         sell_splits = 3
-        sell_price = [1.0050, 1.0025, 1.0000]
+        sell_price = [1.0075, 1.0050, 1.0025]
         buy_splits = 3
         buy_price = [0.9925, 0.9950, 0.9975]
     elif round_num == 7: 
         sell_splits = 3
-        sell_price = [1.0050, 1.0025, 0.9950]
+        sell_price = [1.0050, 1.0025, 1.0000]
         buy_splits = 3
-        buy_price = [0.9950, 0.9975, 1.0000]
+        buy_price = [0.9925, 0.9950, 0.9975]
     elif round_num == 8: 
         sell_splits = 2
         sell_price = [1.0050, 1.0025]
         buy_splits = 3
-        buy_price = [0.9950, 0.9975, 1.0050]
+        buy_price = [0.9950, 0.9975, 1.0000]
     elif round_num == 9: 
         sell_splits = 2
-        sell_price = [1.0025, 1.0000]
+        sell_price = [1.0050, 1.0025]
         buy_splits = 2
         buy_price = [0.9950, 0.9975]
     elif round_num == 10:
         sell_splits = 2
-        sell_price = [1.0025, 0.9950]
+        sell_price = [1.0025, 1.0000]
         buy_splits = 2
-        buy_price = [0.9975, 1.0000]
+        buy_price = [0.9950, 0.9975]
     elif round_num == 11:
         sell_splits = 1
         sell_price = [1.0025]
         buy_splits = 2
-        buy_price = [0.9975, 1.0050]
+        buy_price = [0.9975, 1.0000]
     elif round_num == 12:
         sell_splits = 1
-        sell_price = [1.0000]
+        sell_price = [1.0025]
         buy_splits = 1
         buy_price = [0.9975]
     elif round_num == 13:
         sell_splits = 1
         sell_price = [0.9800]
         buy_splits = 1
-        buy_price = [1.0000]
+        buy_price = [0.9975]
     elif round_num == 14:
         sell_splits = 0
         sell_price = []
