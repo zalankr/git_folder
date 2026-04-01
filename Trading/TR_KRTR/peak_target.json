@@ -1,18 +1,18 @@
 {
-    "date": "2026-03-28",
-    "crawl_date": "2026-03-27",
-    "sell_codes": [],
-    "buy_codes": [
-        "066970"
+    "date": "2026-04-01",
+    "crawl_date": "2026-03-31",
+    "sell_codes": [
+        "950160"
     ],
-    "buy_targets": {
-        "066970": {
-            "target_qty": 6,
-            "name": "엘앤에프"
+    "buy_codes": [],
+    "buy_targets": {},
+    "sell_targets": {
+        "950160": {
+            "target_qty": 9,
+            "name": "코오롱티슈진"
         }
     },
-    "sell_targets": {},
-    "per_stock_invest": 970429,
-    "current_hold_count": 0,
-    "expected_after": 1
+    "per_stock_invest": 0,
+    "current_hold_count": 3,
+    "expected_after": 2
 }

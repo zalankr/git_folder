@@ -22,14 +22,15 @@ import json
 import os
 import re
 import requests
-from datetime import datetime
+import telegram_alert as TA
+from datetime import datetime, timedelta
 import time as time_module
 from tendo import singleton
 
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    print("PEAK: 이미 실행 중입니다.")
+    TA.send_tele("PEAK: 이미 실행 중입니다.")
     sys.exit(0)
 
 import KIS_KR
@@ -173,11 +174,12 @@ def save_json(data: dict, path: str):
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        print(f"PEAK: {path} 저장 실패: {e}")
+        TA.send_tele(f"PEAK: {path} 저장 실패: {e}")
         backup = os.path.join(BASE_DIR, f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
         with open(backup, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f"PEAK: 백업 저장: {backup}")
+        TA.send_tele(f"PEAK: 백업 저장: {backup}")
+
 
 def health_check():
     checks = []
@@ -191,8 +193,9 @@ def health_check():
     if not KIS.is_KR_trading_day():
         checks.append("PEAK체크: 거래일이 아닙니다.")
     if checks:
-        print(checks)
-        # sys.exit(0)
+        TA.send_tele(checks)
+        sys.exit(0)
+
 
 def order_time():
     """
@@ -212,44 +215,46 @@ def order_time():
     current_total_min = now.hour * 60 + now.minute
     # UTC 00:00 ~ 05:35 범위 내에서 30분 단위 회차 산출
     start_min = 0           # UTC 00:00 (KST 09:00)
-    end_min   = 5 * 60 + 35 # UTC 05:35 (KST 14:35) — 마진
+    end_min   = 5 * 60 + 40 # UTC 05:40 (KST 14:40) — 마진
 
     if start_min <= current_total_min <= end_min:
         result['round'] = (current_total_min // 30) + 1
         result['round'] = min(result['round'], 12)
     return result
 
+
 def split_data(round_num):
     """회차별 분할횟수·가격배율"""
     table = {
-        1:  {"sell_splits": 5, "sell_price": [1.025, 1.020, 1.015, 1.010, 1.005],
-             "buy_splits":  6, "buy_price":  [0.970, 0.975, 0.980, 0.985, 0.990, 1.000]},
-        2:  {"sell_splits": 5, "sell_price": [1.025, 1.020, 1.015, 1.010, 1.000],
-             "buy_splits":  5, "buy_price":  [0.975, 0.980, 0.985, 0.990, 0.995]},
-        3:  {"sell_splits": 4, "sell_price": [1.020, 1.015, 1.010, 1.005],
-             "buy_splits":  5, "buy_price":  [0.975, 0.980, 0.985, 0.990, 1.000]},
-        4:  {"sell_splits": 4, "sell_price": [1.020, 1.015, 1.010, 1.000],
-             "buy_splits":  4, "buy_price":  [0.980, 0.985, 0.990, 0.995]},
-        5:  {"sell_splits": 3, "sell_price": [1.015, 1.010, 1.005],
-             "buy_splits":  4, "buy_price":  [0.980, 0.985, 0.990, 1.000]},
-        6:  {"sell_splits": 3, "sell_price": [1.015, 1.010, 1.000],
-             "buy_splits":  3, "buy_price":  [0.985, 0.990, 0.995]},
-        7:  {"sell_splits": 2, "sell_price": [1.010, 1.005],
-             "buy_splits":  3, "buy_price":  [0.985, 0.990, 1.000]},
-        8:  {"sell_splits": 2, "sell_price": [1.010, 1.000],
-             "buy_splits":  2, "buy_price":  [0.990, 0.995]},
-        9:  {"sell_splits": 1, "sell_price": [1.005],
-             "buy_splits":  2, "buy_price":  [0.990, 1.000]},
-        10: {"sell_splits": 1, "sell_price": [1.000],
-             "buy_splits":  1, "buy_price":  [0.995]},
-        11: {"sell_splits": 1, "sell_price": [0.980],
-             "buy_splits":  1, "buy_price":  [1.000]},
+        1:  {"sell_splits": 5, "sell_price": [1.0125, 1.0100, 1.0075, 1.0050, 1.0025],
+             "buy_splits":  6, "buy_price":  [0.9850, 0.9875, 0.9900, 0.9925, 0.9950, 1.0000]},
+        2:  {"sell_splits": 5, "sell_price": [1.0125, 1.0100, 1.0075, 1.0050, 1.0000],
+             "buy_splits":  5, "buy_price":  [0.9875, 0.9900, 0.9925, 0.9950, 0.9975]},
+        3:  {"sell_splits": 4, "sell_price": [1.0100, 1.0075, 1.0050, 1.0025],
+             "buy_splits":  5, "buy_price":  [0.9875, 0.9900, 0.9925, 0.9950, 1.0000]},
+        4:  {"sell_splits": 4, "sell_price": [1.0100, 1.0075, 1.0050, 1.0000],
+             "buy_splits":  4, "buy_price":  [0.9900, 0.9925, 0.9950, 0.9975]},
+        5:  {"sell_splits": 3, "sell_price": [1.0075, 1.0050, 1.0025],
+             "buy_splits":  4, "buy_price":  [0.9900, 0.9925, 0.9950, 1.0000]},
+        6:  {"sell_splits": 3, "sell_price": [1.0075, 1.0050, 1.0000],
+             "buy_splits":  3, "buy_price":  [0.9925, 0.9950, 0.9975]},
+        7:  {"sell_splits": 2, "sell_price": [1.0050, 1.0025],
+             "buy_splits":  3, "buy_price":  [0.9925, 0.9950, 1.0000]},
+        8:  {"sell_splits": 2, "sell_price": [1.0050, 1.0000],
+             "buy_splits":  2, "buy_price":  [0.9950, 0.9975]},
+        9:  {"sell_splits": 1, "sell_price": [1.0025],
+             "buy_splits":  2, "buy_price":  [0.9950, 1.0000]},
+        10: {"sell_splits": 1, "sell_price": [1.0000],
+             "buy_splits":  1, "buy_price":  [0.9975]},
+        11: {"sell_splits": 1, "sell_price": [0.9800],
+             "buy_splits":  1, "buy_price":  [1.0000]},
         12: {"sell_splits": 0, "sell_price": [],
-             "buy_splits":  1, "buy_price":  [1.020]},
+             "buy_splits":  1, "buy_price":  [1.0200]},
     }
     if round_num not in table:
         raise ValueError(f"유효하지 않은 회차: {round_num}")
     return table[round_num]
+
 
 def cancel_orders(side="all"):
     summary = KIS.cancel_all_KR_unfilled_orders(side)
@@ -268,7 +273,7 @@ def do_crawl_and_build_target(message: list) -> dict:
     try:
         crawl = crawl_peak_strategy()
     except Exception as e:
-        print(f"PEAK: 크롤링 실패 - {e}")
+        TA.send_tele(f"PEAK: 크롤링 실패 - {e}")
         sys.exit(1)
 
     new_entries  = crawl["buy_list"]
@@ -301,7 +306,7 @@ def do_crawl_and_build_target(message: list) -> dict:
     # 계좌 조회 → 종목당 투자금
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
-        print(f"PEAK: 계좌요약 조회 불가 ({account})")
+        TA.send_tele(f"PEAK: 계좌요약 조회 불가 ({account})")
         sys.exit(1)
     total_asset = account['total_krw_asset']
     per_stock_invest = int(total_asset / MAX_HOLDINGS) if len(buy_codes) > 0 else 0
@@ -357,7 +362,7 @@ def do_crawl_and_build_target(message: list) -> dict:
         message.append(f"  매도목표: {info['name']}({code}) {info['target_qty']}주")
 
     if not buy_targets and not sell_targets:
-        print(message + ["PEAK: 오늘 매매 대상 없음. 종료."])
+        TA.send_tele(message + ["PEAK: 오늘 매매 대상 없음. 종료."])
         sys.exit(0)
 
     return target
@@ -370,10 +375,10 @@ def do_daily_settlement():
     """12회차 매매 종료 후 10분 대기 → 미체결 취소 → 잔고 저장 → Telegram 리포트"""
     message = []
     message.append("PEAK: 12회차 완료, 10분 대기 후 결산...")
-    print(message)
+    TA.send_tele(message)
     message = []
 
-    time_module.sleep(1)  # 10분 대기
+    time_module.sleep(600)  # 10분 대기
 
     # 미체결 전량 취소
     cancel_msg = cancel_orders(side='all')
@@ -384,12 +389,12 @@ def do_daily_settlement():
     # 잔고 조회
     stocks = KIS.get_KR_stock_balance()
     if not isinstance(stocks, list):
-        print(f"PEAK결산: 잔고 조회 실패 ({stocks})")
+        TA.send_tele(f"PEAK결산: 잔고 조회 실패 ({stocks})")
         sys.exit(1)
 
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
-        print(f"PEAK결산: 계좌요약 실패 ({account})")
+        TA.send_tele(f"PEAK결산: 계좌요약 실패 ({account})")
         sys.exit(1)
 
     total_asset  = account['total_krw_asset']
@@ -523,7 +528,7 @@ def do_daily_settlement():
             )
 
     message.append("✅ peak_data.json 저장 완료")
-    print("\n".join(message))
+    TA.send_tele(message)
 
 
 # ================================================================
@@ -539,7 +544,7 @@ def do_trade(order: dict, target: dict):
     try:
         rs = split_data(order['round'])
     except ValueError as e:
-        print(f"PEAK: {e}")
+        TA.send_tele(f"PEAK: {e}")
         sys.exit(1)
     sell_split = [rs["sell_splits"], rs["sell_price"]]
     buy_split  = [rs["buy_splits"],  rs["buy_price"]]
@@ -578,27 +583,27 @@ def do_trade(order: dict, target: dict):
                 if tq < 1:
                     continue
                 op = KIS.round_to_tick(price * lsp[i], "KR")
-                print(f"매도: {name}({code}) {tq}주 {op:,}원")
-                # oi = KIS.order_sell_KR(code, tq, op, "00")
-                # if oi is None:
-                #     message.append(f"매도오류: {name}({code}) API 응답없음")
-                # elif oi.get("success"):
-                #     message.append(f"매도 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
-                # else:
-                #     message.append(f"매도실패 {name}: {oi.get('error_message','')}")
-                # time_module.sleep(0.125)
+                oi = KIS.order_sell_KR(code, tq, op, "00")
+                if oi is None:
+                    message.append(f"매도오류: {name}({code}) API 응답없음")
+                elif oi.get("success"):
+                    message.append(f"매도 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
+                else:
+                    message.append(f"매도실패 {name}: {oi.get('error_message','')}")
+                time_module.sleep(0.125)
     else:
-        print(f"PEAK: {order['round']}회차 - 매도 분할횟수 0")
+        message.append(f"PEAK: {order['round']}회차 - 매도 분할횟수 0")
 
+    TA.send_tele(message)
     message = []
 
     # 매도→매수 딜레이 10분
-    time_module.sleep(1)
+    time_module.sleep(600)
 
     # ────────────── 매수 ──────────────
     KRW = KIS.get_KR_orderable_cash()
     if not isinstance(KRW, (int, float)):
-        print(f"PEAK: 주문가능현금 조회 불가 ({KRW})")
+        TA.send_tele(f"PEAK: 주문가능현금 조회 불가 ({KRW})")
         sys.exit(1)
     orderable_KRW = float(KRW)
 
@@ -669,20 +674,19 @@ def do_trade(order: dict, target: dict):
                 if tq < 1:
                     continue
                 op = KIS.round_to_tick(price * lsp[i], "KR")
-                print(f"PEAK: 매수 {name} {tq}주 {op:,}원")
-                # oi = KIS.order_buy_KR(code, tq, op, "00")
-                # if oi is None:
-                #     time_module.sleep(2)
-                #     oi = KIS.order_buy_KR(code, tq, op, "00")
-                # if oi is None:
-                #     message.append(f"매수오류: {name}({code}) API 응답없음")
-                # elif oi.get("success"):
-                #     message.append(f"매수 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
-                # else:
-                #     message.append(f"매수실패 {name}: {oi.get('error_message','')}")
-                # time_module.sleep(0.125)
+                oi = KIS.order_buy_KR(code, tq, op, "00")
+                if oi is None:
+                    time_module.sleep(2)
+                    oi = KIS.order_buy_KR(code, tq, op, "00")
+                if oi is None:
+                    message.append(f"매수오류: {name}({code}) API 응답없음")
+                elif oi.get("success"):
+                    message.append(f"매수 {name} {tq}주 {op:,}원 #{oi.get('order_number','')}")
+                else:
+                    message.append(f"매수실패 {name}: {oi.get('error_message','')}")
+                time_module.sleep(0.125)
 
-    print(message)
+    TA.send_tele(message)
 
 
 # ================================================================
@@ -694,7 +698,7 @@ message = []
 order = order_time()
 order['round'] = 1
 if order['round'] == 0:
-    print("PEAK: 매매시간이 아닙니다.")
+    TA.send_tele("PEAK: 매매시간이 아닙니다.")
     sys.exit(0)
 
 message.append(f"PEAK: {order['date']} {order['time']} {order['round']}/{order['total_round']}회차")
@@ -706,22 +710,20 @@ message.append(cancel_msg)
 # ── 1회차: 크롤링 + target 생성 + 5분 대기 ──
 if order['round'] == 1:
     target = do_crawl_and_build_target(message)
-    print("\n".join(message))
+    TA.send_tele(message)
     message = []
 
-    print("PEAK: 크롤링 완료, 3분 대기 후 매매 시작...")
-    time_module.sleep(10)
+    TA.send_tele("PEAK: 크롤링 완료, 3분 대기 후 매매 시작...")
+    time_module.sleep(180)   # 3분 대기
 
 # ── 2~12회차: target 로드 ──
 else:
     target = load_json(PEAK_TARGET_PATH)
     if not target:
-        print("PEAK: peak_target.json 없음. 1회차 미실행?")
+        TA.send_tele("PEAK: peak_target.json 없음. 1회차 미실행?")
         sys.exit(1)
-    print(message)
+    TA.send_tele(message)
     message = []
-
-print("\n".join([f"{k} : {v}" for k, v in target.items()]))
 
 # ── 매매 실행 ──
 do_trade(order, target)
