@@ -1,138 +1,134 @@
 {
-    "trend": [
+    "TCM": [
         {
-            "code": "APL",
-            "name": "Apple Inc",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "OSCR",
+            "name": "Oscar Health Class A",
+            "qty": 32.0,
+            "balance": 369.44,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "MSFT",
-            "name": "Microsoft Corp",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "LUMN",
+            "name": "Lumen Technologies",
+            "qty": 52.0,
+            "balance": 357.5,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "NVDA",
-            "name": "NVIDIA Corp",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "UAA",
+            "name": "Under Armour Class A",
+            "qty": 61.0,
+            "balance": 360.205,
+            "weight": 0.03,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "COMP",
+            "name": "Compass Class A",
+            "qty": 50.0,
+            "balance": 361.75,
+            "weight": 0.03,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "CLOV",
+            "name": "Clover Health Investments Class A",
+            "qty": 208.0,
+            "balance": 366.08,
+            "weight": 0.03,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "PTON",
+            "name": "Peloton Interactive Class A",
+            "qty": 87.0,
+            "balance": 368.01,
+            "weight": 0.03,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "VSTS",
+            "name": "Vestis",
+            "qty": 45.0,
+            "balance": 349.65,
+            "weight": 0.03,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "DOW",
+            "name": "Dow",
+            "qty": 8.0,
+            "balance": 331.48,
+            "weight": 0.03,
+            "status": "리밸런싱"
         }
     ],
-    "value": [
+    "SCG": [
         {
-            "code": "MZN",
-            "name": "Amazon.com Inc",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "SLQT",
+            "name": "SelectQuote",
+            "qty": 571.0,
+            "balance": 359.6729,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "GOOGL",
-            "name": "Alphabet Inc",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "SNBR",
+            "name": "Sleep Number",
+            "qty": 171.0,
+            "balance": 304.38,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "META",
-            "name": "Meta Platforms Inc",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
-        }
-    ],
-    "small": [
-        {
-            "code": "VGO",
-            "name": "Broadcom Inc",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "FLWS",
+            "name": "1-800 FLOWERS.COM Class A",
+            "qty": 114.0,
+            "balance": 347.13,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "LLY",
-            "name": "Eli Lilly and Co",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "CURV",
+            "name": "Torrid Holdings",
+            "qty": 200.0,
+            "balance": 351.0,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "JPM",
-            "name": "JPMorgan Chase",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
+            "code": "DBI",
+            "name": "Designer Brands Class A",
+            "qty": 64.0,
+            "balance": 360.64,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "V",
-            "name": "Visa Inc",
-            "qty": 0,
-            "balance": 0,
-            "weight": 0.1,
-            "status": "리밸런싱 매수실패"
-        }
-    ],
-    "remain_last": [
-        {
-            "code": "PDBC",
-            "name": "INVESCO OPTIMUM YIELD DIVERSIFIED COMMODITY STRATEGY NO K-1",
-            "qty": 732,
-            "balance": 12605.04,
-            "weight": 0,
-            "status": "리밸런싱 매도실패"
+            "code": "MYGN",
+            "name": "Myriad Genetics",
+            "qty": 80.0,
+            "balance": 356.4,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "EDC",
-            "name": "DIREXION MSCI EMERGING MARKETS DAILY 3X",
-            "qty": 609,
-            "balance": 36564.36,
-            "weight": 0,
-            "status": "리밸런싱 매도실패"
+            "code": "BARK",
+            "name": "Bark Class A",
+            "qty": 692.0,
+            "balance": 352.92,
+            "weight": 0.03,
+            "status": "리밸런싱"
         },
         {
-            "code": "IWM",
-            "name": "ISHARES RUSSELL 2000",
-            "qty": 4,
-            "balance": 990.52,
-            "weight": 0,
-            "status": "리밸런싱 매도실패"
-        },
-        {
-            "code": "UPRO",
-            "name": "PROSHARES S&P 500 3X",
-            "qty": 522,
-            "balance": 53050.86,
-            "weight": 0,
-            "status": "리밸런싱 매도실패"
-        },
-        {
-            "code": "VEA",
-            "name": "VANGUARD FTSE DEVELOPED MARKETS",
-            "qty": 160,
-            "balance": 10265.6,
-            "weight": 0,
-            "status": "리밸런싱 매도실패"
-        },
-        {
-            "code": "VWO",
-            "name": "VANGUARD FTSE EMERGING MARKETS",
-            "qty": 187,
-            "balance": 10099.87,
-            "weight": 0,
-            "status": "리밸런싱 매도실패"
+            "code": "ZIP",
+            "name": "Ziprecruiter Class A",
+            "qty": 196.0,
+            "balance": 361.62,
+            "weight": 0.03,
+            "status": "리밸런싱"
         }
     ]
 }

@@ -19,8 +19,8 @@ class KIS_API:
         
         self._load_api_keys()
         self.access_token = self.get_access_token()
-        self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09% 이벤트 계좌
-        self.BUY_FEE_RATE = 0.0009   # 매수 수수료 0.09% 이벤트 계좌
+        self.SELL_FEE_RATE = 0.002105  # 매도 수수료 0.2105% 이벤트 계좌
+        self.BUY_FEE_RATE = 0.002105   # 매수 수수료 0.2105% 이벤트 계좌
 
         # 홍콩 시장 고정값
         self.EXCHANGE_CODE = "HKS"    # 현재가 조회용 (HHDFS00000300 EXCD)
@@ -552,7 +552,7 @@ class KIS_API:
                 return None
             output = data.get('output', {})
             HKD = float(output.get('ovrs_ord_psbl_amt', 0))
-            return HKD if HKD > 0 else None
+            return HKD # 0도 유효한 잔고 (None은 API 에러 시에만)
         except Exception as e:
             TA.send_tele(f'HK 매수가능금액 조회 오류: {e}')
             return None

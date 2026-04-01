@@ -19,8 +19,9 @@ class KIS_API:
         
         self._load_api_keys()
         self.access_token = self.get_access_token()
-        self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09% 이벤트 계좌
-        self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09% 이벤트 계좌
+        self.SELL_FEE_RATE = 0.0025  # 매도 수수료 0.25% 일반 계좌
+        self.BUY_FEE_RATE = 0.0025   # 매수 수수료 0.25% 일반 계좌
+        self._exchange_cache = {}
     
     # API-Key 로드 
     def _load_api_keys(self):
@@ -140,17 +141,19 @@ class KIS_API:
         """
         if not ticker:
             return "error:티커를 입력해주세요."
-        
         ticker = ticker.upper()
         
+        # 캐시 확인
+        if ticker in self._exchange_cache:
+            return self._exchange_cache[ticker]
+        
         exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
-
         for exchange in exchanges:
             price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
+                self._exchange_cache[ticker] = exchange  # 캐시 저장
                 return exchange
             time.sleep(0.15)
-
         return "error: 거래소 조회 실패"
 
     # 주식 현재가 조회
@@ -165,15 +168,21 @@ class KIS_API:
         """
         if not ticker:
             return "티커를 입력해주세요."
-        
         ticker = ticker.upper()
 
-        # 거래소 목록 정의
+        # 캐시된 거래소가 있으면 그것부터 시도
+        if ticker in self._exchange_cache:
+            price = self.get_price_from_kis(ticker, self._exchange_cache[ticker])
+            if isinstance(price, float):
+                return price
+            time.sleep(0.1)
+
+        # 캐시 미스 시 전체 순회
         exchanges = ["NAS", "AMS", "NYS", "BAY", "BAQ", "BAA"]
-        
         for exchange in exchanges:
             price = self.get_price_from_kis(ticker, exchange)
             if isinstance(price, float):
+                self._exchange_cache[ticker] = exchange  # 캐시 갱신
                 return price
             time.sleep(0.1)
 
@@ -687,7 +696,7 @@ class KIS_API:
             #     '외화주문가능금액1': float(output.get('frcr_ord_psbl_amt1', 0))
             # }
             USD = float(output.get('ovrs_ord_psbl_amt', 0))
-            return USD if USD > 0 else None
+            return USD # 0도 유효한 잔고 (None은 API 에러 시에만)
         except Exception as e:
             TA.send_tele(f'매수가능금액 조회 오류: {e}')
             return None
@@ -1294,7 +1303,7 @@ class KIS_API:
                     item_ticker = item.get('ovrs_pdno', '').upper()
                     
                     if item_ticker == ticker:
-                        holding_qty = float(item.get('ovrs_cblc_qty', '0'))
+                        holding_qty = int(float(item.get('ccld_qty_smtl1', item.get('ovrs_cblc_qty', '0'))))
                         
                         return {
                             'ticker': ticker,
