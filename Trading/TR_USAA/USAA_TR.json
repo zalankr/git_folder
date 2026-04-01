@@ -1,9 +1,9 @@
 {
-    "round": 2,
+    "round": 24,
     "timestamp": "2026-04-01T08:30:54.237554",
-    "USD_total": 11.59,
-    "USD_USLA": 22.536599999999964,
-    "USD_HAA": -10.946600000000018,
+    "USD_total": 749.25,
+    "USD_USLA": 494.50,
+    "USD_HAA": 254.75,
     "USLA_target_balance": 7.6494,
     "USLA_target_weight": 0.66,
     "HAA_target_balance": 3.9406000000000003,
@@ -12,11 +12,11 @@
     "Buy_order": [],
     "USLA": {
         "UPRO": {
-            "hold_qty": 0,
-            "current_price": 98.4,
-            "target_weight": 0,
-            "target_balance": 0.0,
-            "target_qty": 0,
+            "hold_qty": 522,
+            "current_price": 112.6731,
+            "target_weight": 0.3267,
+            "target_balance": 51881.58,
+            "target_qty": 522,
             "buy_qty": 0,
             "sell_qty": 0
         },
@@ -30,11 +30,11 @@
             "sell_qty": 0
         },
         "EDC": {
-            "hold_qty": 0,
-            "current_price": 56.5,
-            "target_weight": 0,
-            "target_balance": 0.0,
-            "target_qty": 0,
+            "hold_qty": 609,
+            "current_price": 54.1937,
+            "target_weight": 0.3267,
+            "target_balance": 35139.30,
+            "target_qty": 609,
             "buy_qty": 0,
             "sell_qty": 0
         },
@@ -68,38 +68,38 @@
             "sell_qty": 0
         },
         "IWM": {
-            "hold_qty": 0,
-            "current_price": 249.54,
+            "hold_qty": 4,
+            "current_price": 258.9514,
             "target_weight": 0.08415,
-            "target_balance": 0.9752985000000001,
-            "target_qty": 0,
+            "target_balance": 1002.08,
+            "target_qty": 4,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "VEA": {
-            "hold_qty": 0,
-            "current_price": 64.5762,
+            "hold_qty": 160,
+            "current_price": 63.0435,
             "target_weight": 0.08415,
-            "target_balance": 0.9752985000000001,
-            "target_qty": 0,
+            "target_balance": 10464.00,
+            "target_qty": 160,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "VWO": {
-            "hold_qty": 0,
-            "current_price": 54.08,
+            "hold_qty": 187,
+            "current_price": 53.6771,
             "target_weight": 0.08415,
-            "target_balance": 0.9752985000000001,
-            "target_qty": 0,
+            "target_balance": 10178.41,
+            "target_qty": 187,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "PDBC": {
-            "hold_qty": 0,
-            "current_price": 17.0502,
+            "hold_qty": 732,
+            "current_price": 17.12,
             "target_weight": 0.08415,
-            "target_balance": 0.9752985000000001,
-            "target_qty": 0,
+            "target_balance": 12531.84,
+            "target_qty": 732,
             "buy_qty": 0,
             "sell_qty": 0
         },
