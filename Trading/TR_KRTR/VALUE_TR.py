@@ -53,7 +53,7 @@ VALUE_HISTORY_DIR  = os.path.join(BASE_DIR, "history")
 
 os.makedirs(VALUE_HISTORY_DIR, exist_ok=True)
 
-MAX_HOLDINGS = 10   # 최대 보유 종목 수
+MAX_HOLDINGS = 12   # 최대 보유 종목 수
 
 
 # ================================================================
