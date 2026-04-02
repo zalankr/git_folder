@@ -46,10 +46,10 @@ acnt_prdt_cd    = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 # 파일 경로
-BASE_DIR          = "/var/autobot/TR_VALUE"
+BASE_DIR          = "/var/autobot/TR_KRTR"
 VALUE_DATA_PATH    = os.path.join(BASE_DIR, "value_data.json")
 VALUE_TARGET_PATH  = os.path.join(BASE_DIR, "value_target.json")
-VALUE_HISTORY_DIR  = os.path.join(BASE_DIR, "history")
+VALUE_HISTORY_DIR  = os.path.join(BASE_DIR, "VALUE_history")
 
 os.makedirs(VALUE_HISTORY_DIR, exist_ok=True)
 

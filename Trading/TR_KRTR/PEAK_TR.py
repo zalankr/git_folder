@@ -49,7 +49,7 @@ KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 BASE_DIR          = "/var/autobot/TR_KRTR"
 PEAK_DATA_PATH    = os.path.join(BASE_DIR, "peak_data.json")
 PEAK_TARGET_PATH  = os.path.join(BASE_DIR, "peak_target.json")
-PEAK_HISTORY_DIR  = os.path.join(BASE_DIR, "history")
+PEAK_HISTORY_DIR  = os.path.join(BASE_DIR, "PEAK_history")
 
 os.makedirs(PEAK_HISTORY_DIR, exist_ok=True)
 

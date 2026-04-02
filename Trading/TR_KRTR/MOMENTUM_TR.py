@@ -46,10 +46,10 @@ acnt_prdt_cd    = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 # 파일 경로
-BASE_DIR          = "/var/autobot/TR_MOMENTUM"
+BASE_DIR          = "/var/autobot/TR_KRTR"
 MOMENTUM_DATA_PATH    = os.path.join(BASE_DIR, "momentum_data.json")
 MOMENTUM_TARGET_PATH  = os.path.join(BASE_DIR, "momentum_target.json")
-MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "history")
+MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "MOMENTUM_history")
 
 os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
 
