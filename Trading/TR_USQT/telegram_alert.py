@@ -42,7 +42,7 @@ def send_tele(
     """
     # 1. 리스트 → 줄바꿈 결합
     full_text = "\n".join(message) if isinstance(message, list) else message
-
+    
     # 1-1. HTML 특수문자 이스케이프 (추가)
     full_text = full_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
