@@ -6,7 +6,7 @@ import riskfolio as rp
 import calendar
 
 # 날짜 인풋 받기
-year = '2025' ##################
+year = '2026' ##################
 month = input('month?:')
 mon = int(month)
 

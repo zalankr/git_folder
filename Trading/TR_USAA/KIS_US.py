@@ -21,6 +21,7 @@ class KIS_API:
         self.access_token = self.get_access_token()
         self.SELL_FEE_RATE = 0.0009  # 매도 수수료 0.09% 이벤트 계좌
         self.BUY_FEE_RATE = 0.0009  # 매수 수수료 0.09% 이벤트 계좌
+
         self._exchange_cache = {}
     
     # API-Key 로드 

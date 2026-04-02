@@ -10,7 +10,6 @@ import time as time_module
 from tendo import singleton
 import KIS_US
 import USAA_Calender
-import logging
 
 try:
     me = singleton.SingleInstance()
@@ -1207,143 +1206,147 @@ health_check()
 message = [] # 출력메세지 모으기
 message.append(f"USAA {order_time['date']} 리밸런싱\n{order_time['time']}, {order_time['round']}/{order_time['total_round']}회차 시작")
 
-if order_time['round'] == 1:
-    try:
-        '''round 1회에서 목표 Trading qty 구하기'''
-        # USAA regime체크 및 거래 목표 데이터 만들기
-        USLA_target, USLA_regime, USLA_message = USLA_target_regime()
-        message.extend(USLA_message)
-        
-        # HAA regime체크 및 거래 목표 데이터 만들기
-        HAA_target, HAA_regime, HAA_message = HAA_target_regime()
-        message.extend(HAA_message)
-        
-        # 지난 월 USAA / HAA Mode와 모델별 USD 비중 불러오기
-        try:
-            with open(USAA_TR_path, 'r') as f:
-                TR_data = json.load(f)
-        except Exception as e:
-            message.append(f"USAA_TR JSON 파일 오류: {e}")
-            TA.send_tele(message)
-            sys.exit(1)
-        
-        # 계좌잔고 조회
-        USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-        USD_gap = float(USD - float(TR_data['USD_total']))
-        USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.66)
-        USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.34)
+# USAA regime체크 및 거래 목표 데이터 만들기
+USLA_target, USLA_regime, USLA_message = USLA_target_regime()
+message.extend(USLA_message)
 
-        # 전략 모델별 목표 금액 및 비중
-        USLA_target_balance = float(USLA_balance) + USD_USLA
-        USLA_target_weight = float(USLA_target_balance) / float(Total_balance) if Total_balance > 0 else 0.66
-        HAA_target_balance = float(HAA_balance) + USD_HAA
-        HAA_target_weight = float(HAA_target_balance) / float(Total_balance) if Total_balance > 0 else 0.34
+# HAA regime체크 및 거래 목표 데이터 만들기
+HAA_target, HAA_regime, HAA_message = HAA_target_regime()
+message.extend(HAA_message)
 
-        ## 만약 1월이라면 비중 리밸런싱
-        order_time['month'] = 1 ######## 최초 4월 실행 후 이 라인은 지울 것 ###################################################
+# 지난 월 USAA / HAA Mode와 모델별 USD 비중 불러오기
+try:
+    with open(USAA_TR_path, 'r') as f:
+        TR_data = json.load(f)
+except Exception as e:
+    message.append(f"USAA_TR JSON 파일 오류: {e}")
+    TA.send_tele(message)
+    sys.exit(1)
 
-        if order_time['month'] == 1:
-            USLA_target_weight = 0.66
-            USLA_target_balance = float(Total_balance * USLA_target_weight)
-            HAA_target_weight = 0.34
-            HAA_target_balance = float(Total_balance * HAA_target_weight)
+# 계좌잔고 조회
+USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
+USD_gap = float(USD - float(TR_data['USD_total']))
+USD_USLA = float(TR_data['USD_USLA']) + (USD_gap * 0.66)
+USD_HAA = float(TR_data['USD_HAA']) + (USD_gap * 0.34)
 
-        # 초기 데이터
-        start = {
-            "USD_total": USD,
-            "USD_USLA": USD_USLA,
-            "USD_HAA": USD_HAA,
-            "USLA_target_balance": USLA_target_balance,
-            "USLA_target_weight": USLA_target_weight,
-            "HAA_target_balance": HAA_target_balance,
-            "HAA_target_weight": HAA_target_weight
+# 전략 모델별 목표 금액 및 비중
+USLA_target_balance = float(USLA_balance) + USD_USLA
+USLA_target_weight = float(USLA_target_balance) / float(Total_balance) if Total_balance > 0 else 0.66
+HAA_target_balance = float(HAA_balance) + USD_HAA
+HAA_target_weight = float(HAA_target_balance) / float(Total_balance) if Total_balance > 0 else 0.34
+
+## 만약 1월이라면 비중 리밸런싱
+order_time['month'] = 1 ######## 최초 4월 실행 후 이 라인은 지울 것 ###################################################
+
+if order_time['month'] == 1:
+    USLA_target_weight = 0.66
+    USLA_target_balance = float(Total_balance * USLA_target_weight)
+    HAA_target_weight = 0.34
+    HAA_target_balance = float(Total_balance * HAA_target_weight)
+
+# 초기 데이터
+start = {
+    "USD_total": USD,
+    "USD_USLA": USD_USLA,
+    "USD_HAA": USD_HAA,
+    "USLA_target_balance": USLA_target_balance,
+    "USLA_target_weight": USLA_target_weight,
+    "HAA_target_balance": HAA_target_balance,
+    "HAA_target_weight": HAA_target_weight
+}
+
+USLA = {}
+for ticker in USLA_ticker:
+    USLA_price[ticker] = KIS.get_US_current_price(ticker)
+    if ticker not in USLA_target:
+        USLA[ticker] = {
+            'hold_qty': int(USLA_qty.get(ticker, 0)), # 현재 보유량
+            'current_price': USLA_price[ticker] if ticker in USLA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
+            'target_weight': 0, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+            'target_balance': 0, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
+            'target_qty': 0, # 해당 티커의 목표수량
+            'buy_qty': 0, # 해당 티커의 매수 수량
+            'sell_qty': int(USLA_qty.get(ticker, 0)) # 해당 티커의 매도 수량
+        }
+    elif ticker in USLA_target:
+        if not isinstance(USLA_price[ticker], float) or USLA_price[ticker] <= 0:
+            USLA_target_qty = 0
+        else:
+            USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.99) / USLA_price[ticker])  # 1% 거래 안정성 마진 적용
+        USLA[ticker] = {
+            'hold_qty': int(USLA_qty.get(ticker, 0)), # 현재 보유량
+            'current_price': USLA_price[ticker] if ticker in USLA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
+            'target_weight': USLA_target[ticker] * USLA_target_weight * 0.99, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+            'target_balance': USLA_target[ticker] * USLA_target_balance * 0.99, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
+            'target_qty': USLA_target_qty, # 해당 티커의 목표수량
+            'buy_qty': int(USLA_target_qty - USLA_qty.get(ticker, 0) if USLA_target_qty > USLA_qty.get(ticker, 0) else 0), # 해당 티커의 매수 수량
+            'sell_qty': int(USLA_qty.get(ticker, 0) - USLA_target_qty if USLA_target_qty < USLA_qty.get(ticker, 0) else 0) # 해당 티커의 매도 수량
         }
 
-        USLA = {}
-        for ticker in USLA_ticker:
-            USLA_price[ticker] = KIS.get_US_current_price(ticker)
-            if ticker not in USLA_target:
-                USLA[ticker] = {
-                    'hold_qty': int(USLA_qty.get(ticker, 0)), # 현재 보유량
-                    'current_price': USLA_price[ticker] if ticker in USLA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                    'target_weight': 0, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
-                    'target_balance': 0, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
-                    'target_qty': 0, # 해당 티커의 목표수량
-                    'buy_qty': 0, # 해당 티커의 매수 수량
-                    'sell_qty': int(USLA_qty.get(ticker, 0)) # 해당 티커의 매도 수량
-                }
-            elif ticker in USLA_target:
-                if not isinstance(USLA_price[ticker], float) or USLA_price[ticker] <= 0:
-                    USLA_target_qty = 0
-                else:
-                    USLA_target_qty = int((USLA_target[ticker] * USLA_target_balance * 0.99) / USLA_price[ticker])  # 1% 거래 안정성 마진 적용
-                USLA[ticker] = {
-                    'hold_qty': int(USLA_qty.get(ticker, 0)), # 현재 보유량
-                    'current_price': USLA_price[ticker] if ticker in USLA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                    'target_weight': USLA_target[ticker] * USLA_target_weight * 0.99, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
-                    'target_balance': USLA_target[ticker] * USLA_target_balance * 0.99, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
-                    'target_qty': USLA_target_qty, # 해당 티커의 목표수량
-                    'buy_qty': int(USLA_target_qty - USLA_qty.get(ticker, 0) if USLA_target_qty > USLA_qty.get(ticker, 0) else 0), # 해당 티커의 매수 수량
-                    'sell_qty': int(USLA_qty.get(ticker, 0) - USLA_target_qty if USLA_target_qty < USLA_qty.get(ticker, 0) else 0) # 해당 티커의 매도 수량
-                }
-
-        HAA = {}
-        for ticker in HAA_ticker:
-            if ticker == 'TIP':
-                continue
-            HAA_price[ticker] = KIS.get_US_current_price(ticker)
-            if ticker not in HAA_target:
-                HAA[ticker] = {
-                    'hold_qty': int(HAA_qty.get(ticker, 0)), # 현재 보유량
-                    'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                    'target_weight': 0, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
-                    'target_balance': 0, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
-                    'target_qty': 0, # 해당 티커의 목표수량
-                    'buy_qty': 0, # 해당 티커의 매수 수량
-                    'sell_qty': int(HAA_qty.get(ticker, 0)) # 해당 티커의 매도 수량                
-                }
-            elif ticker in HAA_target:
-                if not isinstance(HAA_price[ticker], float) or HAA_price[ticker] <= 0:
-                    HAA_target_qty = 0
-                else:
-                    HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.99) / HAA_price[ticker])  # 1% 거래 안정성 마진 적용
-                HAA[ticker] = {
-                    'hold_qty': int(HAA_qty.get(ticker, 0)), # 현재 보유량
-                    'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
-                    'target_weight': HAA_target[ticker] * HAA_target_weight * 0.99, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
-                    'target_balance': HAA_target[ticker] * HAA_target_balance * 0.99, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
-                    'target_qty': HAA_target_qty, # 해당 티커의 목표수량
-                    'buy_qty': int(HAA_target_qty - HAA_qty.get(ticker, 0) if HAA_target_qty > HAA_qty.get(ticker, 0) else 0), # 해당 티커의 매수 수량
-                    'sell_qty': int(HAA_qty.get(ticker, 0) - HAA_target_qty if HAA_target_qty < HAA_qty.get(ticker, 0) else 0) # 해당 티커의 매도 수량                
-                }
-
-        # 목표비중 합계 검증
-        total_weight = 0
-        for ticker in USLA.keys():
-            total_weight += USLA[ticker].get('target_weight', 0)
-        for ticker in HAA.keys():
-            total_weight += HAA[ticker].get('target_weight', 0)
-        # USLA/HAA target에서 CASH 비중이 있으면 추가
-        total_weight += USLA_target_weight - sum(USLA[t].get('target_weight', 0) for t in USLA.keys())
-        total_weight += HAA_target_weight - sum(HAA[t].get('target_weight', 0) for t in HAA.keys())
-
-        if total_weight > 1.01:
-            error_msg = f"USAA: ❌ 목표 비중 초과: {total_weight:.2%}"
-            message.append(error_msg)
-            TA.send_tele(message)
-            sys.exit(1)
-        elif total_weight < 0.90:
-            message.append(f"USAA: ⚠️ 목표 비중 부족: {total_weight:.2%}")
+HAA = {}
+for ticker in HAA_ticker:
+    if ticker == 'TIP':
+        continue
+    HAA_price[ticker] = KIS.get_US_current_price(ticker)
+    if ticker not in HAA_target:
+        HAA[ticker] = {
+            'hold_qty': int(HAA_qty.get(ticker, 0)), # 현재 보유량
+            'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
+            'target_weight': 0, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+            'target_balance': 0, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
+            'target_qty': 0, # 해당 티커의 목표수량
+            'buy_qty': 0, # 해당 티커의 매수 수량
+            'sell_qty': int(HAA_qty.get(ticker, 0)) # 해당 티커의 매도 수량                
+        }
+    elif ticker in HAA_target:
+        if not isinstance(HAA_price[ticker], float) or HAA_price[ticker] <= 0:
+            HAA_target_qty = 0
         else:
-            message.append(f"USAA: ✓ 목표 비중 합계: {total_weight:.2%}")
+            HAA_target_qty = int((HAA_target[ticker] * HAA_target_balance * 0.99) / HAA_price[ticker])  # 1% 거래 안정성 마진 적용
+        HAA[ticker] = {
+            'hold_qty': int(HAA_qty.get(ticker, 0)), # 현재 보유량
+            'current_price': HAA_price[ticker] if ticker in HAA_price else KIS.get_US_current_price(ticker), # 해당 티커의 현재가
+            'target_weight': HAA_target[ticker] * HAA_target_weight * 0.99, # 해당 티커의 목표비중 (1% 거래 안정성 마진 적용)
+            'target_balance': HAA_target[ticker] * HAA_target_balance * 0.99, # 해당 티커의 목표투자금 (1% 거래 안정성 마진 적용)
+            'target_qty': HAA_target_qty, # 해당 티커의 목표수량
+            'buy_qty': int(HAA_target_qty - HAA_qty.get(ticker, 0) if HAA_target_qty > HAA_qty.get(ticker, 0) else 0), # 해당 티커의 매수 수량
+            'sell_qty': int(HAA_qty.get(ticker, 0) - HAA_target_qty if HAA_target_qty < HAA_qty.get(ticker, 0) else 0) # 해당 티커의 매도 수량                
+        }
 
-        # 회차별 분할 데이터 트레이딩
-        round_split = split_data(order_time['round'])
-        sell_split_USLA = [round_split["sell_splits"], round_split["sell_price_USLA"]]
-        buy_split_USLA = [round_split["buy_splits"], round_split["buy_price_USLA"]]
-        sell_split_HAA = [round_split["sell_splits"], round_split["sell_price_HAA"]]
-        buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
+# 목표비중 합계 검증
+total_weight = 0
+for ticker in USLA.keys():
+    total_weight += USLA[ticker].get('target_weight', 0)
+for ticker in HAA.keys():
+    total_weight += HAA[ticker].get('target_weight', 0)
+# USLA/HAA target에서 CASH 비중이 있으면 추가
+total_weight += USLA_target_weight - sum(USLA[t].get('target_weight', 0) for t in USLA.keys())
+total_weight += HAA_target_weight - sum(HAA[t].get('target_weight', 0) for t in HAA.keys())
+
+if total_weight > 1.01:
+    error_msg = f"USAA: ❌ 목표 비중 초과: {total_weight:.2%}"
+    message.append(error_msg)
+    TA.send_tele(message)
+    sys.exit(1)
+elif total_weight < 0.90:
+    message.append(f"USAA: ⚠️ 목표 비중 부족: {total_weight:.2%}")
+else:
+    message.append(f"USAA: ✓ 목표 비중 합계: {total_weight:.2%}")
+
+# 회차별 분할 데이터 트레이딩
+round_split = split_data(order_time['round'])
+sell_split_USLA = [round_split["sell_splits"], round_split["sell_price_USLA"]]
+buy_split_USLA = [round_split["buy_splits"], round_split["buy_price_USLA"]]
+sell_split_HAA = [round_split["sell_splits"], round_split["sell_price_HAA"]]
+buy_split_HAA = [round_split["buy_splits"], round_split["buy_price_HAA"]]
+
+print("\n".join(message))
+print("USLA:", USLA)
+print("HAA:", HAA)        
+
+TA.send_tele(message)
         
+"""      
         # 매도주문
         Sell_order, order_messages = Selling(USLA, HAA, sell_split_USLA, sell_split_HAA, order_time)
         message.extend(order_messages)
@@ -1407,15 +1410,7 @@ if order_time['round'] == 1:
     
     except Exception as e:
         message.append(f"USAA: ❌ 1회차 실행 오류: {e}")
-        try:
-            TA.send_tele(message)
-        except Exception as tele_err:
-            logging.error(f"USAA 1회차 텔레그램 전송 실패: {tele_err}")
-            # parse_mode 없이 재시도
-            try:
-                TA.send_tele(message, parse_mode="")
-            except:
-                pass
+        TA.send_tele(message)
         sys.exit(1)    
 
 elif order_time['round'] in range(2, 25):  # Round 2~24회차
@@ -1681,16 +1676,8 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
     
     except Exception as e:
         message.append(f"USAA: ❌ {order_time['round']}회차 실행 오류: {e}")
-        try:
-            TA.send_tele(message)
-        except Exception as tele_err:
-            logging.error(f"USAA {order_time['round']}회차 텔레그램 전송 실패: {tele_err}")
-            # parse_mode 없이 재시도
-            try:
-                TA.send_tele(message, parse_mode="")
-            except:
-                pass
-        time_module.sleep(1)
+        TA.send_tele(message)
+        time_module.sleep(3)
         sys.exit(1)
-
+"""
 sys.exit(0)

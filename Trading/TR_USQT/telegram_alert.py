@@ -43,6 +43,9 @@ def send_tele(
     # 1. 리스트 → 줄바꿈 결합
     full_text = "\n".join(message) if isinstance(message, list) else message
 
+    # 1-1. HTML 특수문자 이스케이프 (추가)
+    full_text = full_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
     # 2. 4096자 기준 줄 단위 청크 분할
     chunks, current = [], ""
     for line in full_text.splitlines(keepends=True):
@@ -75,7 +78,8 @@ def send_tele(
                 print(f"[Rate Limit] {wait}초 대기 ({attempt + 1}/{max_retries})...")
                 time.sleep(wait)
             else:
-                resp.raise_for_status()
+                logging.error(f"청크 {i+1} 전송 실패 (HTTP {resp.status_code}): {resp.text[:200]}")
+                break  # raise 대신 해당 청크 스킵
         else:
             logging.error(f"청크 {i + 1} 전송 실패: {max_retries}회 재시도 초과")
             return  # 프로세스 종료 없이 조용히 종료
