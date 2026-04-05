@@ -395,7 +395,7 @@ def format_usd(msg: list, label: str, data: dict, exrt: float = 0):
 
 
 def format_overseas(msg: list, label: str, data: dict, symbol: str):
-    """해외 잔고 텔레그램 메시지 포맷 (원화 환산 + MTS총자산 포함)"""
+    """해외 잔고 텔레그램 메시지 포맷 (원화 환산 포함)"""
     msg.append(f"\n── {label} ({data['currency']}) ──")
     msg.append(f"  주식: {symbol}{data['stock_eval']:,.0f}")
     msg.append(f"  현금: {symbol}{data['cash']:,.0f}")
@@ -404,9 +404,6 @@ def format_overseas(msg: list, label: str, data: dict, symbol: str):
     if exrt > 0:
         krw_calc = data['total'] * exrt
         msg.append(f"  원화환산: ₩{krw_calc:,.0f} (환율 {exrt:,.2f})")
-    mts_krw = data.get("mts_krw_total", 0)
-    if mts_krw > 0:
-        msg.append(f"  MTS총자산: ₩{mts_krw:,.0f}")
     for s in data.get("stocks", []):
         msg.append(f"    {s['code']}: {s['qty']}주 {symbol}{s['eval_amt']:,.0f} ({s['profit_rate']:+.1f}%)")
 
@@ -425,6 +422,11 @@ def run_us():
         msg.append(f"❌ USD 조회 실패: {usd['error']}")
         return {"mode": "US", "timestamp": datetime.now().isoformat(), "error": usd["error"]}, msg
 
+    # MTS 총자산 (계좌 전체 통화통합, 최상단 표시)
+    mts_krw = usd.get("mts_krw_total", 0)
+    if mts_krw > 0:
+        msg.append(f"MTS 총자산(통화통합): ₩{mts_krw:,.0f}")
+
     # USLA / HAA 분리
     usaa = split_usaa(usd)
 
@@ -434,12 +436,9 @@ def run_us():
 
     exrt = usd.get("exchange_rate", 0)
     usaa_krw = usaa['USAA_total'] * exrt if exrt > 0 else 0
-    mts_krw = usd.get("mts_krw_total", 0)
     msg.append(f"USAA 합계: ${usaa['USAA_total']:,.2f}")
     if exrt > 0:
         msg.append(f"  원화환산: ₩{usaa_krw:,.0f} (환율 {exrt:,.2f})")
-    if mts_krw > 0:
-        msg.append(f"  MTS총자산: ₩{mts_krw:,.0f}")
     msg.append(f"  주식합계: ${usd['stock_eval']:,.2f}")
     msg.append(f"  현금합계: ${usaa['total_cash']:,.2f}")
     msg.append(f"TR기준시점: {usaa['USAA_TR_timestamp']}")
@@ -450,6 +449,7 @@ def run_us():
     snapshot = {
         "mode": "US",
         "timestamp": datetime.now().isoformat(),
+        "mts_krw_total": mts_krw,
         "USD": usd,
         "USAA": usaa
     }
@@ -459,6 +459,31 @@ def run_us():
 def run_asia():
     """KST 17:00 실행 — KRW / JPY / HKD 잔고"""
     msg = [f"📊 63604155 잔고 [KRW/JPY/HKD] {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
+
+    # MTS 총자산 조회 (통화통합 - 아무 통화나 한 번만 조회하면 됨)
+    # USD(840)로 CTRP6504R 호출하여 output3.tot_asst_amt 취득
+    mts_krw = 0.0
+    try:
+        time.sleep(0.1)
+        url_mts = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-present-balance"
+        params_mts = {
+            "CANO": CANO, "ACNT_PRDT_CD": ACNT_PRDT_CD,
+            "WCRC_FRCR_DVSN_CD": "02", "NATN_CD": "840",
+            "TR_MKET_CD": "00", "INQR_DVSN_CD": "00"
+        }
+        r_mts = requests.get(url_mts, headers=headers("CTRP6504R"), params=params_mts, timeout=10)
+        r_mts.raise_for_status()
+        d_mts = r_mts.json()
+        if d_mts.get("rt_cd") == "0":
+            out3 = d_mts.get("output3", {})
+            if isinstance(out3, list):
+                out3 = out3[0] if out3 else {}
+            mts_krw = float(out3.get("tot_asst_amt", 0))
+    except Exception:
+        pass
+
+    if mts_krw > 0:
+        msg.append(f"MTS 총자산(통화통합): ₩{mts_krw:,.0f}")
 
     # ── KRW ──
     krw = get_krw_balance()
@@ -486,7 +511,7 @@ def run_asia():
     else:
         format_overseas(msg, "HKQT", hkd, "HK$")
 
-    # ── ASIA 원화 환산 합계 ──
+    # ── ASIA 원화 환산 합계 (주문가능+주식 기준) ──
     krw_total_all = 0.0
     if "error" not in krw:
         krw_total_all += krw.get("total", 0)
@@ -505,6 +530,7 @@ def run_asia():
     snapshot = {
         "mode": "ASIA",
         "timestamp": datetime.now().isoformat(),
+        "mts_krw_total": mts_krw,
         "KRW": krw,
         "JPY": jpy,
         "HKD": hkd,
