@@ -1,228 +1,52 @@
 {
-    "round": 14,
-    "timestamp": "2026-04-02T14:32:29.112316",
-    "USD_total": 756.74,
-    "USD_USLA": 499.4434,
-    "USD_HAA": 257.2966,
+    "round": 24,
+    "timestamp": "2026-04-02T19:37:14.969154",
+    "USD_total": 78148.29,
+    "USD_USLA": 77520.61020000001,
+    "USD_HAA": 627.6797999999835,
     "USLA_target_balance": 77520.61020000001,
-    "USLA_target_weight": 0.66,
-    "HAA_target_balance": 39934.859800000006,
-    "HAA_target_weight": 0.34,
+    "USLA_target_weight": 0.6598352303279486,
+    "HAA_target_balance": 39964.18999999999,
+    "HAA_target_weight": 0.3401647696720515,
     "Sell_order": [
         {
             "success": true,
-            "ticker": "UPRO",
-            "quantity": 63,
-            "price": 97.68,
-            "order_number": "0031027125",
-            "order_time": "233154",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 0
-        },
-        {
-            "success": true,
-            "ticker": "UPRO",
-            "quantity": 63,
-            "price": 98.26,
-            "order_number": "0031027133",
-            "order_time": "233154",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 1
-        },
-        {
-            "success": true,
-            "ticker": "UPRO",
-            "quantity": 63,
-            "price": 98.84,
-            "order_number": "0031027139",
-            "order_time": "233155",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 2
-        },
-        {
-            "success": true,
-            "ticker": "UPRO",
-            "quantity": 63,
-            "price": 99.43,
-            "order_number": "0031027161",
-            "order_time": "233156",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 3
-        },
-        {
-            "success": true,
-            "ticker": "EDC",
-            "quantity": 32,
-            "price": 54.23,
-            "order_number": "0031027172",
-            "order_time": "233157",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 0
-        },
-        {
-            "success": true,
-            "ticker": "EDC",
-            "quantity": 32,
-            "price": 54.56,
-            "order_number": "0031027184",
-            "order_time": "233158",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 1
-        },
-        {
-            "success": true,
-            "ticker": "EDC",
-            "quantity": 32,
-            "price": 54.88,
-            "order_number": "0031027197",
-            "order_time": "233200",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 2
-        },
-        {
-            "success": true,
-            "ticker": "EDC",
-            "quantity": 34,
-            "price": 55.2,
-            "order_number": "0031027214",
-            "order_time": "233201",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 3
-        },
-        {
-            "success": true,
-            "ticker": "VEA",
+            "ticker": "PDBC",
             "quantity": 1,
-            "price": 64.88,
-            "order_number": "0031027227",
-            "order_time": "233202",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 3
-        },
-        {
-            "success": true,
-            "ticker": "PDBC",
-            "quantity": 33,
-            "price": 17.54,
-            "order_number": "0031027236",
-            "order_time": "233203",
+            "price": 17.15,
+            "order_number": "0031115602",
+            "order_time": "043131",
             "org_number": "01790",
             "message": "주문 전송 완료 되었습니다.",
             "split_index": 0
-        },
-        {
-            "success": true,
-            "ticker": "PDBC",
-            "quantity": 33,
-            "price": 17.59,
-            "order_number": "0031027239",
-            "order_time": "233203",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 1
-        },
-        {
-            "success": true,
-            "ticker": "PDBC",
-            "quantity": 33,
-            "price": 17.65,
-            "order_number": "0031027253",
-            "order_time": "233204",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 2
-        },
-        {
-            "success": true,
-            "ticker": "PDBC",
-            "quantity": 33,
-            "price": 17.7,
-            "order_number": "0031027257",
-            "order_time": "233205",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 3
         }
     ],
     "Buy_order": [
         {
             "success": true,
             "ticker": "IWM",
-            "quantity": 7,
-            "price": 250.52,
-            "order_number": "0031027481",
-            "order_time": "233226",
+            "quantity": 4,
+            "price": 255.79,
+            "order_number": "0031115643",
+            "order_time": "043153",
             "org_number": "01790",
             "message": "주문 전송 완료 되었습니다.",
             "split_index": 0
-        },
-        {
-            "success": true,
-            "ticker": "IWM",
-            "quantity": 7,
-            "price": 246.55,
-            "order_number": "0031027484",
-            "order_time": "233227",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 1
-        },
-        {
-            "success": true,
-            "ticker": "IWM",
-            "quantity": 7,
-            "price": 245.81,
-            "order_number": "0031027492",
-            "order_time": "233227",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 2
-        },
-        {
-            "success": true,
-            "ticker": "IWM",
-            "quantity": 7,
-            "price": 245.06,
-            "order_number": "0031027496",
-            "order_time": "233228",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 3
-        },
-        {
-            "success": true,
-            "ticker": "IWM",
-            "quantity": 7,
-            "price": 244.32,
-            "order_number": "0031027502",
-            "order_time": "233228",
-            "org_number": "01790",
-            "message": "주문 전송 완료 되었습니다.",
-            "split_index": 4
         }
     ],
     "USLA": {
         "UPRO": {
-            "hold_qty": 252,
-            "current_price": 97.095,
+            "hold_qty": 0,
+            "current_price": 98.76,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
-            "sell_qty": 252
+            "sell_qty": 0
         },
         "TQQQ": {
             "hold_qty": 0,
-            "current_price": 41.9599,
+            "current_price": 42.9581,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
@@ -230,17 +54,17 @@
             "sell_qty": 0
         },
         "EDC": {
-            "hold_qty": 130,
-            "current_price": 53.91,
+            "hold_qty": 0,
+            "current_price": 55.05,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
             "buy_qty": 0,
-            "sell_qty": 130
+            "sell_qty": 0
         },
         "TMV": {
             "hold_qty": 0,
-            "current_price": 37.0,
+            "current_price": 36.9,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
@@ -249,7 +73,7 @@
         },
         "TMF": {
             "hold_qty": 0,
-            "current_price": 36.42,
+            "current_price": 36.505,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
@@ -260,7 +84,7 @@
     "HAA": {
         "SPY": {
             "hold_qty": 0,
-            "current_price": 650.77,
+            "current_price": 654.4701,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
@@ -268,44 +92,44 @@
             "sell_qty": 0
         },
         "IWM": {
-            "hold_qty": 4,
-            "current_price": 248.04,
+            "hold_qty": 35,
+            "current_price": 250.77,
             "target_weight": 0.08415,
-            "target_balance": 9864.796788,
+            "target_balance": 9885.91461759,
             "target_qty": 39,
-            "buy_qty": 35,
+            "buy_qty": 4,
             "sell_qty": 0
         },
         "VEA": {
-            "hold_qty": 154,
-            "current_price": 64.11,
+            "hold_qty": 152,
+            "current_price": 64.6299,
             "target_weight": 0.08415,
-            "target_balance": 9864.796788,
-            "target_qty": 153,
+            "target_balance": 9885.91461759,
+            "target_qty": 152,
             "buy_qty": 0,
-            "sell_qty": 1
+            "sell_qty": 0
         },
         "VWO": {
-            "hold_qty": 184,
-            "current_price": 53.52,
+            "hold_qty": 183,
+            "current_price": 53.785,
             "target_weight": 0.08415,
-            "target_balance": 9864.796788,
-            "target_qty": 184,
+            "target_balance": 9885.91461759,
+            "target_qty": 183,
             "buy_qty": 0,
             "sell_qty": 0
         },
         "PDBC": {
-            "hold_qty": 696,
-            "current_price": 17.49,
+            "hold_qty": 566,
+            "current_price": 17.495,
             "target_weight": 0.08415,
-            "target_balance": 9864.796788,
-            "target_qty": 564,
+            "target_balance": 9885.91461759,
+            "target_qty": 565,
             "buy_qty": 0,
-            "sell_qty": 132
+            "sell_qty": 1
         },
         "VNQ": {
             "hold_qty": 0,
-            "current_price": 89.415,
+            "current_price": 90.035,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
@@ -314,7 +138,7 @@
         },
         "TLT": {
             "hold_qty": 0,
-            "current_price": 86.6701,
+            "current_price": 86.7575,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
@@ -323,7 +147,7 @@
         },
         "IEF": {
             "hold_qty": 0,
-            "current_price": 95.26,
+            "current_price": 95.265,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
@@ -332,7 +156,7 @@
         },
         "BIL": {
             "hold_qty": 0,
-            "current_price": 91.4285,
+            "current_price": 91.4284,
             "target_weight": 0,
             "target_balance": 0.0,
             "target_qty": 0,
