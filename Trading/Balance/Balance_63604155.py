@@ -168,11 +168,15 @@ def get_overseas_balance(natn_cd: str, currency: str,
                          price: str = "100") -> dict:
     """
     해외 주식 잔고 (체결기준현재잔고 CTRP6504R)
-    + 주문가능금액 (TTTS3007R)
+    + 주문가능금액 (TTTS3007R) → 이것을 현금으로 사용
 
     natn_cd:    840=미국, 392=일본, 344=홍콩
     excg_order: NASD(미국), TKSE(일본), SEHK(홍콩) — TTTS3007R용
     item_cd:    대표종목 AAPL / 7203 / 00700
+
+    ※ frcr_dncl_amt_2 사용 안 함:
+       - 단일계좌 다통화 구조에서 USD 예수금이 JPY/HKD에도 중복 표시됨
+       - TTTS3007R의 ovrs_ord_psbl_amt가 해당 통화의 실제 주문가능금액
     """
     # ── 종목 잔고 (CTRP6504R) ──
     url = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-present-balance"
@@ -208,12 +212,13 @@ def get_overseas_balance(natn_cd: str, currency: str,
             "profit_rate": float(s.get("evlu_pfls_rt1", 0))
         })
 
-    out2 = data.get("output2", [])
-    info = out2[0] if out2 else {}
-    deposit = float(info.get("frcr_dncl_amt_2", 0))
-    exrt = float(info.get("frst_bltn_exrt", 0))
+    # ── output3: 원화 총자산 (MTS 표시 금액과 동일) ──
+    out3 = data.get("output3", {})
+    if isinstance(out3, list):
+        out3 = out3[0] if out3 else {}
+    mts_krw_total = float(out3.get("tot_asst_amt", 0))  # 총자산금액(원화)
 
-    # ── 주문가능금액 (TTTS3007R) — 더 정확한 현금 ──
+    # ── 주문가능금액 (TTTS3007R) = 해당 통화의 실제 현금 ──
     time.sleep(0.1)
     url2 = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-psamount"
     params2 = {
@@ -221,22 +226,26 @@ def get_overseas_balance(natn_cd: str, currency: str,
         "OVRS_EXCG_CD": excg_order, "ITEM_CD": item_cd,
         "OVRS_ORD_UNPR": price
     }
+    cash = 0.0
+    exrt = 0.0
     try:
         r2 = requests.get(url2, headers=headers("TTTS3007R"), params=params2, timeout=10)
         r2.raise_for_status()
         d2 = r2.json()
-        orderable = float(d2.get("output", {}).get("ovrs_ord_psbl_amt", 0)) \
-            if d2.get("rt_cd") == "0" else None
+        if d2.get("rt_cd") == "0":
+            output = d2.get("output", {})
+            cash = float(output.get("ovrs_ord_psbl_amt", 0))
+            exrt = float(output.get("exrt", 0))  # 해당 통화 환율
     except Exception:
-        orderable = None
+        cash = 0.0
 
     return {
         "currency": currency,
         "stock_eval": stock_eval,
-        "cash_deposit": deposit,
-        "orderable_cash": orderable,
-        "total": stock_eval + deposit,
+        "cash": cash,
+        "total": stock_eval + cash,
         "exchange_rate": exrt,
+        "mts_krw_total": mts_krw_total,
         "stocks": stocks
     }
 
@@ -252,9 +261,12 @@ HAA_TICKERS  = {"SPY", "IWM", "VEA", "VWO", "PDBC", "VNQ", "TLT", "IEF", "BIL"}
 def split_usaa(usd_balance: dict) -> dict:
     """
     USD 잔고를 USLA / HAA로 분리
-    - USLA 현재 헷징모드 → 주식 보유 없이 USD 현금화 상태
-      → USAA_TR.json의 USD_USLA 값을 USLA 잔고로 사용
-    - HAA → API 실제 주식 평가금 + (전체 USD - USLA분 = HAA 현금)
+
+    현금 배분 로직:
+      usd_balance["cash"] = TTTS3007R 주문가능금액 (전체 USD 현금)
+      USLA 헷징모드 시: USLA현금 = USAA_TR.json의 USD_USLA
+                        HAA현금  = 전체현금 - USLA현금
+      USLA 투자모드 시: USLA/HAA 각각 API 주식 + TR.json 비율로 현금 배분
     """
     # USAA_TR.json 로드
     usaa_tr = {}
@@ -268,6 +280,8 @@ def split_usaa(usd_balance: dict) -> dict:
     usla_usd_from_json = float(usaa_tr.get("USD_USLA", 0))
     haa_usd_from_json  = float(usaa_tr.get("USD_HAA", 0))
     usaa_timestamp     = usaa_tr.get("timestamp", "")
+    usla_mode          = usaa_tr.get("USLA_Mode", "알수없음")
+    haa_mode           = usaa_tr.get("HAA_Mode", "알수없음")
 
     # API 종목을 USLA / HAA로 분류
     usla_stocks = []
@@ -284,37 +298,53 @@ def split_usaa(usd_balance: dict) -> dict:
             haa_stocks.append(s)
             haa_eval += s["eval_amt"]
         else:
-            # 미분류 종목은 HAA로
             haa_stocks.append(s)
             haa_eval += s["eval_amt"]
 
-    # USLA 총 잔고: USAA_TR.json의 USD_USLA 사용 (헷징모드 → 현금=달러RP)
-    # HAA 총 잔고: API 주식 평가금 + HAA에 배정된 현금(USD_HAA from json)
-    #   → HAA 현금 = USD_HAA - haa_eval (주식외 잔여)
-    haa_cash = max(haa_usd_from_json - haa_eval, 0)
-    haa_total = haa_eval + haa_cash
+    # 전체 USD 현금 = TTTS3007R 주문가능금액
+    total_cash = usd_balance.get("cash", 0)
 
-    # 전체 USD = USLA + HAA
-    usaa_total = usla_usd_from_json + haa_total
+    # USLA 현금 배분: 헷징모드면 JSON의 USD_USLA 전액이 현금
+    #                  투자모드면 JSON 비율로 배분
+    if usla_mode == "헷징모드" or usla_eval == 0:
+        # USLA는 주식 없이 전부 현금 → JSON의 USD_USLA를 현금으로
+        # 단, 전체현금을 초과할 수 없음
+        usla_cash = min(usla_usd_from_json, total_cash)
+        haa_cash = total_cash - usla_cash
+    else:
+        # 투자모드: JSON 비율로 현금 배분
+        json_total = usla_usd_from_json + haa_usd_from_json
+        if json_total > 0:
+            usla_ratio = usla_usd_from_json / json_total
+        else:
+            usla_ratio = 0.66  # 기본 비율
+        usla_cash = total_cash * usla_ratio
+        haa_cash = total_cash - usla_cash
+
+    usla_total = usla_eval + usla_cash
+    haa_total = haa_eval + haa_cash
+    usaa_total = usla_total + haa_total
 
     return {
+        "USLA_Mode": usla_mode,
+        "HAA_Mode": haa_mode,
         "USLA": {
-            "total_usd": usla_usd_from_json,
+            "mode": usla_mode,
+            "total_usd": usla_total,
             "stock_eval": usla_eval,
-            "cash": usla_usd_from_json - usla_eval,
-            "stocks": usla_stocks,
-            "note": "헷징모드 - USAA_TR.json 기준"
+            "cash": usla_cash,
+            "stocks": usla_stocks
         },
         "HAA": {
+            "mode": haa_mode,
             "total_usd": haa_total,
             "stock_eval": haa_eval,
             "cash": haa_cash,
             "stocks": haa_stocks
         },
         "USAA_total": usaa_total,
-        "USAA_TR_timestamp": usaa_timestamp,
-        "api_total": usd_balance.get("total", 0),
-        "api_cash": usd_balance.get("orderable_cash")
+        "total_cash": total_cash,
+        "USAA_TR_timestamp": usaa_timestamp
     }
 
 
@@ -347,26 +377,36 @@ def save_json(snapshot: dict):
 #  Telegram 포맷
 # ══════════════════════════════════════════════════
 
-def format_usd(msg: list, label: str, data: dict):
-    """USD 전략별 텔레그램 메시지 포맷"""
-    msg.append(f"\n── {label} ──")
+def format_usd(msg: list, label: str, data: dict, exrt: float = 0):
+    """USD 전략별 텔레그램 메시지 포맷 (원화 환산 포함)"""
+    mode_str = data.get("mode", "")
+    if mode_str:
+        msg.append(f"\n── {label} [모드: {mode_str}] ──")
+    else:
+        msg.append(f"\n── {label} ──")
     msg.append(f"  주식: ${data['stock_eval']:,.2f}")
     msg.append(f"  현금: ${data['cash']:,.2f}")
     msg.append(f"  합계: ${data['total_usd']:,.2f}")
+    if exrt > 0:
+        krw = data['total_usd'] * exrt
+        msg.append(f"  원화환산: ₩{krw:,.0f}")
     for s in data.get("stocks", []):
         msg.append(f"    {s['code']}: {s['qty']}주 ${s['eval_amt']:,.2f} ({s['profit_rate']:+.1f}%)")
 
 
 def format_overseas(msg: list, label: str, data: dict, symbol: str):
-    """해외 잔고 텔레그램 메시지 포맷"""
+    """해외 잔고 텔레그램 메시지 포맷 (원화 환산 + MTS총자산 포함)"""
     msg.append(f"\n── {label} ({data['currency']}) ──")
     msg.append(f"  주식: {symbol}{data['stock_eval']:,.0f}")
-    msg.append(f"  예수금: {symbol}{data['cash_deposit']:,.0f}")
-    if data.get("orderable_cash") is not None:
-        msg.append(f"  주문가능: {symbol}{data['orderable_cash']:,.0f}")
+    msg.append(f"  현금: {symbol}{data['cash']:,.0f}")
     msg.append(f"  합계: {symbol}{data['total']:,.0f}")
-    if data.get("exchange_rate"):
-        msg.append(f"  환율: {data['exchange_rate']:,.2f}")
+    exrt = data.get("exchange_rate", 0)
+    if exrt > 0:
+        krw_calc = data['total'] * exrt
+        msg.append(f"  원화환산: ₩{krw_calc:,.0f} (환율 {exrt:,.2f})")
+    mts_krw = data.get("mts_krw_total", 0)
+    if mts_krw > 0:
+        msg.append(f"  MTS총자산: ₩{mts_krw:,.0f}")
     for s in data.get("stocks", []):
         msg.append(f"    {s['code']}: {s['qty']}주 {symbol}{s['eval_amt']:,.0f} ({s['profit_rate']:+.1f}%)")
 
@@ -389,14 +429,23 @@ def run_us():
     usaa = split_usaa(usd)
 
     msg.append(f"\n{'='*30}")
+    msg.append(f"USLA 모드: {usaa['USLA_Mode']}")
+    msg.append(f"HAA 모드: {usaa['HAA_Mode']}")
+
+    exrt = usd.get("exchange_rate", 0)
+    usaa_krw = usaa['USAA_total'] * exrt if exrt > 0 else 0
+    mts_krw = usd.get("mts_krw_total", 0)
     msg.append(f"USAA 합계: ${usaa['USAA_total']:,.2f}")
-    msg.append(f"API 합계: ${usaa['api_total']:,.2f}")
-    if usaa.get("api_cash") is not None:
-        msg.append(f"API 주문가능: ${usaa['api_cash']:,.2f}")
+    if exrt > 0:
+        msg.append(f"  원화환산: ₩{usaa_krw:,.0f} (환율 {exrt:,.2f})")
+    if mts_krw > 0:
+        msg.append(f"  MTS총자산: ₩{mts_krw:,.0f}")
+    msg.append(f"  주식합계: ${usd['stock_eval']:,.2f}")
+    msg.append(f"  현금합계: ${usaa['total_cash']:,.2f}")
     msg.append(f"TR기준시점: {usaa['USAA_TR_timestamp']}")
 
-    format_usd(msg, "USLA (헷징모드)", usaa["USLA"])
-    format_usd(msg, "HAA", usaa["HAA"])
+    format_usd(msg, "USLA", usaa["USLA"], exrt)
+    format_usd(msg, "HAA", usaa["HAA"], exrt)
 
     snapshot = {
         "mode": "US",
@@ -437,12 +486,29 @@ def run_asia():
     else:
         format_overseas(msg, "HKQT", hkd, "HK$")
 
+    # ── ASIA 원화 환산 합계 ──
+    krw_total_all = 0.0
+    if "error" not in krw:
+        krw_total_all += krw.get("total", 0)
+    if "error" not in jpy:
+        jpy_exrt = jpy.get("exchange_rate", 0)
+        jpy_krw = jpy.get("total", 0) * jpy_exrt if jpy_exrt > 0 else 0
+        krw_total_all += jpy_krw
+    if "error" not in hkd:
+        hkd_exrt = hkd.get("exchange_rate", 0)
+        hkd_krw = hkd.get("total", 0) * hkd_exrt if hkd_exrt > 0 else 0
+        krw_total_all += hkd_krw
+    if krw_total_all > 0:
+        msg.append(f"\n{'='*30}")
+        msg.append(f"ASIA 원화환산 합계: ₩{krw_total_all:,.0f}")
+
     snapshot = {
         "mode": "ASIA",
         "timestamp": datetime.now().isoformat(),
         "KRW": krw,
         "JPY": jpy,
-        "HKD": hkd
+        "HKD": hkd,
+        "total_krw": krw_total_all
     }
     return snapshot, msg
 
@@ -471,7 +537,6 @@ def main():
 
     # Telegram 발송
     TA.send_tele(msg)
-    print("\n".join(msg)) ###
 
 
 if __name__ == "__main__":

@@ -3,11 +3,22 @@
     "timestamp": "2026-04-02T19:37:14.969154",
     "USLA_Mode": "헷징모드",
     "HAA_Mode": "공격모드",
+    "USLA_regime": -0.50,
+    "HAA_regime": 2.20,
     "USD_total": 78148.29,
     "USD_USLA": 77520.61020000001,
     "USD_HAA": 627.6797999999835,
+    "USLA_target": {
+        "CASH": 1.0
+    },
     "USLA_target_balance": 77520.61020000001,
     "USLA_target_weight": 0.6598352303279486,
+    "HAA_target": {
+        "IWM": 0.25,
+        "PDBC": 0.25,
+        "VEA": 0.25,
+        "VWO": 0.25
+    },
     "HAA_target_balance": 39964.18999999999,
     "HAA_target_weight": 0.3401647696720515,
     "Sell_order": [
