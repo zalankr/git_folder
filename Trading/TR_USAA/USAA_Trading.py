@@ -391,11 +391,17 @@ def save_TR_data(order_time, Sell_order, Buy_order, USLA, HAA, start):
     TR_data = {
         "round": order_time['round'],
         "timestamp": datetime.now().isoformat(),  # 타임스탬프 추가
+        "USLA_Mode": start['USLA_Mode'],
+        "HAA_Mode": start['HAA_Mode'],
+        "USLA_regime": start.get('USLA_regime', 0),
+        "HAA_regime": start.get('HAA_regime', 0),
         "USD_total": start['USD_total'],
         "USD_USLA": start['USD_USLA'],
         "USD_HAA": start['USD_HAA'],
+        "USLA_target": start['USLA_target'],
         "USLA_target_balance": start['USLA_target_balance'],
         "USLA_target_weight": start['USLA_target_weight'],
+        "HAA_target": start['HAA_target'],
         "HAA_target_balance": start['HAA_target_balance'],
         "HAA_target_weight": start['HAA_target_weight'],
         "Sell_order": Sell_order,
@@ -898,14 +904,14 @@ def USLA_target_regime():
     strategy_result = USLA_strategy(regime, momentum_df)
     if strategy_result is None:
         USLA_target_regime_message.append("USLA 경고: 전략 실행 실패, CASH로 대기")
-        return {'CASH': 1.0}, 0, USLA_target_regime_message
+        return {'CASH': 1.0}, -1, USLA_target_regime_message
 
     result, USLA_strategy_message = strategy_result
     USLA_target_regime_message.extend(USLA_strategy_message)
     USLA_regime = result['regime']
 
     USLA_target = {
-        ticker: weight 
+        ticker: round(float(weight), 6)
         for ticker, weight in result['allocation'].items() 
         if weight >= 0.001
     }
@@ -1213,10 +1219,18 @@ if order_time['round'] == 1:
         # USAA regime체크 및 거래 목표 데이터 만들기
         USLA_target, USLA_regime, USLA_message = USLA_target_regime()
         message.extend(USLA_message)
+        if USLA_regime < 0:
+            USLA_MODE = "헷징모드"
+        else:
+            USLA_MODE = "투자모드"
         
         # HAA regime체크 및 거래 목표 데이터 만들기
         HAA_target, HAA_regime, HAA_message = HAA_target_regime()
         message.extend(HAA_message)
+        if HAA_regime < 0:
+            HAA_MODE = "수비모드"
+        else:
+            HAA_MODE = "공격모드"
         
         # 지난 월 USAA / HAA Mode와 모델별 USD 비중 불러오기
         try:
@@ -1248,11 +1262,17 @@ if order_time['round'] == 1:
 
         # 초기 데이터
         start = {
+            "USLA_Mode": USLA_MODE,
+            "HAA_Mode": HAA_MODE,
+            "USLA_regime": USLA_regime,
+            "HAA_regime": HAA_regime,
             "USD_total": USD,
             "USD_USLA": USD_USLA,
             "USD_HAA": USD_HAA,
+            "USLA_target": USLA_target,
             "USLA_target_balance": USLA_target_balance,
             "USLA_target_weight": USLA_target_weight,
+            "HAA_target": HAA_target,
             "HAA_target_balance": HAA_target_balance,
             "HAA_target_weight": HAA_target_weight
         }
@@ -1466,8 +1486,8 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             target_balance = USLA[ticker]['target_weight'] * Total_balance
             USLA[ticker]['target_balance'] = target_balance  # 목표투자금 업데이트
             USLA[ticker]['target_qty'] = target_qty  # 목표수량 업데이트
-            USLA[ticker]['buy_qty'] = int(target_qty - USLA_qty[ticker] if target_qty > USLA_qty[ticker] else 0)  # 매수 수량 업데이트
-            USLA[ticker]['sell_qty'] = int(USLA_qty[ticker] - target_qty if target_qty < USLA_qty[ticker] else 0)  # 매도 수량 업데이트
+            USLA[ticker]['buy_qty'] = int(target_qty - USLA_qty.get(ticker, 0) if target_qty > USLA_qty.get(ticker, 0) else 0)
+            USLA[ticker]['sell_qty'] = int(USLA_qty.get(ticker, 0) - target_qty if target_qty < USLA_qty.get(ticker, 0) else 0)
 
         HAA = TR_data["HAA"]
         for ticker in HAA_ticker:
@@ -1490,8 +1510,8 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             target_balance = HAA[ticker]['target_weight'] * Total_balance
             HAA[ticker]['target_balance'] = target_balance  # 목표투자금 업데이트
             HAA[ticker]['target_qty'] = target_qty  # 목표수량 업데이트
-            HAA[ticker]['buy_qty'] = int(target_qty - HAA_qty[ticker] if target_qty > HAA_qty[ticker] else 0)  # 매수 수량 업데이트
-            HAA[ticker]['sell_qty'] = int(HAA_qty[ticker] - target_qty if target_qty < HAA_qty[ticker] else 0)  # 매도 수량 업데이트
+            HAA[ticker]['buy_qty'] = int(target_qty - HAA_qty.get(ticker, 0) if target_qty > HAA_qty.get(ticker, 0) else 0)
+            HAA[ticker]['sell_qty'] = int(HAA_qty.get(ticker, 0) - target_qty if target_qty < HAA_qty.get(ticker, 0) else 0)
 
         # 목표비중 합계 검증
         total_weight = 0
@@ -1573,11 +1593,17 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
 
         # 다음 order time으로 넘길 Trading data json 데이터 저장 및 메세지 출력
         start = {
+            "USLA_Mode": TR_data['USLA_Mode'],
+            "HAA_Mode": TR_data['HAA_Mode'],
+            "USLA_regime": TR_data['USLA_regime'],
+            "HAA_regime": TR_data['HAA_regime'],
             "USD_total": TR_data['USD_total'],
             "USD_USLA": TR_data['USD_USLA'],
             "USD_HAA": TR_data['USD_HAA'],
+            "USLA_target": TR_data['USLA_target'],
             "USLA_target_balance": TR_data['USLA_target_balance'],
             "USLA_target_weight": TR_data['USLA_target_weight'],
+            "HAA_target": TR_data['HAA_target'],
             "HAA_target_balance": TR_data['HAA_target_balance'],
             "HAA_target_weight": TR_data['HAA_target_weight']
         }
@@ -1610,21 +1636,20 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             
             # 계좌잔고 조회
             USD, USLA_balance, USLA_qty, USLA_price, HAA_balance, HAA_qty, HAA_price, Total_balance = get_balance()
-            
-            USLA_target, USLA_regime, USLA_message = USLA_target_regime()
-            message.append(f"USLA Regime: {USLA_regime:.2f}")
-            for i in USLA_target.keys():
+
+            message.append(f"USLA Regime: {TR_data['USLA_regime']}")
+            for i in TR_data["USLA_target"].keys():
                 if i == 'CASH':
-                    message.append(f"USLA CASH - weight:{USLA_target[i]:.2%}")
+                    message.append(f"USLA CASH - weight:{TR_data['USLA_target'][i]:.2%}")
                     continue
                 balance = float(USLA_qty.get(i, 0)) * float(USLA_price.get(i, 0))
                 weight = float(balance) / float(Total_balance) if Total_balance > 0 else 0
                 message.append(f"USLA {i} - weight:{weight:.2%}, qty:{int(USLA_qty.get(i, 0))}")
-            HAA_target, HAA_regime, HAA_message = HAA_target_regime()
-            message.append(f"HAA Regime: {HAA_regime:.2f}")
-            for i in HAA_target.keys():
+
+            message.append(f"HAA Regime: {TR_data['HAA_regime']}")
+            for i in TR_data["HAA_target"].keys():
                 if i == 'CASH':
-                    message.append(f"HAA CASH - weight:{HAA_target[i]:.2%}")
+                    message.append(f"HAA CASH - weight:{TR_data['HAA_target'][i]:.2%}")
                     continue
                 balance = float(HAA_qty.get(i, 0)) * float(HAA_price.get(i, 0))
                 weight = float(balance) / float(Total_balance) if Total_balance > 0 else 0
@@ -1654,11 +1679,17 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
                 USD_HAA = float(USD - USD_USLA)
 
             start = {
+                "USLA_Mode": TR_data['USLA_Mode'],
+                "HAA_Mode": TR_data['HAA_Mode'],
+                "USLA_regime": TR_data['USLA_regime'],
+                "HAA_regime": TR_data['HAA_regime'],
                 "USD_total": USD,
                 "USD_USLA": USD_USLA,
                 "USD_HAA": USD_HAA,
+                "USLA_target": TR_data['USLA_target'],
                 "USLA_target_balance": float(USLA_balance + USD_USLA),
                 "USLA_target_weight": float((USLA_balance + USD_USLA) / Total_balance) if Total_balance > 0 else 0.66,
+                "HAA_target": TR_data['HAA_target'],
                 "HAA_target_balance": float(HAA_balance + USD_HAA),
                 "HAA_target_weight": float((HAA_balance + USD_HAA) / Total_balance) if Total_balance > 0 else 0.34
             }        
