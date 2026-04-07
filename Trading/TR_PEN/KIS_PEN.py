@@ -1052,7 +1052,7 @@ class KIS_API:
         for attempt in range(3):   # 최대 3회 재시도
             try:
                 self._rate_limit_sleep()
-                res = requests.get(url, headers=headers, params=params, timeout=5)
+                res = requests.get(url, headers=headers, params=params, timeout=10)
                 res.raise_for_status()
                 data = res.json()
 
@@ -1068,7 +1068,7 @@ class KIS_API:
 
             except Exception as e:
                 if attempt < 2:
-                    time.sleep(2)
+                    time.sleep(3)
                     continue
                 TA.send_tele(f"거래일 조회 오류 (3회 실패): {e}")
                 return False
