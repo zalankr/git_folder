@@ -454,14 +454,10 @@ class KIS_API:
     # 홍콩 주식 종목별 잔고 (체결기준 현재잔고)
     # ============================================
     def get_HK_stock_balance(self) -> Optional[List[Dict]]:
-        """
-        홍콩 주식 종목별 잔고 (체결기준 현재잔고)
-        CTRP6504R: 해외주식 체결기준현재잔고
-        NATN_CD: 344 (홍콩)
-        """
+        """홍콩 주식 종목별 잔고 (체결기준 현재잔고, 연속조회 대응)"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
@@ -469,51 +465,86 @@ class KIS_API:
             "appSecret": self.app_secret,
             "tr_id": "CTRP6504R"
         }
-        
+
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "WCRC_FRCR_DVSN_CD": "02",  # 02: 외화
-            "NATN_CD": self.NATN_CD,     # 344: 홍콩
-            "TR_MKET_CD": "00",          # 00: 전체
-            "INQR_DVSN_CD": "00"         # 00: 전체
+            "WCRC_FRCR_DVSN_CD": "02",
+            "NATN_CD": self.NATN_CD,
+            "TR_MKET_CD": "00",
+            "INQR_DVSN_CD": "00",
+            "CTX_AREA_FK200": "",
+            "CTX_AREA_NK200": ""
         }
-        
+
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('rt_cd') != '0':
-                TA.send_tele(f"HK잔고 API 오류: {data.get('msg1')}")
-                return None
-            
-            output1 = data.get('output1', [])
-            stocks = []
-            
-            for stock in output1:
-                # ✅ ccld_qty_smtl1: 체결수량합계 (전일잔고 + 당일매수 - 당일매도)
-                quantity = int(float(stock.get('ccld_qty_smtl1', 0)))
-                if quantity == 0:
-                    continue
-                
-                stock_info = {
-                    'ticker': stock.get('pdno', ''),
-                    'name': stock.get('prdt_name', ''),
-                    'quantity': quantity,
-                    'avg_price': float(stock.get('avg_unpr3', 0)),
-                    'current_price': float(stock.get('ovrs_now_pric1', 0)),
-                    'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),     # HKD 평가금액
-                    'profit_loss': float(stock.get('evlu_pfls_amt2', 0)),
-                    'profit_loss_rate': float(stock.get('evlu_pfls_rt1', 0)),
-                    'exchange': stock.get('ovrs_excg_cd', ''),
-                    'thdt_buy_qty': int(float(stock.get('thdt_buy_ccld_qty1', 0))),
-                    'thdt_sell_qty': int(float(stock.get('thdt_sll_ccld_qty1', 0)))
-                }
-                stocks.append(stock_info)
-            
+            stocks: List[Dict] = []
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
+
+            while True:
+                headers["tr_cont"] = tr_cont_req
+
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"HK잔고 연결 오류(최종): {conn_err}")
+                            return None
+                        time.sleep(1.0 * (attempt + 1))
+
+                if data is None:
+                    return None
+                if data.get('rt_cd') != '0':
+                    TA.send_tele(f"HK잔고 API 오류: {data.get('msg1')}")
+                    return None
+
+                for stock in data.get('output1', []):
+                    quantity = int(float(stock.get('ccld_qty_smtl1', 0)))
+                    if quantity == 0:
+                        continue
+                    stocks.append({
+                        'ticker': stock.get('pdno', ''),
+                        'name': stock.get('prdt_name', ''),
+                        'quantity': quantity,
+                        'avg_price': float(stock.get('avg_unpr3', 0)),
+                        'current_price': float(stock.get('ovrs_now_pric1', 0)),
+                        'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
+                        'profit_loss': float(stock.get('evlu_pfls_amt2', 0)),
+                        'profit_loss_rate': float(stock.get('evlu_pfls_rt1', 0)),
+                        'exchange': stock.get('ovrs_excg_cd', ''),
+                        'thdt_buy_qty': int(float(stock.get('thdt_buy_ccld_qty1', 0))),
+                        'thdt_sell_qty': int(float(stock.get('thdt_sll_ccld_qty1', 0)))
+                    })
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
+                FK200 = data.get('ctx_area_fk200', '').strip()
+                NK200 = data.get('ctx_area_nk200', '').strip()
+                if not FK200 or not NK200:
+                    break
+                params['CTX_AREA_FK200'] = FK200
+                params['CTX_AREA_NK200'] = NK200
+                tr_cont_req = "N"
+                time.sleep(0.12)
+
             return stocks
-            
+
         except Exception as e:
             TA.send_tele(f"HK잔고 조회 오류: {e}")
             return None
@@ -561,10 +592,10 @@ class KIS_API:
     # 홍콩 HKD 예수금 정보 (참조용)
     # ============================================
     def get_HK_hkd_balance(self) -> Optional[Dict]:
-        """홍콩 HKD 예수금 (참조용 - 실제 주문가능금액은 get_HK_order_available 사용)"""
+        """홍콩 HKD 예수금 (연속조회 마지막 페이지 + HKD 필터)"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
@@ -572,39 +603,84 @@ class KIS_API:
             "appSecret": self.app_secret,
             "tr_id": "CTRP6504R"
         }
-        
+
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
             "WCRC_FRCR_DVSN_CD": "02",
             "NATN_CD": self.NATN_CD,  # 344
             "TR_MKET_CD": "00",
-            "INQR_DVSN_CD": "00"
+            "INQR_DVSN_CD": "00",
+            "CTX_AREA_FK200": "",
+            "CTX_AREA_NK200": ""
         }
-        
+
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('rt_cd') != '0':
-                return None
-            
-            output2 = data.get('output2', [])
-            if not output2:
+            last_hkd_info: Optional[Dict] = None
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
+
+            while True:
+                headers["tr_cont"] = tr_cont_req
+
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout):
+                        if attempt == max_retry - 1:
+                            return None
+                        time.sleep(1.0 * (attempt + 1))
+
+                if data is None or data.get('rt_cd') != '0':
+                    return None
+
+                output2 = data.get('output2', [])
+                if output2:
+                    # HKD 레코드만 선택 (다통화 계좌 대비)
+                    for row in output2:
+                        if row.get('crcy_cd', '').upper() == 'HKD':
+                            last_hkd_info = row
+                            break
+                    else:
+                        last_hkd_info = output2[0]
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
+                FK200 = data.get('ctx_area_fk200', '').strip()
+                NK200 = data.get('ctx_area_nk200', '').strip()
+                if not FK200 or not NK200:
+                    break
+                params['CTX_AREA_FK200'] = FK200
+                params['CTX_AREA_NK200'] = NK200
+                tr_cont_req = "N"
+                time.sleep(0.12)
+
+            if not last_hkd_info:
                 return None
 
-            hkd_info = output2[0]
-            deposit = float(hkd_info.get('frcr_dncl_amt_2', 0))
             return {
-                'currency': hkd_info.get('crcy_cd', 'HKD'),
-                'deposit': deposit,
-                'withdrawable': float(hkd_info.get('frcr_drwg_psbl_amt_1', 0)),
-                'sll_amt_smtl': float(hkd_info.get('frcr_sll_amt_smtl', 0)),
-                'exchange_rate': float(hkd_info.get('frst_bltn_exrt', 0)),
-                'krw_value': float(hkd_info.get('frcr_evlu_amt2', 0))
+                'currency': last_hkd_info.get('crcy_cd', 'HKD'),
+                'deposit': float(last_hkd_info.get('frcr_dncl_amt_2', 0)),
+                'withdrawable': float(last_hkd_info.get('frcr_drwg_psbl_amt_1', 0)),
+                'sll_amt_smtl': float(last_hkd_info.get('frcr_sll_amt_smtl', 0)),
+                'exchange_rate': float(last_hkd_info.get('frst_bltn_exrt', 0)),
+                'krw_value': float(last_hkd_info.get('frcr_evlu_amt2', 0))
             }
-        except:
+        except Exception:
             return None
 
     # ============================================
@@ -612,16 +688,14 @@ class KIS_API:
     # ============================================
     def get_unfilled_orders(self, start_date: Optional[str] = None,
                             end_date: Optional[str] = None) -> List[Dict]:
-        """
-        미체결 주문 조회 (홍콩 SEHK)
-        """
+        """홍콩 미체결 주문 조회 (연속조회 대응)"""
         if start_date is None or end_date is None:
             today = datetime.now().strftime('%Y%m%d')
             start_date = end_date = today
-        
+
         path = "uapi/overseas-stock/v1/trading/inquire-nccs"
         url = f"{self.url_base}/{path}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
@@ -629,7 +703,7 @@ class KIS_API:
             "appSecret": self.app_secret,
             "tr_id": "TTTS3018R"
         }
-        
+
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
@@ -637,8 +711,8 @@ class KIS_API:
             "ORD_STRT_DT": start_date,
             "ORD_END_DT": end_date,
             "SLL_BUY_DVSN": "00",
-            "CCLD_NCCS_DVSN": "02",       # 02: 미체결만
-            "OVRS_EXCG_CD": self.EXCHANGE_ORDER,  # "SEHK"
+            "CCLD_NCCS_DVSN": "02",
+            "OVRS_EXCG_CD": self.EXCHANGE_ORDER,
             "SORT_SQN": "DS",
             "ORD_DT": "",
             "ORD_GNO_BRNO": "",
@@ -646,16 +720,40 @@ class KIS_API:
             "CTX_AREA_NK200": "",
             "CTX_AREA_FK200": ""
         }
-        
+
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            result = response.json()
-            
-            if result.get('rt_cd') == '0':
-                orders = result.get('output', [])
-                unfilled_orders = []
-                for order in orders:
+            unfilled_orders: List[Dict] = []
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
+
+            while True:
+                headers["tr_cont"] = tr_cont_req
+
+                result = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        result = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"HK 미체결 연결 오류(최종): {conn_err}")
+                            return []
+                        time.sleep(1.0 * (attempt + 1))
+
+                if result is None:
+                    return []
+                if result.get('rt_cd') != '0':
+                    return []
+
+                for order in result.get('output', []):
                     unfilled_orders.append({
                         'order_number': order.get('odno', ''),
                         'ticker': order.get('pdno', ''),
@@ -668,9 +766,24 @@ class KIS_API:
                         'exchange': order.get('ovrs_excg_cd', ''),
                         'status': order.get('prcs_stat_name', '')
                     })
-                return unfilled_orders
-            else:
-                return []
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
+                FK200 = result.get('ctx_area_fk200', '').strip()
+                NK200 = result.get('ctx_area_nk200', '').strip()
+                if not FK200 or not NK200:
+                    break
+                params['CTX_AREA_FK200'] = FK200
+                params['CTX_AREA_NK200'] = NK200
+                tr_cont_req = "N"
+                time.sleep(0.12)
+
+            return unfilled_orders
+
         except Exception as e:
             TA.send_tele(f"HK 미체결 조회 오류: {e}")
             return []

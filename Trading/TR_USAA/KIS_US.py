@@ -542,10 +542,10 @@ class KIS_API:
     
     # 미국 주식 종목별 잔고
     def get_US_stock_balance(self) -> Optional[List[Dict]]:
-        """미국 주식 종목별 잔고 (체결기준 현재잔고)"""
+        """미국 주식 종목별 잔고 (체결기준 현재잔고, 연속조회 대응)"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
@@ -553,64 +553,97 @@ class KIS_API:
             "appSecret": self.app_secret,
             "tr_id": "CTRP6504R"
         }
-        
+
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "WCRC_FRCR_DVSN_CD": "02",  # 02: 외화
-            "NATN_CD": "840",  # 840: 미국
-            "TR_MKET_CD": "00",  # 00: 전체
-            "INQR_DVSN_CD": "00"  # 00: 전체
+            "WCRC_FRCR_DVSN_CD": "02",   # 02: 외화
+            "NATN_CD": "840",            # 840: 미국
+            "TR_MKET_CD": "00",
+            "INQR_DVSN_CD": "00",
+            "CTX_AREA_FK200": "",
+            "CTX_AREA_NK200": ""
         }
-        
+
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('rt_cd') != '0':
-                TA.send_tele(f"API 오류: {data.get('msg1')}")
-                return None
-            
-            output1 = data.get('output1', [])
-            stocks = []
-            
-            for stock in output1:
-                # 핵심 수정: ccld_qty_smtl1 (체결수량합계) 사용
-                quantity = int(float(stock.get('ccld_qty_smtl1', 0)))
-                
-                # 수량이 0인 종목은 제외 (옵션)
-                if quantity == 0:
-                    continue
-                
-                stock_info = {
-                    'ticker': stock.get('pdno', ''),
-                    'name': stock.get('prdt_name', ''),
-                    'quantity': quantity,  # 체결수량합계 = 전일잔고 + 당일매수 - 당일매도
-                    'avg_price': float(stock.get('avg_unpr3', 0)),
-                    'current_price': float(stock.get('ovrs_now_pric1', 0)),
-                    'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
-                    'profit_loss': float(stock.get('evlu_pfls_amt2', 0)),
-                    'profit_loss_rate': float(stock.get('evlu_pfls_rt1', 0)),
-                    'exchange': stock.get('ovrs_excg_cd', ''),
-                    # 추가 정보 (선택)
-                    'thdt_buy_qty': int(float(stock.get('thdt_buy_ccld_qty1', 0))),  # 당일 매수량
-                    'thdt_sell_qty': int(float(stock.get('thdt_sll_ccld_qty1', 0)))  # 당일 매도량
-                }
-                stocks.append(stock_info)
-            
+            stocks: List[Dict] = []
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
+
+            while True:
+                headers["tr_cont"] = tr_cont_req
+
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"US잔고 연결 오류(최종): {conn_err}")
+                            return None
+                        time.sleep(1.0 * (attempt + 1))
+
+                if data is None:
+                    return None
+
+                if data.get('rt_cd') != '0':
+                    TA.send_tele(f"US잔고 API 오류: {data.get('msg1')}")
+                    return None
+
+                for stock in data.get('output1', []):
+                    quantity = int(float(stock.get('ccld_qty_smtl1', 0)))
+                    if quantity == 0:
+                        continue
+                    stocks.append({
+                        'ticker': stock.get('pdno', ''),
+                        'name': stock.get('prdt_name', ''),
+                        'quantity': quantity,
+                        'avg_price': float(stock.get('avg_unpr3', 0)),
+                        'current_price': float(stock.get('ovrs_now_pric1', 0)),
+                        'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
+                        'profit_loss': float(stock.get('evlu_pfls_amt2', 0)),
+                        'profit_loss_rate': float(stock.get('evlu_pfls_rt1', 0)),
+                        'exchange': stock.get('ovrs_excg_cd', ''),
+                        'thdt_buy_qty': int(float(stock.get('thdt_buy_ccld_qty1', 0))),
+                        'thdt_sell_qty': int(float(stock.get('thdt_sll_ccld_qty1', 0)))
+                    })
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
+                FK200 = data.get('ctx_area_fk200', '').strip()
+                NK200 = data.get('ctx_area_nk200', '').strip()
+                if not FK200 or not NK200:
+                    break
+                params['CTX_AREA_FK200'] = FK200
+                params['CTX_AREA_NK200'] = NK200
+                tr_cont_req = "N"
+                time.sleep(0.12)
+
             return stocks
-            
+
         except Exception as e:
-            TA.send_tele(f"잔고 조회 오류: {e}")
+            TA.send_tele(f"US잔고 조회 오류: {e}")
             return None
 
     # 미국 달러 예수금 X
     def get_US_dollar_balance(self) -> Optional[Dict]:
-        """미국 달러 예수금"""
+        """미국 달러 예수금 (연속조회 마지막 페이지 기준)"""
         path = "uapi/overseas-stock/v1/trading/inquire-present-balance"
         url = f"{self.url_base}/{path}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
@@ -618,42 +651,84 @@ class KIS_API:
             "appSecret": self.app_secret,
             "tr_id": "CTRP6504R"
         }
-        
+
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
             "WCRC_FRCR_DVSN_CD": "02",
             "NATN_CD": "840",
             "TR_MKET_CD": "00",
-            "INQR_DVSN_CD": "00"
+            "INQR_DVSN_CD": "00",
+            "CTX_AREA_FK200": "",
+            "CTX_AREA_NK200": ""
         }
-        
+
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('rt_cd') != '0':
-                return None
-            
-            output2 = data.get('output2', [])
-            if not output2:
+            last_usd_info: Optional[Dict] = None
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
+
+            while True:
+                headers["tr_cont"] = tr_cont_req
+
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout):
+                        if attempt == max_retry - 1:
+                            return None
+                        time.sleep(1.0 * (attempt + 1))
+
+                if data is None or data.get('rt_cd') != '0':
+                    return None
+
+                output2 = data.get('output2', [])
+                if output2:
+                    # USD 레코드만 선택 (다통화 계좌 대비)
+                    for row in output2:
+                        if row.get('crcy_cd', '').upper() == 'USD':
+                            last_usd_info = row
+                            break
+                    else:
+                        last_usd_info = output2[0]
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
+                FK200 = data.get('ctx_area_fk200', '').strip()
+                NK200 = data.get('ctx_area_nk200', '').strip()
+                if not FK200 or not NK200:
+                    break
+                params['CTX_AREA_FK200'] = FK200
+                params['CTX_AREA_NK200'] = NK200
+                tr_cont_req = "N"
+                time.sleep(0.12)
+
+            if not last_usd_info:
                 return None
 
-            usd_info = output2[0]
-            deposit      = float(usd_info.get('frcr_dncl_amt_2', 0))      # 외화예수금 (T+2 미결제 제외)
-            sll_amt_smtl = float(usd_info.get('frcr_sll_amt_smtl', 0))    # 외화매도금액합계 (T+2 미결제 매도금 전체)
-            # 주의: sll_amt_smtl은 총 매도금이며 이미 재매수에 사용된 금액 포함
-            # 정확한 현재 주문가능금액은 TTTS3007R(get_US_order_available)로 조회
             return {
-                'currency': usd_info.get('crcy_cd', 'USD'),
-                'deposit': deposit,
-                'withdrawable': float(usd_info.get('frcr_drwg_psbl_amt_1', 0)),
-                'sll_amt_smtl': sll_amt_smtl,      # T+2 미결제 매도금 전체 (참조용)
-                'exchange_rate': float(usd_info.get('frst_bltn_exrt', 0)),
-                'krw_value': float(usd_info.get('frcr_evlu_amt2', 0))
+                'currency': last_usd_info.get('crcy_cd', 'USD'),
+                'deposit': float(last_usd_info.get('frcr_dncl_amt_2', 0)),
+                'withdrawable': float(last_usd_info.get('frcr_drwg_psbl_amt_1', 0)),
+                'sll_amt_smtl': float(last_usd_info.get('frcr_sll_amt_smtl', 0)),
+                'exchange_rate': float(last_usd_info.get('frst_bltn_exrt', 0)),
+                'krw_value': float(last_usd_info.get('frcr_evlu_amt2', 0))
             }
-        except:
+        except Exception:
             return None
 
     # 미국 달러 실제주문가능금액
@@ -739,11 +814,8 @@ class KIS_API:
             exchange = None
         
         if exchange is None:
-            print(f"{ticker} 거래소를 찾을 수 없습니다.")
+            TA.send_tele(f"{ticker} 거래소를 찾을 수 없습니다.")
             return None
-        
-        # 체결 내역 조회
-        print(f"\n주문번호 {order_number} 체결 내역 확인 중...")
         
         path = "uapi/overseas-stock/v1/trading/inquire-ccnl"
         url = f"{self.url_base}/{path}"
@@ -795,14 +867,14 @@ class KIS_API:
                             'order_type': order.get('sll_buy_dvsn_cd_name', '알 수 없음')
                         }
                 
-                print(f"주문번호 {order_number}를 찾을 수 없습니다.")
+                TA.send_tele(f"주문번호 {order_number}를 찾을 수 없습니다.")
                 return None
             else:
-                print(f"조회 실패: {result.get('msg1')}")
+                TA.send_tele(f"조회 실패: {result.get('msg1')}")
                 return None
                 
         except Exception as e:
-            print(f"체결 확인 중 오류: {e}")
+            TA.send_tele(f"체결 확인 중 오류: {e}")
             return None
 
     # 미국 주식 주문 취소
@@ -895,25 +967,16 @@ class KIS_API:
             return None
 
     # 미체결 주문 조회
-    def get_unfilled_orders(self, start_date: Optional[str] = None, 
+    def get_unfilled_orders(self, start_date: Optional[str] = None,
                         end_date: Optional[str] = None) -> List[Dict]:
-        """
-        미체결 주문 조회
-        
-        Parameters:
-        start_date (str): 시작일 (YYYYMMDD) - None이면 오늘
-        end_date (str): 종료일 (YYYYMMDD) - None이면 오늘
-        
-        Returns:
-        List[Dict]: 미체결 주문 리스트
-        """
+        """미국 미체결 주문 조회 (연속조회 대응)"""
         if start_date is None or end_date is None:
             today = datetime.now().strftime('%Y%m%d')
             start_date = end_date = today
-        
+
         path = "uapi/overseas-stock/v1/trading/inquire-nccs"
         url = f"{self.url_base}/{path}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "authorization": f"Bearer {self.access_token}",
@@ -921,16 +984,16 @@ class KIS_API:
             "appSecret": self.app_secret,
             "tr_id": "TTTS3018R"
         }
-        
+
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
             "PDNO": "",
             "ORD_STRT_DT": start_date,
             "ORD_END_DT": end_date,
-            "SLL_BUY_DVSN": "00",  # 00: 전체
-            "CCLD_NCCS_DVSN": "02",  # 02: 미체결만
-            "OVRS_EXCG_CD": "",  # 전체
+            "SLL_BUY_DVSN": "00",
+            "CCLD_NCCS_DVSN": "02",
+            "OVRS_EXCG_CD": "",
             "SORT_SQN": "DS",
             "ORD_DT": "",
             "ORD_GNO_BRNO": "",
@@ -938,18 +1001,41 @@ class KIS_API:
             "CTX_AREA_NK200": "",
             "CTX_AREA_FK200": ""
         }
-        
+
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if result.get('rt_cd') == '0':
-                orders = result.get('output', [])
-                
-                unfilled_orders = []
-                for order in orders:
+            unfilled_orders: List[Dict] = []
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
+
+            while True:
+                headers["tr_cont"] = tr_cont_req
+
+                result = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        result = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"US 미체결 연결 오류(최종): {conn_err}")
+                            return []
+                        time.sleep(1.0 * (attempt + 1))
+
+                if result is None:
+                    return []
+                if result.get('rt_cd') != '0':
+                    TA.send_tele(f"US 미체결 조회 실패: {result.get('msg1')}")
+                    return []
+
+                for order in result.get('output', []):
                     unfilled_orders.append({
                         'order_number': order.get('odno', ''),
                         'ticker': order.get('pdno', ''),
@@ -962,14 +1048,26 @@ class KIS_API:
                         'exchange': order.get('ovrs_excg_cd', ''),
                         'status': order.get('prcs_stat_name', '')
                     })
-                
-                return unfilled_orders
-            else:
-                print(f"미체결 조회 실패: {result.get('msg1')}")
-                return []
-                
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
+                FK200 = result.get('ctx_area_fk200', '').strip()
+                NK200 = result.get('ctx_area_nk200', '').strip()
+                if not FK200 or not NK200:
+                    break
+                params['CTX_AREA_FK200'] = FK200
+                params['CTX_AREA_NK200'] = NK200
+                tr_cont_req = "N"
+                time.sleep(0.12)
+
+            return unfilled_orders
+
         except Exception as e:
-            print(f"미체결 조회 오류: {e}")
+            TA.send_tele(f"US 미체결 조회 오류: {e}")
             return []
 
     # 모든 미체결 주문 취소 >>> 오류수정
@@ -1229,43 +1327,40 @@ class KIS_API:
 
     # 특정 ticker의 보유 잔고 조회
     def get_ticker_balance(self, ticker: str) -> Union[Dict, str]:
-        """특정 ticker의 계좌 내 보유 잔고 조회"""
+        """특정 ticker의 계좌 내 보유 잔고 조회 (거래소별 연속조회 대응)"""
         if not ticker:
             return "error: 티커를 입력해주세요."
-        
+
         ticker = ticker.upper()
-        
+
         # 1. 거래소 조회
         exchange = self.get_exchange_by_ticker(ticker)
-        
         if not isinstance(exchange, str) or exchange.startswith("error"):
             return f"error: {ticker} 거래소 조회 실패"
-        
+
         # 2. 주요 거래소 목록 (첫 번째는 get_exchange_by_ticker 결과)
         exchanges_to_try = [exchange]
-        
-        # 첫 번째 조회가 실패할 경우를 대비한 대체 거래소들
         if exchange not in ['NAS', 'NASD']:
             exchanges_to_try.append('NASD')
         if exchange not in ['NYS', 'NYSE']:
             exchanges_to_try.append('NYSE')
         if exchange not in ['AMS', 'AMEX']:
             exchanges_to_try.append('AMEX')
-        
-        # 3. 여러 거래소에서 순회 조회
+
+        currency_map = {
+            "NAS": "USD", "NASD": "USD", "NYS": "USD", "NYSE": "USD",
+            "AMS": "USD", "AMEX": "USD", "BAY": "USD", "BAQ": "USD", "BAA": "USD",
+            "SEHK": "HKD", "SHAA": "CNY", "SZAA": "CNY",
+            "TKSE": "JPY", "HASE": "VND", "VNSE": "VND"
+        }
+
+        path = "uapi/overseas-stock/v1/trading/inquire-balance"
+        url = f"{self.url_base}/{path}"
+
+        # 3. 각 거래소에서 연속조회로 전수 확인
         for try_exchange in exchanges_to_try:
-            currency_map = {
-                "NAS": "USD", "NASD": "USD", "NYS": "USD", "NYSE": "USD", 
-                "AMS": "USD", "AMEX": "USD", "BAY": "USD", "BAQ": "USD", "BAA": "USD",
-                "SEHK": "HKD", "SHAA": "CNY", "SZAA": "CNY",
-                "TKSE": "JPY", "HASE": "VND", "VNSE": "VND"
-            }
-            
             tr_crcy_cd = currency_map.get(try_exchange, "USD")
-            
-            path = "uapi/overseas-stock/v1/trading/inquire-balance"
-            url = f"{self.url_base}/{path}"
-            
+
             headers = {
                 "Content-Type": "application/json",
                 "authorization": f"Bearer {self.access_token}",
@@ -1273,7 +1368,7 @@ class KIS_API:
                 "appSecret": self.app_secret,
                 "tr_id": "TTTS3012R"
             }
-            
+
             params = {
                 "CANO": self.cano,
                 "ACNT_PRDT_CD": self.acnt_prdt_cd,
@@ -1282,47 +1377,82 @@ class KIS_API:
                 "CTX_AREA_FK200": "",
                 "CTX_AREA_NK200": ""
             }
-            
+
+            tr_cont_req = ""
+            page_count = 0
+            MAX_PAGE = 30
+            max_retry = 3
+            exchange_error = False
+
             try:
-                response = requests.get(url, headers=headers, params=params, timeout=10)
-                response.raise_for_status()
-                
-                result = response.json()
-                
-                if result.get('rt_cd') != '0':
-                    continue
-                
-                # output1에서 해당 ticker 찾기
-                output1 = result.get('output1', [])
-                
-                if isinstance(output1, dict):
-                    output1 = [output1]
-                elif not isinstance(output1, list):
-                    output1 = []
-                
-                for item in output1:
-                    item_ticker = item.get('ovrs_pdno', '').upper()
-                    
-                    if item_ticker == ticker:
-                        holding_qty = int(float(item.get('ccld_qty_smtl1', item.get('ovrs_cblc_qty', '0'))))
-                        
-                        return {
-                            'ticker': ticker,
-                            'holding_qty': holding_qty,
-                            'ovrs_cblc_qty': int(float(item.get('ovrs_cblc_qty', 0))),
-                            'ord_psbl_qty': int(float(item.get('ord_psbl_qty', 0))),
-                            'avg_price': float(item.get('pchs_avg_pric', '0')),
-                            'current_price': float(item.get('now_pric2', '0')),
-                            'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')),
-                            'profit_loss': float(item.get('frcr_evlu_pfls_amt', '0')),
-                            'profit_rate': float(item.get('evlu_pfls_rt', '0')),
-                            'currency': item.get('tr_crcy_cd', tr_crcy_cd),
-                            'exchange': item.get('ovrs_excg_cd', try_exchange)
-                        }
-            
+                while True:
+                    headers["tr_cont"] = tr_cont_req
+
+                    result = None
+                    resp_tr_cont = ""
+                    for attempt in range(max_retry):
+                        try:
+                            response = requests.get(url, headers=headers, params=params, timeout=10)
+                            response.raise_for_status()
+                            result = response.json()
+                            resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                            break
+                        except (requests.exceptions.ConnectionError,
+                                requests.exceptions.ChunkedEncodingError,
+                                requests.exceptions.ReadTimeout):
+                            if attempt == max_retry - 1:
+                                exchange_error = True
+                                break
+                            time.sleep(1.0 * (attempt + 1))
+
+                    if exchange_error or result is None:
+                        break
+                    if result.get('rt_cd') != '0':
+                        break
+
+                    output1 = result.get('output1', [])
+                    if isinstance(output1, dict):
+                        output1 = [output1]
+                    elif not isinstance(output1, list):
+                        output1 = []
+
+                    for item in output1:
+                        item_ticker = item.get('ovrs_pdno', '').upper()
+                        if item_ticker == ticker:
+                            holding_qty = int(float(item.get('ccld_qty_smtl1',
+                                                              item.get('ovrs_cblc_qty', '0'))))
+                            return {
+                                'ticker': ticker,
+                                'holding_qty': holding_qty,
+                                'ovrs_cblc_qty': int(float(item.get('ovrs_cblc_qty', 0))),
+                                'ord_psbl_qty': int(float(item.get('ord_psbl_qty', 0))),
+                                'avg_price': float(item.get('pchs_avg_pric', '0')),
+                                'current_price': float(item.get('now_pric2', '0')),
+                                'eval_amount': float(item.get('ovrs_stck_evlu_amt', '0')),
+                                'profit_loss': float(item.get('frcr_evlu_pfls_amt', '0')),
+                                'profit_rate': float(item.get('evlu_pfls_rt', '0')),
+                                'currency': item.get('tr_crcy_cd', tr_crcy_cd),
+                                'exchange': item.get('ovrs_excg_cd', try_exchange)
+                            }
+
+                    page_count += 1
+                    if page_count >= MAX_PAGE:
+                        break
+                    if resp_tr_cont in ("D", "E", "F"):
+                        break
+
+                    FK200 = result.get('ctx_area_fk200', '').strip()
+                    NK200 = result.get('ctx_area_nk200', '').strip()
+                    if not FK200 or not NK200:
+                        break
+                    params['CTX_AREA_FK200'] = FK200
+                    params['CTX_AREA_NK200'] = NK200
+                    tr_cont_req = "N"
+                    time.sleep(0.12)
+
             except Exception:
                 continue
-        
+
         return "보유 잔고 없음"
         
 """

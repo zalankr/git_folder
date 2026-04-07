@@ -1,9 +1,10 @@
 ﻿code,name,weight,category
-ACASH,CASH,0.00,
+ACASH,CASH,0,
 A052460,아이크래프트,0.0125,Small Cap Growth
 A143540,영우디에스피,0.0125,Small Cap Growth
 A089150,케이씨티,0.0125,Small Cap Growth
 A398120,에스지헬스케어,0.0125,Small Cap Growth
+A321260,프로이천,0.0125,Small Cap Growth
 A088130,동아엘텍,0.0125,Small Cap Growth
 A290520,신도기연,0.0125,Small Cap Growth
 A033230,인성정보,0.0125,Small Cap Growth
@@ -17,29 +18,28 @@ A065440,이루온,0.0125,Small Cap Growth
 A092190,서울바이오시스,0.0125,Small Cap Growth
 A093190,빅솔론,0.0125,Small Cap Growth
 A017510,세명전기,0.0125,Small Cap Growth
-A071200,인피니트헬스케어,0.0125,Small Cap Growth
-A006620,동구바이오제약,0.0125,Small Cap Growth
-A209640,와이제이링크,0.0125,Small Cap Growth
+A131090,시큐브,0.0125,Small Cap Growth
+A065770,CS,0.0125,Small Cap Growth
 A020180,대신정보통신,0.0125,Small Cap Simple-Fin
 A258790,소프트캠프,0.0125,Small Cap Simple-Fin
 A047080,한빛소프트,0.0125,Small Cap Simple-Fin
-A143540,영우디에스피,0.0125,Small Cap Simple-Fin
 A066360,체리부로,0.0125,Small Cap Simple-Fin
+A143540,영우디에스피,0.0125,Small Cap Simple-Fin
 A090080,평화산업,0.0125,Small Cap Simple-Fin
-A336060,웨이버스,0.0125,Small Cap Simple-Fin
 A273060,와이즈버즈,0.0125,Small Cap Simple-Fin
-A290560,파라택시스이더리움,0.0125,Small Cap Simple-Fin
-A052460,아이크래프트,0.0125,Small Cap Simple-Fin
+A336060,웨이버스,0.0125,Small Cap Simple-Fin
 A462980,아이지넷,0.0125,Small Cap Simple-Fin
+A052460,아이크래프트,0.0125,Small Cap Simple-Fin
+A290560,파라택시스이더리움,0.0125,Small Cap Simple-Fin
 A084870,TBH글로벌,0.0125,Small Cap Simple-Fin
 A049480,오픈베이스,0.0125,Small Cap Simple-Fin
 A198080,캐프,0.0125,Small Cap Simple-Fin
-A290520,신도기연,0.0125,Small Cap Simple-Fin
 A035460,기산텔레콤,0.0125,Small Cap Simple-Fin
-A321260,프로이천,0.0125,Small Cap Simple-Fin
 A033250,체시스,0.0125,Small Cap Simple-Fin
+A290520,신도기연,0.0125,Small Cap Simple-Fin
 A053290,NE능률,0.0125,Small Cap Simple-Fin
 A046390,삼화네트웍스,0.0125,Small Cap Simple-Fin
+A099410,동방선기,0.0125,Small Cap Simple-Fin
 A088130,동아엘텍,0.0125,Middle Cap
 A019540,일지테크,0.0125,Middle Cap
 A100220,비상교육,0.0125,Middle Cap
@@ -52,31 +52,31 @@ A013700,까뮤이앤씨,0.0125,Middle Cap
 A020120,키다리스튜디오,0.0125,Middle Cap
 A001620,케이비아이동국실업,0.0125,Middle Cap
 A046940,우원개발,0.0125,Middle Cap
-A071200,인피니트헬스케어,0.0125,Middle Cap
 A093190,빅솔론,0.0125,Middle Cap
+A071200,인피니트헬스케어,0.0125,Middle Cap
 A038680,에스넷,0.0125,Middle Cap
-A017550,수산세보틱스,0.0125,Middle Cap
 A038290,마크로젠,0.0125,Middle Cap
 A078890,가온그룹,0.0125,Middle Cap
-A058730,다스코,0.0125,Middle Cap
 A033320,제이씨현시스템,0.0125,Middle Cap
-A170900,동아에스티,0.0125,Large Cap
+A321260,프로이천,0.0125,Middle Cap
+A017550,수산세보틱스,0.0125,Middle Cap
 A039560,다산네트웍스,0.0125,Large Cap
+A170900,동아에스티,0.0125,Large Cap
 A002350,넥센타이어,0.0125,Large Cap
 A096530,씨젠,0.0125,Large Cap
 A206640,바디텍메드,0.0125,Large Cap
-A039840,디오,0.0125,Large Cap
 A064550,바이오니아,0.0125,Large Cap
+A039840,디오,0.0125,Large Cap
 A003220,대원제약,0.0125,Large Cap
-A096760,JW홀딩스,0.0125,Large Cap
+A083930,아바코,0.0125,Large Cap
 A264450,유비쿼스,0.0125,Large Cap
+A096760,JW홀딩스,0.0125,Large Cap
 A100120,뷰웍스,0.0125,Large Cap
-A236200,슈프리마,0.0125,Large Cap
 A005250,녹십자홀딩스,0.0125,Large Cap
-A054210,이랜텍,0.0125,Large Cap
-A243070,휴온스,0.0125,Large Cap
+A236200,슈프리마,0.0125,Large Cap
 A192080,더블유게임즈,0.0125,Large Cap
-A001630,종근당홀딩스,0.0125,Large Cap
-A002790,아모레퍼시픽홀딩스,0.0125,Large Cap
+A243070,휴온스,0.0125,Large Cap
+A054210,이랜텍,0.0125,Large Cap
 A043150,바텍,0.0125,Large Cap
-A006280,녹십자,0.0125,Large Cap
+A002790,아모레퍼시픽홀딩스,0.0125,Large Cap
+A001630,종근당홀딩스,0.0125,Large Cap
