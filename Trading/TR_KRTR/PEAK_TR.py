@@ -373,9 +373,9 @@ def do_crawl_and_build_target(message: list) -> dict:
 # ================================================================
 def do_daily_settlement():
     """12회차 매매 종료 후 10분 대기 → 미체결 취소 → 잔고 저장 → Telegram 리포트"""
-    message = []
-    message.append("PEAK: 12회차 완료, 10분 대기 후 결산...")
-    TA.send_tele(message)
+    # message = []
+    # message.append("PEAK: 12회차 완료, 10분 대기 후 결산...")
+    # TA.send_tele(message)
     message = []
 
     time_module.sleep(600)  # 10분 대기
@@ -534,9 +534,9 @@ def do_daily_settlement():
 # ================================================================
 # 매매 실행 (매 회차 공통)
 # ================================================================
-def do_trade(order: dict, target: dict):
+def do_trade(order: dict, target: dict, message: list):
     """매도 → 10분 대기 → 매수"""
-    message = []
+    # message = []
     sell_targets = target.get("sell_targets", {})
     buy_targets  = target.get("buy_targets", {})
 
@@ -709,10 +709,9 @@ message.append(cancel_msg)
 # ── 1회차: 크롤링 + target 생성 + 5분 대기 ──
 if order['round'] == 1:
     target = do_crawl_and_build_target(message)
-    TA.send_tele(message)
-    message = []
-
-    TA.send_tele("PEAK: 크롤링 완료, 3분 대기 후 매매 시작...")
+    message.append("PEAK: 크롤링 완료, 3분 대기 후 매매 시작...")
+    # TA.send_tele(message)
+    # message = []
     time_module.sleep(180)   # 3분 대기
 
 # ── 2~12회차: target 로드 ──
@@ -721,11 +720,11 @@ else:
     if not target:
         TA.send_tele("PEAK: peak_target.json 없음. 1회차 미실행?")
         sys.exit(1)
-    TA.send_tele(message)
-    message = []
+    # TA.send_tele(message)
+    # message = []
 
 # ── 매매 실행 ──
-do_trade(order, target)
+do_trade(order, target, message)
 
 # ── 12회차 후 결산 ──
 if order['round'] == 12:
