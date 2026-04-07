@@ -8,7 +8,7 @@ from typing import Union, Optional, Dict, List, Tuple
 import time
 
 class KIS_API:
-    """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""  
+    """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
     def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str): #
         self.key_file_path = key_file_path
         self.token_file_path = token_file_path
@@ -209,50 +209,75 @@ class KIS_API:
 
         try:
             stocks = []
+            tr_cont_req = ""        # 첫 조회: 공백, 연속조회: "N"
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30           # 안전장치 (20종목 × 30 = 600종목)
 
             while True:
-                self._rate_limit_sleep()
-                response = requests.get(url, headers=headers, params=params)
-                response.raise_for_status()
-                data = response.json()
+                headers["tr_cont"] = tr_cont_req
+
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        self._rate_limit_sleep()
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            return f"한국주식 잔고조회 연결 오류(최종): {conn_err}"
+                        time.sleep(1.0 * (attempt + 1))
+
+                if data is None:
+                    return "한국주식 잔고조회 응답 없음"
 
                 if data.get('rt_cd') != '0':
-                    message = f"한국주식 잔고조회 API 오류: {data.get('msg1')}"
-                    return message
+                    return f"한국주식 잔고조회 API 오류: {data.get('msg1')}"
 
                 for stock in data.get('output1', []):
                     quantity = int(stock.get('hldg_qty', 0))
                     if quantity == 0:
                         continue
-
                     stocks.append({
                         "종목코드": stock.get('pdno', ''),
-                        "종목명": stock.get('prdt_name', ''),
+                        "종목명":   stock.get('prdt_name', ''),
                         "보유수량": quantity,
                         "매도가능수량": int(stock.get('ord_psbl_qty', 0)),
                         "매입단가": float(stock.get('pchs_avg_pric', 0)),
                         "매입금액": int(float(stock.get('pchs_amt', 0))),
-                        "현재가": int(stock.get('prpr', 0)),
+                        "현재가":   int(stock.get('prpr', 0)),
                         "평가금액": int(float(stock.get('evlu_amt', 0))),
                         "평가손익": int(float(stock.get('evlu_pfls_amt', 0))),
-                        "수익률": float(stock.get('evlu_pfls_rt', 0))
+                        "수익률":   float(stock.get('evlu_pfls_rt', 0))
                     })
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+
+                # 연속조회 종료 판정: 응답 헤더 tr_cont 우선
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
 
                 FK100 = data.get('ctx_area_fk100', '').strip()
                 NK100 = data.get('ctx_area_nk100', '').strip()
-
                 if FK100 == '' or NK100 == '':
                     break
-
                 params['CTX_AREA_FK100'] = FK100
                 params['CTX_AREA_NK100'] = NK100
-                time.sleep(0.1)
+                tr_cont_req = "N"
+                time.sleep(0.12)
 
             return stocks
 
         except Exception as e:
-            message = f"한국주식 잔고조회 오류: {e}"
-            return message
+            return f"한국주식 잔고조회 오류: {e}"
 
     # 한국 주식 종목 잔고 조회
     def get_KR_stock_balance_by_ticker(self, ticker: str) -> Optional[Dict]:
@@ -316,47 +341,89 @@ class KIS_API:
         try:
             stock_eval_amt = 0.0
             total_krw_asset = 0.0  # nass_amt (순자산 = 주식 + D+2 현금 합계)
+            tr_cont_req = ""        # 첫 조회: 공백, 연속조회: "N"
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30           # 무한루프 안전장치 (20종목 × 30 = 600종목)
 
             while True:
-                self._rate_limit_sleep()
-                response = requests.get(url, headers=headers, params=params)
-                response.raise_for_status()
-                data = response.json()
+                # 연속조회 헤더 세팅 (KIS 사양 필수)
+                headers["tr_cont"] = tr_cont_req
+
+                # 일시적 RemoteDisconnected / Timeout 재시도
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        self._rate_limit_sleep()
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"계좌요약 연결 오류(최종): {conn_err}")
+                            return None
+                        time.sleep(1.0 * (attempt + 1))  # 1s → 2s 백오프
+
+                if data is None:
+                    return None
 
                 if data.get('rt_cd') != '0':
                     TA.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
                     return None
 
                 # output1: 종목별 평가금액 직접 합산 (페이지마다 누적)
-                # scts_evlu_amt(output2)는 첫 페이지 종목만 반영하므로 사용 안 함
                 for stock in data.get('output1', []):
                     if int(stock.get('hldg_qty', 0)) == 0:
                         continue
                     stock_eval_amt += float(stock.get('evlu_amt', 0))
 
-                # output2: nass_amt = 순자산금액 (주식평가금 + D+2 정산현금 합계)
-                # → total_krw_asset로 직접 사용, cash_balance는 파생값으로 계산
-                # ✅ nass_amt를 total로 쓰고 stock을 빼서 cash를 구함
-                # ❌ nass_amt + stock_eval_amt 하면 주식이 이중 계산됨
+                # output2: nass_amt 는 마지막 페이지에서만 의미 있음 → 0이 아닐 때만 갱신
                 output2 = data.get('output2', [{}])
                 summary = output2[0] if output2 else {}
-                total_krw_asset = float(summary.get('nass_amt', 0))
+                nass_amt_page = float(summary.get('nass_amt', 0) or 0)
+                if nass_amt_page > 0:
+                    total_krw_asset = nass_amt_page
 
+                # 연속조회 종료 판정: 응답 헤더 tr_cont 가 우선, 없으면 ctx 값으로 판단
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F", ""):
+                    # D/E/F = 마지막, 빈문자 = 더 이상 없음
+                    if resp_tr_cont == "":
+                        # 일부 환경은 헤더가 비어있으므로 ctx로 재확인
+                        FK100 = data.get('ctx_area_fk100', '').strip()
+                        NK100 = data.get('ctx_area_nk100', '').strip()
+                        if FK100 == '' or NK100 == '':
+                            break
+                        params['CTX_AREA_FK100'] = FK100
+                        params['CTX_AREA_NK100'] = NK100
+                        tr_cont_req = "N"
+                        time.sleep(0.12)
+                        continue
+                    break
+
+                # M = 다음 페이지 있음 → 연속조회
                 FK100 = data.get('ctx_area_fk100', '').strip()
                 NK100 = data.get('ctx_area_nk100', '').strip()
                 if FK100 == '' or NK100 == '':
                     break
-
                 params['CTX_AREA_FK100'] = FK100
                 params['CTX_AREA_NK100'] = NK100
-                time.sleep(0.1)
+                tr_cont_req = "N"
+                time.sleep(0.12)
 
             cash_balance = total_krw_asset - stock_eval_amt  # D+2 정산 포함 현금 (파생값)
 
             return {
                 'stock_eval_amt':  stock_eval_amt,
                 'cash_balance':    cash_balance,
-                'total_krw_asset': total_krw_asset   # = nass_amt, 주식+D+2현금 합계
+                'total_krw_asset': total_krw_asset
             }
 
         except Exception as e:
@@ -750,12 +817,34 @@ class KIS_API:
 
         try:
             unfilled: List[Dict] = []
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
 
             while True:
-                self._rate_limit_sleep()
-                response = requests.get(url, headers=headers, params=params, timeout=10)
-                response.raise_for_status()
-                result = response.json()
+                headers["tr_cont"] = tr_cont_req
+
+                result = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        self._rate_limit_sleep()
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        result = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"미체결 조회 연결 오류(최종): {conn_err}")
+                            return []
+                        time.sleep(1.0 * (attempt + 1))
+
+                if result is None:
+                    return []
 
                 if result.get("rt_cd") != "0":
                     TA.send_tele(f"미체결 조회 실패: {result.get('msg1')}")
@@ -777,12 +866,21 @@ class KIS_API:
                         "ord_dvsn":     order.get("ord_dvsn_name", "")
                     })
 
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
                 FK100 = result.get("ctx_area_fk100", "").strip()
                 NK100 = result.get("ctx_area_nk100", "").strip()
                 if not FK100 or not NK100:
                     break
                 params["CTX_AREA_FK100"] = FK100
                 params["CTX_AREA_NK100"] = NK100
+                tr_cont_req = "N"
+                time.sleep(0.12)
 
             return unfilled
 
@@ -818,8 +916,8 @@ class KIS_API:
             "KRX_FWDG_ORD_ORGNO": "",
             "ORGN_ODNO":        order_number,
             "ORD_DVSN":         "00",       # 00: 지정가로 취소
-            "RVSE_CNCL_DVSN_CD": "02",      # 02: 취소
-            "ORD_QTY":          "0",        # QTY_ALL_ORD_YN=Y 시 반드시 "0"
+            "RVSE_CNCL_DVSN_CD": "02",     # 02: 취소
+            "ORD_QTY":          "0",    # QTY_ALL_ORD_YN=Y 시 반드시 "0"
             "ORD_UNPR":         "0",        # 취소는 0
             "QTY_ALL_ORD_YN":   "Y",        # Y: 잔량 전부 취소
             "PDNO":             ticker

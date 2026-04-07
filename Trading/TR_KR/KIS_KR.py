@@ -9,8 +9,7 @@ import time
 
 class KIS_API:
     """한국투자증권 API 클래스 (최종 정제 버전 + 체결내역 추적 기능)"""
-    
-    def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str):
+    def __init__(self, key_file_path: str, token_file_path: str, cano: str, acnt_prdt_cd: str): #
         self.key_file_path = key_file_path
         self.token_file_path = token_file_path
         self.cano = cano
@@ -23,10 +22,10 @@ class KIS_API:
         self.buy_fee_tax = 0.00014  # 매수 수수료 0.014% KRQT 계좌
 
         self.last_api_call = 0
-        self.api_interval = 0.07 # 초당 ~14회 요청 인터벌
+        self.api_interval = 0.1 # 초당 ~10회 요청 인터벌
 
     # API 간격 제어
-    def _rate_limit_sleep(self):
+    def _rate_limit_sleep(self): #
         """API 호출 간격 제어 (Rate Limit 대응)"""
         elapsed = time.time() - self.last_api_call
         if elapsed < self.api_interval:
@@ -34,7 +33,7 @@ class KIS_API:
         self.last_api_call = time.time()
 
     # API-Key 로드 
-    def _load_api_keys(self):
+    def _load_api_keys(self): #
         try:
             with open(self.key_file_path) as f:
                 self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
@@ -46,7 +45,7 @@ class KIS_API:
             sys.exit(1)
     
     # 토큰 로드
-    def load_token(self) -> Optional[Dict]:
+    def load_token(self) -> Optional[Dict]: #
         try:
             if os.path.exists(self.token_file_path):
                 with open(self.token_file_path, 'r') as f:
@@ -57,7 +56,7 @@ class KIS_API:
             return None
     
     # 토큰 저장
-    def save_token(self, access_token: str, expires_in: int = 86400) -> bool:
+    def save_token(self, access_token: str, expires_in: int = 86400) -> bool: #
         try:
             token_data = {
                 "access_token": access_token,
@@ -72,7 +71,7 @@ class KIS_API:
             return False
     
     # 토큰 유효성 확인
-    def is_token_valid(self, token_data: Dict) -> bool:
+    def is_token_valid(self, token_data: Dict) -> bool: #
         if not token_data or 'access_token' not in token_data:
             return False
         
@@ -88,7 +87,7 @@ class KIS_API:
             return False
     
     # 토큰 발급
-    def get_new_token(self) -> Optional[str]:
+    def get_new_token(self) -> Optional[str]: #
         headers = {"content-type": "application/json"}
         path = "oauth2/tokenP"
         body = {
@@ -112,10 +111,9 @@ class KIS_API:
         except Exception as e:
             TA.send_tele(f"KIS 토큰 발급 실패: {e}")
             sys.exit(1)
-            # return None
 
     # 토큰 접속
-    def get_access_token(self) -> Optional[str]:
+    def get_access_token(self) -> Optional[str]: #
         token_data = self.load_token()
         
         if token_data and self.is_token_valid(token_data):
@@ -124,7 +122,7 @@ class KIS_API:
         return self.get_new_token()
     
     # Hash-Key 생성
-    def hashkey(self, datas: Dict) -> str:
+    def hashkey(self, datas: Dict) -> str: #
         path = "uapi/hashkey"
         url = f"{self.url_base}/{path}"
         headers = {
@@ -141,13 +139,13 @@ class KIS_API:
             raise RuntimeError(f"Hashkey 생성 실패: {e}")  # 빈 문자열 반환 시 주문이 진행되므로 예외로 차단
     
     # 국내 주식 현재가 조회
-    def get_KR_current_price(self, ticker: str) -> Union[float, str]:
+    def get_KR_current_price(self, ticker: str) -> Union[int, str]: #
         """
         국내 주식 현재가 조회
         Parameters:
             ticker (str): 종목코드 (예: "005930" 삼성전자)
         Returns:
-            float: 현재가
+            int: 현재가
             str: 에러 메시지
         """
         if not ticker:
@@ -173,7 +171,7 @@ class KIS_API:
             data = res.json()
 
             if data.get("rt_cd") == "0":
-                return float(data["output"]["stck_prpr"])  # 주식 현재가
+                return int(data["output"]["stck_prpr"])  # 주식 현재가
             else:
                 return f"현재가 조회 실패: {data.get('msg1', '알 수 없는 오류')}"
 
@@ -181,7 +179,7 @@ class KIS_API:
             return f"현재가 조회 오류: {e}"
 
     # 한국 주식 계좌 잔고 조회
-    def get_KR_stock_balance(self) -> Optional[List[Dict]]:
+    def get_KR_stock_balance(self) -> Union[List[Dict], str]: #
         """한국 주식 종목별 잔고 조회"""
         path = "uapi/domestic-stock/v1/trading/inquire-balance"
         url = f"{self.url_base}/{path}"
@@ -191,7 +189,7 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey": self.app_key,
             "appSecret": self.app_secret,
-            "tr_id": "TTTC8434R",
+            "tr_id": "TTTC8434R",   # 실전투자 / 모의투자: VTTC8434R
             "custtype": "P"
         }
 
@@ -211,50 +209,75 @@ class KIS_API:
 
         try:
             stocks = []
+            tr_cont_req = ""        # 첫 조회: 공백, 연속조회: "N"
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30           # 안전장치 (20종목 × 30 = 600종목)
 
             while True:
-                self._rate_limit_sleep()
-                response = requests.get(url, headers=headers, params=params)
-                response.raise_for_status()
-                data = response.json()
+                headers["tr_cont"] = tr_cont_req
+
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        self._rate_limit_sleep()
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            return f"한국주식 잔고조회 연결 오류(최종): {conn_err}"
+                        time.sleep(1.0 * (attempt + 1))
+
+                if data is None:
+                    return "한국주식 잔고조회 응답 없음"
 
                 if data.get('rt_cd') != '0':
-                    TA.send_tele(f"한국주식 잔고조회 API 오류: {data.get('msg1')}")
-                    return None
+                    return f"한국주식 잔고조회 API 오류: {data.get('msg1')}"
 
                 for stock in data.get('output1', []):
                     quantity = int(stock.get('hldg_qty', 0))
                     if quantity == 0:
                         continue
-
                     stocks.append({
                         "종목코드": stock.get('pdno', ''),
-                        "종목명": stock.get('prdt_name', ''),
+                        "종목명":   stock.get('prdt_name', ''),
                         "보유수량": quantity,
                         "매도가능수량": int(stock.get('ord_psbl_qty', 0)),
                         "매입단가": float(stock.get('pchs_avg_pric', 0)),
                         "매입금액": int(float(stock.get('pchs_amt', 0))),
-                        "현재가": int(stock.get('prpr', 0)),
+                        "현재가":   int(stock.get('prpr', 0)),
                         "평가금액": int(float(stock.get('evlu_amt', 0))),
                         "평가손익": int(float(stock.get('evlu_pfls_amt', 0))),
-                        "수익률": float(stock.get('evlu_pfls_rt', 0))
+                        "수익률":   float(stock.get('evlu_pfls_rt', 0))
                     })
+
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+
+                # 연속조회 종료 판정: 응답 헤더 tr_cont 우선
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
 
                 FK100 = data.get('ctx_area_fk100', '').strip()
                 NK100 = data.get('ctx_area_nk100', '').strip()
-
                 if FK100 == '' or NK100 == '':
                     break
-
                 params['CTX_AREA_FK100'] = FK100
                 params['CTX_AREA_NK100'] = NK100
-                time.sleep(0.1)
+                tr_cont_req = "N"
+                time.sleep(0.12)
 
             return stocks
 
         except Exception as e:
-            TA.send_tele(f"한국주식 잔고조회 오류: {e}")
-            return None
+            return f"한국주식 잔고조회 오류: {e}"
 
     # 한국 주식 종목 잔고 조회
     def get_KR_stock_balance_by_ticker(self, ticker: str) -> Optional[Dict]:
@@ -270,15 +293,24 @@ class KIS_API:
         return None  # 미보유 종목
 
     # 한국 주식 계좌 원화 평가금 요약        
-    def get_KR_account_summary(self) -> Optional[Dict]:
+    def get_KR_account_summary(self) -> Optional[Dict]: #
         """
         한국주식 계좌 원화 자산 요약
         Returns:
             {
-                'stock_eval_amt': 한국주식 평가금액 합계 (원),
-                'cash_balance':   원화 예수금 잔고 (원),
-                'total_krw_asset': 계좌 전체 원화자산 (주식평가금+예수금)
+                'stock_eval_amt':  한국주식 평가금액 합계 (원),
+                'cash_balance':    D+2 정산 포함 주문가능현금 (원),
+                'total_krw_asset': 계좌 전체 원화자산 = nass_amt (주식평가금 + D+2 현금)
             }
+
+        ※ 필드 구조:
+            - nass_amt      : 순자산금액 = 주식평가금 + D+2 정산현금 합계 → total_krw_asset ✅
+            - stock_eval_amt: output1에서 직접 합산한 주식 평가금액
+            - cash_balance  : nass_amt - stock_eval_amt (파생값, 표시용)
+
+        ※ 이전 오류 패턴 (절대 반복 금지):
+            - dnca_tot_amt를 cash로, stock_eval_amt와 합산 → D+0만 반영, 미정산분 누락 ❌
+            - nass_amt를 cash로, stock_eval_amt와 합산 → 주식이 이중 계산됨 ❌
         """
         path = "uapi/domestic-stock/v1/trading/inquire-balance"
         url = f"{self.url_base}/{path}"
@@ -288,7 +320,7 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey": self.app_key,
             "appSecret": self.app_secret,
-            "tr_id": "TTTC8434R",
+            "tr_id": "TTTC8434R",   # 실전투자 / 모의투자: VTTC8434R
             "custtype": "P"
         }
 
@@ -307,22 +339,86 @@ class KIS_API:
         }
 
         try:
-            self._rate_limit_sleep()
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+            stock_eval_amt = 0.0
+            total_krw_asset = 0.0  # nass_amt (순자산 = 주식 + D+2 현금 합계)
+            tr_cont_req = ""        # 첫 조회: 공백, 연속조회: "N"
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30           # 무한루프 안전장치 (20종목 × 30 = 600종목)
 
-            if data.get('rt_cd') != '0':
-                TA.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
-                return None
+            while True:
+                # 연속조회 헤더 세팅 (KIS 사양 필수)
+                headers["tr_cont"] = tr_cont_req
 
-            # output2는 연속조회 무관하게 첫 번째 응답에 계좌 전체 합산값 반환
-            output2 = data.get('output2', [{}])
-            summary = output2[0] if output2 else {}
+                # 일시적 RemoteDisconnected / Timeout 재시도
+                data = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        self._rate_limit_sleep()
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        data = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"계좌요약 연결 오류(최종): {conn_err}")
+                            return None
+                        time.sleep(1.0 * (attempt + 1))  # 1s → 2s 백오프
 
-            stock_eval_amt  = float(summary.get('scts_evlu_amt', 0))   # 주식 평가금액 합계
-            cash_balance    = float(summary.get('dnca_tot_amt', 0))     # 예수금 총금액
-            total_krw_asset = stock_eval_amt + cash_balance
+                if data is None:
+                    return None
+
+                if data.get('rt_cd') != '0':
+                    TA.send_tele(f"계좌요약 API 오류: {data.get('msg1')}")
+                    return None
+
+                # output1: 종목별 평가금액 직접 합산 (페이지마다 누적)
+                for stock in data.get('output1', []):
+                    if int(stock.get('hldg_qty', 0)) == 0:
+                        continue
+                    stock_eval_amt += float(stock.get('evlu_amt', 0))
+
+                # output2: nass_amt 는 마지막 페이지에서만 의미 있음 → 0이 아닐 때만 갱신
+                output2 = data.get('output2', [{}])
+                summary = output2[0] if output2 else {}
+                nass_amt_page = float(summary.get('nass_amt', 0) or 0)
+                if nass_amt_page > 0:
+                    total_krw_asset = nass_amt_page
+
+                # 연속조회 종료 판정: 응답 헤더 tr_cont 가 우선, 없으면 ctx 값으로 판단
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+                if resp_tr_cont in ("D", "E", "F", ""):
+                    # D/E/F = 마지막, 빈문자 = 더 이상 없음
+                    if resp_tr_cont == "":
+                        # 일부 환경은 헤더가 비어있으므로 ctx로 재확인
+                        FK100 = data.get('ctx_area_fk100', '').strip()
+                        NK100 = data.get('ctx_area_nk100', '').strip()
+                        if FK100 == '' or NK100 == '':
+                            break
+                        params['CTX_AREA_FK100'] = FK100
+                        params['CTX_AREA_NK100'] = NK100
+                        tr_cont_req = "N"
+                        time.sleep(0.12)
+                        continue
+                    break
+
+                # M = 다음 페이지 있음 → 연속조회
+                FK100 = data.get('ctx_area_fk100', '').strip()
+                NK100 = data.get('ctx_area_nk100', '').strip()
+                if FK100 == '' or NK100 == '':
+                    break
+                params['CTX_AREA_FK100'] = FK100
+                params['CTX_AREA_NK100'] = NK100
+                tr_cont_req = "N"
+                time.sleep(0.12)
+
+            cash_balance = total_krw_asset - stock_eval_amt  # D+2 정산 포함 현금 (파생값)
 
             return {
                 'stock_eval_amt':  stock_eval_amt,
@@ -335,12 +431,16 @@ class KIS_API:
             return None
         
     # 한국 주식 매수 가능 원화 예수금 조회    
-    def get_KR_orderable_cash(self) -> Optional[float]:
+    def get_KR_orderable_cash(self) -> Optional[float]: #
         """
-        한국주식 매수 가능 원화 예수금 조회
+        한국주식 매수 가능 원화 예수금 조회 (D+2 정산 포함)
         TR: TTTC8908R (실전) / VTTC8908R (모의)
         Returns:
             float: 주문가능현금 (원) / None: 오류
+
+        ※ 필드 선택 기준:
+            - ord_psbl_cash  : D+0 주문가능현금 → 당일 매도 미정산분 제외, 실제보다 적음 ❌
+            - nrcvb_buy_amt  : 미수없는 매수가능금액 = D+2 정산 포함 실제 주문가능금액 ✅
         """
         path = "uapi/domestic-stock/v1/trading/inquire-psbl-order"
         url = f"{self.url_base}/{path}"
@@ -371,16 +471,20 @@ class KIS_API:
             data = response.json()
 
             if data.get('rt_cd') != '0':
+                TA.send_tele(f"매수가능조회 API 오류: {data.get('msg1')}")
                 return None
 
-            return float(data['output'].get('ord_psbl_cash', 0))
+            # ✅ nrcvb_buy_amt: 미수없는 매수가능금액 (D+2 정산대금 포함, 실제 주문가능금액)
+            # ❌ ord_psbl_cash: D+0 현금만 반영 → 당일 매도 미정산분 누락으로 실제보다 적게 나옴
+            return float(data['output'].get('nrcvb_buy_amt', 0))
 
         except Exception as e:
+            TA.send_tele(f"매수가능현금 조회 오류: {e}")
             return None
 
     # 한국 주식 매수 주문
     def order_buy_KR(self, ticker: str, quantity: int, price: int = 0,
-                     ord_dvsn: str = "01") -> Tuple[Optional[Dict], List[str]]:
+                     ord_dvsn: str = "00") -> Optional[Dict]: #
         """
         한국 주식 매수 주문
 
@@ -406,11 +510,8 @@ class KIS_API:
                 message      (str)
                 response     (requests.Response)
         """
-        order_buy_message: List[str] = []
-
         if not ticker or quantity <= 0:
-            order_buy_message.append("종목코드 또는 수량이 올바르지 않습니다.")
-            return None, order_buy_message
+            return None
 
         path = "uapi/domestic-stock/v1/trading/order-cash"
         url  = f"{self.url_base}/{path}"
@@ -429,7 +530,7 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey":        self.app_key,
             "appSecret":     self.app_secret,
-            "tr_id":         "TTTC0802U",  # 실전: TTTC0802U / 모의: VTTC0802U
+            "tr_id":         "TTTC0802U",
             "custtype":      "P",
             "hashkey":       self.hashkey(data)
         }
@@ -439,7 +540,6 @@ class KIS_API:
             try:
                 if attempt > 0:
                     time.sleep(1)
-                    order_buy_message.append(f"재시도 {attempt}/{max_retries}")
 
                 self._rate_limit_sleep()
                 response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
@@ -459,13 +559,8 @@ class KIS_API:
                         "message":      result.get("msg1", ""),
                         "response":     response
                     }
-                    order_buy_message.append(
-                        f"국내매수 주문: {ticker} {quantity}주 "
-                        f"@ {price:,}원  주문번호: {order_info['order_number']}"
-                    )
-                    return order_info, order_buy_message
+                    return order_info
                 else:
-                    order_buy_message.append(f"국내매수 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                     return {
                         "success":       False,
                         "ticker":        ticker,
@@ -475,28 +570,37 @@ class KIS_API:
                         "error_code":    result.get("rt_cd"),
                         "error_message": result.get("msg1", ""),
                         "response":      response
-                    }, order_buy_message
+                    }
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
-                    order_buy_message.append("500 에러 발생, 재시도 중...")
+                    TA.send_tele("500 에러 발생, 재시도 중...")
                     continue
-                order_buy_message.append(f"국내매수 주문 오류: {e}")
-                return None, order_buy_message
+                try:
+                    err_body = e.response.json()
+                    return {
+                        "success":       False,
+                        "ticker":        ticker,
+                        "quantity":      quantity,
+                        "price":         price,
+                        "order_number":  "",
+                        "error_code":    str(e.response.status_code),
+                        "error_message": err_body.get("msg1", str(e)),
+                        "response":      e.response
+                    }
+                except Exception:
+                    return None
 
             except Exception as e:
                 if attempt < max_retries:
-                    order_buy_message.append("에러 발생, 재시도 중...")
                     continue
-                order_buy_message.append(f"국내매수 주문 오류: {e}")
-                return None, order_buy_message
+                return None
 
-        order_buy_message.append("국내매수 주문 최종 실패: 모든 재시도 소진")
-        return None, order_buy_message
+        return None
 
     # 한국 주식 매도 주문
     def order_sell_KR(self, ticker: str, quantity: int, price: int = 0,
-                      ord_dvsn: str = "01") -> Tuple[Optional[Dict], List[str]]:
+                      ord_dvsn: str = "00") -> Optional[Dict]: #
         """
         한국 주식 매도 주문
 
@@ -511,11 +615,10 @@ class KIS_API:
             Dict keys: success, ticker, quantity, price,
                        order_number, order_time, org_number, message, response
         """
-        order_sell_message: List[str] = []
 
         if not ticker or quantity <= 0:
-            order_sell_message.append("종목코드 또는 수량이 올바르지 않습니다.")
-            return None, order_sell_message
+            TA.send_tele("종목코드 또는 수량이 올바르지 않습니다.")
+            return None
 
         path = "uapi/domestic-stock/v1/trading/order-cash"
         url  = f"{self.url_base}/{path}"
@@ -534,7 +637,7 @@ class KIS_API:
             "authorization": f"Bearer {self.access_token}",
             "appKey":        self.app_key,
             "appSecret":     self.app_secret,
-            "tr_id":         "TTTC0801U",  # 실전: TTTC0801U / 모의: VTTC0801U
+            "tr_id":         "TTTC0801U",
             "custtype":      "P",
             "hashkey":       self.hashkey(data)
         }
@@ -544,7 +647,6 @@ class KIS_API:
             try:
                 if attempt > 0:
                     time.sleep(1)
-                    order_sell_message.append(f"재시도 {attempt}/{max_retries}")
 
                 self._rate_limit_sleep()
                 response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
@@ -564,13 +666,8 @@ class KIS_API:
                         "message":      result.get("msg1", ""),
                         "response":     response
                     }
-                    order_sell_message.append(
-                        f"국내매도 주문: {ticker} {quantity}주 "
-                        f"@ {price:,}원  주문번호: {order_info['order_number']}"
-                    )
-                    return order_info, order_sell_message
+                    return order_info
                 else:
-                    order_sell_message.append(f"국내매도 주문실패: {result.get('msg1', '알 수 없는 오류')}")
                     return {
                         "success":       False,
                         "ticker":        ticker,
@@ -580,24 +677,20 @@ class KIS_API:
                         "error_code":    result.get("rt_cd"),
                         "error_message": result.get("msg1", ""),
                         "response":      response
-                    }, order_sell_message
+                    }
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 500 and attempt < max_retries:
-                    order_sell_message.append("500 에러 발생, 재시도 중...")
+                    TA.send_tele("500 에러 발생, 재시도 중...")
                     continue
-                order_sell_message.append(f"국내매도 주문 오류: {e}")
-                return None, order_sell_message
+                return None
 
             except Exception as e:
                 if attempt < max_retries:
-                    order_sell_message.append("에러 발생, 재시도 중...")
                     continue
-                order_sell_message.append(f"국내매도 주문 오류: {e}")
-                return None, order_sell_message
+                return None
 
-        order_sell_message.append("국내매도 주문 최종 실패: 모든 재시도 소진")
-        return None, order_sell_message
+        return None
 
     # 한국 주식 주문 체결 확인
     def check_KR_order_execution(self, order_number: str, ticker: str,
@@ -677,7 +770,7 @@ class KIS_API:
                         "order_type":   order.get("sll_buy_dvsn_cd_name", "알 수 없음")
                     }
 
-            # TA.send_tele(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
+            TA.send_tele(f"체결확인: 주문번호 {order_number} 미체결 또는 조회 실패")
             return None
 
         except Exception as e:
@@ -685,7 +778,7 @@ class KIS_API:
             return None
 
     # 한국 주식 미체결 주문 조회
-    def get_KR_unfilled_orders(self) -> List[Dict]:
+    def get_KR_unfilled_orders(self) -> List[Dict]: #
         """
         한국 주식 당일 미체결 주문 전체 조회
 
@@ -724,15 +817,37 @@ class KIS_API:
 
         try:
             unfilled: List[Dict] = []
+            tr_cont_req = ""
+            max_retry = 3
+            page_count = 0
+            MAX_PAGE = 30
 
             while True:
-                self._rate_limit_sleep()
-                response = requests.get(url, headers=headers, params=params, timeout=10)
-                response.raise_for_status()
-                result = response.json()
+                headers["tr_cont"] = tr_cont_req
+
+                result = None
+                resp_tr_cont = ""
+                for attempt in range(max_retry):
+                    try:
+                        self._rate_limit_sleep()
+                        response = requests.get(url, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+                        result = response.json()
+                        resp_tr_cont = response.headers.get("tr_cont", "").strip()
+                        break
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.ChunkedEncodingError,
+                            requests.exceptions.ReadTimeout) as conn_err:
+                        if attempt == max_retry - 1:
+                            TA.send_tele(f"미체결 조회 연결 오류(최종): {conn_err}")
+                            return []
+                        time.sleep(1.0 * (attempt + 1))
+
+                if result is None:
+                    return []
 
                 if result.get("rt_cd") != "0":
-                    print(f"국내 미체결 조회 실패: {result.get('msg1')}")
+                    TA.send_tele(f"미체결 조회 실패: {result.get('msg1')}")
                     return []
 
                 for order in result.get("output", []):
@@ -751,22 +866,31 @@ class KIS_API:
                         "ord_dvsn":     order.get("ord_dvsn_name", "")
                     })
 
+                page_count += 1
+                if page_count >= MAX_PAGE:
+                    break
+
+                if resp_tr_cont in ("D", "E", "F"):
+                    break
+
                 FK100 = result.get("ctx_area_fk100", "").strip()
                 NK100 = result.get("ctx_area_nk100", "").strip()
                 if not FK100 or not NK100:
                     break
                 params["CTX_AREA_FK100"] = FK100
                 params["CTX_AREA_NK100"] = NK100
+                tr_cont_req = "N"
+                time.sleep(0.12)
 
             return unfilled
 
         except Exception as e:
-            print(f"국내 미체결 조회 오류: {e}")
+            TA.send_tele(f"미체결 조회 오류: {e}")
             return []
 
     # 한국 주식 개별 주문 취소
     def cancel_KR_order(self, order_number: str, ticker: str,
-                         quantity: int) -> Optional[Dict]:
+                         quantity: int) -> Optional[Dict]: #
         """
         한국 주식 개별 주문 취소
 
@@ -793,7 +917,7 @@ class KIS_API:
             "ORGN_ODNO":        order_number,
             "ORD_DVSN":         "00",       # 00: 지정가로 취소
             "RVSE_CNCL_DVSN_CD": "02",     # 02: 취소
-            "ORD_QTY":          "0",       # QTY_ALL_ORD_YN=Y 시 반드시 "0"
+            "ORD_QTY":          "0",    # QTY_ALL_ORD_YN=Y 시 반드시 "0"
             "ORD_UNPR":         "0",        # 취소는 0
             "QTY_ALL_ORD_YN":   "Y",        # Y: 잔량 전부 취소
             "PDNO":             ticker
@@ -833,24 +957,14 @@ class KIS_API:
                 }
 
         except Exception as e:
-            print(f"국내 주문 취소 오류: {e}")
+            TA.send_tele(f"주문 취소 오류: {e}")
             return None
 
     # 한국 주식 전체 주문 취소
-    def cancel_all_KR_unfilled_orders(self) -> Tuple[Dict, List[str]]:
-        """
-        한국 주식 당일 미체결 주문 전량 일괄 취소
+    def cancel_all_KR_unfilled_orders(self, side: str = "all") -> Optional[Dict]: #
+        if side not in ("buy", "sell", "all"):
+            raise ValueError(f"side는 'buy', 'sell', 'all' 중 하나여야 합니다: {side}")
 
-        Returns:
-            Tuple[Dict, List[str]]
-            Dict:
-                total        (int)  전체 미체결 주문 수
-                success      (int)  취소 성공 수
-                failed       (int)  취소 실패 수
-                success_list (List) 성공 주문 리스트
-                failed_list  (List) 실패 주문 리스트
-            List[str]: 결과 메시지 리스트
-        """
         unfilled_orders = self.get_KR_unfilled_orders()
 
         empty_summary = {
@@ -858,7 +972,15 @@ class KIS_API:
             "success_list": [], "failed_list": []
         }
         if not unfilled_orders:
-            return empty_summary, ["미체결 주문 없음"]
+            return empty_summary
+
+        # ✅ 실제 필드명 "order_type", 실제 값 "매수"/"매도" 기준으로 필터
+        side_map = {"buy": "매수", "sell": "매도"}
+        if side != "all":
+            unfilled_orders = [o for o in unfilled_orders if o.get("order_type") == side_map[side]]
+
+        if not unfilled_orders:
+            return empty_summary
 
         success_list, failed_list = [], []
 
@@ -868,23 +990,19 @@ class KIS_API:
                 ticker=order["ticker"],
                 quantity=order["unfilled_qty"]
             )
-
             entry = {
                 "ticker":       order["ticker"],
                 "name":         order["name"],
                 "order_number": order["order_number"],
-                "unfilled_qty": order["unfilled_qty"]
+                "unfilled_qty": order["unfilled_qty"],
+                "order_type":   order.get("order_type")
             }
-
             if result and result.get("success"):
                 success_list.append(entry)
             else:
-                entry["error"] = (
-                    result.get("error_message") if result else "알 수 없는 오류"
-                )
+                entry["error"] = result.get("error_message") if result else "알 수 없는 오류"
                 failed_list.append(entry)
-
-            time.sleep(0.2)  # API 호출 간격
+            time.sleep(0.2)
 
         summary = {
             "total":        len(unfilled_orders),
@@ -894,21 +1012,10 @@ class KIS_API:
             "failed_list":  failed_list
         }
 
-        messages = [
-            f"전체 미체결: {summary['total']}건",
-            f"취소 성공: {summary['success']}건",
-            f"취소 실패: {summary['failed']}건"
-        ]
-        if failed_list:
-            for f in failed_list:
-                messages.append(
-                    f"  ✗ {f['name']}({f['ticker']}) "
-                    f"주문번호:{f['order_number']} - {f.get('error','')}"
-                )
-        return summary, messages
+        return summary
     
     # 한국 주식 시장 거래일 여부
-    def is_KR_trading_day(self, date: Optional[datetime] = None) -> bool:
+    def is_KR_trading_day(self, date: Optional[datetime] = None) -> bool: #
         """
         한국 주식시장 거래일 여부 확인 (KIS API 휴장일 조회 기반)
 
@@ -965,3 +1072,44 @@ class KIS_API:
                     continue
                 TA.send_tele(f"거래일 조회 오류 (3회 실패): {e}")
                 return False
+            
+    def round_to_tick(self, price: float, market: str = "KR") -> int: #
+        """
+        주문 가격을 시장별 호가 단위에 맞게 변환
+        
+        Args:
+            price: 원본 가격 (float)
+            market: "KR" (한국), "US" (미국), "JP" (일본)
+        
+        Returns:
+            호가 단위에 맞춘 정수 가격
+        """
+        if market == "US":
+            # 미국: 소수점 2자리 (센트 단위) → 정수 불필요, 반올림
+            return round(price, 2)
+        
+        elif market == "JP":
+            # 일본: 엔화 단위 (정수)
+            return int(price)
+        
+        elif market == "KR":
+            # 한국: 주가 구간별 호가 단위 (KRX 기준)
+            if price < 1_000:
+                tick = 1
+            elif price < 5_000:
+                tick = 5
+            elif price < 10_000:
+                tick = 10
+            elif price < 50_000:
+                tick = 50
+            elif price < 100_000:
+                tick = 100
+            elif price < 500_000:
+                tick = 500
+            else:
+                tick = 1_000
+            
+            return int((price // tick) * tick)
+        
+        else:
+            raise ValueError(f"지원하지 않는 시장: {market}")
