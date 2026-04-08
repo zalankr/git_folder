@@ -227,6 +227,7 @@ message.append(f"KRQT: {order['day']}일차 {order['round']}/{order['total_round
 cancel_message = cancel_orders(side='all')
 message.append(cancel_message)
 
+order['round'] = 1
 # 회차별 target 데이터 불러오기 (1, 8회차 불러오기와 계산)
 if order['round'] == 1:
     # 목표종목 csv파일 불러오기 > Dic, JSON 변환
@@ -297,7 +298,9 @@ if order['round'] == 1:
     # 당일 target 저장하기
     json_message = save_json(target, KRQT_target_path, order)
     message.extend(json_message)
-
+print('\n'.join(message))    
+print(target)
+"""
 else: # 1회, 8회차가 아닌 경우 불러오기만 시행
     # 당일 target 불러오기
     target = {}
@@ -698,5 +701,5 @@ if order['round'] == 14:
 
     TA.send_tele(message)
     message = []
-
+"""
 sys.exit(0)

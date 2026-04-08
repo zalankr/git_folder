@@ -226,7 +226,6 @@ message.append(f"KRQT: {order['day']}일차 {order['round']}/{order['total_round
 # 전회 주문 취소
 cancel_message = cancel_orders(side='all')
 message.append(cancel_message)
-time_module.sleep(2)
 
 # 회차별 target 데이터 불러오기 (1, 8회차 불러오기와 계산)
 if order['round'] == 1 or order['round'] == 8:
@@ -323,7 +322,6 @@ for stock in stocks:
         "name": stock["종목명"],
         "hold_balance": stock["평가금액"],
         "hold_qty": stock["보유수량"],
-        "sellable_qty": stock["매도가능수량"],   # ← 추가: 실제 매도 가능 수량
     }
 
 hold_code = list(hold.keys())
@@ -338,15 +336,9 @@ for code in hold_code:
         if target[code]["target_qty"] > hold[code]["hold_qty"]:
             buy[code] = target[code]["target_qty"] - hold[code]["hold_qty"]
         elif target[code]["target_qty"] < hold[code]["hold_qty"]:
-            # 매도필요수량을 sellable_qty로 캡핑
-            need = hold[code]["hold_qty"] - target[code]["target_qty"]
-            sell_qty = min(need, hold[code]["sellable_qty"])
-            if sell_qty > 0:
-                sell[code] = sell_qty
+            sell[code] = hold[code]["hold_qty"] - target[code]["target_qty"]
     else:
-        # target에 없는 종목 전량 매도 → sellable_qty까지만
-        if hold[code]["sellable_qty"] > 0:
-            sell[code] = hold[code]["sellable_qty"]
+        sell[code] = hold[code]["hold_qty"]
 
 for code in target_code:
     if code == "CASH":                     # CASH는 매매 대상 아님
