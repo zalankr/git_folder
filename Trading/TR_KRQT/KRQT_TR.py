@@ -107,7 +107,7 @@ def split_data(round_num):
     '''회차별 분할횟수와 분할당 가격산출'''
     if round_num == 1:
         sell_splits = 5
-        sell_price = [1.0100, 1.0075, 1.0050, 1.0025, 0.9950]
+        sell_price = [1.0100, 1.0075, 1.0050, 1.0025, 1.0000]
         buy_splits = 5
         buy_price = [0.9875, 0.9900, 0.9925, 0.9950, 0.9975]
     elif round_num == 2:
@@ -167,14 +167,14 @@ def split_data(round_num):
         buy_price = [0.9975]
     elif round_num == 13:
         sell_splits = 1
-        sell_price = [0.9800]
+        sell_price = [0.9700]
         buy_splits = 1
         buy_price = [0.9975]
     elif round_num == 14:
         sell_splits = 0
         sell_price = []
         buy_splits = 1
-        buy_price = [1.0200]
+        buy_price = [1.0300]
     else:
         TA.send_tele(f"KRQT: 유효하지 않은 round 값: {round_num}")
         sys.exit(1)
