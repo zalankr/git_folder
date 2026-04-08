@@ -1,93 +1,643 @@
 {
-    "036930": {
-        "name": "주성엔지니어링",
-        "weight": 0.05,
+    "001620": {
+        "name": "케이비아이동국실업",
+        "weight": 0.0125,
         "categories": [
-            "피크"
+            "Middle Cap"
         ],
-        "target_invest": 481245,
-        "target_qty": 7
+        "target_invest": 3669562,
+        "target_qty": 5787
     },
-    "042700": {
-        "name": "한미반도체",
-        "weight": 0.05,
+    "001630": {
+        "name": "종근당홀딩스",
+        "weight": 0.0125,
         "categories": [
-            "피크"
+            "Large Cap"
         ],
-        "target_invest": 481245,
-        "target_qty": 1
+        "target_invest": 3669562,
+        "target_qty": 77
     },
-    "095340": {
-        "name": "ISC",
-        "weight": 0.05,
+    "002350": {
+        "name": "넥센타이어",
+        "weight": 0.0125,
         "categories": [
-            "피크"
+            "Large Cap"
         ],
-        "target_invest": 481245,
-        "target_qty": 2
+        "target_invest": 3669562,
+        "target_qty": 497
     },
-    "221840": {
-        "name": "하이즈항공",
-        "weight": 0.05,
+    "002790": {
+        "name": "아모레퍼시픽홀딩스",
+        "weight": 0.0125,
         "categories": [
-            "밸류"
+            "Large Cap"
         ],
-        "target_invest": 481245,
-        "target_qty": 192
+        "target_invest": 3669562,
+        "target_qty": 133
     },
-    "253590": {
-        "name": "네오셈",
-        "weight": 0.05,
+    "003220": {
+        "name": "대원제약",
+        "weight": 0.0125,
         "categories": [
-            "밸류"
+            "Large Cap"
         ],
-        "target_invest": 481245,
-        "target_qty": 27
+        "target_invest": 3669562,
+        "target_qty": 357
     },
-    "272210": {
-        "name": "한화시스템",
-        "weight": 0.1,
+    "005250": {
+        "name": "녹십자홀딩스",
+        "weight": 0.0125,
         "categories": [
-            "밸류",
-            "피크"
+            "Large Cap"
         ],
-        "target_invest": 962490,
-        "target_qty": 5
+        "target_invest": 3669562,
+        "target_qty": 268
     },
-    "319660": {
-        "name": "피에스케이",
-        "weight": 0.05,
+    "013700": {
+        "name": "까뮤이앤씨",
+        "weight": 0.0125,
         "categories": [
-            "피크"
+            "Middle Cap"
         ],
-        "target_invest": 481245,
-        "target_qty": 7
+        "target_invest": 3669562,
+        "target_qty": 2771
     },
-    "440110": {
-        "name": "파두",
-        "weight": 0.05,
+    "017510": {
+        "name": "세명전기",
+        "weight": 0.0125,
         "categories": [
-            "피크"
+            "Small Cap Growth"
         ],
-        "target_invest": 481245,
-        "target_qty": 7
+        "target_invest": 3669562,
+        "target_qty": 387
     },
-    "950160": {
-        "name": "코오롱티슈진",
-        "weight": 0.05,
+    "017550": {
+        "name": "수산세보틱스",
+        "weight": 0.0125,
         "categories": [
-            "피크"
+            "Middle Cap"
         ],
-        "target_invest": 481245,
-        "target_qty": 4
+        "target_invest": 3669562,
+        "target_qty": 1656
+    },
+    "019180": {
+        "name": "티에이치엔",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 497
+    },
+    "019540": {
+        "name": "일지테크",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 1082
+    },
+    "020120": {
+        "name": "키다리스튜디오",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1105
+    },
+    "020180": {
+        "name": "대신정보통신",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 3484
+    },
+    "033230": {
+        "name": "인성정보",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 4466
+    },
+    "033250": {
+        "name": "체시스",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 3759
+    },
+    "033320": {
+        "name": "제이씨현시스템",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 767
+    },
+    "035460": {
+        "name": "기산텔레콤",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1045
+    },
+    "038290": {
+        "name": "마크로젠",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 230
+    },
+    "038680": {
+        "name": "에스넷",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 868
+    },
+    "039560": {
+        "name": "다산네트웍스",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 675
+    },
+    "039840": {
+        "name": "디오",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 222
+    },
+    "043150": {
+        "name": "바텍",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 167
+    },
+    "046390": {
+        "name": "삼화네트웍스",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 3597
+    },
+    "046940": {
+        "name": "우원개발",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 820
+    },
+    "047080": {
+        "name": "한빛소프트",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 2871
+    },
+    "049480": {
+        "name": "오픈베이스",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1702
+    },
+    "052460": {
+        "name": "아이크래프트",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 2035
+    },
+    "053290": {
+        "name": "NE능률",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1679
+    },
+    "054210": {
+        "name": "이랜텍",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 368
+    },
+    "056360": {
+        "name": "코위버",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 806
+    },
+    "064550": {
+        "name": "바이오니아",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 355
+    },
+    "065440": {
+        "name": "이루온",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 938
+    },
+    "065770": {
+        "name": "CS",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1366
+    },
+    "066360": {
+        "name": "체리부로",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 3261
+    },
+    "071200": {
+        "name": "인피니트헬스케어",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 583
+    },
+    "078890": {
+        "name": "가온그룹",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 643
+    },
+    "083930": {
+        "name": "아바코",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 275
+    },
+    "084870": {
+        "name": "TBH글로벌",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1735
+    },
+    "088130": {
+        "name": "동아엘텍",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 979
+    },
+    "088790": {
+        "name": "진도",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1346
+    },
+    "089150": {
+        "name": "케이씨티",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 997
+    },
+    "090080": {
+        "name": "평화산업",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 3903
+    },
+    "092190": {
+        "name": "서울바이오시스",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 2055
+    },
+    "093190": {
+        "name": "빅솔론",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 950
+    },
+    "096530": {
+        "name": "씨젠",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 160
+    },
+    "096760": {
+        "name": "JW홀딩스",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 927
+    },
+    "099410": {
+        "name": "동방선기",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 772
+    },
+    "100120": {
+        "name": "뷰웍스",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 145
+    },
+    "100220": {
+        "name": "비상교육",
+        "weight": 0.0125,
+        "categories": [
+            "Middle Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 628
+    },
+    "131090": {
+        "name": "시큐브",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 919
+    },
+    "143540": {
+        "name": "영우디에스피",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 5444
+    },
+    "147830": {
+        "name": "제룡산업",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 480
+    },
+    "170900": {
+        "name": "동아에스티",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 84
+    },
+    "192080": {
+        "name": "더블유게임즈",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 75
+    },
+    "192250": {
+        "name": "케이사인",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 694
+    },
+    "198080": {
+        "name": "캐프",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1324
+    },
+    "206640": {
+        "name": "바디텍메드",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 332
+    },
+    "236200": {
+        "name": "슈프리마",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 79
+    },
+    "243070": {
+        "name": "휴온스",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 146
+    },
+    "258790": {
+        "name": "소프트캠프",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 2728
+    },
+    "264450": {
+        "name": "유비쿼스",
+        "weight": 0.0125,
+        "categories": [
+            "Large Cap"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 224
+    },
+    "265740": {
+        "name": "엔에프씨",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 499
+    },
+    "273060": {
+        "name": "와이즈버즈",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 3710
+    },
+    "290520": {
+        "name": "신도기연",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 2654
+    },
+    "290560": {
+        "name": "파라택시스이더리움",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1881
+    },
+    "321260": {
+        "name": "프로이천",
+        "weight": 0.025,
+        "categories": [
+            "Small Cap Growth",
+            "Middle Cap"
+        ],
+        "target_invest": 7339124,
+        "target_qty": 2588
+    },
+    "336060": {
+        "name": "웨이버스",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 3814
+    },
+    "398120": {
+        "name": "에스지헬스케어",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Growth"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 975
+    },
+    "462980": {
+        "name": "아이지넷",
+        "weight": 0.0125,
+        "categories": [
+            "Small Cap Simple-Fin"
+        ],
+        "target_invest": 3669562,
+        "target_qty": 1592
     },
     "CASH": {
         "name": "CASH",
-        "weight": 0.5,
+        "weight": 0.0,
         "categories": [
             "nan"
         ],
-        "target_invest": 9624904,
+        "target_invest": 0,
         "target_qty": 0
     }
 }

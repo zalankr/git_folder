@@ -218,8 +218,6 @@ except Exception as e:
 # 일자와 회차 시간데이터 불러오기
 order = order_time(day=TR['day'])
 
-order['round'] = 1 # test
-
 if order['round'] == 0:
     TA.send_tele(f"KRQT: 매매시간이 아닙니다.")
     sys.exit(0)
@@ -230,7 +228,7 @@ cancel_message = cancel_orders(side='all')
 message.append(cancel_message)
 
 # 회차별 target 데이터 불러오기 (1, 8회차 불러오기와 계산)
-if order['round'] == 1 or order['round'] == 8:
+if order['round'] == 1:
     # 목표종목 csv파일 불러오기 > Dic, JSON 변환
     try:
         with open(KRQT_stock_path, 'r', encoding='utf-8') as f:
@@ -300,9 +298,6 @@ if order['round'] == 1 or order['round'] == 8:
     json_message = save_json(target, KRQT_target_path, order)
     message.extend(json_message)
 
-print("\n".join(message))
-print(target)
-"""
 else: # 1회, 8회차가 아닌 경우 불러오기만 시행
     # 당일 target 불러오기
     target = {}
@@ -703,5 +698,5 @@ if order['round'] == 14:
 
     TA.send_tele(message)
     message = []
-"""
+
 sys.exit(0)
