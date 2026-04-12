@@ -377,7 +377,7 @@ def split_usaa(usd_balance: dict) -> dict:
 def save_json(snapshot: dict):
     """일별 JSON 저장 (모드별 병합)"""
     date_str = datetime.now().strftime("%Y%m%d")
-    filepath = os.path.join(SNAPSHOT_DIR, f"bal_63604155_{date_str}.json")
+    filepath = os.path.join(SNAPSHOT_DIR, f"balance_{date_str}.json")
 
     existing = {}
     if os.path.exists(filepath):
