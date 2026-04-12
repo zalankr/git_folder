@@ -38,7 +38,7 @@ TOKEN_FILE = "/var/autobot/KIS/kis63604155_token.json"
 BASE_URL   = "https://openapi.koreainvestment.com:9443"
 
 USAA_TR_PATH  = "/var/autobot/TR_USAA/USAA_TR.json"
-SNAPSHOT_DIR  = "/var/autobot/Balance"
+SNAPSHOT_DIR  = "/var/autobot/Balance/snapshot"
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
 MAX_PAGE = 30   # 페이지네이션 안전장치 (해외 50종목/페이지 × 30 = 1500종목)
@@ -214,6 +214,7 @@ def get_overseas_balance(natn_cd: str, currency: str,
     stock_eval = 0.0
     today_sell_amt = 0.0
     today_buy_amt  = 0.0
+    raw_deposit = 0.0        # output2 frcr_dncl_amt_2 (마지막 페이지에서만 유효)
     mts_krw_total = 0.0      # output3 tot_asst_amt (마지막 페이지에서만 유효)
     tr_cont_req = ""
     page_count = 0
@@ -249,9 +250,12 @@ def get_overseas_balance(natn_cd: str, currency: str,
                     "profit_rate": float(s.get("evlu_pfls_rt1", 0) or 0)
                 })
 
-            # output2: frcr_dncl_amt_2는 통화별 분리 안 됨 (USD 중복 버그 확인됨)
-            # → 사용하지 않음. TTTS3007R의 ord_psbl_frcr_amt로 대체
-            # (단, output2의 기타 참조 필드를 원하면 여기서 읽을 수 있음)
+            # output2: 예수금 (마지막 페이지에서만 유효 → 0이 아닐 때만 갱신)
+            out2 = data.get("output2", [])
+            info = out2[0] if out2 else {}
+            dep_page = float(info.get("frcr_dncl_amt_2", 0) or 0)
+            if dep_page > 0:
+                raw_deposit = dep_page
 
             # output3: 원화 총자산 (마지막 페이지에서만 유효)
             out3 = data.get("output3", {})
@@ -278,14 +282,10 @@ def get_overseas_balance(natn_cd: str, currency: str,
     except Exception as e:
         return {"error": f"{currency} 조회 예외: {e}", "currency": currency}
 
-    # raw_deposit은 더 이상 CTRP6504R에서 가져오지 않음 → TTTS3007R에서 통화별 정확 조회
-    # real_deposit 계산은 TTTS3007R 조회 이후로 이동
+    # 실제 예수금 = 외화예수금 + 당일매도 - 당일매수
+    real_deposit = raw_deposit + today_sell_amt - today_buy_amt
 
-    # ── TTTS3007R: 통화별 정확 조회 ──
-    #   ord_psbl_frcr_amt: 순수 외화예수금 (통화별 분리, 수수료 미차감)
-    #   ovrs_ord_psbl_amt: 주문가능금액 (수수료 예비차감)
-    #   sll_ruse_psbl_amt: 매도재사용가능금
-    #   exrt: 해당 통화 환율
+    # ── 주문가능금액 (TTTS3007R) ──
     time.sleep(0.1)
     url2 = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-psamount"
     params2 = {
@@ -293,9 +293,7 @@ def get_overseas_balance(natn_cd: str, currency: str,
         "OVRS_EXCG_CD": excg_order, "ITEM_CD": item_cd,
         "OVRS_ORD_UNPR": price
     }
-    orderable = 0.0        # ovrs_ord_psbl_amt (주문 실행용, 수수료 차감됨)
-    frcr_deposit = 0.0     # ord_psbl_frcr_amt (통화별 순수 외화예수금)
-    sll_ruse = 0.0         # sll_ruse_psbl_amt (매도재사용금)
+    orderable = 0.0
     exrt = 0.0
     try:
         r2 = requests.get(url2, headers=headers("TTTS3007R"), params=params2, timeout=10)
@@ -303,28 +301,19 @@ def get_overseas_balance(natn_cd: str, currency: str,
         d2 = r2.json()
         if d2.get("rt_cd") == "0":
             output = d2.get("output", {})
-            orderable    = float(output.get("ovrs_ord_psbl_amt", 0) or 0)
-            frcr_deposit = float(output.get("ord_psbl_frcr_amt", 0) or 0)
-            sll_ruse     = float(output.get("sll_ruse_psbl_amt", 0) or 0)
-            exrt         = float(output.get("exrt", 0) or 0)
+            orderable = float(output.get("ovrs_ord_psbl_amt", 0) or 0)
+            exrt = float(output.get("exrt", 0) or 0)
     except Exception:
-        pass
-
-    # 실제 예수금 가치 = 통화별 순수 외화예수금 + 당일매도 - 당일매수
-    # ord_psbl_frcr_amt에는 아직 T+2 미결제 매도대금이 반영 안 됨 → 당일매도 가산
-    # 당일매수는 이미 ord_psbl_frcr_amt에서 차감되어 있으므로 별도 보정 불필요한 경우 多
-    # 안전하게 CTRP6504R output1의 당일체결금액을 명시적으로 반영
-    real_deposit = frcr_deposit + today_sell_amt - today_buy_amt
+        orderable = 0.0
 
     return {
         "currency": currency,
         "stock_eval": stock_eval,
-        "cash": real_deposit,              # 실제 예수금 가치 (통화별 정확)
-        "frcr_deposit": frcr_deposit,      # TTTS3007R.ord_psbl_frcr_amt (원본)
+        "cash": real_deposit,
+        "raw_deposit": raw_deposit,
         "today_sell_amt": today_sell_amt,
         "today_buy_amt": today_buy_amt,
-        "orderable_cash": orderable,       # ovrs_ord_psbl_amt (주문용)
-        "sll_ruse": sll_ruse,              # 매도재사용가능금
+        "orderable_cash": orderable,
         "total": stock_eval + real_deposit,
         "exchange_rate": exrt,
         "mts_krw_total": mts_krw_total,
@@ -345,7 +334,7 @@ def split_usaa(usd_balance: dict) -> dict:
     USD 잔고를 USLA / HAA로 분리
 
     현금 배분 로직:
-      usd_balance["cash"] = 실제 예수금 가치 (ord_psbl_frcr_amt + 당일매도 - 당일매수)
+      usd_balance["cash"] = 실제 예수금 가치 (frcr_dncl_amt_2 + 당일매도 - 당일매수)
       USLA 헷징모드 시: USLA현금 = USAA_TR.json의 USD_USLA
                         HAA현금  = 전체현금 - USLA현금
       USLA 투자모드 시: USLA/HAA 각각 API 주식 + TR.json 비율로 현금 배분
@@ -526,10 +515,9 @@ def run_us():
         msg.append(f"  원화환산: ₩{usaa_krw:,.0f} (환율 {exrt:,.2f})")
     msg.append(f"  주식합계: ${usd['stock_eval']:,.2f}")
     msg.append(f"  현금합계: ${usaa['total_cash']:,.2f}")
-    msg.append(f"    ├ 외화예수금(순수): ${usd.get('frcr_deposit', 0):,.2f}")
+    msg.append(f"    ├ 원본예수금: ${usd.get('raw_deposit', 0):,.2f}")
     msg.append(f"    ├ 당일매도: ${usd.get('today_sell_amt', 0):,.2f}")
     msg.append(f"    ├ 당일매수: ${usd.get('today_buy_amt', 0):,.2f}")
-    msg.append(f"    ├ 매도재사용: ${usd.get('sll_ruse', 0):,.2f}")
     msg.append(f"    └ 주문가능(참고): ${usd.get('orderable_cash', 0):,.2f}")
     msg.append(f"TR기준시점: {usaa['USAA_TR_timestamp']}")
 
@@ -631,7 +619,7 @@ def run_asia():
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 Balance_63604155.py [US|ASIA]")
+        print("Usage: python3 daily_snapshot.py [US|ASIA]")
         sys.exit(1)
 
     mode = sys.argv[1].upper()

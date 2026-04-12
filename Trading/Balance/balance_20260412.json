@@ -1,0 +1,711 @@
+{
+  "ASIA": {
+    "mode": "ASIA",
+    "timestamp": "2026-04-12T08:24:09.136357",
+    "mts_krw_total": 268188359.0,
+    "KRW": {
+      "currency": "KRW",
+      "label": "KRQT",
+      "stock_eval": 296866320.0,
+      "cash": 3597781.0,
+      "total": 300464101.0,
+      "stocks": [
+        {
+          "code": "001620",
+          "name": "케이비아이동국실업",
+          "qty": 5756,
+          "eval_amt": 3752912.0,
+          "price": 652,
+          "profit_rate": 2.78
+        },
+        {
+          "code": "001630",
+          "name": "종근당홀딩스",
+          "qty": 76,
+          "eval_amt": 3617600.0,
+          "price": 47600,
+          "profit_rate": -0.83
+        },
+        {
+          "code": "002350",
+          "name": "넥센타이어",
+          "qty": 488,
+          "eval_amt": 3660000.0,
+          "price": 7500,
+          "profit_rate": 1.83
+        },
+        {
+          "code": "002790",
+          "name": "아모레퍼시픽홀딩스",
+          "qty": 132,
+          "eval_amt": 3663000.0,
+          "price": 27750,
+          "profit_rate": 25.23
+        },
+        {
+          "code": "003220",
+          "name": "대원제약",
+          "qty": 352,
+          "eval_amt": 3625600.0,
+          "price": 10300,
+          "profit_rate": 0.92
+        },
+        {
+          "code": "005250",
+          "name": "녹십자홀딩스",
+          "qty": 268,
+          "eval_amt": 3698400.0,
+          "price": 13800,
+          "profit_rate": -12.73
+        },
+        {
+          "code": "013700",
+          "name": "까뮤이앤씨",
+          "qty": 2695,
+          "eval_amt": 3675980.0,
+          "price": 1364,
+          "profit_rate": 1.23
+        },
+        {
+          "code": "017510",
+          "name": "세명전기",
+          "qty": 393,
+          "eval_amt": 3678480.0,
+          "price": 9360,
+          "profit_rate": 0.34
+        },
+        {
+          "code": "017550",
+          "name": "수산세보틱스",
+          "qty": 1460,
+          "eval_amt": 4423800.0,
+          "price": 3030,
+          "profit_rate": 7.52
+        },
+        {
+          "code": "019180",
+          "name": "티에이치엔",
+          "qty": 501,
+          "eval_amt": 3642270.0,
+          "price": 7270,
+          "profit_rate": -0.44
+        },
+        {
+          "code": "019540",
+          "name": "일지테크",
+          "qty": 1080,
+          "eval_amt": 7408800.0,
+          "price": 6860,
+          "profit_rate": 60.36
+        },
+        {
+          "code": "020120",
+          "name": "키다리스튜디오",
+          "qty": 1102,
+          "eval_amt": 3989240.0,
+          "price": 3620,
+          "profit_rate": 4.02
+        },
+        {
+          "code": "020180",
+          "name": "대신정보통신",
+          "qty": 3445,
+          "eval_amt": 3624140.0,
+          "price": 1052,
+          "profit_rate": 0.53
+        },
+        {
+          "code": "033230",
+          "name": "인성정보",
+          "qty": 4449,
+          "eval_amt": 7612239.0,
+          "price": 1711,
+          "profit_rate": 4.84
+        },
+        {
+          "code": "033250",
+          "name": "체시스",
+          "qty": 3763,
+          "eval_amt": 3751711.0,
+          "price": 997,
+          "profit_rate": 2.73
+        },
+        {
+          "code": "033320",
+          "name": "제이씨현시스템",
+          "qty": 764,
+          "eval_amt": 3835280.0,
+          "price": 5020,
+          "profit_rate": 5.56
+        },
+        {
+          "code": "035460",
+          "name": "기산텔레콤",
+          "qty": 1046,
+          "eval_amt": 4858670.0,
+          "price": 4645,
+          "profit_rate": 34.02
+        },
+        {
+          "code": "038290",
+          "name": "마크로젠",
+          "qty": 228,
+          "eval_amt": 3689040.0,
+          "price": 16180,
+          "profit_rate": 2.11
+        },
+        {
+          "code": "038680",
+          "name": "에스넷",
+          "qty": 921,
+          "eval_amt": 3711630.0,
+          "price": 4030,
+          "profit_rate": -0.79
+        },
+        {
+          "code": "039560",
+          "name": "다산네트웍스",
+          "qty": 706,
+          "eval_amt": 4024200.0,
+          "price": 5700,
+          "profit_rate": 5.98
+        },
+        {
+          "code": "039840",
+          "name": "디오",
+          "qty": 222,
+          "eval_amt": 3618600.0,
+          "price": 16300,
+          "profit_rate": -0.25
+        },
+        {
+          "code": "043150",
+          "name": "바텍",
+          "qty": 164,
+          "eval_amt": 3739200.0,
+          "price": 22800,
+          "profit_rate": 4.32
+        },
+        {
+          "code": "046390",
+          "name": "삼화네트웍스",
+          "qty": 3589,
+          "eval_amt": 3650013.0,
+          "price": 1017,
+          "profit_rate": 0.45
+        },
+        {
+          "code": "046940",
+          "name": "우원개발",
+          "qty": 784,
+          "eval_amt": 3684800.0,
+          "price": 4700,
+          "profit_rate": 48.4
+        },
+        {
+          "code": "047080",
+          "name": "한빛소프트",
+          "qty": 2889,
+          "eval_amt": 3550581.0,
+          "price": 1229,
+          "profit_rate": -2.68
+        },
+        {
+          "code": "049480",
+          "name": "오픈베이스",
+          "qty": 1601,
+          "eval_amt": 3570230.0,
+          "price": 2230,
+          "profit_rate": 3.58
+        },
+        {
+          "code": "052460",
+          "name": "아이크래프트",
+          "qty": 1960,
+          "eval_amt": 7379400.0,
+          "price": 3765,
+          "profit_rate": 3.7
+        },
+        {
+          "code": "053290",
+          "name": "NE능률",
+          "qty": 1660,
+          "eval_amt": 3718400.0,
+          "price": 2240,
+          "profit_rate": 2.51
+        },
+        {
+          "code": "054210",
+          "name": "이랜텍",
+          "qty": 366,
+          "eval_amt": 3828360.0,
+          "price": 10460,
+          "profit_rate": 5.46
+        },
+        {
+          "code": "056360",
+          "name": "코위버",
+          "qty": 808,
+          "eval_amt": 8306240.0,
+          "price": 10280,
+          "profit_rate": 5.06
+        },
+        {
+          "code": "064550",
+          "name": "바이오니아",
+          "qty": 357,
+          "eval_amt": 3727080.0,
+          "price": 10440,
+          "profit_rate": 1.78
+        },
+        {
+          "code": "065440",
+          "name": "이루온",
+          "qty": 803,
+          "eval_amt": 3497065.0,
+          "price": 4355,
+          "profit_rate": -8.84
+        },
+        {
+          "code": "065770",
+          "name": "CS",
+          "qty": 1386,
+          "eval_amt": 3610530.0,
+          "price": 2605,
+          "profit_rate": -6.11
+        },
+        {
+          "code": "066360",
+          "name": "체리부로",
+          "qty": 3138,
+          "eval_amt": 3749910.0,
+          "price": 1195,
+          "profit_rate": 4.02
+        },
+        {
+          "code": "071200",
+          "name": "인피니트헬스케어",
+          "qty": 593,
+          "eval_amt": 3629160.0,
+          "price": 6120,
+          "profit_rate": -1.4
+        },
+        {
+          "code": "078890",
+          "name": "가온그룹",
+          "qty": 646,
+          "eval_amt": 3746800.0,
+          "price": 5800,
+          "profit_rate": 2.64
+        },
+        {
+          "code": "083930",
+          "name": "아바코",
+          "qty": 247,
+          "eval_amt": 3393780.0,
+          "price": 13740,
+          "profit_rate": 2.42
+        },
+        {
+          "code": "084870",
+          "name": "TBH글로벌",
+          "qty": 1735,
+          "eval_amt": 3591450.0,
+          "price": 2070,
+          "profit_rate": -1.47
+        },
+        {
+          "code": "088130",
+          "name": "동아엘텍",
+          "qty": 1000,
+          "eval_amt": 7270000.0,
+          "price": 7270,
+          "profit_rate": -1.89
+        },
+        {
+          "code": "088790",
+          "name": "진도",
+          "qty": 1348,
+          "eval_amt": 3511540.0,
+          "price": 2605,
+          "profit_rate": -3.32
+        },
+        {
+          "code": "089150",
+          "name": "케이씨티",
+          "qty": 1004,
+          "eval_amt": 3815200.0,
+          "price": 3800,
+          "profit_rate": 3.16
+        },
+        {
+          "code": "090080",
+          "name": "평화산업",
+          "qty": 3861,
+          "eval_amt": 3752892.0,
+          "price": 972,
+          "profit_rate": 3.22
+        },
+        {
+          "code": "092190",
+          "name": "서울바이오시스",
+          "qty": 2097,
+          "eval_amt": 7496775.0,
+          "price": 3575,
+          "profit_rate": 2.24
+        },
+        {
+          "code": "093190",
+          "name": "빅솔론",
+          "qty": 955,
+          "eval_amt": 7544500.0,
+          "price": 7900,
+          "profit_rate": 2.17
+        },
+        {
+          "code": "096530",
+          "name": "씨젠",
+          "qty": 161,
+          "eval_amt": 3847900.0,
+          "price": 23900,
+          "profit_rate": -12.07
+        },
+        {
+          "code": "096760",
+          "name": "JW홀딩스",
+          "qty": 892,
+          "eval_amt": 3724100.0,
+          "price": 4175,
+          "profit_rate": 5.71
+        },
+        {
+          "code": "099410",
+          "name": "동방선기",
+          "qty": 757,
+          "eval_amt": 3588180.0,
+          "price": 4740,
+          "profit_rate": -0.6
+        },
+        {
+          "code": "100120",
+          "name": "뷰웍스",
+          "qty": 141,
+          "eval_amt": 3651900.0,
+          "price": 25900,
+          "profit_rate": 35.66
+        },
+        {
+          "code": "100220",
+          "name": "비상교육",
+          "qty": 627,
+          "eval_amt": 3918750.0,
+          "price": 6250,
+          "profit_rate": 6.21
+        },
+        {
+          "code": "131090",
+          "name": "시큐브",
+          "qty": 830,
+          "eval_amt": 3423750.0,
+          "price": 4125,
+          "profit_rate": 2.94
+        },
+        {
+          "code": "143540",
+          "name": "영우디에스피",
+          "qty": 5458,
+          "eval_amt": 7362842.0,
+          "price": 1349,
+          "profit_rate": 0.74
+        },
+        {
+          "code": "147830",
+          "name": "제룡산업",
+          "qty": 484,
+          "eval_amt": 3697760.0,
+          "price": 7640,
+          "profit_rate": 1.09
+        },
+        {
+          "code": "170900",
+          "name": "동아에스티",
+          "qty": 81,
+          "eval_amt": 3673350.0,
+          "price": 45350,
+          "profit_rate": 3.29
+        },
+        {
+          "code": "192080",
+          "name": "더블유게임즈",
+          "qty": 74,
+          "eval_amt": 3592700.0,
+          "price": 48550,
+          "profit_rate": -0.5
+        },
+        {
+          "code": "192250",
+          "name": "케이사인",
+          "qty": 682,
+          "eval_amt": 7624760.0,
+          "price": 11180,
+          "profit_rate": 3.94
+        },
+        {
+          "code": "198080",
+          "name": "캐프",
+          "qty": 1332,
+          "eval_amt": 3749580.0,
+          "price": 2815,
+          "profit_rate": 2.56
+        },
+        {
+          "code": "206640",
+          "name": "바디텍메드",
+          "qty": 279,
+          "eval_amt": 3186180.0,
+          "price": 11420,
+          "profit_rate": 3.11
+        },
+        {
+          "code": "236200",
+          "name": "슈프리마",
+          "qty": 79,
+          "eval_amt": 3665600.0,
+          "price": 46400,
+          "profit_rate": 0.69
+        },
+        {
+          "code": "243070",
+          "name": "휴온스",
+          "qty": 122,
+          "eval_amt": 3153700.0,
+          "price": 25850,
+          "profit_rate": 2.09
+        },
+        {
+          "code": "258790",
+          "name": "소프트캠프",
+          "qty": 2735,
+          "eval_amt": 3610200.0,
+          "price": 1320,
+          "profit_rate": 6.94
+        },
+        {
+          "code": "264450",
+          "name": "유비쿼스",
+          "qty": 239,
+          "eval_amt": 3871800.0,
+          "price": 16200,
+          "profit_rate": 3.19
+        },
+        {
+          "code": "265740",
+          "name": "엔에프씨",
+          "qty": 507,
+          "eval_amt": 3625050.0,
+          "price": 7150,
+          "profit_rate": -3.59
+        },
+        {
+          "code": "273060",
+          "name": "와이즈버즈",
+          "qty": 3693,
+          "eval_amt": 3656070.0,
+          "price": 990,
+          "profit_rate": 0.65
+        },
+        {
+          "code": "290520",
+          "name": "신도기연",
+          "qty": 2830,
+          "eval_amt": 6990100.0,
+          "price": 2470,
+          "profit_rate": -7.59
+        },
+        {
+          "code": "290560",
+          "name": "파라택시스이더리움",
+          "qty": 1958,
+          "eval_amt": 3455870.0,
+          "price": 1765,
+          "profit_rate": -8.74
+        },
+        {
+          "code": "321260",
+          "name": "프로이천",
+          "qty": 2639,
+          "eval_amt": 7296835.0,
+          "price": 2765,
+          "profit_rate": -3.02
+        },
+        {
+          "code": "336060",
+          "name": "웨이버스",
+          "qty": 3683,
+          "eval_amt": 3738245.0,
+          "price": 1015,
+          "profit_rate": 3.04
+        },
+        {
+          "code": "398120",
+          "name": "에스지헬스케어",
+          "qty": 905,
+          "eval_amt": 3642625.0,
+          "price": 4025,
+          "profit_rate": 4.67
+        },
+        {
+          "code": "462980",
+          "name": "아이지넷",
+          "qty": 1545,
+          "eval_amt": 3792975.0,
+          "price": 2455,
+          "profit_rate": 3.8
+        }
+      ]
+    },
+    "JPY": {
+      "currency": "JPY",
+      "stock_eval": 0.0,
+      "cash": 0.0,
+      "frcr_deposit": 0.0,
+      "today_sell_amt": 0.0,
+      "today_buy_amt": 0.0,
+      "orderable_cash": 0.0,
+      "sll_ruse": 0.0,
+      "total": 0.0,
+      "exchange_rate": 9.3119,
+      "mts_krw_total": 208262345.0,
+      "stocks": []
+    },
+    "HKD": {
+      "currency": "HKD",
+      "stock_eval": 0.0,
+      "cash": 0.0,
+      "frcr_deposit": 0.0,
+      "today_sell_amt": 0.0,
+      "today_buy_amt": 0.0,
+      "orderable_cash": 0.0,
+      "sll_ruse": 0.0,
+      "total": 0.0,
+      "exchange_rate": 189.06,
+      "mts_krw_total": 208262345.0,
+      "stocks": []
+    },
+    "total_krw": 300464101.0
+  },
+  "US": {
+    "mode": "US",
+    "timestamp": "2026-04-12T08:24:15.372404",
+    "mts_krw_total": 268188359.0,
+    "USD": {
+      "currency": "USD",
+      "stock_eval": 40460.479999999996,
+      "cash": 79017.14,
+      "frcr_deposit": 79017.14,
+      "today_sell_amt": 0.0,
+      "today_buy_amt": 0.0,
+      "orderable_cash": 78584.92,
+      "sll_ruse": 0.0,
+      "total": 119477.62,
+      "exchange_rate": 1481.1,
+      "mts_krw_total": 268188359.0,
+      "stocks": [
+        {
+          "code": "PDBC",
+          "name": "INVESCO OPTIMUM YIELD DIVERSIFIED COMMODITY STRATEGY NO K-1",
+          "qty": 565,
+          "eval_amt": 9588.05,
+          "price": 16.97,
+          "avg_price": 14.2002,
+          "profit_rate": 19.5
+        },
+        {
+          "code": "IWM",
+          "name": "ISHARES RUSSELL 2000",
+          "qty": 39,
+          "eval_amt": 10190.7,
+          "price": 261.3,
+          "avg_price": 250.7828,
+          "profit_rate": 4.19
+        },
+        {
+          "code": "VEA",
+          "name": "VANGUARD FTSE DEVELOPED MARKETS",
+          "qty": 152,
+          "eval_amt": 10296.48,
+          "price": 67.74,
+          "avg_price": 63.0435,
+          "profit_rate": 7.44
+        },
+        {
+          "code": "VWO",
+          "name": "VANGUARD FTSE EMERGING MARKETS",
+          "qty": 183,
+          "eval_amt": 10385.25,
+          "price": 56.75,
+          "avg_price": 53.6771,
+          "profit_rate": 5.72
+        }
+      ]
+    },
+    "USAA": {
+      "USLA_Mode": "헷징모드",
+      "HAA_Mode": "공격모드",
+      "USLA": {
+        "mode": "헷징모드",
+        "total_usd": 77520.61020000001,
+        "stock_eval": 0.0,
+        "cash": 77520.61020000001,
+        "stocks": []
+      },
+      "HAA": {
+        "mode": "공격모드",
+        "total_usd": 41957.009799999985,
+        "stock_eval": 40460.479999999996,
+        "cash": 1496.5297999999893,
+        "stocks": [
+          {
+            "code": "PDBC",
+            "name": "INVESCO OPTIMUM YIELD DIVERSIFIED COMMODITY STRATEGY NO K-1",
+            "qty": 565,
+            "eval_amt": 9588.05,
+            "price": 16.97,
+            "avg_price": 14.2002,
+            "profit_rate": 19.5
+          },
+          {
+            "code": "IWM",
+            "name": "ISHARES RUSSELL 2000",
+            "qty": 39,
+            "eval_amt": 10190.7,
+            "price": 261.3,
+            "avg_price": 250.7828,
+            "profit_rate": 4.19
+          },
+          {
+            "code": "VEA",
+            "name": "VANGUARD FTSE DEVELOPED MARKETS",
+            "qty": 152,
+            "eval_amt": 10296.48,
+            "price": 67.74,
+            "avg_price": 63.0435,
+            "profit_rate": 7.44
+          },
+          {
+            "code": "VWO",
+            "name": "VANGUARD FTSE EMERGING MARKETS",
+            "qty": 183,
+            "eval_amt": 10385.25,
+            "price": 56.75,
+            "avg_price": 53.6771,
+            "profit_rate": 5.72
+          }
+        ]
+      },
+      "USAA_total": 119477.62,
+      "total_cash": 79017.14,
+      "USAA_TR_timestamp": "2026-04-02T19:37:14.969154"
+    }
+  }
+}
