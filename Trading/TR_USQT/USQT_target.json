@@ -1,171 +1,311 @@
 {
-    "BARK": {
-        "name": "Bark Class A",
-        "weight": 0.03,
+    "AGL": {
+        "name": "agilon health",
+        "weight": 0.033,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 20.68,
+        "target_invest": 402.5413755,
+        "target_qty": 19
+    },
+    "AMC": {
+        "name": "AMC Entertainment Holdings Class A",
+        "weight": 0.033,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 1.375,
+        "target_invest": 402.5413755,
+        "target_qty": 292
+    },
+    "BKKT": {
+        "name": "Bakkt Class A",
+        "weight": 0.033,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 8.565,
+        "target_invest": 402.5413755,
+        "target_qty": 46
+    },
+    "BRCC": {
+        "name": "BRC Class A",
+        "weight": 0.033,
         "categories": [
             "SCG"
         ],
-        "current_price": 0.516,
-        "target_invest": 357.110244,
-        "target_qty": 692
+        "current_price": 0.8097,
+        "target_invest": 402.5413755,
+        "target_qty": 497
     },
     "CASH": {
         "name": "CASH",
-        "weight": 0.52,
+        "weight": 0.01,
         "categories": [
             "nan"
         ],
-        "target_invest": 6189.910896,
+        "target_invest": 121.982235,
         "target_qty": 0
     },
     "CLOV": {
         "name": "Clover Health Investments Class A",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 1.714,
-        "target_invest": 357.110244,
-        "target_qty": 208
+        "current_price": 1.925,
+        "target_invest": 402.5413755,
+        "target_qty": 209
+    },
+    "CMRC": {
+        "name": "BigCommerce Holdings Series 1",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 2.485,
+        "target_invest": 402.5413755,
+        "target_qty": 161
     },
     "COMP": {
         "name": "Compass Class A",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 7.125,
-        "target_invest": 357.110244,
-        "target_qty": 50
+        "current_price": 7.035,
+        "target_invest": 402.5413755,
+        "target_qty": 57
     },
     "CURV": {
         "name": "Torrid Holdings",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "SCG"
         ],
-        "current_price": 1.785,
-        "target_invest": 357.110244,
-        "target_qty": 200
+        "current_price": 1.935,
+        "target_invest": 402.5413755,
+        "target_qty": 208
     },
-    "DBI": {
-        "name": "Designer Brands Class A",
-        "weight": 0.03,
+    "DCGO": {
+        "name": "DocGo",
+        "weight": 0.033,
         "categories": [
             "SCG"
         ],
-        "current_price": 5.54,
-        "target_invest": 357.110244,
-        "target_qty": 64
+        "current_price": 0.5213,
+        "target_invest": 402.5413755,
+        "target_qty": 772
     },
-    "DOW": {
-        "name": "Dow",
-        "weight": 0.03,
+    "DOMO": {
+        "name": "Domo Class B",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 2.54,
+        "target_invest": 402.5413755,
+        "target_qty": 158
+    },
+    "EXPI": {
+        "name": "eXp World Holdings",
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 41.81,
-        "target_invest": 357.110244,
-        "target_qty": 8
+        "current_price": 5.855,
+        "target_invest": 402.5413755,
+        "target_qty": 68
     },
     "FLWS": {
         "name": "1-800 FLOWERS.COM Class A",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "SCG"
         ],
-        "current_price": 3.115,
-        "target_invest": 357.110244,
-        "target_qty": 114
+        "current_price": 3.25,
+        "target_invest": 402.5413755,
+        "target_qty": 123
+    },
+    "GLXY": {
+        "name": "Galaxy Digital Class A",
+        "weight": 0.033,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 22.0401,
+        "target_invest": 402.5413755,
+        "target_qty": 18
+    },
+    "GPRO": {
+        "name": "GoPro Class A",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 0.8864,
+        "target_invest": 402.5413755,
+        "target_qty": 454
+    },
+    "HRTX": {
+        "name": "Heron Therapeutics",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 0.8585,
+        "target_invest": 402.5413755,
+        "target_qty": 468
+    },
+    "LCUT": {
+        "name": "Lifetime Brands",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 7.49,
+        "target_invest": 402.5413755,
+        "target_qty": 53
     },
     "LUMN": {
         "name": "Lumen Technologies",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 6.786,
-        "target_invest": 357.110244,
+        "current_price": 7.675,
+        "target_invest": 402.5413755,
         "target_qty": 52
     },
-    "MYGN": {
-        "name": "Myriad Genetics",
-        "weight": 0.03,
+    "OPEN": {
+        "name": "Opendoor Technologies Class A",
+        "weight": 0.033,
         "categories": [
-            "SCG"
+            "TCM"
         ],
-        "current_price": 4.415,
-        "target_invest": 357.110244,
-        "target_qty": 80
+        "current_price": 4.305,
+        "target_invest": 402.5413755,
+        "target_qty": 93
     },
     "OSCR": {
         "name": "Oscar Health Class A",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 11.02,
-        "target_invest": 357.110244,
-        "target_qty": 32
+        "current_price": 14.66,
+        "target_invest": 402.5413755,
+        "target_qty": 27
+    },
+    "PBF": {
+        "name": "PBF Energy Class A",
+        "weight": 0.033,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 40.81,
+        "target_invest": 402.5413755,
+        "target_qty": 9
+    },
+    "PRPL": {
+        "name": "Purple Innovation",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 0.627,
+        "target_invest": 402.5413755,
+        "target_qty": 642
     },
     "PTON": {
         "name": "Peloton Interactive Class A",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 4.085,
-        "target_invest": 357.110244,
-        "target_qty": 87
+        "current_price": 4.515,
+        "target_invest": 402.5413755,
+        "target_qty": 89
     },
-    "SLQT": {
-        "name": "SelectQuote",
-        "weight": 0.03,
+    "REAX": {
+        "name": "Real Brokerage",
+        "weight": 0.033,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 2.445,
+        "target_invest": 402.5413755,
+        "target_qty": 164
+    },
+    "RRGB": {
+        "name": "Red Robin Gourmet Burgers",
+        "weight": 0.033,
         "categories": [
             "SCG"
         ],
-        "current_price": 0.6246,
-        "target_invest": 357.110244,
-        "target_qty": 571
+        "current_price": 3.2501,
+        "target_invest": 402.5413755,
+        "target_qty": 123
     },
     "SNBR": {
         "name": "Sleep Number",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "SCG"
         ],
-        "current_price": 2.08,
-        "target_invest": 357.110244,
-        "target_qty": 171
+        "current_price": 1.515,
+        "target_invest": 402.5413755,
+        "target_qty": 265
+    },
+    "STKS": {
+        "name": "One Group Hospitality",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 1.71,
+        "target_invest": 402.5413755,
+        "target_qty": 235
+    },
+    "TTEC": {
+        "name": "TTEC Holdings",
+        "weight": 0.033,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 2.4,
+        "target_invest": 402.5413755,
+        "target_qty": 167
     },
     "UAA": {
         "name": "Under Armour Class A",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 5.8401,
-        "target_invest": 357.110244,
-        "target_qty": 61
+        "current_price": 5.99,
+        "target_invest": 402.5413755,
+        "target_qty": 67
     },
     "VSTS": {
         "name": "Vestis",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "TCM"
         ],
-        "current_price": 7.82,
-        "target_invest": 357.110244,
-        "target_qty": 45
+        "current_price": 8.53,
+        "target_invest": 402.5413755,
+        "target_qty": 47
     },
     "ZIP": {
         "name": "Ziprecruiter Class A",
-        "weight": 0.03,
+        "weight": 0.033,
         "categories": [
             "SCG"
         ],
-        "current_price": 1.816,
-        "target_invest": 357.110244,
-        "target_qty": 196
+        "current_price": 2.12,
+        "target_invest": 402.5413755,
+        "target_qty": 189
     }
 }
