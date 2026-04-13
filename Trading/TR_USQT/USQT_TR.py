@@ -241,13 +241,14 @@ def split_data(round_num):
 
 
 def cancel_orders():
-    """모든 미체결 주문 취소"""
+    """모든 미체결 주문 취소. (메시지, summary dict) 튜플 반환."""
     try:
         summary, cancel_msgs = KIS.cancel_all_unfilled_orders()
         cancel_message = f"USQT: {summary['success']}/{summary['total']} 주문 취소 성공"
+        return cancel_message, summary
     except Exception as e:
         cancel_message = f"USQT: 주문 취소 에러발생 ({e})"
-    return cancel_message
+        return cancel_message, {"success": 0, "total": 0, "fail": 0}
 
 
 def is_US_trading_day():
@@ -308,9 +309,39 @@ if order['round'] == 0:
     sys.exit(0)
 message.append(f"USQT: {order['day']}일차 {order['round']}/{order['total_round']}회차 매매를 시작합니다.")
 
-# 전회 주문 취소
-cancel_message = cancel_orders()
+# ============================================
+# 전회 주문 취소 + 미체결 잔존 확인 루프
+# ============================================
+# 1차 취소
+cancel_message, _ = cancel_orders()
 message.append(cancel_message)
+time_module.sleep(3)  # 취소 반영 대기
+
+# ✅ 미체결 잔존 확인 후 필요 시 재취소 (최대 3회)
+MAX_CANCEL_RETRY = 3
+for retry_i in range(MAX_CANCEL_RETRY):
+    try:
+        remaining = KIS.get_unfilled_orders()
+    except Exception as e:
+        message.append(f"USQT 미체결 조회 에러: {e}")
+        remaining = []
+
+    # 정상 조회이면서 잔존 0건 → 종료
+    if isinstance(remaining, list) and len(remaining) == 0:
+        if retry_i > 0:
+            message.append(f"USQT 미체결 0건 확인 (재시도 {retry_i}회 후)")
+        break
+
+    # 잔존 있음 또는 조회 자체가 비정상 → 추가 취소
+    n_remain = len(remaining) if isinstance(remaining, list) else '?'
+    message.append(f"USQT 미체결 잔존 {n_remain}건 → 추가 취소 {retry_i+1}/{MAX_CANCEL_RETRY}")
+    retry_msg, retry_summary = cancel_orders()
+    message.append(retry_msg)
+    time_module.sleep(3)
+
+    # 마지막 루프인데도 취소 성공이 0이면 경고만 남기고 진행
+    if retry_i == MAX_CANCEL_RETRY - 1 and retry_summary.get('success', 0) == 0:
+        message.append("USQT 경고: 취소 실패 상태로 매매 진행 → 매도가능수량 clamp로 방어")
 
 # ============================================
 # 회차별 target 데이터 불러오기 (1, 8회차: 불러오기와 계산)
@@ -434,8 +465,9 @@ for stock in stocks:
     ticker = stock["ticker"]
     hold[ticker] = {
         "name": stock["name"],
-        "hold_balance": stock["eval_amt"],      # USD 평가금액
-        "hold_qty": stock["quantity"],           # 체결기준 현재잔고 (ccld_qty_smtl1)
+        "hold_balance": stock["eval_amt"],
+        "hold_qty": stock["quantity"],                       # ccld_qty_smtl1 (목표수량 비교용)
+        "ord_psbl_qty": stock.get("ord_psbl_qty", 0),        # ✅ 추가: 실제 매도가능수량
         "current_price": stock["current_price"],
         "exchange": stock["exchange"],
     }
@@ -454,9 +486,20 @@ for ticker in hold_code:
         if target[ticker]["target_qty"] > hold[ticker]["hold_qty"]:
             buy[ticker] = target[ticker]["target_qty"] - hold[ticker]["hold_qty"]
         elif target[ticker]["target_qty"] < hold[ticker]["hold_qty"]:
-            sell[ticker] = hold[ticker]["hold_qty"] - target[ticker]["target_qty"]
+            need_sell = hold[ticker]["hold_qty"] - target[ticker]["target_qty"]
+            # ✅ 매도가능수량으로 상한 제한
+            sell_qty = min(need_sell, hold[ticker]["ord_psbl_qty"])
+            if sell_qty > 0:
+                sell[ticker] = sell_qty
+            else:
+                message.append(f"USQT 매도스킵: {ticker} 필요{need_sell}주, 가능{hold[ticker]['ord_psbl_qty']}주")
     else:
-        sell[ticker] = hold[ticker]["hold_qty"]  # 목표에 없는 종목은 전량 매도
+        # 목표에 없는 종목 전량 매도도 가능수량 제한
+        sell_qty = min(hold[ticker]["hold_qty"], hold[ticker]["ord_psbl_qty"])
+        if sell_qty > 0:
+            sell[ticker] = sell_qty
+        else:
+            message.append(f"USQT 매도스킵: {ticker} 가능수량 0주 (미체결 매도 또는 T+N 미결제)")
 
 for ticker in target_code:
     if ticker == "CASH":
@@ -666,7 +709,7 @@ message = []
 if order['round'] == 14:
     time_module.sleep(120)
     # 전회 주문 취소
-    cancel_message = cancel_orders()
+    cancel_message, _ = cancel_orders()
     message.append(cancel_message)
     message.append(f"USQT {order['date']} 리밸런싱 종료")
 

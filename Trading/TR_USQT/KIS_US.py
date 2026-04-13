@@ -606,7 +606,8 @@ class KIS_API:
                     stocks.append({
                         'ticker': stock.get('pdno', ''),
                         'name': stock.get('prdt_name', ''),
-                        'quantity': quantity,
+                        'quantity': quantity,                                      # ccld_qty_smtl1 (체결기준 총보유)
+                        'ord_psbl_qty': int(float(stock.get('ord_psbl_qty', 0))),  # ✅ 추가: 실제 매도가능수량
                         'avg_price': float(stock.get('avg_unpr3', 0)),
                         'current_price': float(stock.get('ovrs_now_pric1', 0)),
                         'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
@@ -988,13 +989,13 @@ class KIS_API:
         params = {
             "CANO": self.cano,
             "ACNT_PRDT_CD": self.acnt_prdt_cd,
-            "PDNO": "",
+            "PDNO": "%",                # ✅ 전체 종목 조회: "" → "%"
             "ORD_STRT_DT": start_date,
             "ORD_END_DT": end_date,
-            "SLL_BUY_DVSN": "00",
-            "CCLD_NCCS_DVSN": "02",
-            "OVRS_EXCG_CD": "",
-            "SORT_SQN": "DS",
+            "SLL_BUY_DVSN": "00",       # 00: 전체
+            "CCLD_NCCS_DVSN": "02",     # 02: 미체결
+            "OVRS_EXCG_CD": "%",        # ✅ 전체 거래소: "" → "%"
+            "SORT_SQN": "",             # ✅ 정렬 미지정 (DS → 빈값): 스냅샷 충돌 해결
             "ORD_DT": "",
             "ORD_GNO_BRNO": "",
             "ODNO": "",
@@ -1008,6 +1009,8 @@ class KIS_API:
             max_retry = 3
             page_count = 0
             MAX_PAGE = 30
+            snapshot_retry = 0          # ✅ 추가
+            MAX_SNAPSHOT_RETRY = 5      # ✅ 추가: 전체 재시도 5회 상한
 
             while True:
                 headers["tr_cont"] = tr_cont_req
@@ -1030,10 +1033,28 @@ class KIS_API:
                         time.sleep(1.0 * (attempt + 1))
 
                 if result is None:
-                    return []
+                    return unfilled_orders  # ✅ 지금까지 모은 것이라도 반환
+                
                 if result.get('rt_cd') != '0':
-                    TA.send_tele(f"US 미체결 조회 실패: {result.get('msg1')}")
-                    return []
+                    msg1 = result.get('msg1', '')
+                    # ✅ 스냅샷 무효(조회이후 변경) → 점진적 대기 + 재시도
+                    if '변경' in msg1 or '다시 조회' in msg1 or 'MCA05918' in str(result.get('msg_cd', '')):
+                        snapshot_retry += 1
+                        if snapshot_retry > MAX_SNAPSHOT_RETRY:
+                            TA.send_tele(f"US 미체결 스냅샷 재시도 {MAX_SNAPSHOT_RETRY}회 초과 → 중단 (누적 {len(unfilled_orders)}건)")
+                            return unfilled_orders
+                        # ✅ 지수 백오프: 2, 4, 6, 8, 10초
+                        wait_sec = 2 + snapshot_retry * 2
+                        TA.send_tele(f"US 미체결 스냅샷 무효 → {wait_sec}초 대기 후 재시도 {snapshot_retry}/{MAX_SNAPSHOT_RETRY}")
+                        time.sleep(wait_sec)
+                        params['CTX_AREA_FK200'] = ""
+                        params['CTX_AREA_NK200'] = ""
+                        tr_cont_req = ""
+                        unfilled_orders = []
+                        page_count = 0
+                        continue
+                    TA.send_tele(f"US 미체결 조회 실패: {msg1}")
+                    return unfilled_orders
 
                 for order in result.get('output', []):
                     unfilled_orders.append({
