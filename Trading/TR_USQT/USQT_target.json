@@ -1,111 +1,171 @@
 {
-    "AAPL": {
-        "name": "Apple Inc",
-        "weight": 0.05,
+    "BARK": {
+        "name": "Bark Class A",
+        "weight": 0.03,
         "categories": [
-            "trend"
+            "SCG"
         ],
-        "current_price": 248.96,
-        "target_invest": 6200.5635,
-        "target_qty": 24
-    },
-    "AMZN": {
-        "name": "Amazon.com Inc",
-        "weight": 0.05,
-        "categories": [
-            "value"
-        ],
-        "current_price": 208.76,
-        "target_invest": 6200.5635,
-        "target_qty": 29
-    },
-    "AVGO": {
-        "name": "Broadcom Inc",
-        "weight": 0.05,
-        "categories": [
-            "small"
-        ],
-        "current_price": 319.84,
-        "target_invest": 6200.5635,
-        "target_qty": 19
+        "current_price": 0.516,
+        "target_invest": 357.110244,
+        "target_qty": 692
     },
     "CASH": {
         "name": "CASH",
-        "weight": 0.5,
+        "weight": 0.52,
         "categories": [
-            "CASH"
+            "nan"
         ],
-        "target_invest": 62005.635,
+        "target_invest": 6189.910896,
         "target_qty": 0
     },
-    "GOOGL": {
-        "name": "Alphabet Inc",
-        "weight": 0.05,
+    "CLOV": {
+        "name": "Clover Health Investments Class A",
+        "weight": 0.03,
         "categories": [
-            "value"
+            "TCM"
         ],
-        "current_price": 307.13,
-        "target_invest": 6200.5635,
-        "target_qty": 20
+        "current_price": 1.714,
+        "target_invest": 357.110244,
+        "target_qty": 208
     },
-    "JPM": {
-        "name": "JPMorgan Chase",
-        "weight": 0.05,
+    "COMP": {
+        "name": "Compass Class A",
+        "weight": 0.03,
         "categories": [
-            "small"
+            "TCM"
         ],
-        "current_price": 287.97,
-        "target_invest": 6200.5635,
-        "target_qty": 21
+        "current_price": 7.125,
+        "target_invest": 357.110244,
+        "target_qty": 50
     },
-    "LLY": {
-        "name": "Eli Lilly and Co",
-        "weight": 0.05,
+    "CURV": {
+        "name": "Torrid Holdings",
+        "weight": 0.03,
         "categories": [
-            "small"
+            "SCG"
         ],
-        "current_price": 917.5,
-        "target_invest": 6200.5635,
-        "target_qty": 6
+        "current_price": 1.785,
+        "target_invest": 357.110244,
+        "target_qty": 200
     },
-    "META": {
-        "name": "Meta Platforms Inc",
-        "weight": 0.05,
+    "DBI": {
+        "name": "Designer Brands Class A",
+        "weight": 0.03,
         "categories": [
-            "value"
+            "SCG"
         ],
-        "current_price": 606.7,
-        "target_invest": 6200.5635,
-        "target_qty": 10
+        "current_price": 5.54,
+        "target_invest": 357.110244,
+        "target_qty": 64
     },
-    "MSFT": {
-        "name": "Microsoft Corp",
-        "weight": 0.05,
+    "DOW": {
+        "name": "Dow",
+        "weight": 0.03,
         "categories": [
-            "trend"
+            "TCM"
         ],
-        "current_price": 389.02,
-        "target_invest": 6200.5635,
-        "target_qty": 15
+        "current_price": 41.81,
+        "target_invest": 357.110244,
+        "target_qty": 8
     },
-    "NVDA": {
-        "name": "NVIDIA Corp",
-        "weight": 0.05,
+    "FLWS": {
+        "name": "1-800 FLOWERS.COM Class A",
+        "weight": 0.03,
         "categories": [
-            "trend"
+            "SCG"
         ],
-        "current_price": 178.56,
-        "target_invest": 6200.5635,
-        "target_qty": 34
+        "current_price": 3.115,
+        "target_invest": 357.110244,
+        "target_qty": 114
     },
-    "V": {
-        "name": "Visa Inc",
-        "weight": 0.05,
+    "LUMN": {
+        "name": "Lumen Technologies",
+        "weight": 0.03,
         "categories": [
-            "small"
+            "TCM"
         ],
-        "current_price": 299.71,
-        "target_invest": 6200.5635,
-        "target_qty": 20
+        "current_price": 6.786,
+        "target_invest": 357.110244,
+        "target_qty": 52
+    },
+    "MYGN": {
+        "name": "Myriad Genetics",
+        "weight": 0.03,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 4.415,
+        "target_invest": 357.110244,
+        "target_qty": 80
+    },
+    "OSCR": {
+        "name": "Oscar Health Class A",
+        "weight": 0.03,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 11.02,
+        "target_invest": 357.110244,
+        "target_qty": 32
+    },
+    "PTON": {
+        "name": "Peloton Interactive Class A",
+        "weight": 0.03,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 4.085,
+        "target_invest": 357.110244,
+        "target_qty": 87
+    },
+    "SLQT": {
+        "name": "SelectQuote",
+        "weight": 0.03,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 0.6246,
+        "target_invest": 357.110244,
+        "target_qty": 571
+    },
+    "SNBR": {
+        "name": "Sleep Number",
+        "weight": 0.03,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 2.08,
+        "target_invest": 357.110244,
+        "target_qty": 171
+    },
+    "UAA": {
+        "name": "Under Armour Class A",
+        "weight": 0.03,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 5.8401,
+        "target_invest": 357.110244,
+        "target_qty": 61
+    },
+    "VSTS": {
+        "name": "Vestis",
+        "weight": 0.03,
+        "categories": [
+            "TCM"
+        ],
+        "current_price": 7.82,
+        "target_invest": 357.110244,
+        "target_qty": 45
+    },
+    "ZIP": {
+        "name": "Ziprecruiter Class A",
+        "weight": 0.03,
+        "categories": [
+            "SCG"
+        ],
+        "current_price": 1.816,
+        "target_invest": 357.110244,
+        "target_qty": 196
     }
 }

@@ -1,18 +1,32 @@
 code,name,weight,category
-OSCR,Oscar Health Class A,0.03,TCM
-LUMN,Lumen Technologies,0.03,TCM
-UAA,Under Armour Class A,0.03,TCM
-COMP,Compass Class A,0.03,TCM
-CLOV,Clover Health Investments Class A,0.03,TCM
-PTON,Peloton Interactive Class A,0.03,TCM
-VSTS,Vestis,0.03,TCM
-DOW,Dow,0.03,TCM
-SLQT,SelectQuote,0.03,SCG
-SNBR,Sleep Number,0.03,SCG
-FLWS,1-800 FLOWERS.COM Class A,0.03,SCG
-CURV,Torrid Holdings,0.03,SCG
-DBI,Designer Brands Class A,0.03,SCG
-MYGN,Myriad Genetics,0.03,SCG
-BARK,Bark Class A,0.03,SCG
-ZIP,Ziprecruiter Class A,0.03,SCG
-CASH,CASH,0.52,
+OSCR,Oscar Health Class A,0.033,TCM
+EXPI,eXp World Holdings,0.033,TCM
+GLXY,Galaxy Digital Class A,0.033,TCM
+REAX,Real Brokerage,0.033,TCM
+COMP,Compass Class A,0.033,TCM
+LUMN,Lumen Technologies,0.033,TCM
+CLOV,Clover Health Investments Class A,0.033,TCM
+AMC,AMC Entertainment Holdings Class A,0.033,TCM
+UAA,Under Armour Class A,0.033,TCM
+BKKT,Bakkt Class A,0.033,TCM
+OPEN,Opendoor Technologies Class A,0.033,TCM
+AGL,agilon health,0.033,TCM
+PBF,PBF Energy Class A,0.033,TCM
+PTON,Peloton Interactive Class A,0.033,TCM
+VSTS,Vestis,0.033,TCM
+SNBR,Sleep Number,0.033,SCG
+STKS,One Group Hospitality,0.033,SCG
+FLWS,1-800 FLOWERS.COM Class A,0.033,SCG
+CURV,Torrid Holdings,0.033,SCG
+BRCC,BRC Class A,0.033,SCG
+PRPL,Purple Innovation,0.033,SCG
+ZIP,Ziprecruiter Class A,0.033,SCG
+DCGO,DocGo,0.033,SCG
+DOMO,Domo Class B,0.033,SCG
+GPRO,GoPro Class A,0.033,SCG
+CMRC,BigCommerce Holdings Series 1,0.033,SCG
+HRTX,Heron Therapeutics,0.033,SCG
+RRGB,Red Robin Gourmet Burgers,0.033,SCG
+TTEC,TTEC Holdings,0.033,SCG
+LCUT,Lifetime Brands,0.033,SCG
+CASH,CASH,0.01,
