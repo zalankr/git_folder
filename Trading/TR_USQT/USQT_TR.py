@@ -20,7 +20,7 @@ except singleton.SingleInstanceException:
 # ============================================
 key_file_path = "/var/autobot/KIS/kis63692011nkr.txt"       # 트레이딩 계쫘(수수료할인)
 token_file_path = "/var/autobot/KIS/kis63692011_token.json" # 트레이딩 계쫘(수수료할인)
-cano = "63604155"      # ← 계좌번호 수동 입력
+cano = "63692011"      # ← 계좌번호 수동 입력
 acnt_prdt_cd = "01"
 KIS = KIS_US.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
