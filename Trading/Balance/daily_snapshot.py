@@ -214,7 +214,6 @@ def get_overseas_balance(natn_cd: str, currency: str,
     stock_eval = 0.0
     today_sell_amt = 0.0
     today_buy_amt  = 0.0
-    mts_krw_total = 0.0      # output3 tot_asst_amt (마지막 페이지에서만 유효)
     tr_cont_req = ""
     page_count = 0
 
@@ -252,14 +251,6 @@ def get_overseas_balance(natn_cd: str, currency: str,
             # output2: frcr_dncl_amt_2는 통화별 분리 안 됨 (USD 중복 버그 확인됨)
             # → 사용하지 않음. TTTS3007R의 ord_psbl_frcr_amt로 대체
             # (단, output2의 기타 참조 필드를 원하면 여기서 읽을 수 있음)
-
-            # output3: 원화 총자산 (마지막 페이지에서만 유효)
-            out3 = data.get("output3", {})
-            if isinstance(out3, list):
-                out3 = out3[0] if out3 else {}
-            mts_page = float(out3.get("tot_asst_amt", 0) or 0)
-            if mts_page > 0:
-                mts_krw_total = mts_page
 
             page_count += 1
             if page_count >= MAX_PAGE:
@@ -327,7 +318,6 @@ def get_overseas_balance(natn_cd: str, currency: str,
         "sll_ruse": sll_ruse,              # 매도재사용가능금
         "total": stock_eval + real_deposit,
         "exchange_rate": exrt,
-        "mts_krw_total": mts_krw_total,
         "stocks": stocks
     }
 
@@ -570,11 +560,6 @@ def run_us():
     except Exception as e:
         msg.append(f"⚠ 외화RP 보정 중 오류: {e}")
 
-    # MTS 총자산 (계좌 전체 통화통합, 최상단 표시)
-    mts_krw = usd.get("mts_krw_total", 0)
-    if mts_krw > 0:
-        msg.append(f"MTS 총자산(통화통합): ₩{mts_krw:,.0f}")
-
     # USLA / HAA 분리
     usaa = split_usaa(usd)
 
@@ -602,7 +587,6 @@ def run_us():
     snapshot = {
         "mode": "US",
         "timestamp": datetime.now().isoformat(),
-        "mts_krw_total": mts_krw,
         "rp_adjusted": rp_adjusted,
         "rp_prev_date": rp_prev_date,
         "USD": usd,
@@ -614,31 +598,6 @@ def run_us():
 def run_asia():
     """KST 17:00 실행 — KRW / JPY / HKD 잔고"""
     msg = [f"📊 63604155 잔고 [KRW/JPY/HKD] {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
-
-    # MTS 총자산 조회 (통화통합 - 아무 통화나 한 번만 조회하면 됨)
-    # USD(840)로 CTRP6504R 호출하여 output3.tot_asst_amt 취득
-    mts_krw = 0.0
-    try:
-        time.sleep(0.1)
-        url_mts = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-present-balance"
-        params_mts = {
-            "CANO": CANO, "ACNT_PRDT_CD": ACNT_PRDT_CD,
-            "WCRC_FRCR_DVSN_CD": "02", "NATN_CD": "840",
-            "TR_MKET_CD": "00", "INQR_DVSN_CD": "00"
-        }
-        r_mts = requests.get(url_mts, headers=headers("CTRP6504R"), params=params_mts, timeout=10)
-        r_mts.raise_for_status()
-        d_mts = r_mts.json()
-        if d_mts.get("rt_cd") == "0":
-            out3 = d_mts.get("output3", {})
-            if isinstance(out3, list):
-                out3 = out3[0] if out3 else {}
-            mts_krw = float(out3.get("tot_asst_amt", 0))
-    except Exception:
-        pass
-
-    if mts_krw > 0:
-        msg.append(f"MTS 총자산(통화통합): ₩{mts_krw:,.0f}")
 
     # ── KRW ──
     krw = get_krw_balance()
@@ -685,7 +644,6 @@ def run_asia():
     snapshot = {
         "mode": "ASIA",
         "timestamp": datetime.now().isoformat(),
-        "mts_krw_total": mts_krw,
         "KRW": krw,
         "JPY": jpy,
         "HKD": hkd,
