@@ -431,6 +431,40 @@ def split_usaa(usd_balance: dict) -> dict:
 
 
 # ══════════════════════════════════════════════════
+#  전일 USD 현금 조회 (외화RP 보정용)
+# ══════════════════════════════════════════════════
+
+def get_prev_usd_cash(max_lookback_days: int = 10) -> tuple:
+    """
+    직전 영업일의 USD 현금 조회 (외화RP 보정용)
+    당월 말일까지 USD 예수금이 외화RP로 이체된 경우 API상 $0~$10로 조회되므로
+    전일 JSON에서 USD 현금을 가져와 연속성 유지.
+
+    Returns:
+        (prev_cash: float, prev_date: str) - 못 찾으면 (0.0, "")
+    """
+    today = datetime.now().date()
+    for i in range(1, max_lookback_days + 1):
+        d = today - timedelta(days=i)
+        date_str = d.strftime("%Y%m%d")
+        fp = os.path.join(SNAPSHOT_DIR, f"balance_{date_str}.json")
+        if not os.path.exists(fp):
+            continue
+        try:
+            with open(fp, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            us = data.get("US", {})
+            usd = us.get("USD", {})
+            # 보정된 cash가 있으면 그 값을, 없으면 raw cash 사용
+            prev_cash = float(usd.get("cash_adjusted", usd.get("cash", 0)))
+            if prev_cash > 0:
+                return prev_cash, date_str
+        except Exception:
+            continue
+    return 0.0, ""
+
+
+# ══════════════════════════════════════════════════
 #  JSON 저장
 # ══════════════════════════════════════════════════
 
@@ -507,6 +541,35 @@ def run_us():
         msg.append(f"❌ USD 조회 실패: {usd['error']}")
         return {"mode": "US", "timestamp": datetime.now().isoformat(), "error": usd["error"]}, msg
 
+    # ── 외화RP 보정 ──
+    # USLA 헷징모드 또는 HAA 수비모드 + USD 현금 < $10 인 경우
+    # → USD 예수금이 외화RP로 이체된 것으로 간주, 전일 USD 현금 값 사용
+    rp_adjusted = False
+    rp_prev_date = ""
+    rp_original_cash = usd["cash"]
+    try:
+        usaa_tr_tmp = {}
+        if os.path.exists(USAA_TR_PATH):
+            with open(USAA_TR_PATH, "r", encoding="utf-8") as f:
+                usaa_tr_tmp = json.load(f)
+        _usla_mode = usaa_tr_tmp.get("USLA_Mode", "")
+        _haa_mode  = usaa_tr_tmp.get("HAA_Mode", "")
+        is_defensive = (_usla_mode == "헷징모드") or (_haa_mode == "수비모드")
+        if is_defensive and usd["cash"] < 10.0:
+            prev_cash, prev_date = get_prev_usd_cash()
+            if prev_cash > 0:
+                usd["cash"] = prev_cash
+                usd["total"] = usd["stock_eval"] + prev_cash
+                usd["cash_adjusted"] = prev_cash
+                usd["cash_adjustment_reason"] = "외화RP 추정 (전일값 승계)"
+                rp_adjusted = True
+                rp_prev_date = prev_date
+                msg.append(f"💱 외화RP 보정: API현금 ${rp_original_cash:.2f} → 전일값 ${prev_cash:,.2f} ({prev_date})")
+            else:
+                msg.append(f"⚠ 외화RP 보정 시도 실패 (전일 데이터 없음, API현금 ${rp_original_cash:.2f} 사용)")
+    except Exception as e:
+        msg.append(f"⚠ 외화RP 보정 중 오류: {e}")
+
     # MTS 총자산 (계좌 전체 통화통합, 최상단 표시)
     mts_krw = usd.get("mts_krw_total", 0)
     if mts_krw > 0:
@@ -540,6 +603,8 @@ def run_us():
         "mode": "US",
         "timestamp": datetime.now().isoformat(),
         "mts_krw_total": mts_krw,
+        "rp_adjusted": rp_adjusted,
+        "rp_prev_date": rp_prev_date,
         "USD": usd,
         "USAA": usaa
     }
