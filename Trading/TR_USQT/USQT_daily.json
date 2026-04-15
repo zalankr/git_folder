@@ -1,12 +1,12 @@
 {
-    "date": "2026-03-31",
-    "total_stocks": 5657.807899999999,
-    "total_cash": 6221.55,
-    "total_asset": 11879.357899999999,
+    "date": "2026-04-14",
+    "total_stocks": 12750.727899999998,
+    "total_cash": 2.73,
+    "total_asset": 12753.457899999998,
     "total_asset_ret": 0.0,
     "currency": "USD",
-    "TCM": 2864.115,
+    "TCM": 5434.014999999999,
     "TCM_ret": 0.0,
-    "SCG": 2793.7629,
+    "SCG": 6449.9654,
     "SCG_ret": 0.0
 }
