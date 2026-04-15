@@ -53,7 +53,7 @@ MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "MOMENTUM_history")
 
 os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
 
-MAX_HOLDINGS = 20   # 최대 보유 종목 수
+MAX_HOLDINGS = 25   # 최대 보유 종목 수
 
 
 # ================================================================
