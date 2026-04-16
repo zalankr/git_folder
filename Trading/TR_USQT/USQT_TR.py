@@ -425,7 +425,20 @@ if order['round'] == 1 or order['round'] == 8:
 
         target[ticker]['current_price'] = price
         target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_usd_asset)
-        target[ticker]['target_qty'] = int(target[ticker]['target_invest'] / price)
+        new_target_qty = int(target[ticker]['target_invest'] / price)
+
+        # ✅ 8회차(2일차): target_qty가 현재 보유보다 줄어들면 보유수량으로 고정
+        #    → 1일차 매수분이 T+1 미결제 상태라 매도 불가하므로
+        if order['round'] == 8:
+            current_hold = 0
+            for s in stocks_list:
+                if s['ticker'] == ticker:
+                    current_hold = s['quantity']
+                    break
+            if new_target_qty < current_hold:
+                new_target_qty = current_hold
+
+        target[ticker]['target_qty'] = new_target_qty
         time_module.sleep(0.15)
 
     # 당일 target 저장하기
@@ -725,10 +738,6 @@ if order['round'] == 14:
     except Exception as e:
         TA.send_tele(f"USQT_stock.csv 파일 오류: {e}")
         sys.exit(1)
-
-    # A접두어 제거 (혹시 있을 경우)
-    if plan["code"].str.startswith("A").any():
-        plan["code"] = plan["code"].str.replace(r"^A", "", regex=True)
 
     plan_raw = defaultdict(list)
     for _, row in plan.iterrows():
