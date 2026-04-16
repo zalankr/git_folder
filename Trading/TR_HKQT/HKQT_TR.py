@@ -425,7 +425,20 @@ if order['round'] == 1 or order['round'] == 8:
         target[ticker]['current_price'] = price
         target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_hkd_asset)
         # ★ 홍콩주식: 1주 단위 매매 (KIS API 기준)
-        target[ticker]['target_qty'] = int(target[ticker]['target_invest'] / price)
+        new_target_qty = int(target[ticker]['target_invest'] / price)
+
+        # ✅ 8회차(2일차): target_qty가 현재 보유보다 줄어들면 보유수량으로 고정
+        #    → 1일차 매수분이 T+2 미결제 상태라 매도 불가하므로
+        if order['round'] == 8:
+            current_hold = 0
+            for s in stocks_list:
+                if s['ticker'] == ticker:
+                    current_hold = s['quantity']
+                    break
+            if new_target_qty < current_hold:
+                new_target_qty = current_hold
+
+        target[ticker]['target_qty'] = new_target_qty
         time_module.sleep(0.15)
 
     # 당일 target 저장하기

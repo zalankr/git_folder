@@ -415,7 +415,21 @@ if order['round'] == 1 or order['round'] == 8:
         target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_jpy_asset)
         # ★ 일본주식: 100주 단위 매매 (TSE 매매단위)
         raw_qty = int(target[ticker]['target_invest'] / price)
-        target[ticker]['target_qty'] = (raw_qty // 100) * 100  # 100주 단위 절사
+        new_target_qty = (raw_qty // 100) * 100  # 100주 단위 절사
+
+        # ✅ 8회차(2일차): target_qty가 현재 보유보다 줄어들면 보유수량으로 고정
+        #    → 1일차 매수분이 T+2 미결제 상태라 매도 불가하므로
+        #    ※ 100주 단위 절사 뒤 적용 (보유수량도 100주 배수이므로 일관성 유지)
+        if order['round'] == 8:
+            current_hold = 0
+            for s in stocks_list:
+                if s['ticker'] == ticker:
+                    current_hold = s['quantity']
+                    break
+            if new_target_qty < current_hold:
+                new_target_qty = current_hold
+
+        target[ticker]['target_qty'] = new_target_qty
         time_module.sleep(0.15)
 
     # 당일 target 저장하기
