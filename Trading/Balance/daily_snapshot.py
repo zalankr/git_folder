@@ -281,6 +281,7 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
         "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
         "MGNA_DVSN": "01",       # 증거금 구분: 01=개시증거금
         "EXCC_UNPR_DVSN": "01",  # 정산단가 구분: 01=현재가
+        "STTL_STTS_CD": "0",     # 정산상태코드: 0=전체, 1=미결제, 2=정산완료
         "CTX_AREA_FK200": "",
         "CTX_AREA_NK200": ""
     }
@@ -356,88 +357,43 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
 
 def fetch_gbft_balance(cano: str, acnt_prdt_cd: str, currency: str = "USD") -> dict:
     """
-    해외선물옵션 계좌 잔고 조회 (acnt_prdt_cd="08")
-    TR_ID: OTFR2102R (실전투자 전용)
-    - output1: 보유 포지션 리스트
-    - output2: 외화예수금/환율
-    Returns:
-      {"stocks": [...], "stock_eval": float, "cash": float,
-       "total": float, "exchange_rate": float}
-    ※ output field명(frcr_dncl_amt, frcr_evlu_amt 등)은 실계좌 첫 응답 후 확인 필요
+    해외선물옵션 예수금/증거금 조회 (acnt_prdt_cd="08")
+    TR_ID: OTFR1101R — 해외선물옵션 예수금현황
+    잔고 0원 상태에서도 호출 가능 (계좌 개설 후 입고금 없을 때)
     """
-    url = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-balance"
-    h = kis_headers(cano, "OTFR2102R")
+    url = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-deposit"
+    h = kis_headers(cano, "OTFR1101R")
     params = {
         "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
-        "CRCY_CD": currency,     # 통화코드: USD/HKD/JPY 등
-        "CTX_AREA_FK200": "",
-        "CTX_AREA_NK200": ""
+        "CRCY_CD": currency,    # USD / HKD 등
+        "INQR_DVSN_CD": "0",   # 조회구분: 0=전체
     }
 
     stocks = []
     stock_eval = 0.0
     cash = 0.0
     exrt = 0.0
-    tr_cont_req = ""
-    page = 0
 
     try:
-        while True:
-            h["tr_cont"] = tr_cont_req
-            time.sleep(API_SLEEP)
-            r = requests.get(url, headers=h, params=params, timeout=10)
-            r.raise_for_status()
-            data = r.json()
-            resp_tr_cont = r.headers.get("tr_cont", "").strip()
+        time.sleep(API_SLEEP)
+        r = requests.get(url, headers=h, params=params, timeout=10)
+        r.raise_for_status()
+        data = r.json()
 
-            if data.get("rt_cd") != "0":
-                return {"error": data.get("msg1", "해외선물 API 오류")}
+        if data.get("rt_cd") != "0":
+            return {"error": data.get("msg1", "해외선물 예수금 조회 오류")}
 
-            for s in data.get("output1", []):
-                qty = int(float(s.get("cblc_qty", 0) or 0))
-                if qty == 0:
-                    continue
-                evl = float(s.get("frcr_evlu_amt", 0) or 0)
-                stock_eval += evl
-                stocks.append({
-                    "code": s.get("pdno", ""),
-                    "name": s.get("prdt_name", ""),
-                    "qty": qty,
-                    "eval_amt": evl,
-                    "price": float(s.get("ovrs_now_pric", 0) or 0),
-                    "profit_rate": float(s.get("evlu_pfls_rt", 0) or 0)
-                })
-
-            out2 = data.get("output2", [{}])
-            d2 = out2[0] if out2 else {}
-            # frcr_dncl_amt: 외화예수금, exrt: 환율
-            cash_page = float(d2.get("frcr_dncl_amt", 0) or 0)
-            exrt_page = float(d2.get("exrt", 0) or 0)
-            if cash_page > 0:
-                cash = cash_page
-            if exrt_page > 0:
-                exrt = exrt_page
-
-            page += 1
-            if page >= MAX_PAGE:
-                break
-            if resp_tr_cont in ("D", "E", "F"):
-                break
-            fk = data.get("ctx_area_fk200", "").strip()
-            nk = data.get("ctx_area_nk200", "").strip()
-            if not fk or not nk:
-                break
-            params["CTX_AREA_FK200"] = fk
-            params["CTX_AREA_NK200"] = nk
-            tr_cont_req = "N"
+        out = data.get("output", {})
+        cash = float(out.get("frcr_dncl_amt", 0) or 0)
+        exrt = float(out.get("exrt", 0) or 0)
 
     except Exception as e:
         return {"error": f"해외선물 조회 예외: {e}"}
 
-    total = stock_eval + cash
     return {
         "stocks": stocks, "stock_eval": stock_eval,
-        "cash": cash, "total": total, "exchange_rate": exrt
+        "cash": cash, "total": cash,   # 포지션 없으면 예수금 = 총자산
+        "exchange_rate": exrt
     }
 
 
