@@ -4,8 +4,8 @@ daily_snapshot.py
 다계좌 통합 일별 잔고 스냅샷
 
 스케줄 (crontab, UTC):
-  0 22 * * 1-5  → KST 07:00 평일: US 모드 (미국주식 + Upbit)
-  0  8 * * 1-5  → KST 17:00 평일: ASIA 모드 (전계좌)
+  0 22 * * *  → KST 07:00 매일: US 모드 (미국주식 + Upbit)
+  0  8 * * *  → KST 17:00 매일: ASIA 모드 (전계좌)
 
 사용:
   python3 daily_snapshot.py US
@@ -121,6 +121,8 @@ _token_cache = {}   # {cano: {"appkey":..., "secret":..., "token":...}}
 def load_kis_keys(cano: str) -> tuple:
     """계좌별 appkey/secret 로드"""
     path = f"{KIS_KEY_DIR}/kis{cano}nkr.txt"
+    if cano == "43680827":
+        path = f"{KIS_KEY_DIR}/kis{cano}lys.txt"
     with open(path) as f:
         lines = [l.strip() for l in f.readlines()]
     return lines[0], lines[1]
