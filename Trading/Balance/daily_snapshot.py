@@ -19,10 +19,6 @@ import sys
 import os
 import json
 import time
-import hashlib
-import hmac
-import uuid
-import urllib.parse
 import requests
 from datetime import datetime, timedelta
 from collections import OrderedDict
@@ -64,8 +60,9 @@ ACCOUNTS = [
     ("KR Market", "KRQT", "Middle Cap", "63604155", "01", "kr_krqt_cat", {"category": "Middle Cap"}),
     ("KR Market", "KRQT", "Large Cap",  "63604155", "01", "kr_krqt_cat", {"category": "Large Cap"}),
 
-    # KRFT: 국내선물 (현재 주식잔고 기준, acnt_prdt_cd=03)
-    ("KR Market", "KRFT", "Hedge & Boost", "64753341", "03", "kr_simple", {}),
+    # KRFT: 국내선물옵션 (acnt_prdt_cd=03) — TTTC8434R 미지원(위탁계좌 전용)
+    # 별도 선물옵션 잔고 TR 구현 전까지 placeholder 처리
+    ("KR Market", "KRFT", "Hedge & Boost", "64753341", "03", "placeholder", {"currency": "KRW"}),
 
     # ── Global Market ────────────────────────────
     # USAA: 단일 계좌 + USLA/HAA (종목 티커 기반 분류)
@@ -383,7 +380,7 @@ def fetch_overseas_balance(cano: str, acnt_prdt_cd: str,
 
 
 # ══════════════════════════════════════════════════
-#  Upbit 잔고 조회
+#  Upbit 잔고 조회 (pyupbit 사용)
 # ══════════════════════════════════════════════════
 
 def load_upbit_keys() -> tuple:
@@ -392,93 +389,78 @@ def load_upbit_keys() -> tuple:
     return lines[0], lines[1]
 
 
-def upbit_jwt(access_key: str, secret_key: str, query: dict = None) -> str:
-    """JWT 토큰 생성 (query 없이는 순수 payload만)"""
-    try:
-        import jwt as pyjwt
-    except ImportError:
-        # PyJWT 미설치 시 폴백
-        raise RuntimeError("PyJWT 필요: pip install PyJWT")
-
-    payload = {"access_key": access_key, "nonce": str(uuid.uuid4())}
-    if query:
-        query_string = urllib.parse.urlencode(query).encode()
-        m = hashlib.sha512()
-        m.update(query_string)
-        payload["query_hash"] = m.hexdigest()
-        payload["query_hash_alg"] = "SHA512"
-
-    return pyjwt.encode(payload, secret_key, algorithm="HS256")
-
-
 def fetch_upbit_balance() -> dict:
     """
-    업비트 전체 잔고 조회
-    Returns:
-      {"stocks":[{code,name,qty,eval_amt,price,profit_rate}],
-       "stock_eval": float(KRW), "cash": float, "total": float}
+    업비트 전체 잔고 조회 (pyupbit 사용)
+    - get_balance_t("KRW"): 원화 잔고
+    - get_balances(): 전체 코인 보유 리스트
+    - get_current_price(ticker): 종목별 현재가 (상폐/미존재 코인 대응)
+
+    상장폐지되거나 BTC 마켓 전용 코인(KRW-xxx 없음)은 현재가 조회 실패해도
+    eval_amt=0으로 기록하고 계속 진행 (전체 404 터지지 않도록).
     """
+    try:
+        import pyupbit
+    except ImportError:
+        return {"error": "pyupbit 모듈 미설치 (pip install pyupbit)"}
+
     try:
         ak, sk = load_upbit_keys()
     except Exception as e:
         return {"error": f"Upbit 키 로드 실패: {e}"}
 
     try:
-        token = upbit_jwt(ak, sk)
+        upbit = pyupbit.Upbit(ak, sk)
     except Exception as e:
-        return {"error": f"Upbit JWT 생성 실패: {e}"}
+        return {"error": f"Upbit 접속 실패: {e}"}
 
+    # KRW 잔고
     try:
-        r = requests.get("https://api.upbit.com/v1/accounts",
-                         headers={"Authorization": f"Bearer {token}"}, timeout=10)
-        r.raise_for_status()
-        accounts = r.json()
+        cash = float(upbit.get_balance_t("KRW") or 0)
     except Exception as e:
-        return {"error": f"Upbit 잔고 API 오류: {e}"}
+        return {"error": f"Upbit KRW 잔고 오류: {e}"}
+
+    # 전체 보유 자산 (KRW 포함됨)
+    try:
+        balances = upbit.get_balances()
+    except Exception as e:
+        return {"error": f"Upbit 잔고 목록 오류: {e}"}
+
+    if not isinstance(balances, list):
+        return {"error": f"Upbit get_balances 응답 이상: {type(balances)}"}
 
     stocks = []
     stock_eval = 0.0
-    cash = 0.0
 
-    # 보유 코인별 현재가 조회용 markets 수집
-    coin_codes = []
-    for a in accounts:
-        cur = a.get("currency", "")
-        bal = float(a.get("balance", 0) or 0)
-        if cur == "KRW":
-            cash += bal
-            continue
-        if bal <= 0:
-            continue
-        coin_codes.append(f"KRW-{cur}")
-
-    # 현재가 일괄 조회 (markets 콤마 구분)
-    price_map = {}
-    if coin_codes:
-        try:
-            time.sleep(0.1)
-            r2 = requests.get("https://api.upbit.com/v1/ticker",
-                              params={"markets": ",".join(coin_codes)}, timeout=10)
-            r2.raise_for_status()
-            for t in r2.json():
-                price_map[t["market"]] = float(t.get("trade_price", 0) or 0)
-        except Exception as e:
-            return {"error": f"Upbit 현재가 조회 실패: {e}"}
-
-    for a in accounts:
+    for a in balances:
         cur = a.get("currency", "")
         if cur == "KRW":
             continue
-        bal = float(a.get("balance", 0) or 0)
+        bal = float(a.get("balance", 0) or 0) + float(a.get("locked", 0) or 0)
         if bal <= 0:
             continue
         avg = float(a.get("avg_buy_price", 0) or 0)
-        mkt = f"KRW-{cur}"
-        price = price_map.get(mkt, 0.0)
+        ticker = f"KRW-{cur}"
+
+        # 현재가 조회 - 실패해도 건너뛰지 말고 avg_buy_price로 대체
+        try:
+            price = pyupbit.get_current_price(ticker)
+            price = float(price) if price is not None else 0.0
+        except Exception:
+            price = 0.0
+
+        if price <= 0:
+            # KRW 마켓에 없는 코인(BTC/USDT 마켓 전용 또는 상폐)
+            # 평균매입가로 대체 평가
+            price = avg
+            note = "현재가조회불가 (매입가 대체)"
+        else:
+            note = ""
+
         evl = bal * price
         stock_eval += evl
         profit_rate = ((price / avg) - 1.0) * 100 if avg > 0 else 0.0
-        stocks.append({
+        item = {
             "code": cur,
             "name": cur,
             "qty": bal,
@@ -486,7 +468,10 @@ def fetch_upbit_balance() -> dict:
             "price": price,
             "profit_rate": profit_rate,
             "avg_price": avg
-        })
+        }
+        if note:
+            item["note"] = note
+        stocks.append(item)
 
     return {
         "stocks": stocks,
@@ -567,7 +552,13 @@ def split_usaa(usd_balance: dict, usaa_tr: dict) -> dict:
 # ══════════════════════════════════════════════════
 
 def get_prev_usd_cash(max_lookback_days: int = 10) -> tuple:
-    """전일 USD 현금 조회 (balance JSON에서)"""
+    """
+    전일 USD 현금 조회 (balance JSON에서).
+    신/구 두 가지 포맷을 모두 지원하여 연속성 유지.
+
+    - 신 포맷: US.categories.USAA.items[USLA].usd_raw.cash(_adjusted)
+    - 구 포맷: US.USD.cash_adjusted → US.USD.cash (단일계좌 버전)
+    """
     today = datetime.now().date()
     for i in range(1, max_lookback_days + 1):
         d = today - timedelta(days=i)
@@ -577,11 +568,26 @@ def get_prev_usd_cash(max_lookback_days: int = 10) -> tuple:
         try:
             with open(fp, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # US 블록 > categories > USAA > usd_raw > cash
-            usd_raw = (data.get("US", {}).get("categories", {})
-                         .get("USAA", {}).get("usd_raw", {}))
-            prev = float(usd_raw.get("cash_adjusted",
-                         usd_raw.get("cash", 0)) or 0)
+            prev = 0.0
+
+            # ① 신 포맷: categories.USAA.items 중 USLA 엔트리의 usd_raw
+            us_block = data.get("US", {})
+            cats = us_block.get("categories", {}) if isinstance(us_block, dict) else {}
+            usaa_items = cats.get("USAA", {}).get("items", []) if isinstance(cats, dict) else []
+            for it in usaa_items:
+                urw = it.get("usd_raw", {}) if isinstance(it, dict) else {}
+                if urw:
+                    prev = float(urw.get("cash_adjusted", urw.get("cash", 0)) or 0)
+                    if prev > 0:
+                        break
+
+            # ② 구 포맷 fallback: US.USD.cash_adjusted 또는 US.USD.cash
+            if prev <= 0 and isinstance(us_block, dict):
+                usd_old = us_block.get("USD", {})
+                if isinstance(usd_old, dict):
+                    prev = float(usd_old.get("cash_adjusted",
+                                 usd_old.get("cash", 0)) or 0)
+
             if prev > 0:
                 return prev, d.strftime("%Y%m%d")
         except Exception:
@@ -1121,6 +1127,20 @@ def format_report(mode: str, items: list, prev: dict) -> list:
             strat_sum_krw = 0.0
             strat_sum_native = 0.0
             native_cur = sitems[0].get("currency", "KRW")
+
+            # USAA 전략 상단: 외화RP 보정 여부 먼저 고지 (눈에 띄게)
+            if is_usaa:
+                for it in sitems:
+                    if it.get("rp_adjusted"):
+                        urw = it.get("usd_raw", {})
+                        orig = 0.0
+                        prev = 0.0
+                        if isinstance(urw, dict):
+                            # cash_adjusted = 승계값, 원래 API cash는 덮어써졌음 → 0 근사
+                            prev = float(urw.get("cash_adjusted", 0) or 0)
+                        prev_date = it.get("rp_prev_date", "")
+                        msg.append(f"  💱 외화RP 보정: API현금≈$0 → 전일값 {fmt_usd(prev)} ({prev_date})")
+                        break
 
             for it in sitems:
                 sub = it["sub"]
