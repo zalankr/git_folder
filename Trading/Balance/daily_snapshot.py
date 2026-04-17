@@ -81,7 +81,7 @@ ACCOUNTS = [
     # ETC: 일본 채권 (일본주식 API로 조회)
     ("Global Market", "ETC",  "JPUSbond", "63721147", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
 
-    # GBFT: 해외선물옵션 (acnt_prdt_cd=08) — OTFR2102R 전용 TR 사용
+    # GBFT: 해외선물옵션 (acnt_prdt_cd=08) — OTFM3118R + OTFM3114R 사용
     ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "gbft", {"currency": "USD"}),
     ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "gbft", {"currency": "USD"}),
 
@@ -187,19 +187,22 @@ def kis_headers(cano: str, tr_id: str) -> dict:
 
 def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
     """
-    한국주식 계좌 잔고 조회 (페이지네이션 포함)
+    한국주식/연금/IRP 계좌 잔고 조회 (페이지네이션 포함)
 
     계좌 타입별 output2 필드 사용 전략:
-    - 위탁계좌  (01):  nass_amt     = 순자산(주식+현금) → 신뢰 가능
-    - 연금저축  (22):  tot_evlu_amt = 총평가금액(주식+예수금)
-                       dnca_tot_amt = 예수금
-    - IRP       (29):  tot_evlu_amt = 총평가금액(주식+예수금)
-                       dnca_tot_amt = 예수금
-    연금/IRP는 nass_amt=0 반환 → tot_evlu_amt, dnca_tot_amt 사용.
+    - 위탁계좌  (01):  nass_amt = 순자산(주식+현금) → 신뢰 가능
+    - 연금저축  (22):  tot_evlu_amt, dnca_tot_amt, prvs_rcdl_excc_amt 복합
+    - IRP       (29):  tot_evlu_amt가 0인 경우 많음 →
+                       dnca_tot_amt, prvs_rcdl_excc_amt, nxdy_excc_amt 중 max
+                       + TTTC8908R로 nrcvb_buy_amt(미수없는매수금액) 크로스체크
+
+    IRP 예수금 관련 필드:
+      - dnca_tot_amt        : 예수금 총액
+      - prvs_rcdl_excc_amt  : 가수도정산금액 (D+2 이후 결제완료 예상)
+      - nxdy_excc_amt       : 익일정산금액 (D+1 결제)
 
     Returns:
-      {"stocks": [{code,name,qty,eval_amt,price,profit_rate}],
-       "stock_eval": float, "cash": float, "total": float}
+      {"stocks": [...], "stock_eval": float, "cash": float, "total": float}
     """
     is_pension = acnt_prdt_cd in ("22", "29")
 
@@ -214,8 +217,12 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
     }
 
     stock_eval = 0.0
-    total = 0.0
-    cash_from_api = 0.0   # dnca_tot_amt (연금/IRP 전용)
+    # 연금/IRP 후보 필드 (마지막 페이지 값)
+    dnca_tot_amt       = 0.0
+    prvs_rcdl_excc_amt = 0.0
+    nxdy_excc_amt      = 0.0
+    tot_evlu_amt       = 0.0
+    nass_amt_last      = 0.0
     stocks = []
     tr_cont_req = ""
     page = 0
@@ -251,18 +258,22 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
             d2 = out2[0] if out2 else {}
 
             if is_pension:
-                # 연금/IRP: tot_evlu_amt(총평가) 와 dnca_tot_amt(예수금) 사용
-                tot_page = float(d2.get("tot_evlu_amt", 0) or 0)
-                dnc_page = float(d2.get("dnca_tot_amt", 0) or 0)
-                if tot_page > 0:
-                    total = tot_page
-                if dnc_page > 0:
-                    cash_from_api = dnc_page
+                v = float(d2.get("tot_evlu_amt", 0) or 0)
+                if v > 0:
+                    tot_evlu_amt = v
+                v = float(d2.get("dnca_tot_amt", 0) or 0)
+                if v > 0:
+                    dnca_tot_amt = v
+                v = float(d2.get("prvs_rcdl_excc_amt", 0) or 0)
+                if v > 0:
+                    prvs_rcdl_excc_amt = v
+                v = float(d2.get("nxdy_excc_amt", 0) or 0)
+                if v > 0:
+                    nxdy_excc_amt = v
             else:
-                # 위탁계좌: nass_amt(순자산) 사용
-                nass_page = float(d2.get("nass_amt", 0) or 0)
-                if nass_page > 0:
-                    total = nass_page
+                v = float(d2.get("nass_amt", 0) or 0)
+                if v > 0:
+                    nass_amt_last = v
 
             page += 1
             if page >= MAX_PAGE:
@@ -281,19 +292,43 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         return {"error": f"KR 조회 예외: {e}"}
 
     if is_pension:
-        # dnca_tot_amt가 있으면 예수금으로 사용
-        if cash_from_api > 0:
-            cash = cash_from_api
-            total = max(total, stock_eval + cash)
-        elif total > stock_eval:
-            # tot_evlu_amt만 있을 때 역산
-            cash = total - stock_eval
-        else:
-            # 둘 다 없으면 stock_eval을 total로 (현금 미파악)
-            cash = 0.0
-            total = stock_eval
+        # ── 1차 추정: 3개 예수금 후보 중 최대값 ──
+        cash_candidates = [dnca_tot_amt, prvs_rcdl_excc_amt, nxdy_excc_amt]
+        cash = max(cash_candidates) if any(c > 0 for c in cash_candidates) else 0.0
+
+        # ── 2차 보강: TTTC8908R (매수가능조회) ──
+        try:
+            time.sleep(API_SLEEP)
+            url2 = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-psbl-order"
+            h2 = kis_headers(cano, "TTTC8908R")
+            params2 = {
+                "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
+                "PDNO": "005930",           # 더미 (결과에 영향 없음)
+                "ORD_UNPR": "70000",
+                "ORD_DVSN": "01",
+                "CMA_EVLU_AMT_ICLD_YN": "Y",
+                "OVRS_ICLD_YN": "N"
+            }
+            r2 = requests.get(url2, headers=h2, params=params2, timeout=10)
+            r2.raise_for_status()
+            d2b = r2.json()
+            if d2b.get("rt_cd") == "0":
+                out = d2b.get("output", {}) or {}
+                nrcvb = float(out.get("nrcvb_buy_amt", 0) or 0)
+                if nrcvb > cash:
+                    cash = nrcvb
+        except Exception:
+            pass
+
+        # ── 총자산 = max(주식평가금+현금, tot_evlu_amt) ──
+        total = max(stock_eval + cash, tot_evlu_amt)
+        # edge case: cash=0인데 tot_evlu_amt > stock_eval 이면 역산
+        if cash <= 0 and tot_evlu_amt > stock_eval:
+            cash = tot_evlu_amt - stock_eval
+
     else:
-        # 위탁계좌: nass_amt 기준
+        # 위탁계좌
+        total = nass_amt_last
         cash = total - stock_eval if total > 0 else 0.0
 
     return {"stocks": stocks, "stock_eval": stock_eval, "cash": cash, "total": total}
@@ -313,7 +348,7 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
       {"stocks": [{code,name,qty,eval_amt,price,profit_rate}],
        "stock_eval": float, "cash": float, "total": float}
     필수 파라미터:
-      STTL_STTS_CD: 정산상태코드 (필수) - "0"=전체, "1"=미결제, "2"=정산완료
+      STTL_STTS_CD: 정산상태코드 (필수, 2자리) - "00"=전체, "01"=정산완료, "02"=미정산
       MGNA_DVSN:    증거금 구분 (필수) - "01"=개시증거금, "02"=유지증거금
       EXCC_UNPR_DVSN: 정산단가 구분 (필수) - "01"=현재가, "02"=당일정산가
     """
@@ -323,7 +358,7 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
         "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
         "MGNA_DVSN": "01",        # 증거금 구분: 01=개시증거금
         "EXCC_UNPR_DVSN": "01",   # 정산단가 구분: 01=현재가
-        "STTL_STTS_CD": "0",      # 정산상태코드 (필수): 0=전체
+        "STTL_STTS_CD": "00",     # 정산상태코드 (필수, 2자리): 00=전체
         "CTX_AREA_FK200": "",
         "CTX_AREA_NK200": ""
     }
@@ -394,40 +429,44 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
 
 
 # ══════════════════════════════════════════════════
-#  해외선물옵션 잔고 조회 (OTFR2102R + CTFO6504R)
+#  해외선물옵션 잔고 조회 (OTFM3118R + OTFM3114R)
 # ══════════════════════════════════════════════════
 
 def fetch_gbft_balance(cano: str, acnt_prdt_cd: str, currency: str = "USD") -> dict:
     """
     해외선물옵션 계좌 잔고 조회 (acnt_prdt_cd="08")
 
-    Step 1 — 미결제약정 잔고: OTFR2102R
-      endpoint: /uapi/overseas-futureoption/v1/trading/inquire-balance-opsn-qty
-      포지션 보유 시 output1에 계약 리스트 반환
-      잔고 0일 때는 output1=[] 이고 rt_cd="0" 정상 반환
+    [원본 버그]
+      URL: /uapi/overseas-futureoption/v1/trading/inquire-balance-opsn-qty
+      → 존재하지 않는 엔드포인트. 404 Not Found.
 
-    Step 2 — 예수금/환율: CTFO6504R
-      endpoint: /uapi/overseas-futureoption/v1/trading/inquire-deposit
-      외화예수금(frcr_dncl_amt)과 환율(frst_bltn_exrt) 조회
-      계좌 서비스 미활성화 시 → "없는 서비스 코드" 에러 발생
+    [수정된 엔드포인트]
+      Step 1 — 미결제약정 잔고: OTFM3118R
+        /uapi/overseas-futureoption/v1/trading/inquire-unpd-brkg-prft-amt
+      Step 2 — 예수금/환율: OTFM3114R
+        /uapi/overseas-futureoption/v1/trading/inquire-deposit
 
-    ※ "없는 서비스 코드" 에러 지속 시 체크 방법:
-       KIS HTS → [해외선물옵션] → [계좌서비스 신청] 여부 확인
-       또는 KIS 고객센터 1544-5000 문의
+    계좌 서비스 미활성화시 (해외파생상품 거래확인서 미등록 등):
+      - 404 Not Found / "없는 서비스 코드" / rt_cd != "0"
+      → placeholder=True 로 반환 (에러 아님, 0원 표시)
     """
     stocks = []
     stock_eval = 0.0
     cash = 0.0
     exrt = 0.0
+    svc_available = True   # 엔드포인트/서비스 가용 여부
 
-    # ── Step 1: 미결제약정 잔고 (OTFR2102R) ──────────────────
-    url1 = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-balance-opsn-qty"
-    h1 = kis_headers(cano, "OTFR2102R")
+    # ── Step 1: 미결제약정 잔고 (OTFM3118R) ──────────────────
+    url1 = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-unpd-brkg-prft-amt"
+    h1 = kis_headers(cano, "OTFM3118R")
     params1 = {
-        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
-        "CRCY_CD": currency,
-        "CTX_AREA_FK200": "",
-        "CTX_AREA_NK200": ""
+        "CANO": cano,
+        "ACNT_PRDT_CD": acnt_prdt_cd,
+        "OVRS_FUTR_FX_PDNO": "",                # 종목코드 (공란=전체)
+        "INQR_CNDT": "00",                      # 조회조건: 00=전체
+        "WHOL_TRST_RGBF_INQR_DVSN": "0",        # 위탁/자기: 0=전체
+        "CTX_AREA_FK100": "",
+        "CTX_AREA_NK100": ""
     }
     tr_cont_req = ""
     page = 0
@@ -437,29 +476,35 @@ def fetch_gbft_balance(cano: str, acnt_prdt_cd: str, currency: str = "USD") -> d
             h1["tr_cont"] = tr_cont_req
             time.sleep(API_SLEEP)
             r1 = requests.get(url1, headers=h1, params=params1, timeout=10)
-            r1.raise_for_status()
+
+            # 404/403/5xx → 서비스 비활성 (에러 아님, placeholder 처리)
+            if r1.status_code >= 400:
+                svc_available = False
+                break
+
             d1 = r1.json()
             resp_tr_cont = r1.headers.get("tr_cont", "").strip()
 
             if d1.get("rt_cd") != "0":
-                # 포지션 없을 때 정상 처리, 실제 오류만 반환
-                msg = d1.get("msg1", "해외선물 잔고 조회 오류")
-                if "데이터가 없습니다" not in msg and "없는 서비스" not in msg:
-                    return {"error": msg}
-                break  # 데이터 없음 → 정상 (0포지션)
+                msg = d1.get("msg1", "")
+                if "데이터" in msg or "없는 서비스" in msg or "없습니다" in msg:
+                    svc_available = False
+                    break
+                # 그 외 오류는 리턴하지 않고 포지션 0으로 진행 (예수금 단계로)
+                break
 
             for s in d1.get("output1", []):
-                qty = int(float(s.get("cblc_qty", 0) or 0))
+                qty = int(float(s.get("ccld_qty", 0) or s.get("cblc_qty", 0) or 0))
                 if qty == 0:
                     continue
-                evl = float(s.get("frcr_evlu_amt", 0) or 0)
+                evl = float(s.get("frcr_evlu_amt", 0) or s.get("evlu_amt", 0) or 0)
                 stock_eval += evl
                 stocks.append({
-                    "code": s.get("pdno", ""),
+                    "code": s.get("ovrs_futr_fx_pdno", "") or s.get("pdno", ""),
                     "name": s.get("prdt_name", ""),
                     "qty": qty,
                     "eval_amt": evl,
-                    "price": float(s.get("now_pric", 0) or 0),
+                    "price": float(s.get("now_pric", 0) or s.get("prpr", 0) or 0),
                     "profit_rate": float(s.get("evlu_pfls_rt", 0) or 0)
                 })
 
@@ -468,58 +513,61 @@ def fetch_gbft_balance(cano: str, acnt_prdt_cd: str, currency: str = "USD") -> d
                 break
             if resp_tr_cont in ("D", "E", "F"):
                 break
-            fk = d1.get("ctx_area_fk200", "").strip()
-            nk = d1.get("ctx_area_nk200", "").strip()
+            fk = d1.get("ctx_area_fk100", "").strip()
+            nk = d1.get("ctx_area_nk100", "").strip()
             if not fk or not nk:
                 break
-            params1["CTX_AREA_FK200"] = fk
-            params1["CTX_AREA_NK200"] = nk
+            params1["CTX_AREA_FK100"] = fk
+            params1["CTX_AREA_NK100"] = nk
             tr_cont_req = "N"
 
-    except Exception as e:
-        return {"error": f"해외선물 잔고 조회 예외: {e}"}
+    except Exception:
+        svc_available = False
 
-    # ── Step 2: 예수금/환율 (CTFO6504R) ──────────────────────
-    url2 = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-deposit"
-    h2 = kis_headers(cano, "CTFO6504R")
-    params2 = {
-        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
-        "CRCY_CD": currency,
-        "INQR_DVSN_CD": "0",   # 0=전체
-    }
+    # ── Step 2: 예수금/환율 (OTFM3114R) ──────────────────────
+    if svc_available:
+        url2 = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-deposit"
+        h2 = kis_headers(cano, "OTFM3114R")
+        params2 = {
+            "CANO": cano,
+            "ACNT_PRDT_CD": acnt_prdt_cd,
+            "ACNT_TR_TYPE_CD": "1",      # 1=외화, 2=원화
+            "CRCY_CD": currency,
+            "INQR_DT": datetime.now().strftime("%Y%m%d")
+        }
+        try:
+            time.sleep(API_SLEEP)
+            r2 = requests.get(url2, headers=h2, params=params2, timeout=10)
+            if r2.status_code < 400:
+                d2 = r2.json()
+                if d2.get("rt_cd") == "0":
+                    out = d2.get("output", {}) or {}
+                    cash = float(out.get("frcr_dncl_amt", 0)
+                                 or out.get("dnca_tot_amt", 0) or 0)
+                    exrt = float(out.get("frst_bltn_exrt", 0)
+                                 or out.get("exrt", 0) or 0)
+        except Exception:
+            pass
 
-    try:
-        time.sleep(API_SLEEP)
-        r2 = requests.get(url2, headers=h2, params=params2, timeout=10)
-        r2.raise_for_status()
-        d2 = r2.json()
-
-        if d2.get("rt_cd") == "0":
-            out = d2.get("output", {})
-            cash = float(out.get("frcr_dncl_amt", 0) or 0)
-            exrt = float(out.get("frst_bltn_exrt", 0) or 0)
-        else:
-            # 서비스 미활성화 에러를 error 키로 반환 (포지션 조회는 성공했으므로 별도 표시)
-            return {
-                "stocks": stocks, "stock_eval": stock_eval,
-                "cash": 0.0, "total": stock_eval,
-                "exchange_rate": 0.0,
-                "error": d2.get("msg1", "해외선물 예수금 조회 오류")
-            }
-
-    except Exception as e:
-        # 예수금 조회 실패 시에도 포지션 정보는 살림
+    # ── 서비스 비활성 placeholder ──
+    if not svc_available and stock_eval == 0 and cash == 0:
         return {
-            "stocks": stocks, "stock_eval": stock_eval,
-            "cash": 0.0, "total": stock_eval,
+            "stocks": [],
+            "stock_eval": 0.0,
+            "cash": 0.0,
+            "total": 0.0,
             "exchange_rate": 0.0,
-            "error": f"해외선물 예수금 조회 예외: {e}"
+            "placeholder": True,
+            "note": "해외선물옵션 계좌서비스 미활성"
         }
 
     total = stock_eval + cash
     return {
-        "stocks": stocks, "stock_eval": stock_eval,
-        "cash": cash, "total": total, "exchange_rate": exrt
+        "stocks": stocks,
+        "stock_eval": stock_eval,
+        "cash": cash,
+        "total": total,
+        "exchange_rate": exrt
     }
 
 
@@ -1014,7 +1062,19 @@ def handle_kr_simple(cano: str, acnt: str, kwargs: dict) -> dict:
 
 
 def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
-    """KRQT 계좌의 카테고리별 분리"""
+    """
+    KRQT 계좌 (단일) 의 카테고리별 분리 + 계좌 cash 를 주식평가금 비중으로 배분
+
+    이전 버그:
+      - `is_main = (category == "SCG")` → KRQT 카테고리는
+        "Small Cap Growth", "Small Cap Simple-Fin", "Middle Cap", "Large Cap"
+        이므로 is_main이 항상 False → 현금 전체가 어느 세부전략에도 배분 안 됨
+
+    수정:
+      - 계좌 전체 주식평가금 합계 기준으로 현금을 비례 배분
+      - csv에 매핑되지 않은 종목은 비례배분 기준에서 제외
+      - 주식평가금 합계가 0이면 첫 카테고리(Small Cap Growth)에 몰아줌
+    """
     category = kwargs["category"]
     key = _cache_key("kr", cano, acnt)
     if key in _account_cache:
@@ -1024,16 +1084,27 @@ def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         _account_cache[key] = bal
     if "error" in bal:
         return {"error": bal["error"], "currency": "KRW",
-                 "total_krw": 0.0, "stock_eval_krw": 0.0, "cash_krw": 0.0, "stocks": []}
+                 "total_krw": 0.0, "stock_eval_krw": 0.0,
+                 "cash_krw": 0.0, "stocks": []}
 
     csv_path = "/var/autobot/TR_KRQT/KRQT_stock.csv"
     cat_map = load_category_map(csv_path, us=False)
     cat_filtered = filter_by_category(bal, cat_map, category)
 
-    # KRQT의 4개 세부전략은 cash를 SCG에만 몰아주지 않고, 카테고리별 주식평가금에 비례 배분하지 않음
-    # → 서브전략별 표시는 주식평가금만. 계좌 전체 cash는 SCG(메인)에만 기록
-    is_main = (category == "SCG")
-    cash = bal["cash"] if is_main else 0.0
+    # ── 계좌 전체 주식평가금(csv에 매핑된 코드만) ──
+    account_stock_total = 0.0
+    for s in bal.get("stocks", []):
+        if cat_map.get(s["code"]):
+            account_stock_total += s["eval_amt"]
+
+    # ── 카테고리별 현금 비례 배분 ──
+    if account_stock_total > 0:
+        ratio = cat_filtered["stock_eval"] / account_stock_total
+        cash = bal["cash"] * ratio
+    else:
+        # edge case: 주식 없음 → 첫 카테고리에 몰아줌
+        cash = bal["cash"] if category == "Small Cap Growth" else 0.0
+
     total = cat_filtered["stock_eval"] + cash
 
     return {
@@ -1043,8 +1114,7 @@ def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         "cash_krw": cash,
         "stocks": cat_filtered["stocks"],
         "exchange_rate": 1.0,
-        "is_main": is_main,
-        "account_total_krw": bal["total"]  # 계좌 전체 합계 (KRQT소계 산출용)
+        "account_total_krw": bal["total"]
     }
 
 
@@ -1094,7 +1164,15 @@ def handle_us_usaa_sub(cano: str, acnt: str, kwargs: dict) -> dict:
 
 
 def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
-    """USQT 계좌의 카테고리별 분리 (SCG/TCM)"""
+    """
+    USQT 계좌 (단일) 의 카테고리별 분리 (SCG/TCM) + 현금 비례 배분
+
+    이전 버그:
+      - cash 가 SCG에만 몰려 있었음 (is_main=True 인 SCG만 받음)
+
+    수정:
+      - 계좌 전체 주식평가금(csv 매핑 종목만) 비중으로 현금 배분
+    """
     category = kwargs["category"]
     key = _cache_key("us_usqt", cano, acnt)
     if key in _account_cache:
@@ -1110,8 +1188,19 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     cat_map = load_category_map(csv_path, us=True)
     cat_filtered = filter_by_category(bal, cat_map, category)
 
-    is_main = (category == "SCG")
-    cash = bal["cash"] if is_main else 0.0
+    # 계좌 전체 주식평가금 (csv 매핑된 것만)
+    account_stock_total = 0.0
+    for s in bal.get("stocks", []):
+        if cat_map.get(s["code"]):
+            account_stock_total += s["eval_amt"]
+
+    # 현금 비례 배분
+    if account_stock_total > 0:
+        ratio = cat_filtered["stock_eval"] / account_stock_total
+        cash = bal["cash"] * ratio
+    else:
+        cash = bal["cash"] if category == "SCG" else 0.0
+
     total_usd = cat_filtered["stock_eval"] + cash
     exrt = bal.get("exchange_rate", 0)
 
@@ -1123,7 +1212,6 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         "total_krw": total_usd * exrt if exrt > 0 else 0,
         "stocks": cat_filtered["stocks"],
         "exchange_rate": exrt,
-        "is_main": is_main,
         "account_total_usd": bal.get("total", 0)
     }
 
@@ -1198,7 +1286,11 @@ def handle_krft(cano: str, acnt: str, kwargs: dict) -> dict:
 
 
 def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
-    """해외선물옵션 계좌 잔고 (OTFR2102R, USD)"""
+    """해외선물옵션 계좌 잔고 (OTFM3118R + OTFM3114R, USD)
+
+    fetch_gbft_balance가 placeholder=True 반환시:
+      - 에러가 아닌 정상 placeholder로 처리 → 텔레그램 '[미연결] 0원' 표시
+    """
     currency = kwargs.get("currency", "USD")
     key = _cache_key("gbft", cano, acnt, currency)
     if key in _account_cache:
@@ -1206,6 +1298,21 @@ def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
     else:
         bal = fetch_gbft_balance(cano, acnt, currency)
         _account_cache[key] = bal
+
+    # 서비스 비활성 → placeholder (에러 아님)
+    if bal.get("placeholder"):
+        return {
+            "currency": currency,
+            "total_krw": 0.0,
+            f"total_{currency.lower()}": 0.0,
+            f"stock_eval_{currency.lower()}": 0.0,
+            f"cash_{currency.lower()}": 0.0,
+            "stocks": [],
+            "exchange_rate": 0.0,
+            "placeholder": True,
+            "note": bal.get("note", "")
+        }
+
     if "error" in bal:
         return {"error": bal["error"], "currency": currency,
                  "total_krw": 0.0, f"total_{currency.lower()}": 0.0, "stocks": []}
