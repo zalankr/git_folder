@@ -60,8 +60,9 @@ ACCOUNTS = [
     ("KR Market", "KRQT", "Middle Cap", "63604155", "01", "kr_krqt_cat", {"category": "Middle Cap"}),
     ("KR Market", "KRQT", "Large Cap",  "63604155", "01", "kr_krqt_cat", {"category": "Large Cap"}),
 
-    # KRFT: 국내선물옵션 (acnt_prdt_cd=03) — CTFO6118R 전용 TR 사용
-    ("KR Market", "KRFT", "Hedge & Boost", "64753341", "03", "krft", {"currency": "KRW"}),
+    # KRFT: 국내선물옵션 (acnt_prdt_cd=03) — TTTC8434R 미지원(위탁계좌 전용)
+    # 별도 선물옵션 잔고 TR 구현 전까지 placeholder 처리
+    ("KR Market", "KRFT", "Hedge & Boost", "64753341", "03", "placeholder", {"currency": "KRW"}),
 
     # ── Global Market ────────────────────────────
     # USAA: 단일 계좌 + USLA/HAA (종목 티커 기반 분류)
@@ -81,9 +82,9 @@ ACCOUNTS = [
     # ETC: 일본 채권 (일본주식 API로 조회)
     ("Global Market", "ETC",  "JPUSbond", "63721147", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
 
-    # GBFT: 해외선물옵션 (acnt_prdt_cd=08) — OTFR2102R 전용 TR 사용
-    ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "gbft", {"currency": "USD"}),
-    ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "gbft", {"currency": "USD"}),
+    # GBFT: 해외선물 (acnt_prdt_cd=08, 아직 구현 안됨 → 0원)
+    ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "placeholder", {"currency": "USD"}),
+    ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "placeholder", {"currency": "USD"}),
 
     # ── Alternative ──────────────────────────────
     ("Alternative", "Gold",   "Gold",   "키움 52953897", "", "placeholder", {"currency": "KRW"}),
@@ -258,187 +259,6 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
 
     cash = total - stock_eval if total > 0 else 0.0
     return {"stocks": stocks, "stock_eval": stock_eval, "cash": cash, "total": total}
-
-
-# ══════════════════════════════════════════════════
-#  국내선물옵션 잔고 조회 (CTFO6118R)
-# ══════════════════════════════════════════════════
-
-def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
-    """
-    국내선물옵션 계좌 잔고 조회 (acnt_prdt_cd="03")
-    TR_ID: CTFO6118R (실전투자 전용)
-    - output1: 보유 포지션 리스트
-    - output2: 예수금/증거금 합계
-    Returns:
-      {"stocks": [{code,name,qty,eval_amt,price,profit_rate}],
-       "stock_eval": float, "cash": float, "total": float}
-    ※ output field명(cblc_qty, dncl_amt 등)은 실계좌 첫 응답 후 확인 필요
-    """
-    url = f"{BASE_URL}/uapi/domestic-futureoption/v1/trading/inquire-balance"
-    h = kis_headers(cano, "CTFO6118R")
-    params = {
-        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
-        "MGNA_DVSN": "01",       # 증거금 구분: 01=개시증거금
-        "EXCC_UNPR_DVSN": "01",  # 정산단가 구분: 01=현재가
-        "CTX_AREA_FK200": "",
-        "CTX_AREA_NK200": ""
-    }
-
-    stocks = []
-    stock_eval = 0.0
-    cash = 0.0
-    total = 0.0
-    tr_cont_req = ""
-    page = 0
-
-    try:
-        while True:
-            h["tr_cont"] = tr_cont_req
-            time.sleep(API_SLEEP)
-            r = requests.get(url, headers=h, params=params, timeout=10)
-            r.raise_for_status()
-            data = r.json()
-            resp_tr_cont = r.headers.get("tr_cont", "").strip()
-
-            if data.get("rt_cd") != "0":
-                return {"error": data.get("msg1", "국내선물 API 오류")}
-
-            for s in data.get("output1", []):
-                qty = int(float(s.get("cblc_qty", 0) or 0))
-                if qty == 0:
-                    continue
-                evl = float(s.get("evlu_amt", 0) or 0)
-                stock_eval += evl
-                stocks.append({
-                    "code": s.get("pdno", ""),
-                    "name": s.get("prdt_name", ""),
-                    "qty": qty,
-                    "eval_amt": evl,
-                    "price": float(s.get("prpr", 0) or 0),
-                    "profit_rate": float(s.get("evlu_pfls_rt", 0) or 0)
-                })
-
-            out2 = data.get("output2", [{}])
-            d2 = out2[0] if out2 else {}
-            # dncl_amt: 예수금, tot_asst_amt: 총자산
-            cash_page  = float(d2.get("dncl_amt", 0) or 0)
-            total_page = float(d2.get("tot_asst_amt", 0) or 0)
-            if cash_page > 0:
-                cash = cash_page
-            if total_page > 0:
-                total = total_page
-
-            page += 1
-            if page >= MAX_PAGE:
-                break
-            if resp_tr_cont in ("D", "E", "F"):
-                break
-            fk = data.get("ctx_area_fk200", "").strip()
-            nk = data.get("ctx_area_nk200", "").strip()
-            if not fk or not nk:
-                break
-            params["CTX_AREA_FK200"] = fk
-            params["CTX_AREA_NK200"] = nk
-            tr_cont_req = "N"
-
-    except Exception as e:
-        return {"error": f"국내선물 조회 예외: {e}"}
-
-    if total <= 0:
-        total = stock_eval + cash
-    return {"stocks": stocks, "stock_eval": stock_eval, "cash": cash, "total": total}
-
-
-# ══════════════════════════════════════════════════
-#  해외선물옵션 잔고 조회 (OTFR2102R)
-# ══════════════════════════════════════════════════
-
-def fetch_gbft_balance(cano: str, acnt_prdt_cd: str, currency: str = "USD") -> dict:
-    """
-    해외선물옵션 계좌 잔고 조회 (acnt_prdt_cd="08")
-    TR_ID: OTFR2102R (실전투자 전용)
-    - output1: 보유 포지션 리스트
-    - output2: 외화예수금/환율
-    Returns:
-      {"stocks": [...], "stock_eval": float, "cash": float,
-       "total": float, "exchange_rate": float}
-    ※ output field명(frcr_dncl_amt, frcr_evlu_amt 등)은 실계좌 첫 응답 후 확인 필요
-    """
-    url = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-balance"
-    h = kis_headers(cano, "OTFR2102R")
-    params = {
-        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
-        "CRCY_CD": currency,     # 통화코드: USD/HKD/JPY 등
-        "CTX_AREA_FK200": "",
-        "CTX_AREA_NK200": ""
-    }
-
-    stocks = []
-    stock_eval = 0.0
-    cash = 0.0
-    exrt = 0.0
-    tr_cont_req = ""
-    page = 0
-
-    try:
-        while True:
-            h["tr_cont"] = tr_cont_req
-            time.sleep(API_SLEEP)
-            r = requests.get(url, headers=h, params=params, timeout=10)
-            r.raise_for_status()
-            data = r.json()
-            resp_tr_cont = r.headers.get("tr_cont", "").strip()
-
-            if data.get("rt_cd") != "0":
-                return {"error": data.get("msg1", "해외선물 API 오류")}
-
-            for s in data.get("output1", []):
-                qty = int(float(s.get("cblc_qty", 0) or 0))
-                if qty == 0:
-                    continue
-                evl = float(s.get("frcr_evlu_amt", 0) or 0)
-                stock_eval += evl
-                stocks.append({
-                    "code": s.get("pdno", ""),
-                    "name": s.get("prdt_name", ""),
-                    "qty": qty,
-                    "eval_amt": evl,
-                    "price": float(s.get("ovrs_now_pric", 0) or 0),
-                    "profit_rate": float(s.get("evlu_pfls_rt", 0) or 0)
-                })
-
-            out2 = data.get("output2", [{}])
-            d2 = out2[0] if out2 else {}
-            # frcr_dncl_amt: 외화예수금, exrt: 환율
-            cash_page = float(d2.get("frcr_dncl_amt", 0) or 0)
-            exrt_page = float(d2.get("exrt", 0) or 0)
-            if cash_page > 0:
-                cash = cash_page
-            if exrt_page > 0:
-                exrt = exrt_page
-
-            page += 1
-            if page >= MAX_PAGE:
-                break
-            if resp_tr_cont in ("D", "E", "F"):
-                break
-            fk = data.get("ctx_area_fk200", "").strip()
-            nk = data.get("ctx_area_nk200", "").strip()
-            if not fk or not nk:
-                break
-            params["CTX_AREA_FK200"] = fk
-            params["CTX_AREA_NK200"] = nk
-            tr_cont_req = "N"
-
-    except Exception as e:
-        return {"error": f"해외선물 조회 예외: {e}"}
-
-    total = stock_eval + cash
-    return {
-        "stocks": stocks, "stock_eval": stock_eval,
-        "cash": cash, "total": total, "exchange_rate": exrt
-    }
 
 
 # ══════════════════════════════════════════════════
@@ -1094,52 +914,6 @@ def handle_upbit(cano: str, acnt: str, kwargs: dict) -> dict:
     }
 
 
-def handle_krft(cano: str, acnt: str, kwargs: dict) -> dict:
-    """국내선물옵션 계좌 잔고 (CTFO6118R, KRW)"""
-    key = _cache_key("krft", cano, acnt)
-    if key in _account_cache:
-        bal = _account_cache[key]
-    else:
-        bal = fetch_krft_balance(cano, acnt)
-        _account_cache[key] = bal
-    if "error" in bal:
-        return {"error": bal["error"], "currency": "KRW",
-                 "total_krw": 0.0, "stock_eval_krw": 0.0, "cash_krw": 0.0, "stocks": []}
-    return {
-        "currency": "KRW",
-        "total_krw": bal["total"],
-        "stock_eval_krw": bal["stock_eval"],
-        "cash_krw": bal["cash"],
-        "stocks": bal["stocks"],
-        "exchange_rate": 1.0
-    }
-
-
-def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
-    """해외선물옵션 계좌 잔고 (OTFR2102R, USD)"""
-    currency = kwargs.get("currency", "USD")
-    key = _cache_key("gbft", cano, acnt, currency)
-    if key in _account_cache:
-        bal = _account_cache[key]
-    else:
-        bal = fetch_gbft_balance(cano, acnt, currency)
-        _account_cache[key] = bal
-    if "error" in bal:
-        return {"error": bal["error"], "currency": currency,
-                 "total_krw": 0.0, f"total_{currency.lower()}": 0.0, "stocks": []}
-    exrt = bal.get("exchange_rate", 0)
-    total_native = bal.get("total", 0)
-    return {
-        "currency": currency,
-        f"total_{currency.lower()}": total_native,
-        f"stock_eval_{currency.lower()}": bal.get("stock_eval", 0),
-        f"cash_{currency.lower()}": bal.get("cash", 0),
-        "total_krw": total_native * exrt if exrt > 0 else 0,
-        "stocks": bal.get("stocks", []),
-        "exchange_rate": exrt
-    }
-
-
 def handle_placeholder(cano: str, acnt: str, kwargs: dict) -> dict:
     """미연결 계좌: 0원 반환"""
     cur = kwargs.get("currency", "KRW")
@@ -1161,8 +935,6 @@ HANDLERS = {
     "us_usqt_cat":   handle_us_usqt_cat,
     "overseas_all":  handle_overseas_all,
     "upbit":         handle_upbit,
-    "krft":          handle_krft,
-    "gbft":          handle_gbft,
     "placeholder":   handle_placeholder,
 }
 
