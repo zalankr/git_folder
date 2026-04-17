@@ -1,71 +1,161 @@
 """
 daily_snapshot.py
 ====================
-63604155 계좌 4통화 일별 잔고 스냅샷 (Simple 버전)
-
-KRW  → KRQT (한국주식)
-USD  → USAA (USLA + HAA)
-JPY  → JPQT (일본주식)
-HKD  → HKQT (홍콩주식)
+다계좌 통합 일별 잔고 스냅샷
 
 스케줄 (crontab, UTC):
-  0 23 * * 1-5  → KST 08:00 평일: USD 잔고
-  0  8 * * 1-5  → KST 17:00 평일: KRW / JPY / HKD 잔고
+  0 22 * * 1-5  → KST 07:00 평일: US 모드 (미국주식 + Upbit)
+  0  8 * * 1-5  → KST 17:00 평일: ASIA 모드 (전계좌)
 
 사용:
   python3 daily_snapshot.py US
   python3 daily_snapshot.py ASIA
+
+계좌 정보: account_data.csv (CSV 기반 선언적 구성)
+미연결 계좌(GOLD, 노라임, 노라송, 퇴직연금): 0원 placeholder
 """
 
 import sys
 import os
 import json
 import time
+import hashlib
+import hmac
+import uuid
+import urllib.parse
 import requests
 from datetime import datetime, timedelta
+from collections import OrderedDict
 
 sys.path.insert(0, "/var/autobot")
 import telegram_alert as TA
 
 # ══════════════════════════════════════════════════
-#  설정
+#  공용 설정
 # ══════════════════════════════════════════════════
 
-CANO = "63604155"
-ACNT_PRDT_CD = "01"
-KEY_FILE   = "/var/autobot/KIS/kis63604155nkr.txt"
-TOKEN_FILE = "/var/autobot/KIS/kis63604155_token.json"
-BASE_URL   = "https://openapi.koreainvestment.com:9443"
-
-USAA_TR_PATH  = "/var/autobot/TR_USAA/USAA_TR.json"
-SNAPSHOT_DIR  = "/var/autobot/Balance"
+BASE_URL     = "https://openapi.koreainvestment.com:9443"
+KIS_KEY_DIR  = "/var/autobot/KIS"
+UPBIT_KEY    = "/var/autobot/TR_Upbit/upnkr.txt"
+USAA_TR_PATH = "/var/autobot/TR_USAA/USAA_TR.json"
+SNAPSHOT_DIR = "/var/autobot/Balance"
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
-MAX_PAGE = 30   # 페이지네이션 안전장치 (해외 50종목/페이지 × 30 = 1500종목)
+MAX_PAGE = 30
+API_SLEEP = 0.12    # KIS rate limit: 20/sec 이론, 실사용 ~8/sec
 
 # ══════════════════════════════════════════════════
-#  인증
+#  계좌 구성 (account_data.csv 반영)
+# ══════════════════════════════════════════════════
+# CSV 열 순서대로 출력하기 위해 선언적 리스트로 관리
+# each: (market, strategy, sub, cano, acnt_prdt_cd, handler, kwargs)
+# handler는 아래 정의된 전략 핸들러 함수명
+
+ACCOUNTS = [
+    # ── KR Market ─────────────────────────────────
+    ("KR Market", "KRTR", "PEAK",       "43018646", "01", "kr_simple",   {}),
+    ("KR Market", "KRTR", "VALUE",      "44036546", "01", "kr_simple",   {}),
+    ("KR Market", "KRTR", "MOMENTUM",   "44287475", "01", "kr_simple",   {}),
+    ("KR Market", "KRTR", "Coverdcall", "63751991", "01", "kr_simple",   {}),
+
+    # KRQT: 단일 계좌 + 4개 세부전략 (category csv 기반 분류)
+    ("KR Market", "KRQT", "SCG",        "63604155", "01", "kr_krqt_cat", {"category": "SCG"}),
+    ("KR Market", "KRQT", "SIMPLE",     "63604155", "01", "kr_krqt_cat", {"category": "SIMPLE"}),
+    ("KR Market", "KRQT", "MIDDLE CAP", "63604155", "01", "kr_krqt_cat", {"category": "MIDDLE CAP"}),
+    ("KR Market", "KRQT", "LARGE CAP",  "63604155", "01", "kr_krqt_cat", {"category": "LARGE CAP"}),
+
+    # KRFT: 국내선물 (현재 주식잔고 기준, acnt_prdt_cd=03)
+    ("KR Market", "KRFT", "Hedge & Boost", "64753341", "03", "kr_simple", {}),
+
+    # ── Global Market ────────────────────────────
+    # USAA: 단일 계좌 + USLA/HAA (종목 티커 기반 분류)
+    ("Global Market", "USAA", "USLA",   "63604155", "01", "us_usaa_sub", {"sub": "USLA"}),
+    ("Global Market", "USAA", "HAA",    "63604155", "01", "us_usaa_sub", {"sub": "HAA"}),
+
+    # USQT: 단일 계좌 + SCG/TCM (category csv 기반 분류)
+    ("Global Market", "USQT", "SCG",    "63692011", "01", "us_usqt_cat", {"category": "SCG"}),
+    ("Global Market", "USQT", "TCM",    "63692011", "01", "us_usqt_cat", {"category": "TCM"}),
+
+    # JPQT: 일본주식
+    ("Global Market", "JPQT", "JPQT소계", "63604155", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
+
+    # HKQT: 홍콩주식
+    ("Global Market", "HKQT", "HKQT소계", "63604155", "01", "overseas_all", {"natn_cd": "344", "currency": "HKD", "excg": "SEHK", "repr_cd": "00700"}),
+
+    # ETC: 일본 채권 (일본주식 API로 조회)
+    ("Global Market", "ETC",  "JPbond소계", "63721147", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
+
+    # GBFT: 해외선물 (acnt_prdt_cd=08, 아직 구현 안됨 → 0원)
+    ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "placeholder", {"currency": "USD"}),
+    ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "placeholder", {"currency": "USD"}),
+
+    # ── Alternative ──────────────────────────────
+    ("Alternative", "Gold",   "Gold소계",   "키움 52953897", "", "placeholder", {"currency": "KRW"}),
+    ("Alternative", "Crypto", "Crypto소계", "ilpus@naver.com", "", "upbit", {}),
+
+    # ── 연금 & ISA ────────────────────────────────
+    ("연금&ISA", "ISA",     "ISA",        "43665648", "01", "kr_simple",   {}),
+    ("연금&ISA", "ISA",     "윤숙ISA",    "43680827", "01", "kr_simple",   {}),
+    ("연금&ISA", "Pension", "연금저축-1", "43685950", "22", "kr_simple",   {}),
+    ("연금&ISA", "Pension", "연금저축-2", "44334640", "22", "kr_simple",   {}),
+    ("연금&ISA", "Pension", "IRP",        "43685950", "29", "kr_simple",   {}),
+    ("연금&ISA", "Pension", "퇴직연금",   "미래에셋", "",   "placeholder", {"currency": "KRW"}),
+
+    # ── 기타 자산 ─────────────────────────────────
+    ("기타 자산", "노라임", "노라임", "44249970", "01", "placeholder", {"currency": "KRW"}),
+    ("기타 자산", "노라송", "노라송", "44249994", "01", "placeholder", {"currency": "KRW"}),
+]
+
+# ASIA 모드에서도 USAA/USQT/Crypto는 **다시 조회**해서 최종 스냅샷으로 덮어씀
+# (장중 환율/가격이 저녁까지 바뀌므로)
+# 07시 실행 대상
+US_MODE_KEYS = {"USAA", "USQT", "Crypto"}
+
+
+# ══════════════════════════════════════════════════
+#  KIS 인증 (계좌별 토큰 관리)
 # ══════════════════════════════════════════════════
 
-def load_keys():
-    with open(KEY_FILE) as f:
-        return [l.strip() for l in f.readlines()]
+_token_cache = {}   # {cano: {"appkey":..., "secret":..., "token":...}}
 
-APP_KEY, APP_SECRET = load_keys()
+def load_kis_keys(cano: str) -> tuple:
+    """계좌별 appkey/secret 로드"""
+    path = f"{KIS_KEY_DIR}/kis{cano}nkr.txt"
+    with open(path) as f:
+        lines = [l.strip() for l in f.readlines()]
+    return lines[0], lines[1]
 
 
-def get_token() -> str:
-    """토큰 캐시 로드 또는 재발급"""
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE) as f:
-            td = json.load(f)
-        issued = datetime.fromisoformat(td["issued_at"])
-        exp = issued + timedelta(seconds=td.get("expires_in", 86400))
-        if datetime.now() < exp - timedelta(minutes=60):
-            return td["access_token"]
+def get_kis_token(cano: str) -> tuple:
+    """
+    계좌별 access_token 발급/캐시.
+    Returns: (access_token, app_key, app_secret)
+    토큰파일: /var/autobot/KIS/kis{cano}_token.json
+    동일 appkey를 쓰는 계좌는 토큰도 자동 공유됨 (파일 경로는 cano별이지만 키는 같음)
+    """
+    if cano in _token_cache:
+        c = _token_cache[cano]
+        return c["token"], c["appkey"], c["secret"]
 
-    body = {"grant_type": "client_credentials",
-            "appkey": APP_KEY, "appsecret": APP_SECRET}
+    app_key, app_secret = load_kis_keys(cano)
+    token_file = f"{KIS_KEY_DIR}/kis{cano}_token.json"
+
+    # 캐시 파일 체크
+    if os.path.exists(token_file):
+        try:
+            with open(token_file) as f:
+                td = json.load(f)
+            issued = datetime.fromisoformat(td["issued_at"])
+            exp = issued + timedelta(seconds=td.get("expires_in", 86400))
+            if datetime.now() < exp - timedelta(minutes=60):
+                _token_cache[cano] = {"token": td["access_token"],
+                                       "appkey": app_key, "secret": app_secret}
+                return td["access_token"], app_key, app_secret
+        except Exception:
+            pass
+
+    # 신규 발급
+    body = {"grant_type": "client_credentials", "appkey": app_key, "appsecret": app_secret}
     r = requests.post(f"{BASE_URL}/oauth2/tokenP",
                       headers={"content-type": "application/json"},
                       json=body, timeout=10)
@@ -74,39 +164,40 @@ def get_token() -> str:
     td = {"access_token": data["access_token"],
           "issued_at": datetime.now().isoformat(),
           "expires_in": data.get("expires_in", 86400)}
-    with open(TOKEN_FILE, "w") as f:
+    with open(token_file, "w") as f:
         json.dump(td, f, indent=2)
-    return td["access_token"]
+    _token_cache[cano] = {"token": td["access_token"],
+                           "appkey": app_key, "secret": app_secret}
+    return td["access_token"], app_key, app_secret
 
-ACCESS_TOKEN = get_token()
 
-
-def headers(tr_id: str) -> dict:
+def kis_headers(cano: str, tr_id: str) -> dict:
+    tok, ak, sc = get_kis_token(cano)
     return {
         "Content-Type": "application/json",
-        "authorization": f"Bearer {ACCESS_TOKEN}",
-        "appKey": APP_KEY,
-        "appSecret": APP_SECRET,
+        "authorization": f"Bearer {tok}",
+        "appKey": ak,
+        "appSecret": sc,
         "tr_id": tr_id,
         "custtype": "P"
     }
 
 
 # ══════════════════════════════════════════════════
-#  KRW 잔고 (TTTC8434R - 국내주식 잔고)
+#  국내주식 잔고 조회 (TTTC8434R)
 # ══════════════════════════════════════════════════
 
-def get_krw_balance() -> dict:
+def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
     """
-    한국주식 잔고 조회 (페이지네이션 포함)
-    nass_amt = 순자산(주식평가+D+2현금) → total
-    stock_eval = output1 합산 → 주식평가금
-    cash = nass_amt - stock_eval
+    한국주식 계좌 잔고 조회 (페이지네이션 포함)
+    Returns:
+      {"stocks": [{code,name,qty,eval_amt,price,profit_rate}],
+       "stock_eval": float, "cash": float, "total": float}
     """
     url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-balance"
-    h = headers("TTTC8434R")
+    h = kis_headers(cano, "TTTC8434R")
     params = {
-        "CANO": CANO, "ACNT_PRDT_CD": ACNT_PRDT_CD,
+        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
         "AFHR_FLPR_YN": "N", "OFL_YN": "", "INQR_DVSN": "00",
         "UNPR_DVSN": "01", "FUND_STTL_ICLD_YN": "N",
         "FNCG_AMT_AUTO_RDPT_YN": "N", "PRCS_DVSN": "00",
@@ -114,15 +205,15 @@ def get_krw_balance() -> dict:
     }
 
     stock_eval = 0.0
-    total = 0.0    # nass_amt (마지막 페이지에서만 갱신)
+    total = 0.0
     stocks = []
     tr_cont_req = ""
-    page_count = 0
+    page = 0
 
     try:
         while True:
             h["tr_cont"] = tr_cont_req
-            time.sleep(0.12)
+            time.sleep(API_SLEEP)
             r = requests.get(url, headers=h, params=params, timeout=10)
             r.raise_for_status()
             data = r.json()
@@ -146,18 +237,16 @@ def get_krw_balance() -> dict:
                     "profit_rate": float(s.get("evlu_pfls_rt", 0) or 0)
                 })
 
-            # nass_amt는 마지막 페이지에서만 의미 있음 → 0이 아닐 때만 갱신
             out2 = data.get("output2", [{}])
             nass_page = float((out2[0] if out2 else {}).get("nass_amt", 0) or 0)
             if nass_page > 0:
                 total = nass_page
 
-            page_count += 1
-            if page_count >= MAX_PAGE:
+            page += 1
+            if page >= MAX_PAGE:
                 break
             if resp_tr_cont in ("D", "E", "F"):
                 break
-
             fk = data.get("ctx_area_fk100", "").strip()
             nk = data.get("ctx_area_nk100", "").strip()
             if not fk or not nk:
@@ -167,44 +256,32 @@ def get_krw_balance() -> dict:
             tr_cont_req = "N"
 
     except Exception as e:
-        return {"error": f"KRW 조회 예외: {e}"}
+        return {"error": f"KR 조회 예외: {e}"}
 
-    cash = total - stock_eval
-
-    return {
-        "currency": "KRW",
-        "label": "KRQT",
-        "stock_eval": stock_eval,
-        "cash": cash,
-        "total": total,
-        "stocks": stocks
-    }
+    cash = total - stock_eval if total > 0 else 0.0
+    return {"stocks": stocks, "stock_eval": stock_eval, "cash": cash, "total": total}
 
 
 # ══════════════════════════════════════════════════
-#  해외 잔고 공통 (CTRP6504R + TTTS3007R)
+#  해외주식 잔고 조회 (CTRP6504R + TTTS3007R)
 # ══════════════════════════════════════════════════
 
-def get_overseas_balance(natn_cd: str, currency: str,
-                         excg_order: str, item_cd: str,
-                         price: str = "100") -> dict:
+def fetch_overseas_balance(cano: str, acnt_prdt_cd: str,
+                             natn_cd: str, currency: str,
+                             excg: str, repr_cd: str,
+                             price: str = "100") -> dict:
     """
-    해외 주식 잔고 (체결기준현재잔고 CTRP6504R) + 주문가능금액 (TTTS3007R)
-
-    natn_cd:    840=미국, 392=일본, 344=홍콩
-    excg_order: NASD(미국), TKSE(일본), SEHK(홍콩) — TTTS3007R용
-    item_cd:    대표종목 AAPL / 7203 / 00700
-
-    페이지네이션: CTX_AREA_FK200/NK200 + tr_cont 헤더 (KIS_JP.py 검증 패턴)
-
-    현금 계산:
-      real_deposit = frcr_dncl_amt_2 + 당일매도 - 당일매수 (MTS 표시 예수금 근접)
-      orderable    = TTTS3007R.ovrs_ord_psbl_amt (수수료 예비차감, 주문 실행용)
+    해외주식 계좌 잔고 조회 + 환율 + 주문가능금액
+    Returns:
+      {"stocks": [...], "stock_eval": float, "cash": float, "total": float,
+       "exchange_rate": float, "frcr_deposit": float,
+       "today_sell_amt": float, "today_buy_amt": float,
+       "orderable_cash": float, "sll_ruse": float}
     """
     url = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-present-balance"
-    h = headers("CTRP6504R")
+    h = kis_headers(cano, "CTRP6504R")
     params = {
-        "CANO": CANO, "ACNT_PRDT_CD": ACNT_PRDT_CD,
+        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
         "WCRC_FRCR_DVSN_CD": "02", "NATN_CD": natn_cd,
         "TR_MKET_CD": "00", "INQR_DVSN_CD": "00",
         "CTX_AREA_FK200": "", "CTX_AREA_NK200": ""
@@ -215,21 +292,19 @@ def get_overseas_balance(natn_cd: str, currency: str,
     today_sell_amt = 0.0
     today_buy_amt  = 0.0
     tr_cont_req = ""
-    page_count = 0
+    page = 0
 
     try:
         while True:
             h["tr_cont"] = tr_cont_req
-            time.sleep(0.12)
+            time.sleep(API_SLEEP)
             r = requests.get(url, headers=h, params=params, timeout=10)
             r.raise_for_status()
             data = r.json()
             resp_tr_cont = r.headers.get("tr_cont", "").strip()
-
             if data.get("rt_cd") != "0":
-                return {"error": data.get("msg1", "API 오류"), "currency": currency}
+                return {"error": data.get("msg1", "API 오류")}
 
-            # output1: 종목별 평가금 + 당일 체결금액 누적 (모든 페이지)
             for s in data.get("output1", []):
                 today_sell_amt += float(s.get("thdt_sll_ccld_amt2", 0) or 0)
                 today_buy_amt  += float(s.get("thdt_buy_ccld_amt2", 0) or 0)
@@ -248,16 +323,11 @@ def get_overseas_balance(natn_cd: str, currency: str,
                     "profit_rate": float(s.get("evlu_pfls_rt1", 0) or 0)
                 })
 
-            # output2: frcr_dncl_amt_2는 통화별 분리 안 됨 (USD 중복 버그 확인됨)
-            # → 사용하지 않음. TTTS3007R의 ord_psbl_frcr_amt로 대체
-            # (단, output2의 기타 참조 필드를 원하면 여기서 읽을 수 있음)
-
-            page_count += 1
-            if page_count >= MAX_PAGE:
+            page += 1
+            if page >= MAX_PAGE:
                 break
             if resp_tr_cont in ("D", "E", "F"):
                 break
-
             FK = data.get("ctx_area_fk200", "").strip()
             NK = data.get("ctx_area_nk200", "").strip()
             if not FK or not NK:
@@ -267,415 +337,936 @@ def get_overseas_balance(natn_cd: str, currency: str,
             tr_cont_req = "N"
 
     except Exception as e:
-        return {"error": f"{currency} 조회 예외: {e}", "currency": currency}
+        return {"error": f"{currency} 조회 예외: {e}"}
 
-    # raw_deposit은 더 이상 CTRP6504R에서 가져오지 않음 → TTTS3007R에서 통화별 정확 조회
-    # real_deposit 계산은 TTTS3007R 조회 이후로 이동
-
-    # ── TTTS3007R: 통화별 정확 조회 ──
-    #   ord_psbl_frcr_amt: 순수 외화예수금 (통화별 분리, 수수료 미차감)
-    #   ovrs_ord_psbl_amt: 주문가능금액 (수수료 예비차감)
-    #   sll_ruse_psbl_amt: 매도재사용가능금
-    #   exrt: 해당 통화 환율
-    time.sleep(0.1)
+    # TTTS3007R: 통화별 정확 조회
+    time.sleep(API_SLEEP)
     url2 = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-psamount"
     params2 = {
-        "CANO": CANO, "ACNT_PRDT_CD": ACNT_PRDT_CD,
-        "OVRS_EXCG_CD": excg_order, "ITEM_CD": item_cd,
-        "OVRS_ORD_UNPR": price
+        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
+        "OVRS_EXCG_CD": excg, "ITEM_CD": repr_cd, "OVRS_ORD_UNPR": price
     }
-    orderable = 0.0        # ovrs_ord_psbl_amt (주문 실행용, 수수료 차감됨)
-    frcr_deposit = 0.0     # ord_psbl_frcr_amt (통화별 순수 외화예수금)
-    sll_ruse = 0.0         # sll_ruse_psbl_amt (매도재사용금)
+    orderable = 0.0
+    frcr_deposit = 0.0
+    sll_ruse = 0.0
     exrt = 0.0
     try:
-        r2 = requests.get(url2, headers=headers("TTTS3007R"), params=params2, timeout=10)
+        r2 = requests.get(url2, headers=kis_headers(cano, "TTTS3007R"),
+                          params=params2, timeout=10)
         r2.raise_for_status()
         d2 = r2.json()
         if d2.get("rt_cd") == "0":
-            output = d2.get("output", {})
-            orderable    = float(output.get("ovrs_ord_psbl_amt", 0) or 0)
-            frcr_deposit = float(output.get("ord_psbl_frcr_amt", 0) or 0)
-            sll_ruse     = float(output.get("sll_ruse_psbl_amt", 0) or 0)
-            exrt         = float(output.get("exrt", 0) or 0)
+            out = d2.get("output", {})
+            orderable    = float(out.get("ovrs_ord_psbl_amt", 0) or 0)
+            frcr_deposit = float(out.get("ord_psbl_frcr_amt", 0) or 0)
+            sll_ruse     = float(out.get("sll_ruse_psbl_amt", 0) or 0)
+            exrt         = float(out.get("exrt", 0) or 0)
     except Exception:
         pass
 
-    # 실제 예수금 가치 = 통화별 순수 외화예수금 + 당일매도 - 당일매수
-    # ord_psbl_frcr_amt에는 아직 T+2 미결제 매도대금이 반영 안 됨 → 당일매도 가산
-    # 당일매수는 이미 ord_psbl_frcr_amt에서 차감되어 있으므로 별도 보정 불필요한 경우 多
-    # 안전하게 CTRP6504R output1의 당일체결금액을 명시적으로 반영
     real_deposit = frcr_deposit + today_sell_amt - today_buy_amt
 
     return {
-        "currency": currency,
+        "stocks": stocks,
         "stock_eval": stock_eval,
-        "cash": real_deposit,              # 실제 예수금 가치 (통화별 정확)
-        "frcr_deposit": frcr_deposit,      # TTTS3007R.ord_psbl_frcr_amt (원본)
-        "today_sell_amt": today_sell_amt,
-        "today_buy_amt": today_buy_amt,
-        "orderable_cash": orderable,       # ovrs_ord_psbl_amt (주문용)
-        "sll_ruse": sll_ruse,              # 매도재사용가능금
+        "cash": real_deposit,
         "total": stock_eval + real_deposit,
         "exchange_rate": exrt,
-        "stocks": stocks
+        "frcr_deposit": frcr_deposit,
+        "today_sell_amt": today_sell_amt,
+        "today_buy_amt": today_buy_amt,
+        "orderable_cash": orderable,
+        "sll_ruse": sll_ruse
     }
 
 
 # ══════════════════════════════════════════════════
-#  USD 전략 분리 (USLA / HAA)
+#  Upbit 잔고 조회
+# ══════════════════════════════════════════════════
+
+def load_upbit_keys() -> tuple:
+    with open(UPBIT_KEY) as f:
+        lines = [l.strip() for l in f.readlines()]
+    return lines[0], lines[1]
+
+
+def upbit_jwt(access_key: str, secret_key: str, query: dict = None) -> str:
+    """JWT 토큰 생성 (query 없이는 순수 payload만)"""
+    try:
+        import jwt as pyjwt
+    except ImportError:
+        # PyJWT 미설치 시 폴백
+        raise RuntimeError("PyJWT 필요: pip install PyJWT")
+
+    payload = {"access_key": access_key, "nonce": str(uuid.uuid4())}
+    if query:
+        query_string = urllib.parse.urlencode(query).encode()
+        m = hashlib.sha512()
+        m.update(query_string)
+        payload["query_hash"] = m.hexdigest()
+        payload["query_hash_alg"] = "SHA512"
+
+    return pyjwt.encode(payload, secret_key, algorithm="HS256")
+
+
+def fetch_upbit_balance() -> dict:
+    """
+    업비트 전체 잔고 조회
+    Returns:
+      {"stocks":[{code,name,qty,eval_amt,price,profit_rate}],
+       "stock_eval": float(KRW), "cash": float, "total": float}
+    """
+    try:
+        ak, sk = load_upbit_keys()
+    except Exception as e:
+        return {"error": f"Upbit 키 로드 실패: {e}"}
+
+    try:
+        token = upbit_jwt(ak, sk)
+    except Exception as e:
+        return {"error": f"Upbit JWT 생성 실패: {e}"}
+
+    try:
+        r = requests.get("https://api.upbit.com/v1/accounts",
+                         headers={"Authorization": f"Bearer {token}"}, timeout=10)
+        r.raise_for_status()
+        accounts = r.json()
+    except Exception as e:
+        return {"error": f"Upbit 잔고 API 오류: {e}"}
+
+    stocks = []
+    stock_eval = 0.0
+    cash = 0.0
+
+    # 보유 코인별 현재가 조회용 markets 수집
+    coin_codes = []
+    for a in accounts:
+        cur = a.get("currency", "")
+        bal = float(a.get("balance", 0) or 0)
+        if cur == "KRW":
+            cash += bal
+            continue
+        if bal <= 0:
+            continue
+        coin_codes.append(f"KRW-{cur}")
+
+    # 현재가 일괄 조회 (markets 콤마 구분)
+    price_map = {}
+    if coin_codes:
+        try:
+            time.sleep(0.1)
+            r2 = requests.get("https://api.upbit.com/v1/ticker",
+                              params={"markets": ",".join(coin_codes)}, timeout=10)
+            r2.raise_for_status()
+            for t in r2.json():
+                price_map[t["market"]] = float(t.get("trade_price", 0) or 0)
+        except Exception as e:
+            return {"error": f"Upbit 현재가 조회 실패: {e}"}
+
+    for a in accounts:
+        cur = a.get("currency", "")
+        if cur == "KRW":
+            continue
+        bal = float(a.get("balance", 0) or 0)
+        if bal <= 0:
+            continue
+        avg = float(a.get("avg_buy_price", 0) or 0)
+        mkt = f"KRW-{cur}"
+        price = price_map.get(mkt, 0.0)
+        evl = bal * price
+        stock_eval += evl
+        profit_rate = ((price / avg) - 1.0) * 100 if avg > 0 else 0.0
+        stocks.append({
+            "code": cur,
+            "name": cur,
+            "qty": bal,
+            "eval_amt": evl,
+            "price": price,
+            "profit_rate": profit_rate,
+            "avg_price": avg
+        })
+
+    return {
+        "stocks": stocks,
+        "stock_eval": stock_eval,
+        "cash": cash,
+        "total": stock_eval + cash,
+        "currency": "KRW"
+    }
+
+
+# ══════════════════════════════════════════════════
+#  USAA 서브전략 분류 (USLA / HAA)
 # ══════════════════════════════════════════════════
 
 USLA_TICKERS = {"UPRO", "TQQQ", "EDC", "TMV", "TMF"}
 HAA_TICKERS  = {"SPY", "IWM", "VEA", "VWO", "PDBC", "VNQ", "TLT", "IEF", "BIL"}
 
 
-def split_usaa(usd_balance: dict) -> dict:
-    """
-    USD 잔고를 USLA / HAA로 분리
-
-    현금 배분 로직:
-      usd_balance["cash"] = 실제 예수금 가치 (ord_psbl_frcr_amt + 당일매도 - 당일매수)
-      USLA 헷징모드 시: USLA현금 = USAA_TR.json의 USD_USLA
-                        HAA현금  = 전체현금 - USLA현금
-      USLA 투자모드 시: USLA/HAA 각각 API 주식 + TR.json 비율로 현금 배분
-    """
-    # USAA_TR.json 로드
-    usaa_tr = {}
+def load_usaa_tr() -> dict:
+    """USAA_TR.json 로드"""
+    if not os.path.exists(USAA_TR_PATH):
+        return {}
     try:
-        if os.path.exists(USAA_TR_PATH):
-            with open(USAA_TR_PATH, "r", encoding="utf-8") as f:
-                usaa_tr = json.load(f)
-    except Exception as e:
-        TA.send_tele(f"USAA_TR.json 로드 실패: {e}")
+        with open(USAA_TR_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
-    usla_usd_from_json = float(usaa_tr.get("USD_USLA", 0))
-    haa_usd_from_json  = float(usaa_tr.get("USD_HAA", 0))
-    usaa_timestamp     = usaa_tr.get("timestamp", "")
-    usla_mode          = usaa_tr.get("USLA_Mode", "알수없음")
-    haa_mode           = usaa_tr.get("HAA_Mode", "알수없음")
 
-    # API 종목을 USLA / HAA로 분류
+def split_usaa(usd_balance: dict, usaa_tr: dict) -> dict:
+    """
+    USD 잔고를 USLA/HAA로 분리
+    외화RP 보정이 들어간 usd_balance["cash"]를 그대로 사용
+    """
+    usla_usd_json = float(usaa_tr.get("USD_USLA", 0))
+    haa_usd_json  = float(usaa_tr.get("USD_HAA", 0))
+    usla_mode     = usaa_tr.get("USLA_Mode", "알수없음")
+    haa_mode      = usaa_tr.get("HAA_Mode",  "알수없음")
+
     usla_stocks = []
     usla_eval = 0.0
     haa_stocks = []
     haa_eval = 0.0
 
     for s in usd_balance.get("stocks", []):
-        ticker = s["code"]
-        if ticker in USLA_TICKERS:
+        if s["code"] in USLA_TICKERS:
             usla_stocks.append(s)
             usla_eval += s["eval_amt"]
-        elif ticker in HAA_TICKERS:
-            haa_stocks.append(s)
-            haa_eval += s["eval_amt"]
         else:
             haa_stocks.append(s)
             haa_eval += s["eval_amt"]
 
-    # 전체 USD 현금 = TTTS3007R 주문가능금액
     total_cash = usd_balance.get("cash", 0)
 
-    # USLA 현금 배분: 헷징모드면 JSON의 USD_USLA 전액이 현금
-    #                  투자모드면 JSON 비율로 배분
     if usla_mode == "헷징모드" or usla_eval == 0:
-        # USLA는 주식 없이 전부 현금 → JSON의 USD_USLA를 현금으로
-        # 단, 전체현금을 초과할 수 없음
-        usla_cash = min(usla_usd_from_json, total_cash)
-        haa_cash = total_cash - usla_cash
+        usla_cash = min(usla_usd_json, total_cash)
+        haa_cash  = total_cash - usla_cash
     else:
-        # 투자모드: JSON 비율로 현금 배분
-        json_total = usla_usd_from_json + haa_usd_from_json
-        if json_total > 0:
-            usla_ratio = usla_usd_from_json / json_total
-        else:
-            usla_ratio = 0.66  # 기본 비율
-        usla_cash = total_cash * usla_ratio
-        haa_cash = total_cash - usla_cash
-
-    usla_total = usla_eval + usla_cash
-    haa_total = haa_eval + haa_cash
-    usaa_total = usla_total + haa_total
+        jt = usla_usd_json + haa_usd_json
+        ratio = (usla_usd_json / jt) if jt > 0 else 0.66
+        usla_cash = total_cash * ratio
+        haa_cash  = total_cash - usla_cash
 
     return {
         "USLA_Mode": usla_mode,
         "HAA_Mode": haa_mode,
-        "USLA": {
-            "mode": usla_mode,
-            "total_usd": usla_total,
-            "stock_eval": usla_eval,
-            "cash": usla_cash,
-            "stocks": usla_stocks
-        },
-        "HAA": {
-            "mode": haa_mode,
-            "total_usd": haa_total,
-            "stock_eval": haa_eval,
-            "cash": haa_cash,
-            "stocks": haa_stocks
-        },
-        "USAA_total": usaa_total,
-        "total_cash": total_cash,
-        "USAA_TR_timestamp": usaa_timestamp
+        "USLA": {"total_usd": usla_eval + usla_cash,
+                  "stock_eval": usla_eval, "cash": usla_cash,
+                  "stocks": usla_stocks},
+        "HAA":  {"total_usd": haa_eval + haa_cash,
+                  "stock_eval": haa_eval, "cash": haa_cash,
+                  "stocks": haa_stocks}
     }
 
 
 # ══════════════════════════════════════════════════
-#  전일 USD 현금 조회 (외화RP 보정용)
+#  외화RP 보정 (USAA 헷징/수비모드 대응)
 # ══════════════════════════════════════════════════
 
 def get_prev_usd_cash(max_lookback_days: int = 10) -> tuple:
-    """
-    직전 영업일의 USD 현금 조회 (외화RP 보정용)
-    당월 말일까지 USD 예수금이 외화RP로 이체된 경우 API상 $0~$10로 조회되므로
-    전일 JSON에서 USD 현금을 가져와 연속성 유지.
-
-    Returns:
-        (prev_cash: float, prev_date: str) - 못 찾으면 (0.0, "")
-    """
+    """전일 USD 현금 조회 (balance JSON에서)"""
     today = datetime.now().date()
     for i in range(1, max_lookback_days + 1):
         d = today - timedelta(days=i)
-        date_str = d.strftime("%Y%m%d")
-        fp = os.path.join(SNAPSHOT_DIR, f"balance_{date_str}.json")
+        fp = os.path.join(SNAPSHOT_DIR, f"balance_{d.strftime('%Y%m%d')}.json")
         if not os.path.exists(fp):
             continue
         try:
             with open(fp, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            us = data.get("US", {})
-            usd = us.get("USD", {})
-            # 보정된 cash가 있으면 그 값을, 없으면 raw cash 사용
-            prev_cash = float(usd.get("cash_adjusted", usd.get("cash", 0)))
-            if prev_cash > 0:
-                return prev_cash, date_str
+            # US 블록 > categories > USAA > usd_raw > cash
+            usd_raw = (data.get("US", {}).get("categories", {})
+                         .get("USAA", {}).get("usd_raw", {}))
+            prev = float(usd_raw.get("cash_adjusted",
+                         usd_raw.get("cash", 0)) or 0)
+            if prev > 0:
+                return prev, d.strftime("%Y%m%d")
         except Exception:
             continue
     return 0.0, ""
+
+
+def apply_rp_adjustment(usd_raw: dict, usaa_tr: dict) -> tuple:
+    """
+    외화RP 보정 적용
+    Returns: (adjusted_usd, rp_adjusted_bool, rp_prev_date, original_cash)
+    """
+    original_cash = usd_raw.get("cash", 0)
+    usla_mode = usaa_tr.get("USLA_Mode", "")
+    haa_mode  = usaa_tr.get("HAA_Mode", "")
+    is_defensive = (usla_mode == "헷징모드") or (haa_mode == "수비모드")
+    if not (is_defensive and original_cash < 10.0):
+        return usd_raw, False, "", original_cash
+
+    prev_cash, prev_date = get_prev_usd_cash()
+    if prev_cash <= 0:
+        return usd_raw, False, "", original_cash
+
+    usd_raw["cash"] = prev_cash
+    usd_raw["total"] = usd_raw["stock_eval"] + prev_cash
+    usd_raw["cash_adjusted"] = prev_cash
+    usd_raw["cash_adjustment_reason"] = "외화RP 추정 (전일값 승계)"
+    return usd_raw, True, prev_date, original_cash
+
+
+# ══════════════════════════════════════════════════
+#  KRQT/USQT 카테고리 분류 (CSV 기반)
+# ══════════════════════════════════════════════════
+
+def load_category_map(csv_path: str, us: bool = False) -> dict:
+    """
+    stock.csv 로드 → {code: category}
+    code는 국내: 'A삼성' → '005930' (첫글자 제거), 미국: 그대로
+    같은 code가 여러 category에 속하면 첫 번째만 사용 (경고)
+    """
+    if not os.path.exists(csv_path):
+        return {}
+    mapping = {}
+    try:
+        with open(csv_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        # header 파싱
+        header = [h.strip() for h in lines[0].strip().split(",")]
+        ci = {h: i for i, h in enumerate(header)}
+        for raw in lines[1:]:
+            parts = [p.strip() for p in raw.strip().split(",")]
+            if len(parts) < len(header):
+                continue
+            code = parts[ci.get("code", 0)]
+            cat  = parts[ci.get("category", 3)]
+            if not code or not cat or cat.lower() == "nan":
+                continue
+            # 국내주식: A 접두어 제거
+            if not us and code.startswith(("A", "a")):
+                code = code[1:]
+            if code == "CASH":
+                continue
+            if code not in mapping:
+                mapping[code] = cat
+    except Exception:
+        return {}
+    return mapping
+
+
+def filter_by_category(balance: dict, code_to_cat: dict, target_cat: str) -> dict:
+    """balance의 stocks를 category로 필터링해 반환 (eval_amt만 재합산)"""
+    filtered = []
+    stock_eval = 0.0
+    for s in balance.get("stocks", []):
+        if code_to_cat.get(s["code"]) == target_cat:
+            filtered.append(s)
+            stock_eval += s["eval_amt"]
+    return {"stocks": filtered, "stock_eval": stock_eval}
+
+
+# ══════════════════════════════════════════════════
+#  전일 대비 변동율 계산
+# ══════════════════════════════════════════════════
+
+def get_prev_snapshot() -> dict:
+    """전일 balance JSON 전체 로드"""
+    today = datetime.now().date()
+    for i in range(1, 10):
+        d = today - timedelta(days=i)
+        fp = os.path.join(SNAPSHOT_DIR, f"balance_{d.strftime('%Y%m%d')}.json")
+        if os.path.exists(fp):
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                continue
+    return {}
+
+
+def calc_day_change(curr: float, prev: float) -> float:
+    """전일 대비 변동율 (%). 전일 0이면 0.0"""
+    if prev <= 0:
+        return 0.0
+    return ((curr - prev) / prev) * 100
+
+
+def find_prev_entry(prev_snapshot: dict, market: str, strategy: str, sub: str) -> dict:
+    """전일 JSON에서 동일 (market, strategy, sub) 항목 찾기"""
+    for mode in ("ASIA", "US"):
+        cats = prev_snapshot.get(mode, {}).get("categories", {})
+        for k, v in cats.items():
+            if not isinstance(v, dict):
+                continue
+            items = v.get("items", [])
+            for it in items:
+                if (it.get("market") == market and
+                    it.get("strategy") == strategy and
+                    it.get("sub") == sub):
+                    return it
+    return {}
+
+
+def find_prev_stock(prev_entry: dict, code: str) -> dict:
+    """전일 entry의 stocks 리스트에서 code 검색"""
+    for s in prev_entry.get("stocks", []):
+        if s.get("code") == code:
+            return s
+    return {}
+
+
+# ══════════════════════════════════════════════════
+#  전략 핸들러 — 하나의 (market, strategy, sub) 항목 처리
+# ══════════════════════════════════════════════════
+
+# 계좌 단위 캐시 (동일 계좌 재조회 방지)
+_account_cache = {}
+
+
+def _cache_key(handler: str, cano: str, acnt_prdt_cd: str, extra: str = "") -> str:
+    return f"{handler}:{cano}:{acnt_prdt_cd}:{extra}"
+
+
+def handle_kr_simple(cano: str, acnt: str, kwargs: dict) -> dict:
+    """일반 한국주식 계좌 전체 잔고 반환 (KRW 기준)"""
+    key = _cache_key("kr", cano, acnt)
+    if key in _account_cache:
+        bal = _account_cache[key]
+    else:
+        bal = fetch_kr_balance(cano, acnt)
+        _account_cache[key] = bal
+    if "error" in bal:
+        return {"error": bal["error"], "currency": "KRW",
+                 "total_krw": 0.0, "stock_eval_krw": 0.0, "cash_krw": 0.0, "stocks": []}
+    return {
+        "currency": "KRW",
+        "total_krw": bal["total"],
+        "stock_eval_krw": bal["stock_eval"],
+        "cash_krw": bal["cash"],
+        "stocks": bal["stocks"],
+        "exchange_rate": 1.0
+    }
+
+
+def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
+    """KRQT 계좌의 카테고리별 분리"""
+    category = kwargs["category"]
+    key = _cache_key("kr", cano, acnt)
+    if key in _account_cache:
+        bal = _account_cache[key]
+    else:
+        bal = fetch_kr_balance(cano, acnt)
+        _account_cache[key] = bal
+    if "error" in bal:
+        return {"error": bal["error"], "currency": "KRW",
+                 "total_krw": 0.0, "stock_eval_krw": 0.0, "cash_krw": 0.0, "stocks": []}
+
+    csv_path = "/var/autobot/TR_KRQT/KRQT_stock.csv"
+    cat_map = load_category_map(csv_path, us=False)
+    cat_filtered = filter_by_category(bal, cat_map, category)
+
+    # KRQT의 4개 세부전략은 cash를 SCG에만 몰아주지 않고, 카테고리별 주식평가금에 비례 배분하지 않음
+    # → 서브전략별 표시는 주식평가금만. 계좌 전체 cash는 SCG(메인)에만 기록
+    is_main = (category == "SCG")
+    cash = bal["cash"] if is_main else 0.0
+    total = cat_filtered["stock_eval"] + cash
+
+    return {
+        "currency": "KRW",
+        "total_krw": total,
+        "stock_eval_krw": cat_filtered["stock_eval"],
+        "cash_krw": cash,
+        "stocks": cat_filtered["stocks"],
+        "exchange_rate": 1.0,
+        "is_main": is_main,
+        "account_total_krw": bal["total"]  # 계좌 전체 합계 (KRQT소계 산출용)
+    }
+
+
+def handle_us_usaa_sub(cano: str, acnt: str, kwargs: dict) -> dict:
+    """USAA 계좌의 USLA/HAA 분리 (외화RP 보정 적용)"""
+    sub = kwargs["sub"]
+    key = _cache_key("us_usaa", cano, acnt)
+    if key in _account_cache:
+        cached = _account_cache[key]
+        usd_raw  = cached["usd_raw"]
+        split    = cached["split"]
+        rp_info  = cached["rp_info"]
+    else:
+        usd_raw = fetch_overseas_balance(cano, acnt, "840", "USD", "NASD", "AAPL")
+        if "error" in usd_raw:
+            _account_cache[key] = {"usd_raw": usd_raw, "split": {}, "rp_info": (False, "", 0)}
+            return {"error": usd_raw["error"], "currency": "USD",
+                     "total_krw": 0.0, "total_usd": 0.0, "stocks": []}
+        usaa_tr = load_usaa_tr()
+        usd_raw, rp_adj, rp_date, orig = apply_rp_adjustment(usd_raw, usaa_tr)
+        split = split_usaa(usd_raw, usaa_tr)
+        rp_info = (rp_adj, rp_date, orig)
+        _account_cache[key] = {"usd_raw": usd_raw, "split": split, "rp_info": rp_info}
+
+    if "error" in usd_raw:
+        return {"error": usd_raw["error"], "currency": "USD",
+                 "total_krw": 0.0, "total_usd": 0.0, "stocks": []}
+
+    exrt = usd_raw.get("exchange_rate", 0)
+    sub_data = split.get(sub, {})
+    total_usd = sub_data.get("total_usd", 0)
+    total_krw = total_usd * exrt if exrt > 0 else 0
+
+    return {
+        "currency": "USD",
+        "total_usd": total_usd,
+        "stock_eval_usd": sub_data.get("stock_eval", 0),
+        "cash_usd": sub_data.get("cash", 0),
+        "total_krw": total_krw,
+        "stocks": sub_data.get("stocks", []),
+        "exchange_rate": exrt,
+        "mode": split.get(f"{sub}_Mode", ""),
+        "rp_adjusted": rp_info[0] if sub == "USLA" else False,
+        "rp_prev_date": rp_info[1] if sub == "USLA" else "",
+        "usd_raw": usd_raw if sub == "USLA" else {}  # USLA 측에만 raw 보관
+    }
+
+
+def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
+    """USQT 계좌의 카테고리별 분리 (SCG/TCM)"""
+    category = kwargs["category"]
+    key = _cache_key("us_usqt", cano, acnt)
+    if key in _account_cache:
+        bal = _account_cache[key]
+    else:
+        bal = fetch_overseas_balance(cano, acnt, "840", "USD", "NASD", "AAPL")
+        _account_cache[key] = bal
+    if "error" in bal:
+        return {"error": bal["error"], "currency": "USD",
+                 "total_krw": 0.0, "total_usd": 0.0, "stocks": []}
+
+    csv_path = "/var/autobot/TR_USQT/USQT_stock.csv"
+    cat_map = load_category_map(csv_path, us=True)
+    cat_filtered = filter_by_category(bal, cat_map, category)
+
+    is_main = (category == "SCG")
+    cash = bal["cash"] if is_main else 0.0
+    total_usd = cat_filtered["stock_eval"] + cash
+    exrt = bal.get("exchange_rate", 0)
+
+    return {
+        "currency": "USD",
+        "total_usd": total_usd,
+        "stock_eval_usd": cat_filtered["stock_eval"],
+        "cash_usd": cash,
+        "total_krw": total_usd * exrt if exrt > 0 else 0,
+        "stocks": cat_filtered["stocks"],
+        "exchange_rate": exrt,
+        "is_main": is_main,
+        "account_total_usd": bal.get("total", 0)
+    }
+
+
+def handle_overseas_all(cano: str, acnt: str, kwargs: dict) -> dict:
+    """해외주식 계좌 전체 (JP/HK/ETC)"""
+    natn_cd = kwargs["natn_cd"]
+    currency = kwargs["currency"]
+    excg = kwargs["excg"]
+    repr_cd = kwargs["repr_cd"]
+    price = kwargs.get("price", "1000" if currency == "JPY" else "100")
+
+    key = _cache_key("overseas", cano, acnt, currency)
+    if key in _account_cache:
+        bal = _account_cache[key]
+    else:
+        bal = fetch_overseas_balance(cano, acnt, natn_cd, currency, excg, repr_cd, price)
+        _account_cache[key] = bal
+    if "error" in bal:
+        return {"error": bal["error"], "currency": currency,
+                 "total_krw": 0.0, f"total_{currency.lower()}": 0.0, "stocks": []}
+
+    exrt = bal.get("exchange_rate", 0)
+    total_native = bal.get("total", 0)
+
+    return {
+        "currency": currency,
+        f"total_{currency.lower()}": total_native,
+        f"stock_eval_{currency.lower()}": bal.get("stock_eval", 0),
+        f"cash_{currency.lower()}": bal.get("cash", 0),
+        "total_krw": total_native * exrt if exrt > 0 else 0,
+        "stocks": bal.get("stocks", []),
+        "exchange_rate": exrt
+    }
+
+
+def handle_upbit(cano: str, acnt: str, kwargs: dict) -> dict:
+    """Upbit 전체 잔고"""
+    bal = fetch_upbit_balance()
+    if "error" in bal:
+        return {"error": bal["error"], "currency": "KRW",
+                 "total_krw": 0.0, "stock_eval_krw": 0.0, "cash_krw": 0.0, "stocks": []}
+    return {
+        "currency": "KRW",
+        "total_krw": bal["total"],
+        "stock_eval_krw": bal["stock_eval"],
+        "cash_krw": bal["cash"],
+        "stocks": bal["stocks"],
+        "exchange_rate": 1.0
+    }
+
+
+def handle_placeholder(cano: str, acnt: str, kwargs: dict) -> dict:
+    """미연결 계좌: 0원 반환"""
+    cur = kwargs.get("currency", "KRW")
+    return {
+        "currency": cur,
+        "total_krw": 0.0,
+        "stock_eval_krw": 0.0,
+        "cash_krw": 0.0,
+        "stocks": [],
+        "exchange_rate": 1.0,
+        "placeholder": True
+    }
+
+
+HANDLERS = {
+    "kr_simple":     handle_kr_simple,
+    "kr_krqt_cat":   handle_kr_krqt_cat,
+    "us_usaa_sub":   handle_us_usaa_sub,
+    "us_usqt_cat":   handle_us_usqt_cat,
+    "overseas_all":  handle_overseas_all,
+    "upbit":         handle_upbit,
+    "placeholder":   handle_placeholder,
+}
+
+
+# ══════════════════════════════════════════════════
+#  메인 수집 루프
+# ══════════════════════════════════════════════════
+
+def collect_accounts(mode: str) -> list:
+    """
+    ACCOUNTS 리스트를 순회하며 각 항목의 잔고를 수집.
+    mode = "US": US_MODE_KEYS(USAA/USQT/Crypto)만
+    mode = "ASIA": 전체
+    """
+    prev = get_prev_snapshot()
+    items = []
+
+    for (market, strategy, sub, cano, acnt, handler_name, kwargs) in ACCOUNTS:
+        if mode == "US" and strategy not in US_MODE_KEYS:
+            continue
+
+        handler = HANDLERS.get(handler_name, handle_placeholder)
+        try:
+            data = handler(cano, acnt, kwargs)
+        except Exception as e:
+            data = {"error": f"{handler_name} 예외: {e}", "currency": "KRW",
+                     "total_krw": 0.0, "stocks": []}
+
+        # 전일 대비 변동율
+        prev_entry = find_prev_entry(prev, market, strategy, sub)
+        prev_total_krw = prev_entry.get("total_krw", 0)
+        day_change_krw = calc_day_change(data.get("total_krw", 0), prev_total_krw)
+
+        # 종목별 전일 대비 (평가금 기준)
+        for s in data.get("stocks", []):
+            prev_s = find_prev_stock(prev_entry, s["code"])
+            s["day_change_rate"] = calc_day_change(
+                s.get("eval_amt", 0),
+                prev_s.get("eval_amt", 0)
+            )
+
+        # 통화별 전일 대비 (USAA/USQT/JPQT/HKQT/ETC)
+        day_change_native = 0.0
+        if data.get("currency") != "KRW":
+            cur_l = data["currency"].lower()
+            prev_native = prev_entry.get(f"total_{cur_l}",
+                            prev_entry.get("total_usd", 0))
+            curr_native = data.get(f"total_{cur_l}",
+                            data.get("total_usd", 0))
+            day_change_native = calc_day_change(curr_native, prev_native)
+
+        items.append({
+            "market": market,
+            "strategy": strategy,
+            "sub": sub,
+            "cano": cano,
+            "acnt_prdt_cd": acnt,
+            "currency": data.get("currency", "KRW"),
+            "total_krw": data.get("total_krw", 0),
+            "day_change_krw_rate": day_change_krw,
+            "day_change_native_rate": day_change_native,
+            "exchange_rate": data.get("exchange_rate", 0),
+            "placeholder": data.get("placeholder", False),
+            "error": data.get("error", ""),
+            "stocks": data.get("stocks", []),
+            # 세부 (통화별)
+            **{k: v for k, v in data.items() if k.startswith(("total_", "stock_eval_", "cash_"))},
+            # USAA 고유
+            "mode": data.get("mode", ""),
+            "rp_adjusted": data.get("rp_adjusted", False),
+            "rp_prev_date": data.get("rp_prev_date", ""),
+            "usd_raw": data.get("usd_raw", {}),
+            "is_main": data.get("is_main", True),
+            "account_total_krw": data.get("account_total_krw", 0),
+            "account_total_usd": data.get("account_total_usd", 0)
+        })
+
+    return items
 
 
 # ══════════════════════════════════════════════════
 #  JSON 저장
 # ══════════════════════════════════════════════════
 
-def save_json(snapshot: dict):
-    """일별 JSON 저장 (모드별 병합)"""
+def save_snapshot(mode: str, items: list) -> str:
+    """balance_YYYYMMDD.json 에 mode별로 저장 (병합)"""
     date_str = datetime.now().strftime("%Y%m%d")
-    filepath = os.path.join(SNAPSHOT_DIR, f"balance_{date_str}.json")
+    fp = os.path.join(SNAPSHOT_DIR, f"balance_{date_str}.json")
 
     existing = {}
-    if os.path.exists(filepath):
+    if os.path.exists(fp):
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(fp, "r", encoding="utf-8") as f:
                 existing = json.load(f)
         except Exception:
             existing = {}
 
-    existing[snapshot["mode"]] = snapshot
+    # 카테고리(strategy)별 그룹화
+    cats = OrderedDict()
+    for it in items:
+        k = it["strategy"]
+        if k not in cats:
+            cats[k] = {"items": []}
+        cats[k]["items"].append(it)
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(existing, f, ensure_ascii=False, indent=2)
+    existing["date"] = datetime.now().strftime("%Y-%m-%d")
+    existing[mode] = {
+        "timestamp": datetime.now().isoformat(),
+        "categories": cats
+    }
 
-    return filepath
+    with open(fp, "w", encoding="utf-8") as f:
+        json.dump(existing, f, ensure_ascii=False, indent=2, default=str)
+    return fp
 
 
 # ══════════════════════════════════════════════════
-#  Telegram 포맷
+#  Telegram 포맷 (CSV 순서대로)
 # ══════════════════════════════════════════════════
 
-def format_usd(msg: list, label: str, data: dict, exrt: float = 0):
-    """USD 전략별 텔레그램 메시지 포맷 (원화 환산 포함)"""
-    mode_str = data.get("mode", "")
-    if mode_str:
-        msg.append(f"\n── {label} [모드: {mode_str}] ──")
+def fmt_pct(v: float) -> str:
+    return f"{v:+.2f}%"
+
+def fmt_krw(v: float) -> str:
+    return f"₩{v:,.0f}"
+
+def fmt_usd(v: float) -> str:
+    return f"${v:,.2f}"
+
+def fmt_jpy(v: float) -> str:
+    return f"¥{v:,.0f}"
+
+def fmt_hkd(v: float) -> str:
+    return f"HK${v:,.0f}"
+
+
+def _currency_symbol(cur: str) -> str:
+    return {"KRW": "₩", "USD": "$", "JPY": "¥", "HKD": "HK$"}.get(cur, "")
+
+
+def format_report(mode: str, items: list, prev: dict) -> list:
+    """
+    텔레그램 메시지 생성 (CSV 순서대로)
+    mode별로 분할: 헤더 → 총자산 → 시장별 그룹 → 소계 → 전략별 종목 상세
+    """
+    msg = []
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    msg.append(f"📊 일별잔고 스냅샷 [{mode}] {now}")
+
+    # ── 총자산 ──
+    grand_total = sum(it.get("total_krw", 0) for it in items)
+    prev_grand = 0
+    for m in ("ASIA", "US"):
+        for cat in prev.get(m, {}).get("categories", {}).values():
+            for it in cat.get("items", []):
+                prev_grand += it.get("total_krw", 0)
+    grand_chg = calc_day_change(grand_total, prev_grand)
+
+    if mode == "ASIA":
+        msg.append(f"💰 총자산 합계: {fmt_krw(grand_total)} ({fmt_pct(grand_chg)})")
     else:
-        msg.append(f"\n── {label} ──")
-    msg.append(f"  주식: ${data['stock_eval']:,.2f}")
-    msg.append(f"  현금: ${data['cash']:,.2f}")
-    msg.append(f"  합계: ${data['total_usd']:,.2f}")
-    if exrt > 0:
-        krw = data['total_usd'] * exrt
-        msg.append(f"  원화환산: ₩{krw:,.0f}")
-    for s in data.get("stocks", []):
-        msg.append(f"    {s['code']}: {s['qty']}주 ${s['eval_amt']:,.2f} ({s['profit_rate']:+.1f}%)")
+        msg.append(f"💰 [US조회] 해당분 합계: {fmt_krw(grand_total)} ({fmt_pct(grand_chg)})")
+
+    # ── 시장 그룹별 출력 ──
+    markets = OrderedDict()
+    for it in items:
+        markets.setdefault(it["market"], []).append(it)
+
+    for market, mkt_items in markets.items():
+        msg.append("")
+        msg.append(f"━━━ {market} ━━━")
+
+        # 전략별 그룹화
+        strat_groups = OrderedDict()
+        for it in mkt_items:
+            strat_groups.setdefault(it["strategy"], []).append(it)
+
+        market_sum_krw = 0.0
+
+        for strategy, sitems in strat_groups.items():
+            msg.append("")
+            msg.append(f"【{strategy}】")
+
+            # USAA/USQT: 메인(is_main=True) 항목에만 MODE / 통화소계 표기
+            is_usaa = (strategy == "USAA")
+            is_usqt = (strategy == "USQT")
+            is_jp_hk = strategy in ("JPQT", "HKQT", "ETC")
+            is_gbft = (strategy == "GBFT")
+
+            strat_sum_krw = 0.0
+            strat_sum_native = 0.0
+            native_cur = sitems[0].get("currency", "KRW")
+
+            for it in sitems:
+                sub = it["sub"]
+                total_krw = it.get("total_krw", 0)
+                chg_krw = it.get("day_change_krw_rate", 0)
+                cur = it.get("currency", "KRW")
+                err = it.get("error", "")
+                placeholder = it.get("placeholder", False)
+
+                if placeholder:
+                    msg.append(f"  · {sub}: [미연결] {fmt_krw(0)}")
+                    continue
+                if err:
+                    msg.append(f"  · {sub}: ❌ {err}")
+                    continue
+
+                strat_sum_krw += total_krw
+
+                # 통화별 금액
+                if cur == "USD":
+                    native = it.get("total_usd", 0)
+                    strat_sum_native += native
+                    native_str = f"{fmt_usd(native)} ({fmt_pct(it.get('day_change_native_rate',0))})"
+                elif cur == "JPY":
+                    native = it.get("total_jpy", 0)
+                    strat_sum_native += native
+                    native_str = f"{fmt_jpy(native)} ({fmt_pct(it.get('day_change_native_rate',0))})"
+                elif cur == "HKD":
+                    native = it.get("total_hkd", 0)
+                    strat_sum_native += native
+                    native_str = f"{fmt_hkd(native)} ({fmt_pct(it.get('day_change_native_rate',0))})"
+                else:
+                    native_str = ""
+
+                # 기본 라인: 전략 sub + 원화 평가금 + 변동
+                krw_str = f"{fmt_krw(total_krw)} ({fmt_pct(chg_krw)})"
+                line = f"  · {sub}: {krw_str}"
+                if native_str:
+                    line += f"  /  {native_str}"
+
+                # USAA MODE 표시
+                if is_usaa:
+                    mode_str = it.get("mode", "")
+                    if mode_str:
+                        line += f"  [{mode_str}]"
+                    if it.get("rp_adjusted"):
+                        line += f"  💱RP({it.get('rp_prev_date','')})"
+
+                msg.append(line)
+
+            # 소계 (KRQT/USQT/USAA/GBFT/JPQT/HKQT/ETC)
+            if strategy in ("KRTR", "KRQT"):
+                msg.append(f"  → {strategy}소계: {fmt_krw(strat_sum_krw)}")
+            elif strategy == "USAA":
+                msg.append(f"  → USAA소계: {fmt_krw(strat_sum_krw)} / {fmt_usd(strat_sum_native)}")
+            elif strategy == "USQT":
+                msg.append(f"  → USQT소계: {fmt_krw(strat_sum_krw)} / {fmt_usd(strat_sum_native)}")
+            elif strategy == "GBFT":
+                msg.append(f"  → GBFT소계: {fmt_krw(strat_sum_krw)} / {fmt_usd(strat_sum_native)}")
+
+            market_sum_krw += strat_sum_krw
+
+        # 시장 소계 (ASIA 모드에서만 의미 있음)
+        msg.append("")
+        msg.append(f"▶ {market} 소계: {fmt_krw(market_sum_krw)}")
+
+    return msg
 
 
-def format_overseas(msg: list, label: str, data: dict, symbol: str):
-    """해외 잔고 텔레그램 메시지 포맷 (원화 환산 포함)"""
-    msg.append(f"\n── {label} ({data['currency']}) ──")
-    msg.append(f"  주식: {symbol}{data['stock_eval']:,.0f}")
-    msg.append(f"  현금: {symbol}{data['cash']:,.0f} (정산반영)")
-    orderable = data.get("orderable_cash", 0)
-    if orderable > 0 and abs(orderable - data['cash']) > 1:
-        msg.append(f"    └ 주문가능(참고): {symbol}{orderable:,.0f}")
-    msg.append(f"  합계: {symbol}{data['total']:,.0f}")
-    exrt = data.get("exchange_rate", 0)
-    if exrt > 0:
-        krw_calc = data['total'] * exrt
-        msg.append(f"  원화환산: ₩{krw_calc:,.0f} (환율 {exrt:,.2f})")
-    for s in data.get("stocks", []):
-        msg.append(f"    {s['code']}: {s['qty']}주 {symbol}{s['eval_amt']:,.0f} ({s['profit_rate']:+.1f}%)")
+def format_holdings_detail(items: list) -> list:
+    """전략별 종목 상세 (두 번째 메시지로 분리)"""
+    msg = []
+    msg.append("📋 보유종목 상세")
+
+    groups = OrderedDict()
+    for it in items:
+        if not it.get("stocks"):
+            continue
+        key = f"{it['strategy']} / {it['sub']}"
+        groups.setdefault(key, []).append(it)
+
+    for key, gitems in groups.items():
+        for it in gitems:
+            stocks = it.get("stocks", [])
+            if not stocks:
+                continue
+            cur = it.get("currency", "KRW")
+            msg.append("")
+            msg.append(f"─ {key} ({cur}) ─")
+            sym = _currency_symbol(cur)
+            for s in stocks:
+                code = s.get("code", "")
+                name = s.get("name", "") or code
+                qty = s.get("qty", 0)
+                evl = s.get("eval_amt", 0)
+                chg = s.get("day_change_rate", 0)
+                if cur == "KRW":
+                    qty_str = f"{int(qty)}주"
+                    evl_str = f"{sym}{evl:,.0f}"
+                elif cur == "USD":
+                    qty_str = f"{qty:g}주"
+                    evl_str = f"{sym}{evl:,.2f}"
+                else:
+                    qty_str = f"{qty:g}주"
+                    evl_str = f"{sym}{evl:,.0f}"
+                msg.append(f"  {code} {name}: {qty_str} / {evl_str} ({fmt_pct(chg)})")
+
+    return msg
 
 
 # ══════════════════════════════════════════════════
 #  메인
 # ══════════════════════════════════════════════════
 
-def run_us():
-    """KST 08:00 실행 — USD 잔고"""
-    msg = [f"📊 63604155 잔고 [USD] {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
-
-    # USD 잔고 조회
-    usd = get_overseas_balance("840", "USD", "NASD", "AAPL")
-    if "error" in usd:
-        msg.append(f"❌ USD 조회 실패: {usd['error']}")
-        return {"mode": "US", "timestamp": datetime.now().isoformat(), "error": usd["error"]}, msg
-
-    # ── 외화RP 보정 ──
-    # USLA 헷징모드 또는 HAA 수비모드 + USD 현금 < $10 인 경우
-    # → USD 예수금이 외화RP로 이체된 것으로 간주, 전일 USD 현금 값 사용
-    rp_adjusted = False
-    rp_prev_date = ""
-    rp_original_cash = usd["cash"]
-    try:
-        usaa_tr_tmp = {}
-        if os.path.exists(USAA_TR_PATH):
-            with open(USAA_TR_PATH, "r", encoding="utf-8") as f:
-                usaa_tr_tmp = json.load(f)
-        _usla_mode = usaa_tr_tmp.get("USLA_Mode", "")
-        _haa_mode  = usaa_tr_tmp.get("HAA_Mode", "")
-        is_defensive = (_usla_mode == "헷징모드") or (_haa_mode == "수비모드")
-        if is_defensive and usd["cash"] < 10.0:
-            prev_cash, prev_date = get_prev_usd_cash()
-            if prev_cash > 0:
-                usd["cash"] = prev_cash
-                usd["total"] = usd["stock_eval"] + prev_cash
-                usd["cash_adjusted"] = prev_cash
-                usd["cash_adjustment_reason"] = "외화RP 추정 (전일값 승계)"
-                rp_adjusted = True
-                rp_prev_date = prev_date
-                msg.append(f"💱 외화RP 보정: API현금 ${rp_original_cash:.2f} → 전일값 ${prev_cash:,.2f} ({prev_date})")
-            else:
-                msg.append(f"⚠ 외화RP 보정 시도 실패 (전일 데이터 없음, API현금 ${rp_original_cash:.2f} 사용)")
-    except Exception as e:
-        msg.append(f"⚠ 외화RP 보정 중 오류: {e}")
-
-    # USLA / HAA 분리
-    usaa = split_usaa(usd)
-
-    msg.append(f"\n{'='*30}")
-    msg.append(f"USLA 모드: {usaa['USLA_Mode']}")
-    msg.append(f"HAA 모드: {usaa['HAA_Mode']}")
-
-    exrt = usd.get("exchange_rate", 0)
-    usaa_krw = usaa['USAA_total'] * exrt if exrt > 0 else 0
-    msg.append(f"USAA 합계: ${usaa['USAA_total']:,.2f}")
-    if exrt > 0:
-        msg.append(f"  원화환산: ₩{usaa_krw:,.0f} (환율 {exrt:,.2f})")
-    msg.append(f"  주식합계: ${usd['stock_eval']:,.2f}")
-    msg.append(f"  현금합계: ${usaa['total_cash']:,.2f}")
-    msg.append(f"    ├ 외화예수금(순수): ${usd.get('frcr_deposit', 0):,.2f}")
-    msg.append(f"    ├ 당일매도: ${usd.get('today_sell_amt', 0):,.2f}")
-    msg.append(f"    ├ 당일매수: ${usd.get('today_buy_amt', 0):,.2f}")
-    msg.append(f"    ├ 매도재사용: ${usd.get('sll_ruse', 0):,.2f}")
-    msg.append(f"    └ 주문가능(참고): ${usd.get('orderable_cash', 0):,.2f}")
-    msg.append(f"TR기준시점: {usaa['USAA_TR_timestamp']}")
-
-    format_usd(msg, "USLA", usaa["USLA"], exrt)
-    format_usd(msg, "HAA", usaa["HAA"], exrt)
-
-    snapshot = {
-        "mode": "US",
-        "timestamp": datetime.now().isoformat(),
-        "rp_adjusted": rp_adjusted,
-        "rp_prev_date": rp_prev_date,
-        "USD": usd,
-        "USAA": usaa
-    }
-    return snapshot, msg
-
-
-def run_asia():
-    """KST 17:00 실행 — KRW / JPY / HKD 잔고"""
-    msg = [f"📊 63604155 잔고 [KRW/JPY/HKD] {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
-
-    # ── KRW ──
-    krw = get_krw_balance()
-    if "error" in krw:
-        msg.append(f"❌ KRW 조회 실패: {krw['error']}")
-    else:
-        msg.append(f"\n── KRQT (KRW) ──")
-        msg.append(f"  주식: ₩{krw['stock_eval']:,.0f}")
-        msg.append(f"  현금: ₩{krw['cash']:,.0f}")
-        msg.append(f"  합계: ₩{krw['total']:,.0f}")
-        for s in krw.get("stocks", []):
-            msg.append(f"    {s['code']} {s['name']}: {s['qty']}주 ₩{s['eval_amt']:,.0f} ({s['profit_rate']:+.1f}%)")
-
-    # ── JPY ──
-    jpy = get_overseas_balance("392", "JPY", "TKSE", "7203", "1000")
-    if "error" in jpy:
-        msg.append(f"\n❌ JPY 조회 실패: {jpy.get('error')}")
-    else:
-        format_overseas(msg, "JPQT", jpy, "¥")
-
-    # ── HKD ──
-    hkd = get_overseas_balance("344", "HKD", "SEHK", "00700", "100")
-    if "error" in hkd:
-        msg.append(f"\n❌ HKD 조회 실패: {hkd.get('error')}")
-    else:
-        format_overseas(msg, "HKQT", hkd, "HK$")
-
-    # ── ASIA 원화 환산 합계 (주문가능+주식 기준) ──
-    krw_total_all = 0.0
-    if "error" not in krw:
-        krw_total_all += krw.get("total", 0)
-    if "error" not in jpy:
-        jpy_exrt = jpy.get("exchange_rate", 0)
-        jpy_krw = jpy.get("total", 0) * jpy_exrt if jpy_exrt > 0 else 0
-        krw_total_all += jpy_krw
-    if "error" not in hkd:
-        hkd_exrt = hkd.get("exchange_rate", 0)
-        hkd_krw = hkd.get("total", 0) * hkd_exrt if hkd_exrt > 0 else 0
-        krw_total_all += hkd_krw
-    if krw_total_all > 0:
-        msg.append(f"\n{'='*30}")
-        msg.append(f"ASIA 원화환산 합계: ₩{krw_total_all:,.0f}")
-
-    snapshot = {
-        "mode": "ASIA",
-        "timestamp": datetime.now().isoformat(),
-        "KRW": krw,
-        "JPY": jpy,
-        "HKD": hkd,
-        "total_krw": krw_total_all
-    }
-    return snapshot, msg
-
-
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 Balance_63604155.py [US|ASIA]")
+        print("Usage: python3 daily_snapshot.py [US|ASIA]")
         sys.exit(1)
 
     mode = sys.argv[1].upper()
-
-    if mode == "US":
-        snapshot, msg = run_us()
-    elif mode == "ASIA":
-        snapshot, msg = run_asia()
-    else:
-        print(f"Unknown mode: {mode}. Use US or ASIA")
+    if mode not in ("US", "ASIA"):
+        print(f"Unknown mode: {mode}")
         sys.exit(1)
 
-    # JSON 먼저 저장
-    try:
-        path = save_json(snapshot)
-        msg.append(f"\n✅ JSON: {path}")
-    except Exception as e:
-        msg.append(f"\n❌ JSON 저장 실패: {e}")
+    prev = get_prev_snapshot()
 
-    # Telegram 발송
-    TA.send_tele(msg)
+    # 1. 계좌별 수집
+    items = collect_accounts(mode)
+
+    # 2. JSON 저장 (최우선)
+    try:
+        path = save_snapshot(mode, items)
+    except Exception as e:
+        TA.send_tele(f"❌ JSON 저장 실패: {e}")
+        path = ""
+
+    # 3. 텔레그램 메시지 생성
+    summary_msg  = format_report(mode, items, prev)
+    holdings_msg = format_holdings_detail(items)
+
+    if path:
+        summary_msg.append(f"\n✅ JSON: {path}")
+
+    # 4. 메시지 분할 전송 (요약 → 종목상세)
+    TA.send_tele(summary_msg)
+    if holdings_msg and len(holdings_msg) > 1:
+        time.sleep(1.2)
+        TA.send_tele(holdings_msg)
 
 
 if __name__ == "__main__":
