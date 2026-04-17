@@ -273,14 +273,18 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
     Returns:
       {"stocks": [{code,name,qty,eval_amt,price,profit_rate}],
        "stock_eval": float, "cash": float, "total": float}
-    ※ output field명(cblc_qty, dncl_amt 등)은 실계좌 첫 응답 후 확인 필요
+    필수 파라미터:
+      STTL_STTS_CD: 정산상태코드 (필수) - "0"=전체, "1"=미결제, "2"=정산완료
+      MGNA_DVSN:    증거금 구분 (필수) - "01"=개시증거금, "02"=유지증거금
+      EXCC_UNPR_DVSN: 정산단가 구분 (필수) - "01"=현재가, "02"=당일정산가
     """
     url = f"{BASE_URL}/uapi/domestic-futureoption/v1/trading/inquire-balance"
     h = kis_headers(cano, "CTFO6118R")
     params = {
         "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
-        "MGNA_DVSN": "01",       # 증거금 구분: 01=개시증거금
-        "EXCC_UNPR_DVSN": "01",  # 정산단가 구분: 01=현재가
+        "MGNA_DVSN": "01",        # 증거금 구분: 01=개시증거금
+        "EXCC_UNPR_DVSN": "01",   # 정산단가 구분: 01=현재가
+        "STTL_STTS_CD": "0",      # 정산상태코드 (필수): 0=전체
         "CTX_AREA_FK200": "",
         "CTX_AREA_NK200": ""
     }
@@ -351,49 +355,61 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str) -> dict:
 
 
 # ══════════════════════════════════════════════════
-#  해외선물옵션 잔고 조회 (OTFR2102R)
+#  해외선물옵션 잔고 조회 (OTFR2102R + CTFO6504R)
 # ══════════════════════════════════════════════════
 
 def fetch_gbft_balance(cano: str, acnt_prdt_cd: str, currency: str = "USD") -> dict:
     """
     해외선물옵션 계좌 잔고 조회 (acnt_prdt_cd="08")
-    TR_ID: OTFR2102R (실전투자 전용)
-    - output1: 보유 포지션 리스트
-    - output2: 외화예수금/환율
-    Returns:
-      {"stocks": [...], "stock_eval": float, "cash": float,
-       "total": float, "exchange_rate": float}
-    ※ output field명(frcr_dncl_amt, frcr_evlu_amt 등)은 실계좌 첫 응답 후 확인 필요
-    """
-    url = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-balance"
-    h = kis_headers(cano, "OTFR2102R")
-    params = {
-        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
-        "CRCY_CD": currency,     # 통화코드: USD/HKD/JPY 등
-        "CTX_AREA_FK200": "",
-        "CTX_AREA_NK200": ""
-    }
 
+    Step 1 — 미결제약정 잔고: OTFR2102R
+      endpoint: /uapi/overseas-futureoption/v1/trading/inquire-balance-opsn-qty
+      포지션 보유 시 output1에 계약 리스트 반환
+      잔고 0일 때는 output1=[] 이고 rt_cd="0" 정상 반환
+
+    Step 2 — 예수금/환율: CTFO6504R
+      endpoint: /uapi/overseas-futureoption/v1/trading/inquire-deposit
+      외화예수금(frcr_dncl_amt)과 환율(frst_bltn_exrt) 조회
+      계좌 서비스 미활성화 시 → "없는 서비스 코드" 에러 발생
+
+    ※ "없는 서비스 코드" 에러 지속 시 체크 방법:
+       KIS HTS → [해외선물옵션] → [계좌서비스 신청] 여부 확인
+       또는 KIS 고객센터 1544-5000 문의
+    """
     stocks = []
     stock_eval = 0.0
     cash = 0.0
     exrt = 0.0
+
+    # ── Step 1: 미결제약정 잔고 (OTFR2102R) ──────────────────
+    url1 = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-balance-opsn-qty"
+    h1 = kis_headers(cano, "OTFR2102R")
+    params1 = {
+        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
+        "CRCY_CD": currency,
+        "CTX_AREA_FK200": "",
+        "CTX_AREA_NK200": ""
+    }
     tr_cont_req = ""
     page = 0
 
     try:
         while True:
-            h["tr_cont"] = tr_cont_req
+            h1["tr_cont"] = tr_cont_req
             time.sleep(API_SLEEP)
-            r = requests.get(url, headers=h, params=params, timeout=10)
-            r.raise_for_status()
-            data = r.json()
-            resp_tr_cont = r.headers.get("tr_cont", "").strip()
+            r1 = requests.get(url1, headers=h1, params=params1, timeout=10)
+            r1.raise_for_status()
+            d1 = r1.json()
+            resp_tr_cont = r1.headers.get("tr_cont", "").strip()
 
-            if data.get("rt_cd") != "0":
-                return {"error": data.get("msg1", "해외선물 API 오류")}
+            if d1.get("rt_cd") != "0":
+                # 포지션 없을 때 정상 처리, 실제 오류만 반환
+                msg = d1.get("msg1", "해외선물 잔고 조회 오류")
+                if "데이터가 없습니다" not in msg and "없는 서비스" not in msg:
+                    return {"error": msg}
+                break  # 데이터 없음 → 정상 (0포지션)
 
-            for s in data.get("output1", []):
+            for s in d1.get("output1", []):
                 qty = int(float(s.get("cblc_qty", 0) or 0))
                 if qty == 0:
                     continue
@@ -404,35 +420,62 @@ def fetch_gbft_balance(cano: str, acnt_prdt_cd: str, currency: str = "USD") -> d
                     "name": s.get("prdt_name", ""),
                     "qty": qty,
                     "eval_amt": evl,
-                    "price": float(s.get("ovrs_now_pric", 0) or 0),
+                    "price": float(s.get("now_pric", 0) or 0),
                     "profit_rate": float(s.get("evlu_pfls_rt", 0) or 0)
                 })
-
-            out2 = data.get("output2", [{}])
-            d2 = out2[0] if out2 else {}
-            # frcr_dncl_amt: 외화예수금, exrt: 환율
-            cash_page = float(d2.get("frcr_dncl_amt", 0) or 0)
-            exrt_page = float(d2.get("exrt", 0) or 0)
-            if cash_page > 0:
-                cash = cash_page
-            if exrt_page > 0:
-                exrt = exrt_page
 
             page += 1
             if page >= MAX_PAGE:
                 break
             if resp_tr_cont in ("D", "E", "F"):
                 break
-            fk = data.get("ctx_area_fk200", "").strip()
-            nk = data.get("ctx_area_nk200", "").strip()
+            fk = d1.get("ctx_area_fk200", "").strip()
+            nk = d1.get("ctx_area_nk200", "").strip()
             if not fk or not nk:
                 break
-            params["CTX_AREA_FK200"] = fk
-            params["CTX_AREA_NK200"] = nk
+            params1["CTX_AREA_FK200"] = fk
+            params1["CTX_AREA_NK200"] = nk
             tr_cont_req = "N"
 
     except Exception as e:
-        return {"error": f"해외선물 조회 예외: {e}"}
+        return {"error": f"해외선물 잔고 조회 예외: {e}"}
+
+    # ── Step 2: 예수금/환율 (CTFO6504R) ──────────────────────
+    url2 = f"{BASE_URL}/uapi/overseas-futureoption/v1/trading/inquire-deposit"
+    h2 = kis_headers(cano, "CTFO6504R")
+    params2 = {
+        "CANO": cano, "ACNT_PRDT_CD": acnt_prdt_cd,
+        "CRCY_CD": currency,
+        "INQR_DVSN_CD": "0",   # 0=전체
+    }
+
+    try:
+        time.sleep(API_SLEEP)
+        r2 = requests.get(url2, headers=h2, params=params2, timeout=10)
+        r2.raise_for_status()
+        d2 = r2.json()
+
+        if d2.get("rt_cd") == "0":
+            out = d2.get("output", {})
+            cash = float(out.get("frcr_dncl_amt", 0) or 0)
+            exrt = float(out.get("frst_bltn_exrt", 0) or 0)
+        else:
+            # 서비스 미활성화 에러를 error 키로 반환 (포지션 조회는 성공했으므로 별도 표시)
+            return {
+                "stocks": stocks, "stock_eval": stock_eval,
+                "cash": 0.0, "total": stock_eval,
+                "exchange_rate": 0.0,
+                "error": d2.get("msg1", "해외선물 예수금 조회 오류")
+            }
+
+    except Exception as e:
+        # 예수금 조회 실패 시에도 포지션 정보는 살림
+        return {
+            "stocks": stocks, "stock_eval": stock_eval,
+            "cash": 0.0, "total": stock_eval,
+            "exchange_rate": 0.0,
+            "error": f"해외선물 예수금 조회 예외: {e}"
+        }
 
     total = stock_eval + cash
     return {
@@ -1247,8 +1290,39 @@ def collect_accounts(mode: str) -> list:
 #  JSON 저장
 # ══════════════════════════════════════════════════
 
+def purge_old_snapshots(keep_days: int = 10) -> int:
+    """
+    SNAPSHOT_DIR 에서 오늘 기준 keep_days 일 초과된
+    balance_YYYYMMDD.json 파일을 자동 삭제.
+    Returns: 삭제된 파일 수
+    """
+    today = datetime.now().date()
+    cutoff = today - timedelta(days=keep_days)
+    deleted = 0
+    try:
+        for fname in os.listdir(SNAPSHOT_DIR):
+            if not (fname.startswith("balance_") and fname.endswith(".json")):
+                continue
+            date_part = fname[len("balance_"):-len(".json")]  # YYYYMMDD
+            if len(date_part) != 8 or not date_part.isdigit():
+                continue
+            try:
+                file_date = datetime.strptime(date_part, "%Y%m%d").date()
+            except ValueError:
+                continue
+            if file_date < cutoff:
+                os.remove(os.path.join(SNAPSHOT_DIR, fname))
+                deleted += 1
+    except Exception:
+        pass
+    return deleted
+
+
 def save_snapshot(mode: str, items: list) -> str:
-    """balance_YYYYMMDD.json 에 mode별로 저장 (병합)"""
+    """
+    balance_YYYYMMDD.json 에 mode별로 저장 (병합).
+    저장 후 10일 초과 파일 자동 삭제.
+    """
     date_str = datetime.now().strftime("%Y%m%d")
     fp = os.path.join(SNAPSHOT_DIR, f"balance_{date_str}.json")
 
@@ -1276,6 +1350,10 @@ def save_snapshot(mode: str, items: list) -> str:
 
     with open(fp, "w", encoding="utf-8") as f:
         json.dump(existing, f, ensure_ascii=False, indent=2, default=str)
+
+    # 10일 초과 파일 자동 삭제
+    purge_old_snapshots(keep_days=10)
+
     return fp
 
 
