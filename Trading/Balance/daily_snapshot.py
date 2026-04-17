@@ -188,10 +188,21 @@ def kis_headers(cano: str, tr_id: str) -> dict:
 def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
     """
     한국주식 계좌 잔고 조회 (페이지네이션 포함)
+
+    계좌 타입별 output2 필드 사용 전략:
+    - 위탁계좌  (01):  nass_amt     = 순자산(주식+현금) → 신뢰 가능
+    - 연금저축  (22):  tot_evlu_amt = 총평가금액(주식+예수금)
+                       dnca_tot_amt = 예수금
+    - IRP       (29):  tot_evlu_amt = 총평가금액(주식+예수금)
+                       dnca_tot_amt = 예수금
+    연금/IRP는 nass_amt=0 반환 → tot_evlu_amt, dnca_tot_amt 사용.
+
     Returns:
       {"stocks": [{code,name,qty,eval_amt,price,profit_rate}],
        "stock_eval": float, "cash": float, "total": float}
     """
+    is_pension = acnt_prdt_cd in ("22", "29")
+
     url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-balance"
     h = kis_headers(cano, "TTTC8434R")
     params = {
@@ -204,6 +215,7 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
 
     stock_eval = 0.0
     total = 0.0
+    cash_from_api = 0.0   # dnca_tot_amt (연금/IRP 전용)
     stocks = []
     tr_cont_req = ""
     page = 0
@@ -236,9 +248,21 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
                 })
 
             out2 = data.get("output2", [{}])
-            nass_page = float((out2[0] if out2 else {}).get("nass_amt", 0) or 0)
-            if nass_page > 0:
-                total = nass_page
+            d2 = out2[0] if out2 else {}
+
+            if is_pension:
+                # 연금/IRP: tot_evlu_amt(총평가) 와 dnca_tot_amt(예수금) 사용
+                tot_page = float(d2.get("tot_evlu_amt", 0) or 0)
+                dnc_page = float(d2.get("dnca_tot_amt", 0) or 0)
+                if tot_page > 0:
+                    total = tot_page
+                if dnc_page > 0:
+                    cash_from_api = dnc_page
+            else:
+                # 위탁계좌: nass_amt(순자산) 사용
+                nass_page = float(d2.get("nass_amt", 0) or 0)
+                if nass_page > 0:
+                    total = nass_page
 
             page += 1
             if page >= MAX_PAGE:
@@ -256,7 +280,22 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
     except Exception as e:
         return {"error": f"KR 조회 예외: {e}"}
 
-    cash = total - stock_eval if total > 0 else 0.0
+    if is_pension:
+        # dnca_tot_amt가 있으면 예수금으로 사용
+        if cash_from_api > 0:
+            cash = cash_from_api
+            total = max(total, stock_eval + cash)
+        elif total > stock_eval:
+            # tot_evlu_amt만 있을 때 역산
+            cash = total - stock_eval
+        else:
+            # 둘 다 없으면 stock_eval을 total로 (현금 미파악)
+            cash = 0.0
+            total = stock_eval
+    else:
+        # 위탁계좌: nass_amt 기준
+        cash = total - stock_eval if total > 0 else 0.0
+
     return {"stocks": stocks, "stock_eval": stock_eval, "cash": cash, "total": total}
 
 
