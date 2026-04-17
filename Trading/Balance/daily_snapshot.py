@@ -59,10 +59,10 @@ ACCOUNTS = [
     ("KR Market", "KRTR", "Coverdcall", "63751991", "01", "kr_simple",   {}),
 
     # KRQT: 단일 계좌 + 4개 세부전략 (category csv 기반 분류)
-    ("KR Market", "KRQT", "SCG",        "63604155", "01", "kr_krqt_cat", {"category": "SCG"}),
-    ("KR Market", "KRQT", "SIMPLE",     "63604155", "01", "kr_krqt_cat", {"category": "SIMPLE"}),
-    ("KR Market", "KRQT", "MIDDLE CAP", "63604155", "01", "kr_krqt_cat", {"category": "MIDDLE CAP"}),
-    ("KR Market", "KRQT", "LARGE CAP",  "63604155", "01", "kr_krqt_cat", {"category": "LARGE CAP"}),
+    ("KR Market", "KRQT", "Small Cap Growth", "63604155", "01", "kr_krqt_cat", {"category": "Small Cap Growth"}),
+    ("KR Market", "KRQT", "Small Cap Simple-Fin", "63604155", "01", "kr_krqt_cat", {"category": "Small Cap Simple-Fin"}),
+    ("KR Market", "KRQT", "Middle Cap", "63604155", "01", "kr_krqt_cat", {"category": "Middle Cap"}),
+    ("KR Market", "KRQT", "Large Cap",  "63604155", "01", "kr_krqt_cat", {"category": "Large Cap"}),
 
     # KRFT: 국내선물 (현재 주식잔고 기준, acnt_prdt_cd=03)
     ("KR Market", "KRFT", "Hedge & Boost", "64753341", "03", "kr_simple", {}),
@@ -77,21 +77,21 @@ ACCOUNTS = [
     ("Global Market", "USQT", "TCM",    "63692011", "01", "us_usqt_cat", {"category": "TCM"}),
 
     # JPQT: 일본주식
-    ("Global Market", "JPQT", "JPQT소계", "63604155", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
+    ("Global Market", "JPQT", "JPQT1", "63604155", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
 
     # HKQT: 홍콩주식
-    ("Global Market", "HKQT", "HKQT소계", "63604155", "01", "overseas_all", {"natn_cd": "344", "currency": "HKD", "excg": "SEHK", "repr_cd": "00700"}),
+    ("Global Market", "HKQT", "HKQ1T", "63604155", "01", "overseas_all", {"natn_cd": "344", "currency": "HKD", "excg": "SEHK", "repr_cd": "00700"}),
 
     # ETC: 일본 채권 (일본주식 API로 조회)
-    ("Global Market", "ETC",  "JPbond소계", "63721147", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
+    ("Global Market", "ETC",  "JPUSbond", "63721147", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
 
     # GBFT: 해외선물 (acnt_prdt_cd=08, 아직 구현 안됨 → 0원)
     ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "placeholder", {"currency": "USD"}),
     ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "placeholder", {"currency": "USD"}),
 
     # ── Alternative ──────────────────────────────
-    ("Alternative", "Gold",   "Gold소계",   "키움 52953897", "", "placeholder", {"currency": "KRW"}),
-    ("Alternative", "Crypto", "Crypto소계", "ilpus@naver.com", "", "upbit", {}),
+    ("Alternative", "Gold",   "Gold",   "키움 52953897", "", "placeholder", {"currency": "KRW"}),
+    ("Alternative", "Crypto", "Crypto", "ilpus@naver.com", "", "upbit", {}),
 
     # ── 연금 & ISA ────────────────────────────────
     ("연금&ISA", "ISA",     "ISA",        "43665648", "01", "kr_simple",   {}),
