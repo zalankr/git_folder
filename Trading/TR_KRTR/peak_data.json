@@ -1,44 +1,174 @@
 {
     "total": {
-        "date": "2026-04-01",
-        "total_balance": 18962750.0,
-        "cash_balance": 16245750.0,
-        "stock_eval_amt": 2717000.0,
-        "holdings_count": 2,
-        "month_return": 0.0,
-        "year_return": 0.0
+        "date": "2026-04-17",
+        "total_balance": 24526926.0,
+        "cash_balance": 10254526.0,
+        "stock_eval_amt": 14272400.0,
+        "holdings_count": 16,
+        "month_return": 29.34,
+        "year_return": 29.34
     },
     "holdings": {
-        "095340": {
-            "name": "ISC",
-            "qty": 5,
-            "buy_date": "2026-03-27",
-            "holding_days": 5,
-            "buy_price": 185320.0,
-            "current_price": 265000,
-            "eval_amt": 1325000,
-            "return_rate": 43.0
+        "001440": {
+            "name": "대한전선",
+            "qty": 23,
+            "buy_date": "2026-04-16",
+            "holding_days": 1,
+            "buy_price": 41539.1304,
+            "current_price": 39300,
+            "eval_amt": 903900,
+            "return_rate": -5.39
         },
-        "319660": {
-            "name": "피에스케이",
-            "qty": 16,
-            "buy_date": "2026-03-27",
-            "holding_days": 5,
-            "buy_price": 60952.6875,
-            "current_price": 87000,
-            "eval_amt": 1392000,
-            "return_rate": 42.73
+        "006400": {
+            "name": "삼성SDI",
+            "qty": 1,
+            "buy_date": "2026-04-10",
+            "holding_days": 7,
+            "buy_price": 487500.0,
+            "current_price": 512000,
+            "eval_amt": 512000,
+            "return_rate": 5.03
+        },
+        "007810": {
+            "name": "코리아써키트",
+            "qty": 10,
+            "buy_date": "2026-04-15",
+            "holding_days": 2,
+            "buy_price": 88480.0,
+            "current_price": 89000,
+            "eval_amt": 890000,
+            "return_rate": 0.59
+        },
+        "009150": {
+            "name": "삼성전기",
+            "qty": 1,
+            "buy_date": "2026-04-09",
+            "holding_days": 8,
+            "buy_price": 511000.0,
+            "current_price": 675000,
+            "eval_amt": 675000,
+            "return_rate": 32.09
+        },
+        "011070": {
+            "name": "LG이노텍",
+            "qty": 2,
+            "buy_date": "2026-04-13",
+            "holding_days": 4,
+            "buy_price": 371500.0,
+            "current_price": 397000,
+            "eval_amt": 794000,
+            "return_rate": 6.86
+        },
+        "017670": {
+            "name": "SK텔레콤",
+            "qty": 10,
+            "buy_date": "2026-04-09",
+            "holding_days": 8,
+            "buy_price": 94890.0,
+            "current_price": 97700,
+            "eval_amt": 977000,
+            "return_rate": 2.96
+        },
+        "039030": {
+            "name": "이오테크닉스",
+            "qty": 1,
+            "buy_date": "2026-04-14",
+            "holding_days": 3,
+            "buy_price": 494000.0,
+            "current_price": 470500,
+            "eval_amt": 470500,
+            "return_rate": -4.76
+        },
+        "062040": {
+            "name": "산일전기",
+            "qty": 5,
+            "buy_date": "2026-04-16",
+            "holding_days": 1,
+            "buy_price": 186000.0,
+            "current_price": 197100,
+            "eval_amt": 985500,
+            "return_rate": 5.97
+        },
+        "082920": {
+            "name": "비츠로셀",
+            "qty": 24,
+            "buy_date": "2026-04-02",
+            "holding_days": 15,
+            "buy_price": 39208.3333,
+            "current_price": 56500,
+            "eval_amt": 1356000,
+            "return_rate": 44.1
+        },
+        "095610": {
+            "name": "테스",
+            "qty": 11,
+            "buy_date": "2026-04-13",
+            "holding_days": 4,
+            "buy_price": 82590.9091,
+            "current_price": 88100,
+            "eval_amt": 969100,
+            "return_rate": 6.67
+        },
+        "120110": {
+            "name": "코오롱인더",
+            "qty": 10,
+            "buy_date": "2026-04-10",
+            "holding_days": 7,
+            "buy_price": 88390.0,
+            "current_price": 87100,
+            "eval_amt": 871000,
+            "return_rate": -1.46
+        },
+        "131290": {
+            "name": "티에스이",
+            "qty": 6,
+            "buy_date": "2026-04-15",
+            "holding_days": 2,
+            "buy_price": 137000.0,
+            "current_price": 163500,
+            "eval_amt": 981000,
+            "return_rate": 19.34
+        },
+        "183300": {
+            "name": "코미코",
+            "qty": 7,
+            "buy_date": "2026-04-13",
+            "holding_days": 4,
+            "buy_price": 133800.0,
+            "current_price": 155600,
+            "eval_amt": 1089200,
+            "return_rate": 16.29
+        },
+        "222800": {
+            "name": "심텍",
+            "qty": 13,
+            "buy_date": "2026-04-09",
+            "holding_days": 8,
+            "buy_price": 68776.9231,
+            "current_price": 76400,
+            "eval_amt": 993200,
+            "return_rate": 11.08
+        },
+        "278470": {
+            "name": "에이피알",
+            "qty": 2,
+            "buy_date": "2026-04-13",
+            "holding_days": 4,
+            "buy_price": 402000.0,
+            "current_price": 416500,
+            "eval_amt": 833000,
+            "return_rate": 3.61
+        },
+        "298020": {
+            "name": "효성티앤씨",
+            "qty": 2,
+            "buy_date": "2026-04-10",
+            "holding_days": 7,
+            "buy_price": 459500.0,
+            "current_price": 486000,
+            "eval_amt": 972000,
+            "return_rate": 5.77
         }
     },
-    "exits_today": [
-        {
-            "stock_code": "950160",
-            "name": "코오롱티슈진",
-            "buy_date": "2026-03-27",
-            "sell_date": "2026-04-01",
-            "qty": 9,
-            "buy_price": 101989.0,
-            "return_rate": 7.17
-        }
-    ]
+    "exits_today": []
 }

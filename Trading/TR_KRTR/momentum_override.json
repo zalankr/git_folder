@@ -1,0 +1,13 @@
+{
+  "overrides": [
+    {
+      "date": "2026-04-20",
+      "sell_all": false,
+      "force_buy": [
+        {"stock_code": "000150", "stock_name": "두산"}
+      ],
+      "force_sell": [],
+      "memo": "누락종목  수동 개입"
+    }
+  ]
+}

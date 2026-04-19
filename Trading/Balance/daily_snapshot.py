@@ -37,6 +37,10 @@ USAA_TR_PATH = "/var/autobot/TR_USAA/USAA_TR.json"
 SNAPSHOT_DIR = "/var/autobot/Balance"
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
+# 수동 입력 잔고 (IRP 예수금 등 KIS API 조회 불가한 값)
+# 없으면 자동 생성, 사용자가 직접 수정 가능
+MANUAL_BALANCE_PATH = os.path.join(SNAPSHOT_DIR, "manual_balance.json")
+
 MAX_PAGE = 30
 API_SLEEP = 0.12    # KIS rate limit: 20/sec 이론, 실사용 ~8/sec
 
@@ -111,6 +115,47 @@ US_MODE_KEYS = {"USAA", "USQT", "Crypto"}
 # ══════════════════════════════════════════════════
 #  KIS 인증 (계좌별 토큰 관리)
 # ══════════════════════════════════════════════════
+
+# ── 수동 입력 잔고 (IRP 예수금 등) ────────────────────
+# IRP는 KIS API로 예수금(RP 운용자산) 조회 불가 → 사용자가 MTS 보고 직접 입력
+# 파일이 없으면 최초 1회 자동 생성, 이후 수동 수정
+_MANUAL_DEFAULTS = {
+    "43685950_29_IRP_cash": {
+        "value": 94976,
+        "updated": "2026-04-18",
+        "note": "MTS IRP 자산 - 주식평가금액 = 예수금(RP 운용). MTS에서 확인 후 수동 수정"
+    }
+}
+
+_manual_cache = None
+
+def get_manual_balance(key: str) -> tuple:
+    """
+    manual_balance.json 에서 수동 입력된 잔고값을 가져옴.
+    파일이 없으면 _MANUAL_DEFAULTS 로 최초 생성.
+    Returns: (value, updated_date)
+    """
+    global _manual_cache
+    if _manual_cache is None:
+        if not os.path.exists(MANUAL_BALANCE_PATH):
+            try:
+                with open(MANUAL_BALANCE_PATH, "w", encoding="utf-8") as f:
+                    json.dump(_MANUAL_DEFAULTS, f, ensure_ascii=False, indent=2)
+                _manual_cache = dict(_MANUAL_DEFAULTS)
+            except Exception:
+                _manual_cache = {}
+        else:
+            try:
+                with open(MANUAL_BALANCE_PATH, encoding="utf-8") as f:
+                    _manual_cache = json.load(f)
+            except Exception:
+                _manual_cache = {}
+    entry = _manual_cache.get(key, {})
+    if isinstance(entry, dict):
+        return (float(entry.get("value", 0) or 0),
+                entry.get("updated", ""))
+    return (float(entry or 0), "")
+
 
 _token_cache = {}   # {cano: {"appkey":..., "secret":..., "token":...}}
 
@@ -297,6 +342,7 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         cash = max(cash_candidates) if any(c > 0 for c in cash_candidates) else 0.0
 
         # ── 2차 보강: TTTC8908R (매수가능조회) ──
+        # 연금저축(22) 동작, IRP(29)는 빈 {} 반환 (KIS 미지원)
         try:
             time.sleep(API_SLEEP)
             url2 = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-psbl-order"
@@ -320,11 +366,37 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         except Exception:
             pass
 
-        # ── 총자산 = max(주식평가금+현금, tot_evlu_amt) ──
-        total = max(stock_eval + cash, tot_evlu_amt)
-        # edge case: cash=0인데 tot_evlu_amt > stock_eval 이면 역산
-        if cash <= 0 and tot_evlu_amt > stock_eval:
-            cash = tot_evlu_amt - stock_eval
+        # ── 3차: IRP(29) 전용 — KIS API 조회 불가, manual_balance.json 사용 ──
+        # IRP의 예수금(RP 운용자산)은 증권 API에서 조회되지 않음.
+        # manual_balance.json 에서 사용자가 MTS 보고 직접 입력한 값 사용.
+        manual_note = ""
+        manual_cash = 0.0
+        if acnt_prdt_cd == "29":
+            mv, md = get_manual_balance(f"{cano}_{acnt_prdt_cd}_IRP_cash")
+            if mv > 0:
+                manual_cash = mv
+                manual_note = f"수동입력 예수금 ({md})"
+                # API cash 가 0이면 수동값 사용, API에 값이 있으면 둘 중 큰 쪽
+                if manual_cash > cash:
+                    cash = manual_cash
+
+        # ── 총자산 = 주식평가금 + 현금 (IRP는 수동 예수금 포함) ──
+        # IRP(29): tot_evlu_amt = 주식평가액만 이므로, 수동 예수금 반드시 합산
+        if acnt_prdt_cd == "29" and manual_cash > 0:
+            total = stock_eval + cash
+        else:
+            # 연금저축(22): 기존 로직 유지
+            total = max(stock_eval + cash, tot_evlu_amt)
+            if cash <= 0 and tot_evlu_amt > stock_eval:
+                cash = tot_evlu_amt - stock_eval
+
+        return {
+            "stocks": stocks,
+            "stock_eval": stock_eval,
+            "cash": cash,
+            "total": total,
+            "note": manual_note
+        }
 
     else:
         # 위탁계좌
