@@ -52,7 +52,7 @@ PEAK_TARGET_PATH  = os.path.join(BASE_DIR, "peak_target.json")
 PEAK_HISTORY_DIR  = os.path.join(BASE_DIR, "PEAK_history")
 
 os.makedirs(PEAK_HISTORY_DIR, exist_ok=True)
-
+OVERRIDE_PATH = os.path.join(BASE_DIR, "peak_override.json") # 수동 개입 경로
 MAX_HOLDINGS = 25   # 최대 보유 종목 수
 
 
@@ -263,6 +263,123 @@ def cancel_orders(side="all"):
     return "PEAK: 주문 취소 에러"
 
 
+def load_today_override() -> dict:
+    """override JSON에서 오늘 날짜 엔트리만 추출.
+    없거나 오늘 날짜 아니면 {} 반환."""
+    if not os.path.exists(OVERRIDE_PATH):
+        return {}
+    try:
+        with open(OVERRIDE_PATH, 'r', encoding='utf-8') as f:
+            raw = json.load(f)
+    except Exception as e:
+        TA.send_tele(f"Override JSON 로드 실패: {e}")
+        return {}
+
+    today = str(datetime.now().date())
+    for entry in raw.get("overrides", []):
+        if entry.get("date") == today:
+            return entry
+    return {}
+
+
+def apply_manual_override(target: dict, message: list,
+                          per_stock_invest: int) -> dict:
+    """
+    1회차 전용: 크롤링으로 생성된 target에 수동 개입 적용.
+    
+    규칙:
+      - sell_all=True  : 크롤링 buy/sell 전량 무시 + 계좌 보유 전량 매도
+      - force_sell     : 항상 보유 전량 매도, 크롤링 buy_targets에서 제거(충돌 시)
+      - force_buy      : per_stock_invest로 수량 산출, 크롤링 sell_targets에서 제거(충돌 시)
+    
+    target dict를 in-place 수정 + 반환.
+    """
+    ov = load_today_override()
+    if not ov:
+        return target
+
+    memo = ov.get("memo", "")
+    message.append(f"🔧 수동개입 감지: {ov.get('date','')} ({memo})")
+
+    # 실제 계좌 보유 (전량매도/force_sell 수량 산출용)
+    stocks = KIS.get_KR_stock_balance()
+    hold_map = {}
+    if isinstance(stocks, list):
+        hold_map = {s["종목코드"]: (s["보유수량"], s.get("종목명", s["종목코드"]))
+                    for s in stocks}
+
+    # ─── sell_all: 크롤링 결과 전량 무시 + 계좌 보유 전량 매도 ───
+    if ov.get("sell_all") is True:
+        target["buy_targets"]  = {}
+        target["sell_targets"] = {
+            code: {"target_qty": qty, "name": name}
+            for code, (qty, name) in hold_map.items() if qty > 0
+        }
+        target["sell_codes"] = list(target["sell_targets"].keys())
+        target["buy_codes"]  = []
+        target["override"]   = {"sell_all": True, "memo": memo}
+        message.append(f"🔴 전량청산: 크롤링 결과 무시, 보유 {len(target['sell_targets'])}종목 매도")
+        return target
+
+    force_buy  = ov.get("force_buy", [])  or []
+    force_sell = ov.get("force_sell", []) or []
+
+    # ─── force_sell: 보유 전량 매도 ───
+    for item in force_sell:
+        code = str(item.get("stock_code", "")).zfill(6)
+        name = item.get("stock_name", code)
+        if code not in hold_map or hold_map[code][0] <= 0:
+            message.append(f"  ⚠️ force_sell 스킵(미보유): {name}({code})")
+            continue
+        qty = hold_map[code][0]
+        target["sell_targets"][code] = {"target_qty": qty, "name": name}
+        # 충돌: 크롤링 buy와 동일 종목이면 buy에서 제거
+        if code in target["buy_targets"]:
+            del target["buy_targets"][code]
+            message.append(f"  ⚠️ 충돌해소: {name}({code}) 크롤링매수→수동매도 우선")
+        if code not in target["sell_codes"]:
+            target["sell_codes"].append(code)
+        message.append(f"  🔴 force_sell: {name}({code}) {qty}주 전량")
+
+    # ─── force_buy: per_stock_invest로 수량 산출 ───
+    for item in force_buy:
+        code = str(item.get("stock_code", "")).zfill(6)
+        name = item.get("stock_name", code)
+
+        if per_stock_invest <= 0:
+            message.append(f"  ⚠️ force_buy 스킵(per_stock_invest=0): {name}({code})")
+            continue
+
+        price = KIS.get_KR_current_price(code)
+        if not isinstance(price, int) or price == 0:
+            message.append(f"  ⚠️ force_buy 스킵(현재가 실패): {name}({code})")
+            continue
+
+        tgt_qty = per_stock_invest // price
+        if tgt_qty < 1:
+            message.append(f"  ⚠️ force_buy 스킵(수량<1): {name}({code}) 현재가 {price:,}")
+            continue
+
+        target["buy_targets"][code] = {"target_qty": tgt_qty, "name": name}
+        # 충돌: 크롤링 sell과 동일 종목이면 sell에서 제거
+        if code in target["sell_targets"]:
+            del target["sell_targets"][code]
+            message.append(f"  ⚠️ 충돌해소: {name}({code}) 크롤링매도→수동매수 우선")
+        if code in target["sell_codes"]:
+            target["sell_codes"].remove(code)
+        if code not in target["buy_codes"]:
+            target["buy_codes"].append(code)
+        message.append(f"  🟢 force_buy: {name}({code}) {tgt_qty}주 ({price*tgt_qty:,}원)")
+        time_module.sleep(0.125)
+
+    target["override"] = {
+        "sell_all":   False,
+        "force_buy":  [i.get("stock_code") for i in force_buy],
+        "force_sell": [i.get("stock_code") for i in force_sell],
+        "memo":       memo,
+    }
+    return target
+
 # ================================================================
 # 1회차 전용: 크롤링 → 매매대상 산출 → peak_target.json 저장
 # ================================================================
@@ -354,14 +471,16 @@ def do_crawl_and_build_target(message: list) -> dict:
         "current_hold_count": cur_hold_cnt,
         "expected_after":    cur_hold_cnt - len(sell_codes) + len(buy_codes),
     }
+    # ▼ 추가: 수동 개입 적용
+    target = apply_manual_override(target, message, per_stock_invest)
     save_json(target, PEAK_TARGET_PATH)
 
-    for code, info in buy_targets.items():
+    for code, info in target["buy_targets"].items():
         message.append(f"  매수목표: {info['name']}({code}) {info['target_qty']}주")
-    for code, info in sell_targets.items():
+    for code, info in target["sell_targets"].items():
         message.append(f"  매도목표: {info['name']}({code}) {info['target_qty']}주")
 
-    if not buy_targets and not sell_targets:
+    if not target["buy_targets"] and not target["sell_targets"]:
         TA.send_tele(message + ["PEAK: 오늘 매매 대상 없음. 종료."])
         sys.exit(0)
 
