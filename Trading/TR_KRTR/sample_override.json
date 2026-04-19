@@ -9,12 +9,12 @@
       "force_sell": [
         {"stock_code": "000660", "stock_name": "SK하이닉스"}
       ],
-      "memo": "실적발표 대응 수동매수"
+      "memo": "실적발표 대응 수동매수매도"
     },
     {
       "date": "2026-05-15",
-      "sell_all": true,
-      "memo": "리스크 회피 전량청산"
+      "sell_all": false,
+      "memo": "리스크 회피 전량청산 true (DEFAULT false)"
     }
   ]
 }

@@ -53,7 +53,7 @@ MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "MOMENTUM_history")
 
 os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
 OVERRIDE_PATH = os.path.join(BASE_DIR, "momentum_override.json") # 수동 개입 경로
-MAX_HOLDINGS = 25   # 최대 보유 종목 수
+MAX_HOLDINGS = 24   # 최대 보유 종목 수
 
 
 # ================================================================
