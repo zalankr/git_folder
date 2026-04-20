@@ -1,7 +1,7 @@
 {
   "overrides": [
     {
-      "date": "2026-04-20",
+      "date": "2026-04-21",
       "sell_all": false,
       "force_buy": [
         {"stock_code": "353200", "stock_name": "대덕전자"},
