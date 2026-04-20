@@ -14,7 +14,7 @@ StockEasy Value 전략 자동매매 (단일 파일 통합)
 crontab (UTC+0, EC2):
   0,30 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_VALUE/VALUE_TR.py
 
-보유 상한: 10종목, 종목당 균등배분 (총자산 / 10)
+보유 상한: 12종목, 종목당 균등배분 (총자산 / 10)
 """
 
 import sys
@@ -427,7 +427,7 @@ def do_crawl_and_build_target(message: list) -> dict:
         TA.send_tele(f"VALUE: 계좌요약 조회 불가 ({account})")
         sys.exit(1)
     total_asset = account['total_krw_asset']
-    per_stock_invest = int(total_asset / MAX_HOLDINGS) if len(buy_codes) > 0 else 0
+    per_stock_invest = int(total_asset / MAX_HOLDINGS)
     message.append(f"총자산: {int(total_asset):,}원 | 종목당: {per_stock_invest:,}원")
 
     # 매수 종목별 목표수량
