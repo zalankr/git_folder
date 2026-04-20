@@ -1,0 +1,11 @@
+{
+  "overrides": [
+    {
+      "date": "2026-04-20",
+      "sell_all": false,
+      "force_buy": [],
+      "force_sell": [],
+      "memo": "누락종목  수동 개입"
+    }
+  ]
+}

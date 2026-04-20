@@ -1,0 +1,20 @@
+{
+  "overrides": [
+    {
+      "date": "2026-04-20",
+      "sell_all": false,
+      "force_buy": [
+        {"stock_code": "005930", "stock_name": "삼성전자"}
+      ],
+      "force_sell": [
+        {"stock_code": "000660", "stock_name": "SK하이닉스"}
+      ],
+      "memo": "실적발표 대응 수동매수매도"
+    },
+    {
+      "date": "2026-05-15",
+      "sell_all": false,
+      "memo": "리스크 회피 전량청산 true (DEFAULT false)"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "date": "2026-04-17",
+    "crawl_date": "2026-04-16",
+    "sell_codes": [],
+    "buy_codes": [
+        "096770"
+    ],
+    "buy_targets": {
+        "096770": {
+            "target_qty": 8,
+            "name": "SK이노베이션"
+        }
+    },
+    "sell_targets": {},
+    "per_stock_invest": 1013696,
+    "current_hold_count": 21,
+    "expected_after": 22
+}

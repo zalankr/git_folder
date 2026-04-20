@@ -1,0 +1,14 @@
+{
+  "overrides": [
+    {
+      "date": "2026-04-20",
+      "sell_all": false,
+      "force_buy": [
+        {"stock_code": "353200", "stock_name": "대덕전자"},
+        {"stock_code": "047040", "stock_name": "대우건설"}
+      ],
+      "force_sell": [],
+      "memo": "실적 대응 수동 개입"
+    }
+  ]
+}
