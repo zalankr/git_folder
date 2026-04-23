@@ -14,7 +14,7 @@ StockEasy Value 전략 자동매매 (단일 파일 통합)
 crontab (UTC+0, EC2):
   0,30 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_VALUE/VALUE_TR.py
 
-보유 상한: 12종목, 종목당 균등배분 (총자산 / 10)
+보유 상한: 10종목, 종목당 균등배분 (총자산 / 10)
 """
 
 import sys
@@ -53,7 +53,7 @@ VALUE_HISTORY_DIR  = os.path.join(BASE_DIR, "VALUE_history")
 
 os.makedirs(VALUE_HISTORY_DIR, exist_ok=True)
 OVERRIDE_PATH = os.path.join(BASE_DIR, "value_override.json") # 수동 개입 경로
-MAX_HOLDINGS = 12   # 최대 보유 종목 수
+MAX_HOLDINGS = 10   # 최대 보유 종목 수
 
 
 # ================================================================
