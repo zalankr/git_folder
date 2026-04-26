@@ -1,0 +1,2558 @@
+{
+  "date": "2026-04-25",
+  "ASIA": {
+    "timestamp": "2026-04-25T08:00:12.239177",
+    "categories": {
+      "KRTR": {
+        "items": [
+          {
+            "market": "KR Market",
+            "strategy": "KRTR",
+            "sub": "PEAK",
+            "cano": "43018646",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": -100.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 0,
+            "placeholder": false,
+            "error": "KR 조회 예외: 500 Server Error: Internal Server Error for url: https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/trading/inquire-balance?CANO=43018646&ACNT_PRDT_CD=01&AFHR_FLPR_YN=N&OFL_YN=&INQR_DVSN=00&UNPR_DVSN=01&FUND_STTL_ICLD_YN=N&FNCG_AMT_AUTO_RDPT_YN=N&PRCS_DVSN=00&CTX_AREA_FK100=&CTX_AREA_NK100=",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "KR Market",
+            "strategy": "KRTR",
+            "sub": "VALUE",
+            "cano": "44036546",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": -100.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 0,
+            "placeholder": false,
+            "error": "KR 조회 예외: 500 Server Error: Internal Server Error for url: https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/trading/inquire-balance?CANO=44036546&ACNT_PRDT_CD=01&AFHR_FLPR_YN=N&OFL_YN=&INQR_DVSN=00&UNPR_DVSN=01&FUND_STTL_ICLD_YN=N&FNCG_AMT_AUTO_RDPT_YN=N&PRCS_DVSN=00&CTX_AREA_FK100=&CTX_AREA_NK100=",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "KR Market",
+            "strategy": "KRTR",
+            "sub": "MOMENTUM",
+            "cano": "44287475",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 45193729.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "000150",
+                "name": "두산",
+                "qty": 1,
+                "eval_amt": 1541000.0,
+                "price": 1541000,
+                "profit_rate": 10.46,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "004020",
+                "name": "현대제철",
+                "qty": 39,
+                "eval_amt": 1657500.0,
+                "price": 42500,
+                "profit_rate": 3.19,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "005490",
+                "name": "POSCO홀딩스",
+                "qty": 3,
+                "eval_amt": 1245000.0,
+                "price": 415000,
+                "profit_rate": 8.78,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "005930",
+                "name": "삼성전자",
+                "qty": 7,
+                "eval_amt": 1536500.0,
+                "price": 219500,
+                "profit_rate": -0.45,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "005940",
+                "name": "NH투자증권",
+                "qty": 44,
+                "eval_amt": 1544400.0,
+                "price": 35100,
+                "profit_rate": -1.73,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "006260",
+                "name": "LS",
+                "qty": 4,
+                "eval_amt": 1594000.0,
+                "price": 398500,
+                "profit_rate": 14.92,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "006400",
+                "name": "삼성SDI",
+                "qty": 2,
+                "eval_amt": 1282000.0,
+                "price": 641000,
+                "profit_rate": 31.75,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "009150",
+                "name": "삼성전기",
+                "qty": 2,
+                "eval_amt": 1576000.0,
+                "price": 788000,
+                "profit_rate": 17.17,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "009540",
+                "name": "HD한국조선해양",
+                "qty": 3,
+                "eval_amt": 1428000.0,
+                "price": 476000,
+                "profit_rate": 8.01,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "010140",
+                "name": "삼성중공업",
+                "qty": 46,
+                "eval_amt": 1582400.0,
+                "price": 34400,
+                "profit_rate": 8.72,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "011070",
+                "name": "LG이노텍",
+                "qty": 2,
+                "eval_amt": 1084000.0,
+                "price": 542000,
+                "profit_rate": 45.11,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "012330",
+                "name": "현대모비스",
+                "qty": 3,
+                "eval_amt": 1267500.0,
+                "price": 422500,
+                "profit_rate": -5.02,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "016360",
+                "name": "삼성증권",
+                "qty": 14,
+                "eval_amt": 1562400.0,
+                "price": 111600,
+                "profit_rate": 2.47,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "032830",
+                "name": "삼성생명",
+                "qty": 6,
+                "eval_amt": 1467000.0,
+                "price": 244500,
+                "profit_rate": 0.06,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "036930",
+                "name": "주성엔지니어링",
+                "qty": 13,
+                "eval_amt": 1610700.0,
+                "price": 123900,
+                "profit_rate": 73.49,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "039490",
+                "name": "키움증권",
+                "qty": 3,
+                "eval_amt": 1348500.0,
+                "price": 449500,
+                "profit_rate": -1.31,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "051910",
+                "name": "LG화학",
+                "qty": 4,
+                "eval_amt": 1566000.0,
+                "price": 391500,
+                "profit_rate": 4.46,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "055550",
+                "name": "신한지주",
+                "qty": 16,
+                "eval_amt": 1600000.0,
+                "price": 100000,
+                "profit_rate": 1.72,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "071050",
+                "name": "한국금융지주",
+                "qty": 6,
+                "eval_amt": 1554000.0,
+                "price": 259000,
+                "profit_rate": 3.73,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "086790",
+                "name": "하나금융지주",
+                "qty": 13,
+                "eval_amt": 1602900.0,
+                "price": 123300,
+                "profit_rate": 1.14,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "096770",
+                "name": "SK이노베이션",
+                "qty": 12,
+                "eval_amt": 1594800.0,
+                "price": 132900,
+                "profit_rate": 3.48,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "161890",
+                "name": "한국콜마",
+                "qty": 17,
+                "eval_amt": 1557200.0,
+                "price": 91600,
+                "profit_rate": 12.05,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "257720",
+                "name": "실리콘투",
+                "qty": 32,
+                "eval_amt": 1561600.0,
+                "price": 48800,
+                "profit_rate": 10.04,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "278470",
+                "name": "에이피알",
+                "qty": 3,
+                "eval_amt": 1350000.0,
+                "price": 450000,
+                "profit_rate": 10.2,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "316140",
+                "name": "우리금융지주",
+                "qty": 45,
+                "eval_amt": 1577250.0,
+                "price": 35050,
+                "profit_rate": 0.5,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "329180",
+                "name": "HD현대중공업",
+                "qty": 2,
+                "eval_amt": 1342000.0,
+                "price": 671000,
+                "profit_rate": 5.17,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "373220",
+                "name": "LG에너지솔루션",
+                "qty": 3,
+                "eval_amt": 1443000.0,
+                "price": 481000,
+                "profit_rate": 9.9,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "483650",
+                "name": "달바글로벌",
+                "qty": 6,
+                "eval_amt": 1446000.0,
+                "price": 241000,
+                "profit_rate": 26.73,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 41521650.0,
+            "cash_krw": 3672079.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "KR Market",
+            "strategy": "KRTR",
+            "sub": "Coverdcall",
+            "cano": "63751991",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 96661059.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "498400",
+                "name": "KODEX 200타겟위클리커버드콜",
+                "qty": 4787,
+                "eval_amt": 95428845.0,
+                "price": 19935,
+                "profit_rate": 11.7,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 95428845.0,
+            "cash_krw": 1232214.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "KRQT": {
+        "items": [
+          {
+            "market": "KR Market",
+            "strategy": "KRQT",
+            "sub": "Small Cap Growth",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 122652382.05620718,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "017510",
+                "name": "세명전기",
+                "qty": 393,
+                "eval_amt": 4507710.0,
+                "price": 11470,
+                "profit_rate": 22.96,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "019540",
+                "name": "일지테크",
+                "qty": 1080,
+                "eval_amt": 7851600.0,
+                "price": 7270,
+                "profit_rate": 69.95,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "033230",
+                "name": "인성정보",
+                "qty": 4449,
+                "eval_amt": 8800122.0,
+                "price": 1978,
+                "profit_rate": 21.2,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "052460",
+                "name": "아이크래프트",
+                "qty": 1960,
+                "eval_amt": 7840000.0,
+                "price": 4000,
+                "profit_rate": 10.17,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "056360",
+                "name": "코위버",
+                "qty": 808,
+                "eval_amt": 7474000.0,
+                "price": 9250,
+                "profit_rate": -5.46,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "065440",
+                "name": "이루온",
+                "qty": 803,
+                "eval_amt": 3071475.0,
+                "price": 3825,
+                "profit_rate": -19.94,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "065770",
+                "name": "CS",
+                "qty": 1386,
+                "eval_amt": 2195424.0,
+                "price": 1584,
+                "profit_rate": -42.91,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "088130",
+                "name": "동아엘텍",
+                "qty": 1000,
+                "eval_amt": 11250000.0,
+                "price": 11250,
+                "profit_rate": 51.81,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "088790",
+                "name": "진도",
+                "qty": 1348,
+                "eval_amt": 3545240.0,
+                "price": 2630,
+                "profit_rate": -2.39,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "089150",
+                "name": "케이씨티",
+                "qty": 1004,
+                "eval_amt": 3689700.0,
+                "price": 3675,
+                "profit_rate": -0.22,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "092190",
+                "name": "서울바이오시스",
+                "qty": 2097,
+                "eval_amt": 9614745.0,
+                "price": 4585,
+                "profit_rate": 31.13,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "093190",
+                "name": "빅솔론",
+                "qty": 955,
+                "eval_amt": 7534950.0,
+                "price": 7890,
+                "profit_rate": 2.04,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "131090",
+                "name": "시큐브",
+                "qty": 830,
+                "eval_amt": 3502600.0,
+                "price": 4220,
+                "profit_rate": 5.31,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "143540",
+                "name": "영우디에스피",
+                "qty": 5458,
+                "eval_amt": 7291888.0,
+                "price": 1336,
+                "profit_rate": -0.22,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "147830",
+                "name": "제룡산업",
+                "qty": 484,
+                "eval_amt": 4041400.0,
+                "price": 8350,
+                "profit_rate": 10.48,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "192250",
+                "name": "케이사인",
+                "qty": 682,
+                "eval_amt": 8961480.0,
+                "price": 13140,
+                "profit_rate": 22.17,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "265740",
+                "name": "엔에프씨",
+                "qty": 507,
+                "eval_amt": 3432390.0,
+                "price": 6770,
+                "profit_rate": -8.71,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "290520",
+                "name": "신도기연",
+                "qty": 2830,
+                "eval_amt": 6310900.0,
+                "price": 2230,
+                "profit_rate": -16.57,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "321260",
+                "name": "프로이천",
+                "qty": 2639,
+                "eval_amt": 6848205.0,
+                "price": 2595,
+                "profit_rate": -8.98,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "398120",
+                "name": "에스지헬스케어",
+                "qty": 905,
+                "eval_amt": 3058900.0,
+                "price": 3380,
+                "profit_rate": -12.09,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 120822729.0,
+            "cash_krw": 1829653.0562071763,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 321380077.0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "KR Market",
+            "strategy": "KRQT",
+            "sub": "Small Cap Simple-Fin",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 69974542.33187954,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "020180",
+                "name": "대신정보통신",
+                "qty": 3445,
+                "eval_amt": 4371705.0,
+                "price": 1269,
+                "profit_rate": 21.27,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "033250",
+                "name": "체시스",
+                "qty": 3763,
+                "eval_amt": 3759237.0,
+                "price": 999,
+                "profit_rate": 2.93,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "035460",
+                "name": "기산텔레콤",
+                "qty": 1046,
+                "eval_amt": 4173540.0,
+                "price": 3990,
+                "profit_rate": 15.12,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "046390",
+                "name": "삼화네트웍스",
+                "qty": 3589,
+                "eval_amt": 3535165.0,
+                "price": 985,
+                "profit_rate": -2.7,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "047080",
+                "name": "한빛소프트",
+                "qty": 2889,
+                "eval_amt": 3793257.0,
+                "price": 1313,
+                "profit_rate": 3.97,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "049480",
+                "name": "오픈베이스",
+                "qty": 1601,
+                "eval_amt": 5323325.0,
+                "price": 3325,
+                "profit_rate": 54.45,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "053290",
+                "name": "NE능률",
+                "qty": 1660,
+                "eval_amt": 3759900.0,
+                "price": 2265,
+                "profit_rate": 3.65,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "066360",
+                "name": "체리부로",
+                "qty": 3138,
+                "eval_amt": 3909948.0,
+                "price": 1246,
+                "profit_rate": 8.46,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "084870",
+                "name": "TBH글로벌",
+                "qty": 1735,
+                "eval_amt": 3496025.0,
+                "price": 2015,
+                "profit_rate": -4.08,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "090080",
+                "name": "평화산업",
+                "qty": 3861,
+                "eval_amt": 3884166.0,
+                "price": 1006,
+                "profit_rate": 6.83,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "099410",
+                "name": "동방선기",
+                "qty": 757,
+                "eval_amt": 4155930.0,
+                "price": 5490,
+                "profit_rate": 15.12,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "198080",
+                "name": "캐프",
+                "qty": 1332,
+                "eval_amt": 4082580.0,
+                "price": 3065,
+                "profit_rate": 11.67,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "258790",
+                "name": "소프트캠프",
+                "qty": 2735,
+                "eval_amt": 5450855.0,
+                "price": 1993,
+                "profit_rate": 61.47,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "273060",
+                "name": "와이즈버즈",
+                "qty": 3693,
+                "eval_amt": 4091844.0,
+                "price": 1108,
+                "profit_rate": 12.65,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "290560",
+                "name": "파라택시스이더리움",
+                "qty": 1958,
+                "eval_amt": 3733906.0,
+                "price": 1907,
+                "profit_rate": -1.4,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "336060",
+                "name": "웨이버스",
+                "qty": 3683,
+                "eval_amt": 3624072.0,
+                "price": 984,
+                "profit_rate": -0.1,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "462980",
+                "name": "아이지넷",
+                "qty": 1545,
+                "eval_amt": 3785250.0,
+                "price": 2450,
+                "profit_rate": 3.59,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 68930705.0,
+            "cash_krw": 1043837.3318795448,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 321380077.0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "KR Market",
+            "strategy": "KRQT",
+            "sub": "Middle Cap",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 50097830.73158045,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "001620",
+                "name": "케이비아이동국실업",
+                "qty": 5756,
+                "eval_amt": 3695352.0,
+                "price": 642,
+                "profit_rate": 1.2,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "013700",
+                "name": "까뮤이앤씨",
+                "qty": 2695,
+                "eval_amt": 3659810.0,
+                "price": 1358,
+                "profit_rate": 0.78,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "017550",
+                "name": "수산세보틱스",
+                "qty": 1460,
+                "eval_amt": 4905600.0,
+                "price": 3360,
+                "profit_rate": 19.23,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "019180",
+                "name": "티에이치엔",
+                "qty": 501,
+                "eval_amt": 3677340.0,
+                "price": 7340,
+                "profit_rate": 0.51,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "020120",
+                "name": "키다리스튜디오",
+                "qty": 1102,
+                "eval_amt": 4308820.0,
+                "price": 3910,
+                "profit_rate": 12.36,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "033320",
+                "name": "제이씨현시스템",
+                "qty": 764,
+                "eval_amt": 3988080.0,
+                "price": 5220,
+                "profit_rate": 9.77,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "038290",
+                "name": "마크로젠",
+                "qty": 228,
+                "eval_amt": 3910200.0,
+                "price": 17150,
+                "profit_rate": 8.23,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "038680",
+                "name": "에스넷",
+                "qty": 921,
+                "eval_amt": 4181340.0,
+                "price": 4540,
+                "profit_rate": 11.75,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "046940",
+                "name": "우원개발",
+                "qty": 784,
+                "eval_amt": 4233600.0,
+                "price": 5400,
+                "profit_rate": 70.5,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "071200",
+                "name": "인피니트헬스케어",
+                "qty": 593,
+                "eval_amt": 3990890.0,
+                "price": 6730,
+                "profit_rate": 8.41,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "078890",
+                "name": "가온그룹",
+                "qty": 646,
+                "eval_amt": 4354040.0,
+                "price": 6740,
+                "profit_rate": 19.28,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "100220",
+                "name": "비상교육",
+                "qty": 627,
+                "eval_amt": 4445430.0,
+                "price": 7090,
+                "profit_rate": 20.49,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 49350502.0,
+            "cash_krw": 747328.7315804493,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 321380077.0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "KR Market",
+            "strategy": "KRQT",
+            "sub": "Large Cap",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 78655321.88033283,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "001630",
+                "name": "종근당홀딩스",
+                "qty": 76,
+                "eval_amt": 3838000.0,
+                "price": 50500,
+                "profit_rate": 5.2,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "002350",
+                "name": "넥센타이어",
+                "qty": 488,
+                "eval_amt": 3713680.0,
+                "price": 7610,
+                "profit_rate": 3.33,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "002790",
+                "name": "아모레퍼시픽홀딩스",
+                "qty": 132,
+                "eval_amt": 3973200.0,
+                "price": 30100,
+                "profit_rate": 35.84,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "003220",
+                "name": "대원제약",
+                "qty": 352,
+                "eval_amt": 3847360.0,
+                "price": 10930,
+                "profit_rate": 7.09,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "005250",
+                "name": "녹십자홀딩스",
+                "qty": 268,
+                "eval_amt": 3856520.0,
+                "price": 14390,
+                "profit_rate": -9.0,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "039560",
+                "name": "다산네트웍스",
+                "qty": 706,
+                "eval_amt": 3628840.0,
+                "price": 5140,
+                "profit_rate": -4.43,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "039840",
+                "name": "디오",
+                "qty": 222,
+                "eval_amt": 3871680.0,
+                "price": 17440,
+                "profit_rate": 6.72,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "043150",
+                "name": "바텍",
+                "qty": 164,
+                "eval_amt": 3813000.0,
+                "price": 23250,
+                "profit_rate": 6.38,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "054210",
+                "name": "이랜텍",
+                "qty": 366,
+                "eval_amt": 4633560.0,
+                "price": 12660,
+                "profit_rate": 27.64,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "064550",
+                "name": "바이오니아",
+                "qty": 357,
+                "eval_amt": 3916290.0,
+                "price": 10970,
+                "profit_rate": 6.95,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "083930",
+                "name": "아바코",
+                "qty": 247,
+                "eval_amt": 4137250.0,
+                "price": 16750,
+                "profit_rate": 24.86,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "096530",
+                "name": "씨젠",
+                "qty": 161,
+                "eval_amt": 4025000.0,
+                "price": 25000,
+                "profit_rate": -8.02,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "096760",
+                "name": "JW홀딩스",
+                "qty": 892,
+                "eval_amt": 3866820.0,
+                "price": 4335,
+                "profit_rate": 9.76,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "100120",
+                "name": "뷰웍스",
+                "qty": 141,
+                "eval_amt": 3912750.0,
+                "price": 27750,
+                "profit_rate": 45.35,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "170900",
+                "name": "동아에스티",
+                "qty": 81,
+                "eval_amt": 3742200.0,
+                "price": 46200,
+                "profit_rate": 5.23,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "192080",
+                "name": "더블유게임즈",
+                "qty": 74,
+                "eval_amt": 4255000.0,
+                "price": 57500,
+                "profit_rate": 17.83,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "206640",
+                "name": "바디텍메드",
+                "qty": 279,
+                "eval_amt": 3311730.0,
+                "price": 11870,
+                "profit_rate": 7.18,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "236200",
+                "name": "슈프리마",
+                "qty": 79,
+                "eval_amt": 4400300.0,
+                "price": 55700,
+                "profit_rate": 20.87,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "243070",
+                "name": "휴온스",
+                "qty": 122,
+                "eval_amt": 3275700.0,
+                "price": 26850,
+                "profit_rate": 6.04,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "264450",
+                "name": "유비쿼스",
+                "qty": 239,
+                "eval_amt": 3463110.0,
+                "price": 14490,
+                "profit_rate": -7.69,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 77481990.0,
+            "cash_krw": 1173331.8803328294,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 321380077.0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "KRFT": {
+        "items": [
+          {
+            "market": "KR Market",
+            "strategy": "KRFT",
+            "sub": "Hedge & Boost",
+            "cano": "64753341",
+            "acnt_prdt_cd": "03",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 0,
+            "placeholder": false,
+            "error": "정산상태코드은(는) 필수입력 항목입니다.                                         ",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "USAA": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "USAA",
+            "sub": "USLA",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 114777015.46212001,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1480.6,
+            "placeholder": false,
+            "error": "",
+            "stocks": [],
+            "total_usd": 77520.61020000001,
+            "stock_eval_usd": 0.0,
+            "cash_usd": 77520.61020000001,
+            "mode": "헷징모드",
+            "rp_adjusted": true,
+            "rp_prev_date": "20260424",
+            "usd_raw": {
+              "stocks": [
+                {
+                  "code": "PDBC",
+                  "name": "INVESCO OPTIMUM YIELD DIVERSIFIED COMMODITY STRATEGY NO K-1",
+                  "qty": 565,
+                  "eval_amt": 10051.35,
+                  "price": 17.79,
+                  "avg_price": 14.2002,
+                  "profit_rate": 25.27,
+                  "day_change_rate": -0.2802690582959641
+                },
+                {
+                  "code": "IWM",
+                  "name": "ISHARES RUSSELL 2000",
+                  "qty": 39,
+                  "eval_amt": 10789.35,
+                  "price": 276.65,
+                  "avg_price": 250.7828,
+                  "profit_rate": 10.31,
+                  "day_change_rate": 0.7276494029706814
+                },
+                {
+                  "code": "VEA",
+                  "name": "VANGUARD FTSE DEVELOPED MARKETS",
+                  "qty": 152,
+                  "eval_amt": 10357.28,
+                  "price": 68.14,
+                  "avg_price": 63.0435,
+                  "profit_rate": 8.08,
+                  "day_change_rate": -0.05866823115283004
+                },
+                {
+                  "code": "VWO",
+                  "name": "VANGUARD FTSE EMERGING MARKETS",
+                  "qty": 183,
+                  "eval_amt": 10800.66,
+                  "price": 59.02,
+                  "avg_price": 53.6771,
+                  "profit_rate": 9.95,
+                  "day_change_rate": 0.670339604619031
+                }
+              ],
+              "stock_eval": 41998.64,
+              "cash": 79017.14,
+              "total": 121015.78,
+              "exchange_rate": 1480.6,
+              "frcr_deposit": 0.0,
+              "today_sell_amt": 0.0,
+              "today_buy_amt": 0.0,
+              "orderable_cash": 0.0,
+              "sll_ruse": 0.0,
+              "cash_adjusted": 79017.14,
+              "cash_adjustment_reason": "외화RP 추정 (전일값 승계)"
+            },
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "Global Market",
+            "strategy": "USAA",
+            "sub": "HAA",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 64398948.40587998,
+            "day_change_krw_rate": 0.26632425226274603,
+            "day_change_native_rate": 0.2663242522627448,
+            "exchange_rate": 1480.6,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "PDBC",
+                "name": "INVESCO OPTIMUM YIELD DIVERSIFIED COMMODITY STRATEGY NO K-1",
+                "qty": 565,
+                "eval_amt": 10051.35,
+                "price": 17.79,
+                "avg_price": 14.2002,
+                "profit_rate": 25.27,
+                "day_change_rate": -0.2802690582959641
+              },
+              {
+                "code": "IWM",
+                "name": "ISHARES RUSSELL 2000",
+                "qty": 39,
+                "eval_amt": 10789.35,
+                "price": 276.65,
+                "avg_price": 250.7828,
+                "profit_rate": 10.31,
+                "day_change_rate": 0.7276494029706814
+              },
+              {
+                "code": "VEA",
+                "name": "VANGUARD FTSE DEVELOPED MARKETS",
+                "qty": 152,
+                "eval_amt": 10357.28,
+                "price": 68.14,
+                "avg_price": 63.0435,
+                "profit_rate": 8.08,
+                "day_change_rate": -0.05866823115283004
+              },
+              {
+                "code": "VWO",
+                "name": "VANGUARD FTSE EMERGING MARKETS",
+                "qty": 183,
+                "eval_amt": 10800.66,
+                "price": 59.02,
+                "avg_price": 53.6771,
+                "profit_rate": 9.95,
+                "day_change_rate": 0.670339604619031
+              }
+            ],
+            "total_usd": 43495.16979999999,
+            "stock_eval_usd": 41998.64,
+            "cash_usd": 1496.5297999999893,
+            "mode": "공격모드",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "USQT": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "USQT",
+            "sub": "SCG",
+            "cano": "63692011",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 11412280.030702397,
+            "day_change_krw_rate": 2.390336396951594,
+            "day_change_native_rate": 2.390336396951589,
+            "exchange_rate": 1480.6,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "CMRC",
+                "name": "커머스닷컴",
+                "qty": 166,
+                "eval_amt": 498.0,
+                "price": 3.0,
+                "avg_price": 2.4801,
+                "profit_rate": 20.96,
+                "day_change_rate": 2.040816326530608
+              },
+              {
+                "code": "DCGO",
+                "name": "독고",
+                "qty": 772,
+                "eval_amt": 554.296,
+                "price": 0.718,
+                "avg_price": 0.5579,
+                "profit_rate": 28.68,
+                "day_change_rate": 4.421175101803394
+              },
+              {
+                "code": "DOMO",
+                "name": "도모",
+                "qty": 158,
+                "eval_amt": 614.62,
+                "price": 3.89,
+                "avg_price": 2.6028,
+                "profit_rate": 49.45,
+                "day_change_rate": 2.3684210526315836
+              },
+              {
+                "code": "FLWS",
+                "name": "1 800 플라워스닷컴",
+                "qty": 129,
+                "eval_amt": 465.69,
+                "price": 3.61,
+                "avg_price": 3.104,
+                "profit_rate": 16.29,
+                "day_change_rate": -4.4973544973544985
+              },
+              {
+                "code": "GPRO",
+                "name": "고프로",
+                "qty": 454,
+                "eval_amt": 603.82,
+                "price": 1.33,
+                "avg_price": 0.8833,
+                "profit_rate": 50.56,
+                "day_change_rate": 4.724409448818899
+              },
+              {
+                "code": "HRTX",
+                "name": "헤런 테라퓨틱스",
+                "qty": 459,
+                "eval_amt": 546.21,
+                "price": 1.19,
+                "avg_price": 0.8664,
+                "profit_rate": 37.33,
+                "day_change_rate": 19.023804760952192
+              },
+              {
+                "code": "LCUT",
+                "name": "라이프타임 브랜즈",
+                "qty": 54,
+                "eval_amt": 369.36,
+                "price": 6.84,
+                "avg_price": 7.6671,
+                "profit_rate": -10.78,
+                "day_change_rate": 3.4795763993948605
+              },
+              {
+                "code": "PRPL",
+                "name": "퍼플 이노베이션",
+                "qty": 685,
+                "eval_amt": 439.085,
+                "price": 0.641,
+                "avg_price": 0.6211,
+                "profit_rate": 3.2,
+                "day_change_rate": 0.15625000000000053
+              },
+              {
+                "code": "RRGB",
+                "name": "레드 로빈 고메 버거스",
+                "qty": 125,
+                "eval_amt": 497.5,
+                "price": 3.98,
+                "avg_price": 3.2733,
+                "profit_rate": 21.58,
+                "day_change_rate": 2.842377260981912
+              },
+              {
+                "code": "SNBR",
+                "name": "슬립 넘버",
+                "qty": 265,
+                "eval_amt": 625.4,
+                "price": 2.36,
+                "avg_price": 1.9238,
+                "profit_rate": 22.67,
+                "day_change_rate": -4.0650406504065035
+              },
+              {
+                "code": "STKS",
+                "name": "원 그룹 호스피털리티",
+                "qty": 251,
+                "eval_amt": 439.25,
+                "price": 1.75,
+                "avg_price": 1.7003,
+                "profit_rate": 2.92,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "TTEC",
+                "name": "TTEC 홀딩스",
+                "qty": 167,
+                "eval_amt": 517.7,
+                "price": 3.1,
+                "avg_price": 2.4152,
+                "profit_rate": 28.35,
+                "day_change_rate": 2.3102310231023213
+              },
+              {
+                "code": "BRCC",
+                "name": "BRC",
+                "qty": 511,
+                "eval_amt": 592.76,
+                "price": 1.16,
+                "avg_price": 0.8126,
+                "profit_rate": 42.74,
+                "day_change_rate": 4.504504504504496
+              },
+              {
+                "code": "CURV",
+                "name": "토리드 홀딩스",
+                "qty": 208,
+                "eval_amt": 380.64,
+                "price": 1.83,
+                "avg_price": 1.8127,
+                "profit_rate": 0.95,
+                "day_change_rate": -4.687500000000007
+              },
+              {
+                "code": "ZIP",
+                "name": "집리크루터",
+                "qty": 189,
+                "eval_amt": 561.33,
+                "price": 2.97,
+                "avg_price": 1.7307,
+                "profit_rate": 71.6,
+                "day_change_rate": 3.846153846153861
+              }
+            ],
+            "total_usd": 7707.875206471969,
+            "stock_eval_usd": 7705.661,
+            "cash_usd": 2.2142064719690633,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 14585.811000000002
+          },
+          {
+            "market": "Global Market",
+            "strategy": "USQT",
+            "sub": "TCM",
+            "cano": "63692011",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 10183471.7358976,
+            "day_change_krw_rate": 0.7079889588373404,
+            "day_change_native_rate": 0.7079889588373525,
+            "exchange_rate": 1480.6,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "CLOV",
+                "name": "클로버 헬스 인베스트먼츠",
+                "qty": 209,
+                "eval_amt": 507.87,
+                "price": 2.43,
+                "avg_price": 1.7231,
+                "profit_rate": 41.02,
+                "day_change_rate": 1.2499999999999962
+              },
+              {
+                "code": "EXPI",
+                "name": "EXP 월드 홀딩스",
+                "qty": 69,
+                "eval_amt": 445.05,
+                "price": 6.45,
+                "avg_price": 5.9765,
+                "profit_rate": 7.92,
+                "day_change_rate": 1.574803149606307
+              },
+              {
+                "code": "GLXY",
+                "name": "갤럭시 디지털",
+                "qty": 18,
+                "eval_amt": 468.09,
+                "price": 26.005,
+                "avg_price": 21.9566,
+                "profit_rate": 18.43,
+                "day_change_rate": -1.0464231354642408
+              },
+              {
+                "code": "OPEN",
+                "name": "오픈도어 테크놀로지스",
+                "qty": 93,
+                "eval_amt": 512.43,
+                "price": 5.51,
+                "avg_price": 4.3084,
+                "profit_rate": 27.88,
+                "day_change_rate": 5.35372848948374
+              },
+              {
+                "code": "PTON",
+                "name": "펠로턴 인터랙티브",
+                "qty": 89,
+                "eval_amt": 461.02,
+                "price": 5.18,
+                "avg_price": 4.5479,
+                "profit_rate": 13.89,
+                "day_change_rate": 4.64646464646464
+              },
+              {
+                "code": "REAX",
+                "name": "리얼 브로커리지",
+                "qty": 163,
+                "eval_amt": 436.84,
+                "price": 2.68,
+                "avg_price": 2.5019,
+                "profit_rate": 7.11,
+                "day_change_rate": -0.7407407407407516
+              },
+              {
+                "code": "AGL",
+                "name": "애질론 헬스",
+                "qty": 19,
+                "eval_amt": 497.99,
+                "price": 26.21,
+                "avg_price": 20.5826,
+                "profit_rate": 27.34,
+                "day_change_rate": -0.41793313069908317
+              },
+              {
+                "code": "AMC",
+                "name": "AMC 엔터테인먼트 홀딩스",
+                "qty": 292,
+                "eval_amt": 478.88,
+                "price": 1.64,
+                "avg_price": 1.386,
+                "profit_rate": 18.32,
+                "day_change_rate": -2.3809523809523823
+              },
+              {
+                "code": "BKKT",
+                "name": "백트 홀딩스",
+                "qty": 46,
+                "eval_amt": 406.18,
+                "price": 8.83,
+                "avg_price": 8.5363,
+                "profit_rate": 3.44,
+                "day_change_rate": 1.7281105990783499
+              },
+              {
+                "code": "COMP",
+                "name": "컴퍼스",
+                "qty": 57,
+                "eval_amt": 447.45,
+                "price": 7.85,
+                "avg_price": 9.0946,
+                "profit_rate": -13.68,
+                "day_change_rate": 0.7702182284980781
+              },
+              {
+                "code": "LUMN",
+                "name": "루멘 테크놀로지스",
+                "qty": 54,
+                "eval_amt": 477.36,
+                "price": 8.84,
+                "avg_price": 6.6938,
+                "profit_rate": 32.06,
+                "day_change_rate": -1.88679245283019
+              },
+              {
+                "code": "OSCR",
+                "name": "오스카 헬스",
+                "qty": 27,
+                "eval_amt": 453.87,
+                "price": 16.81,
+                "avg_price": 14.2329,
+                "profit_rate": 18.1,
+                "day_change_rate": 2.3128423615337774
+              },
+              {
+                "code": "PBF",
+                "name": "PBF 에너지",
+                "qty": 10,
+                "eval_amt": 407.4,
+                "price": 40.74,
+                "avg_price": 40.861,
+                "profit_rate": -0.29,
+                "day_change_rate": -0.5613863802782552
+              },
+              {
+                "code": "UAA",
+                "name": "언더 아머 A",
+                "qty": 67,
+                "eval_amt": 415.4,
+                "price": 6.2,
+                "avg_price": 5.7537,
+                "profit_rate": 7.75,
+                "day_change_rate": -2.821316614420063
+              },
+              {
+                "code": "VSTS",
+                "name": "베스티스",
+                "qty": 47,
+                "eval_amt": 460.13,
+                "price": 9.79,
+                "avg_price": 7.8223,
+                "profit_rate": 25.15,
+                "day_change_rate": 3.0526315789473677
+              }
+            ],
+            "total_usd": 6877.93579352803,
+            "stock_eval_usd": 6875.959999999999,
+            "cash_usd": 1.9757935280309369,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 14585.811000000002
+          }
+        ]
+      },
+      "JPQT": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "JPQT",
+            "sub": "JPQT1",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "JPY",
+            "total_krw": 23769874.439999998,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 9.27,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "2489",
+                "name": "[2489]애드웨이즈",
+                "qty": 400,
+                "eval_amt": 111200.0,
+                "price": 278.0,
+                "avg_price": 279.95,
+                "profit_rate": -0.69,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "3386",
+                "name": "[3386]코스모바이오",
+                "qty": 100,
+                "eval_amt": 124600.0,
+                "price": 1246.0,
+                "avg_price": 1368.0,
+                "profit_rate": -8.91,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "3758",
+                "name": "[3758]아에리아",
+                "qty": 400,
+                "eval_amt": 99600.0,
+                "price": 249.0,
+                "avg_price": 257.0,
+                "profit_rate": -3.11,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "4192",
+                "name": "[4192]스파이더플러스",
+                "qty": 500,
+                "eval_amt": 147500.0,
+                "price": 295.0,
+                "avg_price": 254.0,
+                "profit_rate": 16.14,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "4392",
+                "name": "[4392]FIG",
+                "qty": 400,
+                "eval_amt": 139200.0,
+                "price": 348.0,
+                "avg_price": 339.6,
+                "profit_rate": 2.47,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "4476",
+                "name": "[4476]AI크로스",
+                "qty": 200,
+                "eval_amt": 211200.0,
+                "price": 1056.0,
+                "avg_price": 1007.0,
+                "profit_rate": 4.86,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "4579",
+                "name": "[4579]라퀄리어제약",
+                "qty": 200,
+                "eval_amt": 160600.0,
+                "price": 803.0,
+                "avg_price": 980.0,
+                "profit_rate": -18.06,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "5959",
+                "name": "[5959]오카베",
+                "qty": 200,
+                "eval_amt": 191800.0,
+                "price": 959.0,
+                "avg_price": 1010.0,
+                "profit_rate": -5.04,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "6046",
+                "name": "[6046]링크벌",
+                "qty": 700,
+                "eval_amt": 115500.0,
+                "price": 165.0,
+                "avg_price": 202.0,
+                "profit_rate": -18.31,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "6316",
+                "name": "[6316]마루야마",
+                "qty": 100,
+                "eval_amt": 236300.0,
+                "price": 2363.0,
+                "avg_price": 2440.0,
+                "profit_rate": -3.15,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "6472",
+                "name": "[6472]NTN",
+                "qty": 400,
+                "eval_amt": 134680.0,
+                "price": 336.7,
+                "avg_price": 414.15,
+                "profit_rate": -18.7,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "6666",
+                "name": "[6666]리버일레텍",
+                "qty": 300,
+                "eval_amt": 312000.0,
+                "price": 1040.0,
+                "avg_price": 640.0,
+                "profit_rate": 62.5,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "7266",
+                "name": "[7266]이마센전기",
+                "qty": 200,
+                "eval_amt": 172000.0,
+                "price": 860.0,
+                "avg_price": 1043.0,
+                "profit_rate": -17.54,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "7915",
+                "name": "[7915]니샤",
+                "qty": 100,
+                "eval_amt": 130100.0,
+                "price": 1301.0,
+                "avg_price": 1265.0,
+                "profit_rate": 2.84,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "9248",
+                "name": "[9248]히토유메기주쓰그룹",
+                "qty": 100,
+                "eval_amt": 155700.0,
+                "price": 1557.0,
+                "avg_price": 1626.0,
+                "profit_rate": -4.24,
+                "day_change_rate": 0.0
+              }
+            ],
+            "total_jpy": 2564172.0,
+            "stock_eval_jpy": 2441980.0,
+            "cash_jpy": 122192.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "HKQT": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "HKQT",
+            "sub": "HKQ1T",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "HKD",
+            "total_krw": 19814464.854000002,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 189.03,
+            "placeholder": false,
+            "error": "",
+            "stocks": [],
+            "total_hkd": 104821.8,
+            "stock_eval_hkd": 0.0,
+            "cash_hkd": 104821.8,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "ETC": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "ETC",
+            "sub": "JPUSbond",
+            "cano": "63721147",
+            "acnt_prdt_cd": "01",
+            "currency": "JPY",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 9.27,
+            "placeholder": false,
+            "error": "",
+            "stocks": [],
+            "total_jpy": 0.0,
+            "stock_eval_jpy": 0.0,
+            "cash_jpy": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "GBFT": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "GBFT",
+            "sub": "Hedge & Boost",
+            "cano": "64753341",
+            "acnt_prdt_cd": "08",
+            "currency": "USD",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 0.0,
+            "placeholder": true,
+            "error": "",
+            "stocks": [],
+            "total_usd": 0.0,
+            "stock_eval_usd": 0.0,
+            "cash_usd": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "Global Market",
+            "strategy": "GBFT",
+            "sub": "Commmodity",
+            "cano": "64753341",
+            "acnt_prdt_cd": "08",
+            "currency": "USD",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 0.0,
+            "placeholder": true,
+            "error": "",
+            "stocks": [],
+            "total_usd": 0.0,
+            "stock_eval_usd": 0.0,
+            "cash_usd": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "Gold": {
+        "items": [
+          {
+            "market": "Alternative",
+            "strategy": "Gold",
+            "sub": "Gold",
+            "cano": "키움 52953897",
+            "acnt_prdt_cd": "",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": true,
+            "error": "",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "Crypto": {
+        "items": [
+          {
+            "market": "Alternative",
+            "strategy": "Crypto",
+            "sub": "Crypto",
+            "cano": "ilpus@naver.com",
+            "acnt_prdt_cd": "",
+            "currency": "KRW",
+            "total_krw": 100682338.0400817,
+            "day_change_krw_rate": -0.050004960442367345,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "BTC",
+                "name": "BTC",
+                "qty": 0.42369193,
+                "eval_amt": 48907606.86376,
+                "price": 115432000.0,
+                "profit_rate": 6.384971834722486,
+                "avg_price": 108504047.14994217,
+                "day_change_rate": -0.25577215539886067
+              },
+              {
+                "code": "ETH",
+                "name": "ETH",
+                "qty": 15.00809196,
+                "eval_amt": 51762909.17004,
+                "price": 3449000.0,
+                "profit_rate": 8.999251728089352,
+                "avg_price": 3164241.90562694,
+                "day_change_rate": 0.14518002322879892
+              },
+              {
+                "code": "TRX",
+                "name": "TRX",
+                "qty": 5.4e-07,
+                "eval_amt": 0.00026028,
+                "price": 482.0,
+                "profit_rate": 563.9118457300276,
+                "avg_price": 72.6,
+                "day_change_rate": -1.4314928425357853
+              },
+              {
+                "code": "APENFT",
+                "name": "APENFT",
+                "qty": 4.543e-05,
+                "eval_amt": 0.0,
+                "price": 0.0,
+                "profit_rate": 0.0,
+                "avg_price": 0.0,
+                "note": "현재가조회불가 (매입가 대체)",
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 100670516.03406028,
+            "cash_krw": 11822.00602141,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "ISA": {
+        "items": [
+          {
+            "market": "연금&ISA",
+            "strategy": "ISA",
+            "sub": "ISA",
+            "cano": "43665648",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 46787057.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "0035T0",
+                "name": "PLUS 글로벌휴머노이드로봇액티브",
+                "qty": 301,
+                "eval_amt": 6184045.0,
+                "price": 20545,
+                "profit_rate": 5.06,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "0113D0",
+                "name": "TIME 글로벌탑픽액티브",
+                "qty": 745,
+                "eval_amt": 8947450.0,
+                "price": 12010,
+                "profit_rate": 8.1,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "456600",
+                "name": "TIME 글로벌AI인공지능액티브",
+                "qty": 150,
+                "eval_amt": 7983000.0,
+                "price": 53220,
+                "profit_rate": 30.69,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "490490",
+                "name": "SOL 미국배당미국채혼합50",
+                "qty": 1123,
+                "eval_amt": 12920115.0,
+                "price": 11505,
+                "profit_rate": 0.7,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "498400",
+                "name": "KODEX 200타겟위클리커버드콜",
+                "qty": 298,
+                "eval_amt": 5940630.0,
+                "price": 19935,
+                "profit_rate": 36.49,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "498410",
+                "name": "KODEX 금융고배당TOP10타겟위클리커버드콜",
+                "qty": 348,
+                "eval_amt": 4628400.0,
+                "price": 13300,
+                "profit_rate": 13.23,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 46603640.0,
+            "cash_krw": 183417.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "연금&ISA",
+            "strategy": "ISA",
+            "sub": "윤숙ISA",
+            "cano": "43680827",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 20825713.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "148070",
+                "name": "KIWOOM 국고채10년",
+                "qty": 18,
+                "eval_amt": 1927170.0,
+                "price": 107065,
+                "profit_rate": 1.09,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "261220",
+                "name": "KODEX WTI원유선물(H)",
+                "qty": 20,
+                "eval_amt": 499700.0,
+                "price": 24985,
+                "profit_rate": 1.34,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "371160",
+                "name": "TIGER 차이나항셍테크",
+                "qty": 77,
+                "eval_amt": 616000.0,
+                "price": 8000,
+                "profit_rate": 2.85,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "411060",
+                "name": "ACE KRX금현물",
+                "qty": 46,
+                "eval_amt": 1429220.0,
+                "price": 31070,
+                "profit_rate": 2.11,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "426030",
+                "name": "TIME 미국나스닥100액티브",
+                "qty": 46,
+                "eval_amt": 2106800.0,
+                "price": 45800,
+                "profit_rate": 25.61,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "441800",
+                "name": "TIME Korea플러스배당액티브",
+                "qty": 67,
+                "eval_amt": 2033450.0,
+                "price": 30350,
+                "profit_rate": 19.07,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "490490",
+                "name": "SOL 미국배당미국채혼합50",
+                "qty": 174,
+                "eval_amt": 2001870.0,
+                "price": 11505,
+                "profit_rate": -0.43,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 10614210.0,
+            "cash_krw": 10211503.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "Pension": {
+        "items": [
+          {
+            "market": "연금&ISA",
+            "strategy": "Pension",
+            "sub": "연금저축-1",
+            "cano": "43685950",
+            "acnt_prdt_cd": "22",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "연금&ISA",
+            "strategy": "Pension",
+            "sub": "연금저축-2",
+            "cano": "44334640",
+            "acnt_prdt_cd": "22",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "연금&ISA",
+            "strategy": "Pension",
+            "sub": "IRP",
+            "cano": "43685950",
+            "acnt_prdt_cd": "29",
+            "currency": "KRW",
+            "total_krw": 6937006.0,
+            "day_change_krw_rate": -0.0006198601163117055,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "0113D0",
+                "name": "TIME 글로벌탑픽액티브",
+                "qty": 106,
+                "eval_amt": 1273060.0,
+                "price": 12010,
+                "profit_rate": 8.1,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "441800",
+                "name": "TIME Korea플러스배당액티브",
+                "qty": 50,
+                "eval_amt": 1517500.0,
+                "price": 30350,
+                "profit_rate": 27.51,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "456600",
+                "name": "TIME 글로벌AI인공지능액티브",
+                "qty": 29,
+                "eval_amt": 1543380.0,
+                "price": 53220,
+                "profit_rate": 30.64,
+                "day_change_rate": 0.0
+              },
+              {
+                "code": "490490",
+                "name": "SOL 미국배당미국채혼합50",
+                "qty": 218,
+                "eval_amt": 2508090.0,
+                "price": 11505,
+                "profit_rate": 6.87,
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 6842030.0,
+            "cash_krw": 94976.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "연금&ISA",
+            "strategy": "Pension",
+            "sub": "퇴직연금",
+            "cano": "미래에셋",
+            "acnt_prdt_cd": "",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": true,
+            "error": "",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "노라임": {
+        "items": [
+          {
+            "market": "기타 자산",
+            "strategy": "노라임",
+            "sub": "노라임",
+            "cano": "44249970",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": true,
+            "error": "",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "노라송": {
+        "items": [
+          {
+            "market": "기타 자산",
+            "strategy": "노라송",
+            "sub": "노라송",
+            "cano": "44249994",
+            "acnt_prdt_cd": "01",
+            "currency": "KRW",
+            "total_krw": 0.0,
+            "day_change_krw_rate": 0.0,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": true,
+            "error": "",
+            "stocks": [],
+            "stock_eval_krw": 0.0,
+            "cash_krw": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      }
+    }
+  },
+  "US": {
+    "timestamp": "2026-04-25T22:00:03.799213",
+    "categories": {
+      "USAA": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "USAA",
+            "sub": "USLA",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 0.0,
+            "day_change_krw_rate": -100.0,
+            "day_change_native_rate": -100.0,
+            "exchange_rate": 0,
+            "placeholder": false,
+            "error": "USD 조회 예외: 500 Server Error: Internal Server Error for url: https://openapi.koreainvestment.com:9443/uapi/overseas-stock/v1/trading/inquire-present-balance?CANO=63604155&ACNT_PRDT_CD=01&WCRC_FRCR_DVSN_CD=02&NATN_CD=840&TR_MKET_CD=00&INQR_DVSN_CD=00&CTX_AREA_FK200=&CTX_AREA_NK200=",
+            "stocks": [],
+            "total_usd": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "Global Market",
+            "strategy": "USAA",
+            "sub": "HAA",
+            "cano": "63604155",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 0.0,
+            "day_change_krw_rate": -100.0,
+            "day_change_native_rate": -100.0,
+            "exchange_rate": 0,
+            "placeholder": false,
+            "error": "USD 조회 예외: 500 Server Error: Internal Server Error for url: https://openapi.koreainvestment.com:9443/uapi/overseas-stock/v1/trading/inquire-present-balance?CANO=63604155&ACNT_PRDT_CD=01&WCRC_FRCR_DVSN_CD=02&NATN_CD=840&TR_MKET_CD=00&INQR_DVSN_CD=00&CTX_AREA_FK200=&CTX_AREA_NK200=",
+            "stocks": [],
+            "total_usd": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "USQT": {
+        "items": [
+          {
+            "market": "Global Market",
+            "strategy": "USQT",
+            "sub": "SCG",
+            "cano": "63692011",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 0.0,
+            "day_change_krw_rate": -100.0,
+            "day_change_native_rate": -100.0,
+            "exchange_rate": 0,
+            "placeholder": false,
+            "error": "USD 조회 예외: 500 Server Error: Internal Server Error for url: https://openapi.koreainvestment.com:9443/uapi/overseas-stock/v1/trading/inquire-present-balance?CANO=63692011&ACNT_PRDT_CD=01&WCRC_FRCR_DVSN_CD=02&NATN_CD=840&TR_MKET_CD=00&INQR_DVSN_CD=00&CTX_AREA_FK200=&CTX_AREA_NK200=",
+            "stocks": [],
+            "total_usd": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          },
+          {
+            "market": "Global Market",
+            "strategy": "USQT",
+            "sub": "TCM",
+            "cano": "63692011",
+            "acnt_prdt_cd": "01",
+            "currency": "USD",
+            "total_krw": 0.0,
+            "day_change_krw_rate": -100.0,
+            "day_change_native_rate": -100.0,
+            "exchange_rate": 0,
+            "placeholder": false,
+            "error": "USD 조회 예외: 500 Server Error: Internal Server Error for url: https://openapi.koreainvestment.com:9443/uapi/overseas-stock/v1/trading/inquire-present-balance?CANO=63692011&ACNT_PRDT_CD=01&WCRC_FRCR_DVSN_CD=02&NATN_CD=840&TR_MKET_CD=00&INQR_DVSN_CD=00&CTX_AREA_FK200=&CTX_AREA_NK200=",
+            "stocks": [],
+            "total_usd": 0.0,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      },
+      "Crypto": {
+        "items": [
+          {
+            "market": "Alternative",
+            "strategy": "Crypto",
+            "sub": "Crypto",
+            "cano": "ilpus@naver.com",
+            "acnt_prdt_cd": "",
+            "currency": "KRW",
+            "total_krw": 100801508.40371278,
+            "day_change_krw_rate": 0.06829858202252233,
+            "day_change_native_rate": 0.0,
+            "exchange_rate": 1.0,
+            "placeholder": false,
+            "error": "",
+            "stocks": [
+              {
+                "code": "BTC",
+                "name": "BTC",
+                "qty": 0.42369193,
+                "eval_amt": 48981752.95151,
+                "price": 115607000.0,
+                "profit_rate": 6.546256141249951,
+                "avg_price": 108504047.14994217,
+                "day_change_rate": -0.10455550947048647
+              },
+              {
+                "code": "ETH",
+                "name": "ETH",
+                "qty": 15.00809196,
+                "eval_amt": 51807933.44592,
+                "price": 3452000.0,
+                "profit_rate": 9.0940611671106,
+                "avg_price": 3164241.90562694,
+                "day_change_rate": 0.23228803716608398
+              },
+              {
+                "code": "TRX",
+                "name": "TRX",
+                "qty": 5.4e-07,
+                "eval_amt": 0.00026136000000000003,
+                "price": 484.0,
+                "profit_rate": 566.6666666666667,
+                "avg_price": 72.6,
+                "day_change_rate": -1.0224948875255464
+              },
+              {
+                "code": "APENFT",
+                "name": "APENFT",
+                "qty": 4.543e-05,
+                "eval_amt": 0.0,
+                "price": 0.0,
+                "profit_rate": 0.0,
+                "avg_price": 0.0,
+                "note": "현재가조회불가 (매입가 대체)",
+                "day_change_rate": 0.0
+              }
+            ],
+            "stock_eval_krw": 100789686.39769137,
+            "cash_krw": 11822.00602141,
+            "mode": "",
+            "rp_adjusted": false,
+            "rp_prev_date": "",
+            "usd_raw": {},
+            "is_main": true,
+            "account_total_krw": 0,
+            "account_total_usd": 0
+          }
+        ]
+      }
+    }
+  }
+}
