@@ -4,7 +4,6 @@ import telegram_alert as TA
 from datetime import datetime, timedelta as time_obj
 import pandas as pd
 from collections import defaultdict
-import gspread_updater as GU
 import time as time_module
 from tendo import singleton
 import KIS_HK
@@ -28,7 +27,7 @@ fee_rate = KIS.SELL_FEE_RATE  # 0.09% 이벤트 계좌
 HKQT_day_path = "/var/autobot/TR_HKQT/HKQT_day.json"
 HKQT_target_path = "/var/autobot/TR_HKQT/HKQT_target.json"
 HKQT_result_path = "/var/autobot/TR_HKQT/HKQT_result.json"
-HKQT_daily_path = "/var/autobot/TR_HKQT/HKQT_daily.json"
+HKQT_rebal_path = "/var/autobot/TR_HKQT/HKQT_rebal.json"
 HKQT_stock_path = "/var/autobot/TR_HKQT/HKQT_stock.csv"
 
 # ============================================
@@ -837,7 +836,7 @@ if order['round'] == 14:
         TA.send_tele("HKQT: 최종 HKD 주문가능금액 조회 불가로 종료합니다.")
         sys.exit(1)
 
-    daily_data = {
+    rebal_data = {
         "date": str(order['date']),
         "total_stocks":    float(final_stock_eval),
         "total_cash":      float(final_hkd),
@@ -848,12 +847,12 @@ if order['round'] == 14:
 
     for category, stocks_list in result.items():
         category_balance = sum(float(item['balance']) for item in stocks_list)
-        daily_data[category]          = float(category_balance)
-        daily_data[f"{category}_ret"] = 0.0
+        rebal_data[category]          = float(category_balance)
+        rebal_data[f"{category}_ret"] = 0.0
 
     # HKQT_daily.json 저장
     try:
-        json_message = save_json(daily_data, HKQT_daily_path, order)
+        json_message = save_json(rebal_data, HKQT_rebal_path, order)
         message.extend(json_message)
     except Exception as e:
         error_msg = f"HKQT_daily.json 저장 실패: {e}"
@@ -861,38 +860,21 @@ if order['round'] == 14:
     time_module.sleep(1.0)
 
     # data 정제 (표시용)
-    daily = {
-        "date": daily_data["date"],
-        "total_stocks":    f"HK${daily_data['total_stocks']:,.2f}",
-        "total_cash":      f"HK${daily_data['total_cash']:,.2f}",
-        "total_asset":     f"HK${daily_data['total_asset']:,.2f}",
-        "total_asset_ret": f"{float(daily_data['total_asset_ret']*100):.2f}%"
+    rebal = {
+        "date": rebal_data["date"],
+        "total_stocks":    f"HK${rebal_data['total_stocks']:,.2f}",
+        "total_cash":      f"HK${rebal_data['total_cash']:,.2f}",
+        "total_asset":     f"HK${rebal_data['total_asset']:,.2f}",
+        "total_asset_ret": f"{float(rebal_data['total_asset_ret']*100):.2f}%"
     }
 
     for category, stocks_list in result.items():
         category_balance = sum(float(item['balance']) for item in stocks_list)
-        daily[category]          = f"HK${category_balance:,.2f}"
-        daily[f"{category}_ret"] = "0.00%"
-
-    """
-    # daily balance Google Sheet 저장 보류
-    try:
-        credentials_file = "/var/autobot/gspread/service_account.json"
-        spreadsheet_name = "2026_HKQT_daily"
-
-        spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
-        current_month = datetime.now().month
-
-        GU.save_to_sheets(spreadsheet, daily, current_month)
-        message.append(f"2026_HKQT_daily Google Sheet 업로드 완료")
-
-    except Exception as e:
-        error_msg = f"Google Sheet 업로드 실패: {e}"
-        TA.send_tele(error_msg)
-    """
+        rebal[category]          = f"HK${category_balance:,.2f}"
+        rebal[f"{category}_ret"] = "0.00%"
 
     # telegram message
-    for k, v in daily.items():
+    for k, v in rebal.items():
         message.append(f"{k} : {v}")
 
     TA.send_tele(message)

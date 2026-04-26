@@ -4,7 +4,6 @@ import telegram_alert as TA
 from datetime import datetime, timedelta as time_obj
 import pandas as pd
 from collections import defaultdict
-import gspread_updater as GU
 import time as time_module
 from tendo import singleton
 import KIS_KR
@@ -27,7 +26,7 @@ buy_tax = KIS.buy_fee_tax  # 매수 수수료 0.014% KRQT 계좌
 KRQT_day_path = "/var/autobot/TR_KRQT/KRQT_day.json" # json
 KRQT_target_path = "/var/autobot/TR_KRQT/KRQT_target.json" # json
 KRQT_result_path = "/var/autobot/TR_KRQT/KRQT_result.json" # json
-KRQT_daily_path = "/var/autobot/TR_KRQT/KRQT_daily.json" # json
+KRQT_rebal_path = "/var/autobot/TR_KRQT/KRQT_rebal.json" # json
 KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
 
 def order_time(day=1):
@@ -630,8 +629,7 @@ if order['round'] == 14:
     message.extend(json_message)
     time_module.sleep(1.0)
 
-    # 최종 daily balance
-    # 전체 자산
+    # 최종 rebal data
     all_balance = KIS.get_KR_account_summary()
     if not isinstance(all_balance, dict):
         TA.send_tele(f"KRQT: 전체 자산 조회 불가로 종료합니다. ({all_balance})")
@@ -642,7 +640,7 @@ if order['round'] == 14:
         TA.send_tele(f"KRQT: 주문가능현금 조회 불가로 종료합니다. ({orderable_cash})")
         sys.exit(1)
 
-    daily_data = {
+    rebal_data = {
         "date": str(order['date']),
         "total_stocks":     all_balance['stock_eval_amt'],
         "total_cash":       float(orderable_cash),                          # ← 주문가능현금
@@ -653,55 +651,34 @@ if order['round'] == 14:
     # category별 자산
     for category, stocks_list in result.items():
         category_balance = sum(item['balance'] for item in stocks_list)
-        daily_data[category]            = category_balance
-        daily_data[f"{category}_ret"]   = 0.0
+        rebal_data[category]            = category_balance
+        rebal_data[f"{category}_ret"]   = 0.0
         
-    # KRQT_daily.json 저장
+    # KRQT_rebal.json 저장
     try:
-        json_message = save_json(daily_data, KRQT_daily_path, order)
+        json_message = save_json(rebal_data, KRQT_rebal_path, order)
         message.extend(json_message)
     except Exception as e:
-        error_msg = f"KRQT_daily.json 저장 실패: {e}"
+        error_msg = f"KRQT_rebal.json 저장 실패: {e}"
         TA.send_tele(error_msg)
     time_module.sleep(1.0)
         
-    # data 정제
-    daily = {
-        "date": daily_data["date"],
-        "total_stocks":     f"{int(daily_data['total_stocks'])}원",
-        "total_cash":       f"{int(daily_data['total_cash'])}원",
-        "total_asset":      f"{int(daily_data['total_asset'])}원",  
-        "total_asset_ret":  f"{float(daily_data['total_asset_ret']*100):.2f}%"
+    # rebal data 정제
+    rebal = {
+        "date": rebal_data["date"],
+        "total_stocks":     f"{int(rebal_data['total_stocks'])}원",
+        "total_cash":       f"{int(rebal_data['total_cash'])}원",
+        "total_asset":      f"{int(rebal_data['total_asset'])}원",  
+        "total_asset_ret":  f"{float(rebal_data['total_asset_ret']*100):.2f}%"
     }
     
     for category, stocks_list in result.items():
         category_balance = sum(item['balance'] for item in stocks_list)
-        daily[category]            = f"{int(category_balance)}원"
-        daily[f"{category}_ret"]   = "0.00%"
-
-    # daily balance google sheet 저장
-    try:
-        credentials_file = "/var/autobot/gspread/service_account.json"
-        spreadsheet_name = "2026_KRQT_daily"
-
-        # Google 스프레드시트 연결
-        spreadsheet = GU.connect_google_sheets(credentials_file, spreadsheet_name)
-
-        # 현재 월 계산
-        current_date = datetime.now()
-        current_month = current_date.month
-
-        # 데이터 저장
-        GU.save_to_sheets(spreadsheet, daily, current_month)
-        message.append(f"2026_KRQT_daily Google Sheet 업로드 완료")
-        
-    except Exception as e:
-        error_msg = f"Google Sheet 업로드 실패: {e}"
-        TA.send_tele(error_msg)
-        # Google Sheet 업로드 실패는 전체 프로세스를 중단하지 않음
+        rebal[category]            = f"{int(category_balance)}원"
+        rebal[f"{category}_ret"]   = "0.00%"
     
     # telegram message
-    for k, v in daily.items():
+    for k, v in rebal.items():
         message.append(f"{k} : {v}")
 
     TA.send_tele(message)
