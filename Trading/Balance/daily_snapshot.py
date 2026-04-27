@@ -1134,6 +1134,88 @@ def split_krqt_by_result(balance: dict, krqt_result: dict, target_cat: str) -> d
 
 
 # ══════════════════════════════════════════════════
+#  USQT 전용: result.json / rebal.json 기반 분류
+# ══════════════════════════════════════════════════
+
+USQT_RESULT_PATH = "/var/autobot/TR_USQT/USQT_result.json"
+USQT_REBAL_PATH  = "/var/autobot/TR_USQT/USQT_rebal.json"
+
+
+def load_usqt_result() -> dict:
+    """
+    USQT_result.json 로드.
+    구조: {category: [{code(ticker), name, qty(분할), balance(분할), weight, status}, ...], ...}
+    qty/balance는 USQT_TR.py에서 split_weight로 이미 분할되어 저장됨.
+    """
+    if not os.path.exists(USQT_RESULT_PATH):
+        return {}
+    try:
+        with open(USQT_RESULT_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def load_usqt_rebal() -> dict:
+    """
+    USQT_rebal.json 로드 (리밸런싱 시점 카테고리별 USD 자산금).
+    구조: {date, total_stocks, total_cash, total_asset, currency:"USD",
+           "SCG": USD금액, "TCM": USD금액, ...}
+    """
+    if not os.path.exists(USQT_REBAL_PATH):
+        return {}
+    try:
+        with open(USQT_REBAL_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def split_usqt_by_result(balance: dict, usqt_result: dict, target_cat: str) -> dict:
+    """
+    실시간 USD 잔고(balance)와 USQT_result.json을 매칭해 target_cat 종목만 추출.
+    중복종목은 result.json의 split qty 비율로 재분할한다.
+    미국 티커는 zfill 처리 없이 그대로 매칭 (대문자 통일).
+
+    Returns: {"stocks": [...], "stock_eval": float}  (USD 단위)
+    """
+    cat_split = {}
+    total_split = {}
+    for cat, stocks in usqt_result.items():
+        if cat == "remain_last":
+            continue
+        for s in stocks:
+            code = str(s.get("code", "")).strip().upper()
+            q = float(s.get("qty", 0) or 0)
+            cat_split[(code, cat)] = cat_split.get((code, cat), 0.0) + q
+            total_split[code] = total_split.get(code, 0.0) + q
+
+    filtered = []
+    stock_eval_sum = 0.0
+    for s in balance.get("stocks", []):
+        code = str(s.get("code", "")).strip().upper()
+        cat_q = cat_split.get((code, target_cat), 0.0)
+        if cat_q <= 0:
+            continue
+        total_q = total_split.get(code, 0.0)
+        ratio = cat_q / total_q if total_q > 0 else 1.0
+
+        real_qty  = float(s.get("qty", 0) or 0)
+        real_eval = float(s.get("eval_amt", 0) or 0)
+        split_qty  = real_qty * ratio
+        split_eval = real_eval * ratio
+
+        ns = dict(s)
+        ns["qty"]      = split_qty
+        ns["eval_amt"] = split_eval
+        ns["_split_ratio"] = ratio
+        filtered.append(ns)
+        stock_eval_sum += split_eval
+
+    return {"stocks": filtered, "stock_eval": stock_eval_sum}
+
+
+# ══════════════════════════════════════════════════
 #  전일 대비 변동율 계산
 # ══════════════════════════════════════════════════
 
@@ -1333,13 +1415,16 @@ def handle_us_usaa_sub(cano: str, acnt: str, kwargs: dict) -> dict:
 
 def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     """
-    USQT 계좌 (단일) 의 카테고리별 분리 (SCG/TCM) + 현금 비례 배분
+    USQT 계좌 (단일) 의 카테고리별 분리 (SCG/TCM 등) + 현금 비례 배분.
 
-    이전 버그:
-      - cash 가 SCG에만 몰려 있었음 (is_main=True 인 SCG만 받음)
+    분류 기준: /var/autobot/TR_USQT/USQT_result.json
+      - 한 티커가 복수 카테고리에 속할 경우 result.json의 split qty 비율로
+        실잔고의 평가금/수량을 재분할 (이전 csv 1:1 매핑 누락 버그 해결)
+      - 현금은 매핑된 종목의 split 후 평가금 합 기준으로 카테고리별 비례 배분
 
-    수정:
-      - 계좌 전체 주식평가금(csv 매핑 종목만) 비중으로 현금 배분
+    수익률(rebal_ret):
+      - USQT_rebal.json (USD 기준) 의 리밸런싱 시점 카테고리 자산금 대비
+        현재 (total_usd = 평가금+현금) 수익률 (%)
     """
     category = kwargs["category"]
     key = _cache_key("us_usqt", cano, acnt)
@@ -1352,25 +1437,38 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         return {"error": bal["error"], "currency": "USD",
                  "total_krw": 0.0, "total_usd": 0.0, "stocks": []}
 
-    csv_path = "/var/autobot/TR_USQT/USQT_stock.csv"
-    cat_map = load_category_map(csv_path, us=True)
-    cat_filtered = filter_by_category(bal, cat_map, category)
+    usqt_result = load_usqt_result()
+    cat_filtered = split_usqt_by_result(bal, usqt_result, category)
 
-    # 계좌 전체 주식평가금 (csv 매핑된 것만)
+    # ── 계좌 전체 주식평가금(result.json에 매핑된 종목 한정, USD) ──
+    cat_keys = [c for c in usqt_result.keys() if c != "remain_last"]
+    mapped_codes = set()
+    for c in cat_keys:
+        for x in usqt_result.get(c, []):
+            mapped_codes.add(str(x.get("code", "")).strip().upper())
+
     account_stock_total = 0.0
     for s in bal.get("stocks", []):
-        if cat_map.get(s["code"]):
-            account_stock_total += s["eval_amt"]
+        code = str(s.get("code", "")).strip().upper()
+        if code in mapped_codes:
+            account_stock_total += float(s.get("eval_amt", 0) or 0)
 
-    # 현금 비례 배분
+    # ── 카테고리별 현금 비례 배분 (USD) ──
     if account_stock_total > 0:
         ratio = cat_filtered["stock_eval"] / account_stock_total
         cash = bal["cash"] * ratio
     else:
+        # edge case: 매핑된 주식 평가금 0 → 첫 카테고리(SCG)에 몰아줌
         cash = bal["cash"] if category == "SCG" else 0.0
 
     total_usd = cat_filtered["stock_eval"] + cash
     exrt = bal.get("exchange_rate", 0)
+
+    # ── 리밸런싱 시점 대비 수익률 (rebal.json 기반, USD) ──
+    rebal = load_usqt_rebal()
+    rebal_base = float(rebal.get(category, 0) or 0)   # USD
+    rebal_date = str(rebal.get("date", "") or "")
+    rebal_ret = ((total_usd - rebal_base) / rebal_base * 100) if rebal_base > 0 else 0.0
 
     return {
         "currency": "USD",
@@ -1380,7 +1478,10 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         "total_krw": total_usd * exrt if exrt > 0 else 0,
         "stocks": cat_filtered["stocks"],
         "exchange_rate": exrt,
-        "account_total_usd": bal.get("total", 0)
+        "account_total_usd": bal.get("total", 0),
+        "rebal_base_usd": rebal_base,    # 리밸런싱 시점 자산 (USD)
+        "rebal_date":     rebal_date,
+        "rebal_ret":      rebal_ret      # % (리밸런싱 대비)
     }
 
 
@@ -1598,7 +1699,9 @@ def collect_accounts(mode: str) -> list:
             # KRQT 고유 (리밸런싱 시점 대비 수익률)
             "rebal_base_krw": data.get("rebal_base_krw", 0),
             "rebal_date":     data.get("rebal_date", ""),
-            "rebal_ret":      data.get("rebal_ret", 0.0)
+            "rebal_ret":      data.get("rebal_ret", 0.0),
+            # USQT 고유 (리밸런싱 시점 대비 수익률, USD)
+            "rebal_base_usd": data.get("rebal_base_usd", 0)
         })
 
     return items
@@ -1788,7 +1891,18 @@ def format_report(mode: str, items: list, prev: dict) -> list:
                 if cur == "USD":
                     native = it.get("total_usd", 0)
                     strat_sum_native += native
-                    native_str = f"{fmt_usd(native)} ({fmt_pct(it.get('day_change_native_rate',0))})"
+                    if is_usqt:
+                        # USQT 세부: USD 라인에 [리밸 대비 수익률] 표시
+                        rebal_ret_usd  = it.get("rebal_ret", 0.0)
+                        rebal_date_usd = it.get("rebal_date", "")
+                        rebal_base_usd = it.get("rebal_base_usd", 0)
+                        if rebal_base_usd > 0:
+                            native_str = (f"{fmt_usd(native)}  "
+                                          f"[리밸{rebal_date_usd} 대비 {fmt_pct(rebal_ret_usd)}]")
+                        else:
+                            native_str = f"{fmt_usd(native)}  [리밸기준 없음]"
+                    else:
+                        native_str = f"{fmt_usd(native)} ({fmt_pct(it.get('day_change_native_rate',0))})"
                 elif cur == "JPY":
                     native = it.get("total_jpy", 0)
                     strat_sum_native += native
@@ -1811,6 +1925,9 @@ def format_report(mode: str, items: list, prev: dict) -> list:
                                    f"[리밸{rebal_date} 대비 {fmt_pct(rebal_ret)}]")
                     else:
                         krw_str = f"{fmt_krw(total_krw)}  [리밸기준 없음]"
+                elif is_usqt:
+                    # USQT KRW은 환율 영향이 섞이므로 일별 KRW 변동만 간단 표기
+                    krw_str = f"{fmt_krw(total_krw)} ({fmt_pct(chg_krw)})"
                 else:
                     krw_str = f"{fmt_krw(total_krw)} ({fmt_pct(chg_krw)})"
 
@@ -1842,7 +1959,14 @@ def format_report(mode: str, items: list, prev: dict) -> list:
             elif strategy == "USAA":
                 msg.append(f"  → USAA소계: {fmt_krw(strat_sum_krw)} / {fmt_usd(strat_sum_native)}")
             elif strategy == "USQT":
-                msg.append(f"  → USQT소계: {fmt_krw(strat_sum_krw)} / {fmt_usd(strat_sum_native)}")
+                # USQT 전체 = 계좌 전체. 전일 대비는 USD 기준 (환율영향 제거)
+                prev_strat_usd = 0.0
+                for it_chk in sitems:
+                    pe = find_prev_entry(prev, it_chk["market"], strategy, it_chk["sub"])
+                    prev_strat_usd += pe.get("total_usd", 0)
+                usd_chg = calc_day_change(strat_sum_native, prev_strat_usd)
+                msg.append(f"  → USQT소계(전체): {fmt_krw(strat_sum_krw)} / "
+                           f"{fmt_usd(strat_sum_native)} ({fmt_pct(usd_chg)})")
             elif strategy == "GBFT":
                 msg.append(f"  → GBFT소계: {fmt_krw(strat_sum_krw)} / {fmt_usd(strat_sum_native)}")
 
