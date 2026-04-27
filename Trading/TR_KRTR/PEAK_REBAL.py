@@ -16,9 +16,9 @@ StockEasy Peak 전략 - 비중 리밸런싱 (대규모 입/출금 이후 전체 
 
 crontab (UTC+0, EC2) - 리밸런싱 날짜만 활성화:
   # 평상시: PEAK_TR.py 실행
-  # 0,30 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_PEAK/PEAK_TR.py
+  # 2,32 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/PEAK_TR.py
   # 리밸런싱 날 (예: 매월 첫째 월요일): PEAK_REBAL.py 실행
-  # 0,30 0-5 1-7 * 1 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_PEAK/PEAK_REBAL.py
+  # 2,32 0-5 1-7 * 1 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/PEAK_REBAL.py
 
 보유 상한: 22종목, 종목당 균등배분 (총자산 / 22)
 """
