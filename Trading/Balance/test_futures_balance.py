@@ -211,9 +211,21 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str,
         tr_cont_req = "N"
 
     # ── 핵심 금액 추출 (output2) ──
-    # KIS 응답 필드명은 dnca_tot_amt(예수금총액), tot_evlu_amt(총평가금액),
-    # ord_psbl_cash(주문가능현금) 등 여러 변종이 있어 모두 보존하고
-    # 가장 신뢰할 수 있는 필드를 우선 채택.
+    # ※ 실 응답 raw로 확인된 KIS 국내선물(CTFO6118R) output2 필드:
+    #   dnca_cash         : 예수금(현금)         ← 실제 예수금
+    #   dnca_sbst         : 예수금(대용)
+    #   tot_dncl_amt      : 총예탁금액(현금+대용 합계)
+    #   nxdy_dnca         : 익일예수금
+    #   nxdy_dncl_amt     : 익일예탁금액
+    #   ord_psbl_cash     : 주문가능현금
+    #   ord_psbl_tota     : 주문가능총액
+    #   wdrw_psbl_tot_amt : 인출가능총액
+    #   prsm_dpast        : 추정예탁자산 (= 총평가금액)
+    #   prsm_dpast_amt    : 추정예탁자산금액 (보조)
+    #   evlu_amt_smtl     : 평가금액합계 (미결제포지션 평가)
+    #   evlu_pfls_amt_smtl: 평가손익합계
+    #   futr_evlu_pfls_amt: 선물평가손익
+    #   opt_evlu_pfls_amt : 옵션평가손익
     def _f(*keys):
         """주어진 키들을 순회하며 0이 아닌 첫 값을 반환."""
         for k in keys:
@@ -228,31 +240,39 @@ def fetch_krft_balance(cano: str, acnt_prdt_cd: str,
                 continue
         return 0.0
 
-    deposit       = _f("dnca_tot_amt", "thdt_dnca", "prvs_rcdl_excc_amt")        # 예수금총액
-    today_deposit = _f("thdt_dnca")                                              # 당일예수금
-    total_eval    = _f("tot_evlu_amt", "prsm_dpast", "evlu_amt_smtl_amt")        # 총평가
-    ord_psbl_cash = _f("ord_psbl_cash", "nxdy_excc_amt")                          # 주문가능현금
-    total_pl_rt   = _f("tot_pftrt", "evlu_pfls_rt")                              # 총수익률
+    deposit       = _f("dnca_cash", "tot_dncl_amt")            # 예수금(현금) 우선
+    deposit_sbst  = _f("dnca_sbst")                             # 대용
+    today_deposit = _f("nxdy_dnca", "nxdy_dncl_amt")            # 익일예수금
+    total_eval    = _f("prsm_dpast", "prsm_dpast_amt")          # 추정예탁자산 = 총평가
+    ord_psbl_cash = _f("ord_psbl_cash", "ord_psbl_tota")        # 주문가능현금
+    wdrw_psbl     = _f("wdrw_psbl_tot_amt")                     # 인출가능총액
+    pos_eval      = _f("evlu_amt_smtl")                         # 미결제포지션평가
+    pos_pl        = _f("evlu_pfls_amt_smtl",
+                       "futr_evlu_pfls_amt", "opt_evlu_pfls_amt")  # 평가손익
 
-    stock_eval    = sum(s["eval_amt"] for s in stocks)
+    stock_eval    = sum(s["eval_amt"] for s in stocks) or pos_eval
 
-    # 안전 합계: 총평가금액이 비어있으면 (예수금 + 포지션평가) 로 대체
-    total = total_eval if total_eval > 0 else (deposit + stock_eval)
+    # 안전 합계: 추정예탁자산이 비어있으면 (예수금+대용 + 포지션평가)
+    total = total_eval if total_eval > 0 else (deposit + deposit_sbst + stock_eval)
 
     result = {
         "stocks":        stocks,
         "stock_eval":    stock_eval,
-        "deposit":       deposit,         # 예수금총액 (= cash 후보)
+        "deposit":       deposit,         # 예수금현금 (= cash)
+        "deposit_sbst":  deposit_sbst,    # 예수금대용
         "today_deposit": today_deposit,
         "ord_psbl_cash": ord_psbl_cash,   # 실제 주문가능 현금
-        "total_eval":    total_eval,      # 총평가금액 (KIS 자체 계산)
+        "wdrw_psbl":     wdrw_psbl,       # 인출가능총액
+        "total_eval":    total_eval,      # 추정예탁자산
         "total":         total,
-        "tot_pftrt":     total_pl_rt,
+        "pos_pl":        pos_pl,
         "currency":      "KRW",
     }
     if verbose:
         result["_raw_pages"] = raw_responses
         result["_output2_keys"] = sorted(out2_acc.keys())
+        # 모든 output2 값을 (필드: 값) 형태로 같이 보존 (디버그용)
+        result["_output2_values"] = {k: out2_acc.get(k) for k in sorted(out2_acc.keys())}
     return result
 
 
@@ -393,17 +413,41 @@ def fetch_gbft_deposit(cano: str, acnt_prdt_cd: str,
                 continue
         return 0.0
 
+    # ※ 실 응답 raw로 확인된 KIS 해외선물(OTFM1411R) output 필드 (모두 fm_ 접두사):
+    #   fm_dnca_rmnd            : 예수금잔액           ← 실제 예수금
+    #   fm_nxdy_dncl_amt        : 익일예수금잔액
+    #   fm_drwg_psbl_amt        : 인출가능액
+    #   fm_drwg_prar_amt        : 인출예정금액
+    #   fm_ord_psbl_amt         : 주문가능액           ← 실제 주문가능
+    #   fm_tot_asst_evlu_amt    : 총자산평가금액
+    #   fm_fuop_evlu_pfls_amt   : 선물옵션평가손익
+    #   fm_brkg_mgn_amt         : 위탁증거금
+    #   fm_mntn_mgn_amt         : 유지증거금
+    #   fm_add_mgn_amt          : 추가증거금
+    #   fm_echm_rqrm_amt        : 교환요구금액
+    #   fm_lqd_pfls_amt         : 청산손익금액
+    #   fm_opt_evlu_amt         : 옵션평가금액
+    #   fm_opt_icld_asst_evlu_amt: 옵션포함자산평가
+    #   fm_crcy_sbst_amt        : 외화대용금액
+    #   fm_risk_rt              : 위험도
+    #   fm_fee, fm_opt_tr_chgs  : 수수료
     result = {
         "currency":      crcy_cd,
-        "deposit":       _f("frcr_dncl_amt1", "frcr_dncl_amt", "dnca_tot_amt"),
-        "ord_avail":     _f("frcr_use_pasl_amt", "frcr_ord_psbl_amt"),
-        "frcr_evl":      _f("frcr_evlu_amt"),
-        "exrt":          _f("frst_bltn_exrt", "exrt"),
+        "deposit":       _f("fm_dnca_rmnd"),                      # 예수금잔액
+        "next_deposit":  _f("fm_nxdy_dncl_amt"),                  # 익일예수금
+        "ord_avail":     _f("fm_ord_psbl_amt"),                   # 주문가능액
+        "drwg_avail":    _f("fm_drwg_psbl_amt"),                  # 인출가능
+        "tot_asst":      _f("fm_tot_asst_evlu_amt"),              # 총자산평가
+        "fuop_pl":       _f("fm_fuop_evlu_pfls_amt"),             # 선물옵션평가손익
+        "mgn_brkg":      _f("fm_brkg_mgn_amt"),                   # 위탁증거금
+        "risk_rt":       _f("fm_risk_rt"),                        # 위험도
+        "exrt":          0.0,                                      # 환율은 이 응답에 없음
         "inqr_dt":       inqr_dt,
         "raw_keys":      sorted(out.keys()) if verbose else None,
     }
     if verbose:
         result["_raw"] = data
+        result["_raw_values"] = {k: out.get(k) for k in sorted(out.keys())}
     return result
 
 
@@ -422,12 +466,14 @@ def print_krft_report(res: dict):
         print(f"  ❌ ERROR: {res['error']}")
         return
 
-    print(f"  예수금총액      : {_fmt_krw(res['deposit'])}")
-    print(f"  당일예수금      : {_fmt_krw(res['today_deposit'])}")
+    print(f"  예수금(현금)    : {_fmt_krw(res['deposit'])}")
+    print(f"  예수금(대용)    : {_fmt_krw(res['deposit_sbst'])}")
+    print(f"  익일예수금      : {_fmt_krw(res['today_deposit'])}")
     print(f"  주문가능현금    : {_fmt_krw(res['ord_psbl_cash'])}")
+    print(f"  인출가능총액    : {_fmt_krw(res['wdrw_psbl'])}")
     print(f"  미결제 평가금   : {_fmt_krw(res['stock_eval'])}")
-    print(f"  KIS 총평가금액  : {_fmt_krw(res['total_eval'])}")
-    print(f"  총수익률        : {res['tot_pftrt']:+.2f}%")
+    print(f"  추정예탁자산    : {_fmt_krw(res['total_eval'])}")
+    print(f"  선/옵 평가손익  : {_fmt_krw(res['pos_pl'])}")
     print(f"  ─ 합계(추정)    : {_fmt_krw(res['total'])}")
 
     if res["stocks"]:
@@ -440,6 +486,18 @@ def print_krft_report(res: dict):
     else:
         print("\n  미결제 포지션 없음")
 
+    # raw verbose: 0이 아닌 모든 응답 값 출력
+    if "_output2_values" in res:
+        print("\n  [output2 0이 아닌 모든 응답값]")
+        for k, v in res["_output2_values"].items():
+            try:
+                fv = float(v)
+                if fv != 0:
+                    print(f"    {k:24} = {v}")
+            except (TypeError, ValueError):
+                if v not in (None, "", "0"):
+                    print(f"    {k:24} = {v}")
+
 
 def print_gbft_report(pos: dict, deps: list):
     print("─" * 72)
@@ -447,20 +505,21 @@ def print_gbft_report(pos: dict, deps: list):
     print("─" * 72)
 
     # 예수금
-    print("  [통화별 예수금]")
+    print("  [통화별 예수금/주문가능]")
+    print(f"    {'통화':<5} {'예수금':>14}  {'주문가능':>14}  {'총자산평가':>14}  {'위험도':>8}")
     for d in deps:
         if "error" in d:
-            print(f"    {d.get('currency','?')}: ❌ {d['error']}")
+            print(f"    {d.get('currency','?'):<5}: ❌ {d['error']}")
             continue
-        print(f"    {d['currency']}: 예수금 {d['deposit']:>12,.2f}  "
-              f"주문가능 {d['ord_avail']:>12,.2f}  "
-              f"환율 {d['exrt']:>8,.2f}")
+        print(f"    {d['currency']:<5} {d['deposit']:>14,.2f}  "
+              f"{d['ord_avail']:>14,.2f}  "
+              f"{d['tot_asst']:>14,.2f}  "
+              f"{d['risk_rt']:>7,.2f}%")
 
     # 미결제 포지션
     if "error" in pos:
         print(f"\n  포지션 조회 ❌: {pos['error']}")
-        return
-    if pos["stocks"]:
+    elif pos["stocks"]:
         print(f"\n  미결제 포지션 ({len(pos['stocks'])}건):")
         for s in pos["stocks"]:
             side = {"01":"매도", "02":"매수"}.get(s["side"], s["side"] or "-")
@@ -468,6 +527,17 @@ def print_gbft_report(pos: dict, deps: list):
                   f"평균 {s['avg_price']:>10,.4f}  평가 {s['eval_amt']:>12,.2f} {s['currency']}")
     else:
         print("\n  미결제 포지션 없음")
+
+    # raw verbose: 통화별로 0이 아닌 모든 응답 값 출력
+    for d in deps:
+        if "_raw_values" in d:
+            nz = {k: v for k, v in d["_raw_values"].items()
+                  if v not in (None, "", "0", "0.00")
+                  and (k.startswith("fm_") or k in ("crcy_cd", "resp_dt"))}
+            if nz:
+                print(f"\n  [예수금({d['currency']}) 0이 아닌 모든 응답값]")
+                for k, v in nz.items():
+                    print(f"    {k:28} = {v}")
 
 
 # ══════════════════════════════════════════════════
@@ -503,7 +573,7 @@ def main():
                                       verbose=verbose)
             print_krft_report(res)
             if verbose and "_output2_keys" in res:
-                print(f"\n  output2 응답 필드 목록: {res['_output2_keys']}")
+                print(f"\n  [output2 전체 응답 필드 목록]\n    {res['_output2_keys']}")
         except Exception as e:
             print(f"❌ KRFT 예외: {type(e).__name__}: {e}")
         print()
@@ -522,16 +592,11 @@ def main():
             print_gbft_report(pos, deps)
 
             if verbose and pos.get("_raw_pages"):
-                print("\n  [GBFT 미결제 raw output 키 샘플]")
                 first = pos["_raw_pages"][0]
                 if first.get("output"):
                     sample = first["output"][0] if isinstance(first["output"], list) else first["output"]
                     if sample:
-                        print(f"    {sorted(sample.keys())}")
-            if verbose:
-                for d in deps:
-                    if d.get("raw_keys"):
-                        print(f"\n  [예수금({d['currency']}) 응답 필드] {d['raw_keys']}")
+                        print(f"\n  [GBFT 미결제 raw output 키 샘플]\n    {sorted(sample.keys())}")
         except Exception as e:
             print(f"❌ GBFT 예외: {type(e).__name__}: {e}")
         print()
