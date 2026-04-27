@@ -1395,14 +1395,29 @@ def calc_day_change(curr: float, prev: float) -> float:
 
 
 def find_prev_entry(prev_snapshot: dict, market: str, strategy: str, sub: str) -> dict:
-    """전일 JSON에서 동일 (market, strategy, sub) 항목 찾기"""
-    for mode in ("ASIA", "US"):
-        cats = prev_snapshot.get(mode, {}).get("categories", {})
+    """전일 JSON에서 동일 (market, strategy, sub) 항목 찾기.
+
+    JSON 파일이 다른 버전/구조로 저장됐거나 부분손상된 경우를 대비해
+    각 단계에서 dict 타입을 확인. dict가 아니면 안전하게 건너뜀.
+    """
+    if not isinstance(prev_snapshot, dict):
+        return {}
+    for snap_mode in ("ASIA", "US"):
+        node = prev_snapshot.get(snap_mode, {})
+        if not isinstance(node, dict):           # 'ASIA' 키가 float/str 등으로 잘못 저장된 경우
+            continue
+        cats = node.get("categories", {})
+        if not isinstance(cats, dict):
+            continue
         for k, v in cats.items():
             if not isinstance(v, dict):
                 continue
             items = v.get("items", [])
+            if not isinstance(items, list):
+                continue
             for it in items:
+                if not isinstance(it, dict):
+                    continue
                 if (it.get("market") == market and
                     it.get("strategy") == strategy and
                     it.get("sub") == sub):
@@ -2007,10 +2022,20 @@ def format_report(mode: str, items: list, prev: dict) -> list:
     # ── 총자산 ──
     grand_total = sum(it.get("total_krw", 0) for it in items)
     prev_grand = 0
-    for m in ("ASIA", "US"):
-        for cat in prev.get(m, {}).get("categories", {}).values():
-            for it in cat.get("items", []):
-                prev_grand += it.get("total_krw", 0)
+    if isinstance(prev, dict):
+        for m in ("ASIA", "US"):
+            node = prev.get(m, {})
+            if not isinstance(node, dict):
+                continue
+            cats = node.get("categories", {})
+            if not isinstance(cats, dict):
+                continue
+            for cat in cats.values():
+                if not isinstance(cat, dict):
+                    continue
+                for it in cat.get("items", []) or []:
+                    if isinstance(it, dict):
+                        prev_grand += it.get("total_krw", 0)
     grand_chg = calc_day_change(grand_total, prev_grand)
 
     if mode == "ASIA":
