@@ -1051,89 +1051,6 @@ def filter_by_category(balance: dict, code_to_cat: dict, target_cat: str) -> dic
 
 
 # ══════════════════════════════════════════════════
-#  KRQT 전용: result.json / rebal.json 기반 분류
-# ══════════════════════════════════════════════════
-
-KRQT_RESULT_PATH = "/var/autobot/TR_KRQT/KRQT_result.json"
-KRQT_REBAL_PATH  = "/var/autobot/TR_KRQT/KRQT_rebal.json"
-
-
-def load_krqt_result() -> dict:
-    """
-    KRQT_result.json 로드.
-    구조: {category: [{code, name, qty(분할), balance(분할), weight, status}, ...], ...}
-    qty/balance는 KRQT_TR.py에서 split_weight로 이미 분할되어 저장됨.
-    """
-    if not os.path.exists(KRQT_RESULT_PATH):
-        return {}
-    try:
-        with open(KRQT_RESULT_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def load_krqt_rebal() -> dict:
-    """
-    KRQT_rebal.json 로드 (리밸런싱 시점 카테고리별 자산금).
-    구조: {date, total_stocks, total_cash, total_asset, "Small Cap Growth": 금액, ...}
-    """
-    if not os.path.exists(KRQT_REBAL_PATH):
-        return {}
-    try:
-        with open(KRQT_REBAL_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def split_krqt_by_result(balance: dict, krqt_result: dict, target_cat: str) -> dict:
-    """
-    실시간 잔고(balance)와 KRQT_result.json을 매칭해 target_cat에 속한 종목만 추출.
-    중복종목은 result.json에 저장된 split 비율 (cat_qty / total_qty_across_cats) 로
-    실잔고의 평가금/수량을 재분할한다.
-
-    Returns: {"stocks": [...], "stock_eval": float}
-    """
-    # 1. result.json에서 카테고리별 split된 qty 맵 만들기
-    cat_split = {}        # {(code, cat): split_qty}
-    total_split = {}      # {code: 모든 cat 합산 split_qty}
-    for cat, stocks in krqt_result.items():
-        if cat == "remain_last":     # 리밸런싱 매도실패분 제외
-            continue
-        for s in stocks:
-            code = str(s.get("code", "")).zfill(6)
-            q = float(s.get("qty", 0) or 0)
-            cat_split[(code, cat)] = cat_split.get((code, cat), 0.0) + q
-            total_split[code] = total_split.get(code, 0.0) + q
-
-    filtered = []
-    stock_eval_sum = 0.0
-    for s in balance.get("stocks", []):
-        code = str(s.get("code", "")).zfill(6)
-        cat_q = cat_split.get((code, target_cat), 0.0)
-        if cat_q <= 0:
-            continue
-        total_q = total_split.get(code, 0.0)
-        ratio = cat_q / total_q if total_q > 0 else 1.0
-
-        # 실잔고에 비율 적용 (보유수량/평가금 분할)
-        real_qty  = float(s.get("qty", 0) or 0)
-        real_eval = float(s.get("eval_amt", 0) or 0)
-        split_qty  = real_qty * ratio
-        split_eval = real_eval * ratio
-
-        ns = dict(s)              # 원본 보존을 위해 복사
-        ns["qty"]      = split_qty
-        ns["eval_amt"] = split_eval
-        ns["_split_ratio"] = ratio   # 디버그용 (안정화 후 제거 가능)
-        filtered.append(ns)
-        stock_eval_sum += split_eval
-
-    return {"stocks": filtered, "stock_eval": stock_eval_sum}
-
-
-# ══════════════════════════════════════════════════
 #  전일 대비 변동율 계산
 # ══════════════════════════════════════════════════
 
@@ -1218,15 +1135,17 @@ def handle_kr_simple(cano: str, acnt: str, kwargs: dict) -> dict:
 
 def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     """
-    KRQT 계좌 (단일) 의 카테고리별 분리.
+    KRQT 계좌 (단일) 의 카테고리별 분리 + 계좌 cash 를 주식평가금 비중으로 배분
 
-    분류 기준: /var/autobot/TR_KRQT/KRQT_result.json
-      - 한 종목이 복수 카테고리에 속할 경우 result.json의 split된 qty 비율로
-        실잔고의 평가금/수량을 재분할 (이전 csv 1:1 매핑 방식의 중복 누락 버그 해결)
-      - 현금은 매핑된 종목의 split 후 평가금 합 기준으로 카테고리별 비례 배분
+    이전 버그:
+      - `is_main = (category == "SCG")` → KRQT 카테고리는
+        "Small Cap Growth", "Small Cap Simple-Fin", "Middle Cap", "Large Cap"
+        이므로 is_main이 항상 False → 현금 전체가 어느 세부전략에도 배분 안 됨
 
-    수익률(rebal_ret):
-      - KRQT_rebal.json의 리밸런싱 시점 카테고리 자산금 대비 현재 (total = 평가금+현금) 수익률 (%)
+    수정:
+      - 계좌 전체 주식평가금 합계 기준으로 현금을 비례 배분
+      - csv에 매핑되지 않은 종목은 비례배분 기준에서 제외
+      - 주식평가금 합계가 0이면 첫 카테고리(Small Cap Growth)에 몰아줌
     """
     category = kwargs["category"]
     key = _cache_key("kr", cano, acnt)
@@ -1240,37 +1159,25 @@ def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
                  "total_krw": 0.0, "stock_eval_krw": 0.0,
                  "cash_krw": 0.0, "stocks": []}
 
-    krqt_result = load_krqt_result()
-    cat_filtered = split_krqt_by_result(bal, krqt_result, category)
+    csv_path = "/var/autobot/TR_KRQT/KRQT_stock.csv"
+    cat_map = load_category_map(csv_path, us=False)
+    cat_filtered = filter_by_category(bal, cat_map, category)
 
-    # ── 계좌 전체 주식평가금(result.json에 매핑된 종목 한정) ──
-    cat_keys = [c for c in krqt_result.keys() if c != "remain_last"]
-    mapped_codes = set()
-    for c in cat_keys:
-        for x in krqt_result.get(c, []):
-            mapped_codes.add(str(x.get("code", "")).zfill(6))
-
+    # ── 계좌 전체 주식평가금(csv에 매핑된 코드만) ──
     account_stock_total = 0.0
     for s in bal.get("stocks", []):
-        code = str(s.get("code", "")).zfill(6)
-        if code in mapped_codes:
-            account_stock_total += float(s.get("eval_amt", 0) or 0)
+        if cat_map.get(s["code"]):
+            account_stock_total += s["eval_amt"]
 
     # ── 카테고리별 현금 비례 배분 ──
     if account_stock_total > 0:
         ratio = cat_filtered["stock_eval"] / account_stock_total
         cash = bal["cash"] * ratio
     else:
-        # edge case: 매핑된 주식 평가금 0 → 첫 카테고리에 몰아줌
+        # edge case: 주식 없음 → 첫 카테고리에 몰아줌
         cash = bal["cash"] if category == "Small Cap Growth" else 0.0
 
     total = cat_filtered["stock_eval"] + cash
-
-    # ── 리밸런싱 시점 대비 수익률 (rebal.json 기반) ──
-    rebal = load_krqt_rebal()
-    rebal_base = float(rebal.get(category, 0) or 0)
-    rebal_date = str(rebal.get("date", "") or "")
-    rebal_ret = ((total - rebal_base) / rebal_base * 100) if rebal_base > 0 else 0.0
 
     return {
         "currency": "KRW",
@@ -1279,10 +1186,7 @@ def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         "cash_krw": cash,
         "stocks": cat_filtered["stocks"],
         "exchange_rate": 1.0,
-        "account_total_krw": bal["total"],
-        "rebal_base_krw": rebal_base,    # 리밸런싱 시점 자산
-        "rebal_date":     rebal_date,
-        "rebal_ret":      rebal_ret      # % (리밸런싱 대비)
+        "account_total_krw": bal["total"]
     }
 
 
@@ -1594,11 +1498,7 @@ def collect_accounts(mode: str) -> list:
             "usd_raw": data.get("usd_raw", {}),
             "is_main": data.get("is_main", True),
             "account_total_krw": data.get("account_total_krw", 0),
-            "account_total_usd": data.get("account_total_usd", 0),
-            # KRQT 고유 (리밸런싱 시점 대비 수익률)
-            "rebal_base_krw": data.get("rebal_base_krw", 0),
-            "rebal_date":     data.get("rebal_date", ""),
-            "rebal_ret":      data.get("rebal_ret", 0.0)
+            "account_total_usd": data.get("account_total_usd", 0)
         })
 
     return items
@@ -1747,7 +1647,6 @@ def format_report(mode: str, items: list, prev: dict) -> list:
             is_usqt = (strategy == "USQT")
             is_jp_hk = strategy in ("JPQT", "HKQT", "ETC")
             is_gbft = (strategy == "GBFT")
-            is_krqt = (strategy == "KRQT")
 
             strat_sum_krw = 0.0
             strat_sum_native = 0.0
@@ -1801,19 +1700,7 @@ def format_report(mode: str, items: list, prev: dict) -> list:
                     native_str = ""
 
                 # 기본 라인: 전략 sub + 원화 평가금 + 변동
-                if is_krqt:
-                    # KRQT 세부: 리밸런싱 시점 대비 수익률 표시 (일별 변동 대신)
-                    rebal_ret  = it.get("rebal_ret", 0.0)
-                    rebal_date = it.get("rebal_date", "")
-                    rebal_base = it.get("rebal_base_krw", 0)
-                    if rebal_base > 0:
-                        krw_str = (f"{fmt_krw(total_krw)}  "
-                                   f"[리밸{rebal_date} 대비 {fmt_pct(rebal_ret)}]")
-                    else:
-                        krw_str = f"{fmt_krw(total_krw)}  [리밸기준 없음]"
-                else:
-                    krw_str = f"{fmt_krw(total_krw)} ({fmt_pct(chg_krw)})"
-
+                krw_str = f"{fmt_krw(total_krw)} ({fmt_pct(chg_krw)})"
                 line = f"  · {sub}: {krw_str}"
                 if native_str:
                     line += f"  /  {native_str}"
@@ -1829,16 +1716,8 @@ def format_report(mode: str, items: list, prev: dict) -> list:
                 msg.append(line)
 
             # 소계 (KRQT/USQT/USAA/GBFT/JPQT/HKQT/ETC)
-            if strategy == "KRTR":
+            if strategy in ("KRTR", "KRQT"):
                 msg.append(f"  → {strategy}소계: {fmt_krw(strat_sum_krw)}")
-            elif strategy == "KRQT":
-                # KRQT 전체 = 계좌 전체. 전일 대비 수익률은 모든 sub 전일 total_krw 합 vs 오늘 합
-                prev_strat_sum = 0.0
-                for it_chk in sitems:
-                    pe = find_prev_entry(prev, it_chk["market"], strategy, it_chk["sub"])
-                    prev_strat_sum += pe.get("total_krw", 0)
-                acct_chg = calc_day_change(strat_sum_krw, prev_strat_sum)
-                msg.append(f"  → KRQT소계(전체): {fmt_krw(strat_sum_krw)} ({fmt_pct(acct_chg)})")
             elif strategy == "USAA":
                 msg.append(f"  → USAA소계: {fmt_krw(strat_sum_krw)} / {fmt_usd(strat_sum_native)}")
             elif strategy == "USQT":
