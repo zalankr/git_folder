@@ -1513,20 +1513,12 @@ elif order_time['round'] in range(2, 25):  # Round 2~24회차
             HAA[ticker]['buy_qty'] = int(target_qty - HAA_qty.get(ticker, 0) if target_qty > HAA_qty.get(ticker, 0) else 0)
             HAA[ticker]['sell_qty'] = int(HAA_qty.get(ticker, 0) - target_qty if target_qty < HAA_qty.get(ticker, 0) else 0)
 
-        # 목표비중 합계 검증 (CASH 비중 포함)
+        # 목표비중 합계 검증
         total_weight = 0
         for ticker in USLA.keys():
             total_weight += USLA[ticker].get('target_weight', 0)
         for ticker in HAA.keys():
             total_weight += HAA[ticker].get('target_weight', 0)
-
-        # USLA/HAA CASH 비중 보정 (헷징/수비모드 또는 일부 CASH 보유 시)
-        USLA_model_weight = float(TR_data.get('USLA_target_weight', 0.66))
-        HAA_model_weight  = float(TR_data.get('HAA_target_weight', 0.34))
-        USLA_ticker_weight_sum = sum(USLA[t].get('target_weight', 0) for t in USLA.keys())
-        HAA_ticker_weight_sum  = sum(HAA[t].get('target_weight', 0) for t in HAA.keys())
-        total_weight += max(0.0, USLA_model_weight - USLA_ticker_weight_sum)  # USLA CASH
-        total_weight += max(0.0, HAA_model_weight  - HAA_ticker_weight_sum)   # HAA CASH
 
         if total_weight > 1.01:
             error_msg = f"USAA: ❌ 목표 비중 초과: {total_weight:.2%}"
