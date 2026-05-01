@@ -57,12 +57,12 @@
             "status": "리밸런싱"
         },
         {
-            "code": "MC",
+            "code": "AMC",
             "name": "AMC Entertainment Holdings Class A",
-            "qty": 0,
-            "balance": 0,
+            "qty": 292,
+            "balance": 404.73,
             "weight": 0.033,
-            "status": "리밸런싱 매수실패"
+            "status": "리밸런싱"
         },
         {
             "code": "UAA",
@@ -89,12 +89,12 @@
             "status": "리밸런싱"
         },
         {
-            "code": "GL",
+            "code": "AGL",
             "name": "agilon health",
-            "qty": 0,
-            "balance": 0,
+            "qty": 19,
+            "balance": 391.07,
             "weight": 0.033,
-            "status": "리밸런싱 매수실패"
+            "status": "리밸런싱"
         },
         {
             "code": "PBF",

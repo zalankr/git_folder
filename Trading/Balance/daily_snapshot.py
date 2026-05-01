@@ -1139,7 +1139,8 @@ def apply_rp_adjustment(usd_raw: dict, usaa_tr: dict) -> tuple:
     usla_mode = usaa_tr.get("USLA_Mode", "")
     haa_mode  = usaa_tr.get("HAA_Mode", "")
     is_defensive = (usla_mode == "헷징모드") or (haa_mode == "수비모드")
-    if not (is_defensive and original_cash < 10.0):
+    RP_THRESHOLD = 100.0   # 보수적으로 $100 미만이면 "사실상 0"으로 간주
+    if not (is_defensive and original_cash < RP_THRESHOLD):
         return usd_raw, False, "", original_cash
 
     prev_cash, prev_date = get_prev_usd_cash()
@@ -1500,11 +1501,37 @@ def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         for x in krqt_result.get(c, []):
             mapped_codes.add(str(x.get("code", "")).zfill(6))
 
+    # remain_last(매도실패)도 "알려진 종목"으로 인식해 미매핑 경고에서 제외
+    all_known_codes = set(mapped_codes)
+    for x in krqt_result.get("remain_last", []):
+        all_known_codes.add(str(x.get("code", "")).zfill(6))
+
+    unmatched = []                # 매핑 안 된 보유종목 (시나리오 B/C/E 감지)
+    unmatched_eval = 0.0          # 누락 종목 평가금 합 → 분모 보정용
     account_stock_total = 0.0
     for s in bal.get("stocks", []):
         code = str(s.get("code", "")).zfill(6)
+        evl  = float(s.get("eval_amt", 0) or 0)
         if code in mapped_codes:
-            account_stock_total += float(s.get("eval_amt", 0) or 0)
+            account_stock_total += evl
+        elif code not in all_known_codes and evl > 0:
+            name = str(s.get("name", "") or "").strip()
+            unmatched.append(f"{code}({name},₩{evl:,.0f})")
+            unmatched_eval += evl
+
+    # 누락 종목 평가금을 분모에 포함 → 카테고리 합 vs 계좌 합 정합성 회복
+    account_stock_total += unmatched_eval
+
+    # 매핑 누락 감지 시 텔레그램 1회 경고 (첫 카테고리 호출 시에만)
+    if unmatched and category == "Small Cap Growth":
+        try:
+            TA.send_tele(
+                "⚠️ KRQT 잔고 매핑 누락 (result.json 손상/리밸런싱 미반영 의심):\n"
+                + ", ".join(unmatched)
+                + f"\n→ {KRQT_RESULT_PATH} 의 code 확인 필요"
+            )
+        except Exception:
+            pass
 
     # ── 카테고리별 현금 비례 배분 ──
     if account_stock_total > 0:
@@ -1615,11 +1642,37 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         for x in usqt_result.get(c, []):
             mapped_codes.add(str(x.get("code", "")).strip().upper())
 
+    # remain_last(매도실패)도 "알려진 종목"으로 인식해 미매핑 경고에서 제외
+    all_known_codes = set(mapped_codes)
+    for x in usqt_result.get("remain_last", []):
+        all_known_codes.add(str(x.get("code", "")).strip().upper())
+
+    unmatched = []                # 매핑 안 된 보유종목 (시나리오 B/C/E 감지)
+    unmatched_eval = 0.0          # 누락 종목 평가금 합 (USD) → 분모 보정용
     account_stock_total = 0.0
     for s in bal.get("stocks", []):
         code = str(s.get("code", "")).strip().upper()
+        evl  = float(s.get("eval_amt", 0) or 0)
         if code in mapped_codes:
-            account_stock_total += float(s.get("eval_amt", 0) or 0)
+            account_stock_total += evl
+        elif code not in all_known_codes and evl > 0:
+            name = str(s.get("name", "") or "").strip()
+            unmatched.append(f"{code}({name},${evl:,.2f})")
+            unmatched_eval += evl
+
+    # 누락 종목 평가금을 분모에 포함 → 카테고리 합 vs 계좌 합 정합성 회복
+    account_stock_total += unmatched_eval
+
+    # 매핑 누락 감지 시 텔레그램 1회 경고 (첫 카테고리 호출 시에만)
+    if unmatched and category == "SCG":
+        try:
+            TA.send_tele(
+                "⚠️ USQT 잔고 매핑 누락 (result.json 손상/리밸런싱 미반영 의심):\n"
+                + ", ".join(unmatched)
+                + f"\n→ {USQT_RESULT_PATH} 의 code 확인 필요"
+            )
+        except Exception:
+            pass
 
     # ── 카테고리별 현금 비례 배분 (USD) ──
     if account_stock_total > 0:
