@@ -12,7 +12,7 @@ StockEasy Peak 전략 자동매매 (단일 파일 통합)
     → 10분 대기 → 미체결 전량취소 → 잔고조회 → peak_data.json 저장 + Telegram 리포트
 
 crontab (UTC+0, EC2):
-  0,30 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_PEAK/PEAK_TR.py
+  2,32 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/PEAK_TR.py
 
 보유 상한: 22종목, 종목당 균등배분 (총자산 / 22)
 """

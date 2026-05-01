@@ -15,10 +15,10 @@ StockEasy Value 전략 - 비중 리밸런싱 (대규모 입/출금 이후 전체
   12회차 완료: 결산 → value_data.json 저장 + Telegram 리포트
 
 crontab (UTC+0, EC2) - 리밸런싱 날짜만 활성화:
-  # 평상시: PEAK_TR.py 실행
-  # 0,30 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_VALUE/PEAK_TR.py
+  # 평상시: VALUE_TR.py 실행
+  # 8,38 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/VALUE_TR.py
   # 리밸런싱 날 (예: 매월 첫째 월요일): VALUE_REBAL.py 실행
-  # 0,30 0-5 1-7 * 1 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_VALUE/VALUE_REBAL.py
+  # 8,38 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/VALUE_REBAL.py
 
 보유 상한: 10종목, 종목당 균등배분 (총자산 / 10)
 """
