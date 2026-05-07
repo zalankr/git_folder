@@ -14,7 +14,7 @@ StockEasy Momentum 전략 자동매매 (단일 파일 통합)
 crontab (UTC+0, EC2):
   6,36 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/MOMENTUM_TR.py
 
-보유 상한: 28종목, 종목당 균등배분 (총자산 / 28)
+보유 상한: 25종목, 종목당 균등배분 (총자산 / 25)
 """
 
 import sys

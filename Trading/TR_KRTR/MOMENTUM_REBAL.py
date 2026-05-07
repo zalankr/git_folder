@@ -20,7 +20,7 @@ crontab (UTC+0, EC2) - 리밸런싱 날짜만 활성화:
   # 리밸런싱 날 (예: 매월 첫째 월요일): MOMENTUM_REBAL.py 실행
   # 6,36 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/MOMENTUM_REBAL.py
 
-보유 상한: 28종목, 종목당 균등배분 (총자산 / 28)
+보유 상한: 25종목, 종목당 균등배분 (총자산 / 25)
 """
 
 import sys
@@ -60,7 +60,7 @@ OVERRIDE_PATH     = os.path.join(BASE_DIR, "momentum_override.json")
 
 os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
 
-MAX_HOLDINGS   = 28        # 최대 보유 종목 수
+MAX_HOLDINGS   = 25        # 최대 보유 종목 수
 MIN_ORDER_KRW  = 100_000   # 리밸런싱 최소 주문 임계 (10만원)
 
 
