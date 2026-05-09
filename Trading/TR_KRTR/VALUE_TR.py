@@ -54,7 +54,7 @@ VALUE_HISTORY_DIR  = os.path.join(BASE_DIR, "VALUE_history")
 os.makedirs(VALUE_HISTORY_DIR, exist_ok=True)
 OVERRIDE_PATH = os.path.join(BASE_DIR, "value_override.json") # 수동 개입 경로
 MAX_HOLDINGS = 10   # 최대 보유 종목 수
-
+VALUE_PENDING_PATH    = os.path.join(BASE_DIR, "value_pending.json")  # 자금부족 미체결 큐
 
 # ================================================================
 # StockEasy 크롤링
@@ -409,6 +409,47 @@ def do_crawl_and_build_target(message: list) -> dict:
 
     # 매수 = 진입 종목 중 아직 미보유
     buy_codes = [e["stock_code"] for e in new_entries if e["stock_code"] not in my_holdings]
+    
+    # ────────────────────────────────────────────
+    # [결손 보충] 사이트 보유 중 내가 안 가진 종목을 holding_days 짧은 순으로 채움
+    # 대상에서 제외할 코드: 이미 buy_codes(신규진입)/sell_codes(이탈)/내 보유에 포함된 코드
+    excluded = set(buy_codes) | set(sell_codes) | set(my_holdings.keys())
+    site_codes = {h["stock_code"] for h in all_holdings}
+    missing_codes = site_codes - excluded  # 사이트엔 있는데 내가 안 가진 종목
+
+    # holding_days 오름차순 정렬 (최근 진입 우선)
+    refill_candidates = sorted(
+        [h for h in all_holdings if h["stock_code"] in missing_codes],
+        key=lambda x: x.get("holding_days", 999)
+    )
+    # MAX_HOLDINGS 한도 내에서만 보충
+    available_slots = MAX_HOLDINGS - cur_hold_cnt - len(buy_codes) + len(sell_codes)
+    refill_codes = []
+    for h in refill_candidates:
+        if len(refill_codes) >= max(available_slots, 0):
+            break
+        refill_codes.append(h["stock_code"])
+
+    if refill_codes:
+        names = [h["stock_name"] for h in refill_candidates if h["stock_code"] in refill_codes]
+        message.append(f"🟡 결손보충 {len(refill_codes)}종목 추가매수: {names}")
+
+    # ────────────────────────────────────────────
+    # [pending 큐] 어제 자금부족으로 못 산 종목 우선 추가
+    pending_data = load_json(VALUE_PENDING_PATH)
+    pending_codes_raw = pending_data.get("pending_codes", [])
+    # 이미 보유했거나 오늘 매도 대상이면 큐에서 제거
+    pending_codes = [
+        c for c in pending_codes_raw
+        if c not in my_holdings and c not in sell_codes and c not in buy_codes and c not in refill_codes
+    ]
+    if pending_codes:
+        names_p = [pending_data.get("names", {}).get(c, c) for c in pending_codes]
+        message.append(f"🟠 pending복구 {len(pending_codes)}종목 우선매수: {names_p}")
+
+    # buy_codes 앞쪽에 pending → refill 순서로 삽입 (매수 우선순위 부여)
+    buy_codes = pending_codes + refill_codes + buy_codes
+    # ────────────────────────────────────────────
 
     # 보유 상한 초과 체크
     expected = cur_hold_cnt - len(sell_codes) + len(buy_codes)
@@ -471,6 +512,8 @@ def do_crawl_and_build_target(message: list) -> dict:
         "per_stock_invest":  per_stock_invest,
         "current_hold_count": cur_hold_cnt,
         "expected_after":    cur_hold_cnt - len(sell_codes) + len(buy_codes),
+        "refill_codes":      refill_codes,
+        "pending_codes":     pending_codes,
     }
     # ▼ 추가: 수동 개입 적용
     target = apply_manual_override(target, message, per_stock_invest)
@@ -619,6 +662,34 @@ def do_daily_settlement():
     }
     save_json(value_data, VALUE_DATA_PATH)
     save_json(value_data, os.path.join(VALUE_HISTORY_DIR, f"value_{today}.json"))
+
+    # ────────────────────────────────────────────
+    # [pending 큐 갱신] target과 실제 보유 비교 → 매수 미체결 종목 기록
+    target = load_json(VALUE_TARGET_PATH)
+    buy_targets = target.get("buy_targets", {})
+
+    new_pending = []
+    pending_names = {}
+    for code, info in buy_targets.items():
+        actual_qty = new_holdings.get(code, {}).get("qty", 0)
+        target_qty = info.get("target_qty", 0)
+        # 한 주도 못 샀거나, 절반도 못 산 경우 pending에 기록
+        if target_qty > 0 and actual_qty < target_qty // 2:
+            new_pending.append(code)
+            pending_names[code] = info.get("name", code)
+
+    pending_obj = {
+        "updated":       today,
+        "pending_codes": new_pending,
+        "names":         pending_names,
+    }
+    save_json(pending_obj, VALUE_PENDING_PATH)
+
+    if new_pending:
+        message.append(f"⏭️ pending큐 등록 {len(new_pending)}종목: {list(pending_names.values())}")
+    else:
+        message.append("✅ pending큐 비어있음 (전 종목 정상 매수)")
+    # ────────────────────────────────────────────
 
     # Telegram 리포트
     message.append(
