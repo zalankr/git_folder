@@ -52,11 +52,12 @@ acnt_prdt_cd    = "01"
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 # 파일 경로 (기존 TR.py와 공유)
-BASE_DIR          = "/var/autobot/TR_KRTR"
+BASE_DIR              = "/var/autobot/TR_KRTR"
 MOMENTUM_DATA_PATH    = os.path.join(BASE_DIR, "momentum_data.json")
 MOMENTUM_TARGET_PATH  = os.path.join(BASE_DIR, "momentum_target.json")
 MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "MOMENTUM_history")
-OVERRIDE_PATH     = os.path.join(BASE_DIR, "momentum_override.json")
+OVERRIDE_PATH         = os.path.join(BASE_DIR, "momentum_override.json")
+MOMENTUM_PENDING_PATH = os.path.join(BASE_DIR, "momentum_pending.json")  # TR.py와 공유 (REBAL 후 비움)
 
 os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
 
@@ -423,24 +424,54 @@ def do_crawl_and_build_rebal_target(message: list) -> dict:
     per_stock_invest = int(total_asset / MAX_HOLDINGS)
     message.append(f"총자산: {int(total_asset):,}원 | 종목당 목표: {per_stock_invest:,}원")
 
-    # 4. 유지·추가 대상: (기존보유 − 이탈) ∪ 진입
-    keep_codes  = set(my_holdings.keys()) - exit_codes
-    target_universe = keep_codes | entry_codes   # 리밸런싱 대상 전체
+    # 4. target_universe 구성
+    #    = (기존보유 ∪ 사이트 holdings 전체) − 이탈
+    #    사이트와 계좌를 최대한 동기화 (결손 보충 포함)
+    site_holdings_codes = {h["stock_code"] for h in crawl["holdings"]}
+    site_hold_map = {h["stock_code"]: h for h in crawl["holdings"]}  # 종목코드 → 사이트 정보
 
-    # 5. 보유상한 초과 체크 (수익률 낮은 종목부터 제외)
-    momentum_data   = load_json(MOMENTUM_DATA_PATH)
-    prev_hold   = momentum_data.get("holdings", {})
+    # 기존 코드(이탈 제외) ∪ 사이트 보유 전체
+    keep_codes      = set(my_holdings.keys()) - exit_codes
+    target_universe = (keep_codes | site_holdings_codes) - exit_codes
+
+    # 결손 보충 안내 (사이트엔 있으나 내가 안 가진 종목)
+    refill_codes = site_holdings_codes - set(my_holdings.keys()) - exit_codes
+    if refill_codes:
+        refill_names = [site_hold_map[c].get("stock_name", c) for c in refill_codes]
+        message.append(f"🟡 사이트 동기화: 결손 {len(refill_codes)}종목 추가매수 → {refill_names}")
+
+    # 5. 보유상한 초과 체크 (사이트 holdings 우선 유지 → 사이트 외 종목부터 제외)
+    prev_data = load_json(MOMENTUM_DATA_PATH)
+    prev_hold = prev_data.get("holdings", {})
 
     if len(target_universe) > MAX_HOLDINGS:
         overflow = len(target_universe) - MAX_HOLDINGS
-        # 진입 종목은 우선 유지 → 기존 유지분 중 수익률 낮은 순
-        removable = [c for c in keep_codes if c not in entry_codes]
-        removable.sort(key=lambda c: prev_hold.get(c, {}).get("return_rate", 0))
-        drop = removable[:overflow]
+
+        # 제거 우선순위:
+        # ① 사이트에 없는 내 보유 종목 (사이트 외 잔존분)
+        # ② 사이트에 있어도 holding_days 오래된 종목 (모멘텀 약화)
+        # ③ 위 둘 동률이면 수익률 낮은 순
+        removable_outside = [c for c in keep_codes if c not in site_holdings_codes]
+        removable_outside.sort(key=lambda c: prev_hold.get(c, {}).get("return_rate", 0))
+
+        removable_inside = [c for c in target_universe
+                            if c in my_holdings and c in site_holdings_codes]
+        removable_inside.sort(
+            key=lambda c: (
+                -site_hold_map[c].get("holding_days", 0),  # holding_days 큰 것 먼저 제거
+                prev_hold.get(c, {}).get("return_rate", 0),  # 동률이면 수익률 낮은 순
+            )
+        )
+
+        drop = (removable_outside + removable_inside)[:overflow]
         for c in drop:
             target_universe.discard(c)
             exit_codes.add(c)  # 이탈 처리로 귀결
-        message.append(f"⚠️ 상한초과 {overflow}종목 자동제외: {[my_holdings[c]['name'] for c in drop if c in my_holdings]}")
+        drop_names = [my_holdings[c]['name'] for c in drop if c in my_holdings]
+        message.append(f"⚠️ 상한초과 {overflow}종목 자동제외: {drop_names}")
+
+    # 결손보충 후 다시 정리 (overflow에서 제거된 종목 반영)
+    refill_codes = refill_codes - exit_codes
 
     # 6. 각 종목별 목표수량/현재수량 비교 → 매수·매도 분류
     buy_targets  = {}
@@ -458,7 +489,7 @@ def do_crawl_and_build_rebal_target(message: list) -> dict:
             price = KIS.get_KR_current_price(code)
             time_module.sleep(0.125)
             held_qty = 0
-            name     = crawl_name.get(code, code)
+            name     = crawl_name.get(code) or site_hold_map.get(code, {}).get("stock_name", code)
 
         if not isinstance(price, int) or price <= 0:
             message.append(f"MOMENTUM_REBAL: {code}({name}) 현재가 불가, 스킵")
@@ -662,6 +693,40 @@ def do_daily_settlement():
     }
     save_json(momentum_data, MOMENTUM_DATA_PATH)
     save_json(momentum_data, os.path.join(MOMENTUM_HISTORY_DIR, f"momentum_{today}.json"))
+
+    # ────────────────────────────────────────────
+    # [pending 큐 초기화] REBAL은 전면 재조정이므로 과거 미체결 큐 무효화
+    # 단, 오늘 REBAL 자체에서 자금부족으로 매수 못 한 종목은 다시 큐에 등록
+    target = load_json(MOMENTUM_TARGET_PATH)
+    buy_targets = target.get("buy_targets", {})
+    baseline    = target.get("baseline_hold", {})
+
+    new_pending = []
+    pending_names = {}
+    for code, info in buy_targets.items():
+        # REBAL의 target_qty는 "추가매수 수량(diff)"
+        base = baseline.get(code, 0)
+        actual_qty = new_holdings.get(code, {}).get("qty", 0)
+        bought_session = max(actual_qty - base, 0)
+        target_diff = info.get("target_qty", 0)
+        # 이번 REBAL에서 절반도 못 산 경우 다시 pending 등록
+        if target_diff > 0 and bought_session < target_diff // 2:
+            new_pending.append(code)
+            pending_names[code] = info.get("name", code)
+
+    pending_obj = {
+        "updated":       today,
+        "pending_codes": new_pending,
+        "names":         pending_names,
+        "from_rebal":    True,  # REBAL이 생성한 큐임을 표시
+    }
+    save_json(pending_obj, MOMENTUM_PENDING_PATH)
+
+    if new_pending:
+        message.append(f"⏭️ pending큐 갱신(REBAL) {len(new_pending)}종목: {list(pending_names.values())}")
+    else:
+        message.append("✅ pending큐 비움 (REBAL 매수 정상 완료)")
+    # ────────────────────────────────────────────
 
     message.append(
         f"📊 MOMENTUM 리밸런싱 결산 {today}\n"
