@@ -421,8 +421,7 @@ def do_crawl_and_build_rebal_target(message: list) -> dict:
         TA.send_tele(f"MOMENTUM_REBAL: 계좌요약 실패 ({account})")
         sys.exit(1)
     total_asset = account['total_krw_asset']
-    per_stock_invest = int(total_asset / MAX_HOLDINGS)
-    message.append(f"총자산: {int(total_asset):,}원 | 종목당 목표: {per_stock_invest:,}원")
+    per_stock_invest = int(total_asset / MAX_HOLDINGS)  # 임시값, target_universe 확정 후 재계산
 
     # 4. target_universe 구성
     #    = (기존보유 ∪ 사이트 holdings 전체) − 이탈
@@ -472,6 +471,17 @@ def do_crawl_and_build_rebal_target(message: list) -> dict:
 
     # 결손보충 후 다시 정리 (overflow에서 제거된 종목 반영)
     refill_codes = refill_codes - exit_codes
+
+    # ────────────────────────────────────────────
+    # per_stock_invest 재계산 (실제 target_universe 종목 수 기준)
+    # MAX_HOLDINGS로 나누면 실제보다 작아져 매수 부족 + 예수금 과다 누적 발생
+    actual_count = len(target_universe)
+    if actual_count > 0:
+        per_stock_invest = int(total_asset / actual_count)
+    message.append(
+        f"총자산: {int(total_asset):,}원 | 실제종목수: {actual_count} | 종목당 목표: {per_stock_invest:,}원"
+    )
+    # ────────────────────────────────────────────
 
     # 6. 각 종목별 목표수량/현재수량 비교 → 매수·매도 분류
     buy_targets  = {}
@@ -531,6 +541,10 @@ def do_crawl_and_build_rebal_target(message: list) -> dict:
             sell_codes_list.append(code)
 
     # 8. target 구성
+    # 진짜 이탈 종목 (사이트 sell_list ∪ overflow 강제이탈)
+    # 결산에서 "이탈종목" 분류 시 이 리스트만 사용 (일부매도와 구분)
+    true_exit_codes = list(exit_codes & set(my_holdings.keys()))
+
     target = {
         "date":               str(datetime.now().date()),
         "crawl_date":         crawl["target_date"],
@@ -543,6 +557,7 @@ def do_crawl_and_build_rebal_target(message: list) -> dict:
         "total_asset":        total_asset,
         "current_hold_count": len(my_holdings),
         "target_universe":    sorted(list(target_universe)),
+        "true_exits":         true_exit_codes,
     }
 
     # 9. 수동 개입 적용
@@ -605,6 +620,7 @@ def do_daily_settlement():
 
     target     = load_json(MOMENTUM_TARGET_PATH)
     sell_codes = target.get("sell_codes", [])
+    true_exits = target.get("true_exits", [])  # 진짜 이탈 종목만 (일부매도 제외)
 
     new_holdings = {}
     for s in stocks:
@@ -640,7 +656,9 @@ def do_daily_settlement():
         }
 
     exits_today = []
-    for code in sell_codes:
+    # 결산 이탈 분류: target.json의 true_exits만 사용
+    # (sell_codes에는 일부매도 종목도 포함되므로 잘못 분류될 수 있음)
+    for code in true_exits:
         if code in prev_holdings and code not in new_holdings:
             prev = prev_holdings[code]
             exits_today.append({
@@ -780,13 +798,21 @@ def do_trade(order: dict, target: dict, message: list):
             current_hold[s["종목코드"]] = s["매도가능수량"]
 
     # ────────────── 매도 ──────────────
-    # 리밸런싱은 sell_targets의 target_qty가 "매도할 수량"이므로
-    # 보유수량과 target_qty 중 작은 값만큼만 매도 (오매도 방지)
+    # 리밸런싱의 sell_targets["target_qty"]는 "매도할 수량(diff)"이지
+    # "잔여 보유 목표"가 아니므로, baseline 대비 이미 매도된 수량을
+    # 차감해야 함 (회차 반복 매도로 종목 전량 처분되는 버그 방지)
+    baseline = target.get("baseline_hold", {})
     sell = {}
     for code, info in sell_targets.items():
         tgt = info.get("target_qty", 0)
+        base = baseline.get(code, 0)
         hold = current_hold.get(code, 0)
-        qty = min(tgt, hold)
+        # 이번 세션 누적 매도수량 = baseline - 현재보유 (양수면 매도 발생함)
+        sold_this_session = max(base - hold, 0)
+        remaining = tgt - sold_this_session
+        if remaining <= 0:
+            continue  # target만큼 이미 매도 완료
+        qty = min(remaining, hold)  # 잔여 매도량 vs 현재 보유 중 작은 값
         if qty > 0:
             sell[code] = qty
 
@@ -878,10 +904,21 @@ def do_trade(order: dict, target: dict, message: list):
 
     if target_KRW > orderable_KRW and target_KRW > 0:
         adj = orderable_KRW / target_KRW
+        # 1차 조정: 비례 축소 (최소 1주 보장으로 종목 누락 방지)
         for code in buy:
-            buy[code] = int(buy[code] * adj)
+            buy[code] = max(int(buy[code] * adj), 1)
+        # 1주 보장으로 자금 초과 가능 → 비싼 종목부터 1주씩 감액
+        recheck_KRW = sum(buy[c] * buy_rate * buy_prices.get(c, 0) for c in buy)
+        if recheck_KRW > orderable_KRW:
+            sorted_codes = sorted(buy.keys(), key=lambda c: -buy_prices.get(c, 0))
+            for c in sorted_codes:
+                while recheck_KRW > orderable_KRW and buy[c] > 1:
+                    buy[c] -= 1
+                    recheck_KRW -= buy_rate * buy_prices.get(c, 0)
+                if recheck_KRW <= orderable_KRW:
+                    break
         buy = {k: v for k, v in buy.items() if v > 0}
-        message.append(f"MOMENTUM_REBAL 매수수량 조정 (adjust_rate={adj:.4f})")
+        message.append(f"MOMENTUM_REBAL 매수수량 조정 (adjust_rate={adj:.4f}, 최소1주)")
     else:
         message.append("MOMENTUM_REBAL 매수가능금 충분")
 
