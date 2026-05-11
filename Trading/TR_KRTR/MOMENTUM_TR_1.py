@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-StockEasy Value 전략 자동매매 (단일 파일 통합)
+StockEasy Momentum 전략 자동매매 (단일 파일 통합)
 
 실행 흐름:
   1회차 (KST 09:00 = UTC 00:00):
-    → 크롤링 → buy/sell 리스트 산출 → value_target.json 저장
+    → 크롤링 → buy/sell 리스트 산출 → momentum_target.json 저장
     → 5분 대기 → 매도 → 10분 대기 → 매수
   2~12회차 (KST 09:30~14:30 = UTC 00:30~05:30, 30분 간격):
-    → value_target.json 로드 → 매도 → 10분 대기 → 매수
+    → momentum_target.json 로드 → 매도 → 10분 대기 → 매수
   12회차 매매 완료 후:
-    → 10분 대기 → 미체결 전량취소 → 잔고조회 → value_data.json 저장 + Telegram 리포트
+    → 10분 대기 → 미체결 전량취소 → 잔고조회 → momentum_data.json 저장 + Telegram 리포트
 
 crontab (UTC+0, EC2):
-  8,38 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/VALUE_TR.py
+  6,36 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/MOMENTUM_TR.py
 
-보유 상한: 11종목, 종목당 균등배분 (총자산 / 11)
+보유 상한: 25종목, 종목당 균등배분 (총자산 / 25)
 """
 
 import sys
@@ -30,7 +30,7 @@ from tendo import singleton
 try:
     me = singleton.SingleInstance()
 except singleton.SingleInstanceException:
-    TA.send_tele("VALUE: 이미 실행 중입니다.")
+    TA.send_tele("MOMENTUM: 이미 실행 중입니다.")
     sys.exit(0)
 
 import KIS_KR
@@ -38,28 +38,29 @@ import KIS_KR
 # ================================================================
 # 설정
 # ================================================================
-key_file_path   = "/var/autobot/KIS/kis44036546nkr.txt"        # VALUE
-token_file_path = "/var/autobot/KIS/kis44036546_token.json"  # VALUE
-cano            = "44036546"   # VALUE
+key_file_path   = "/var/autobot/KIS/kis44287475nkr.txt"        # MOMENTUM
+token_file_path = "/var/autobot/KIS/kis44287475_token.json"  # MOMENTUM
+cano            = "44287475"   # MOMENTUM
 acnt_prdt_cd    = "01"
 
 KIS = KIS_KR.KIS_API(key_file_path, token_file_path, cano, acnt_prdt_cd)
 
 # 파일 경로
 BASE_DIR          = "/var/autobot/TR_KRTR"
-VALUE_DATA_PATH    = os.path.join(BASE_DIR, "value_data.json")
-VALUE_TARGET_PATH  = os.path.join(BASE_DIR, "value_target.json")
-VALUE_HISTORY_DIR  = os.path.join(BASE_DIR, "VALUE_history")
+MOMENTUM_DATA_PATH    = os.path.join(BASE_DIR, "momentum_data.json")
+MOMENTUM_TARGET_PATH  = os.path.join(BASE_DIR, "momentum_target.json")
+MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "MOMENTUM_history")
 
-os.makedirs(VALUE_HISTORY_DIR, exist_ok=True)
-OVERRIDE_PATH = os.path.join(BASE_DIR, "value_override.json") # 수동 개입 경로
-MAX_HOLDINGS = 11   # 최대 보유 종목 수
-VALUE_PENDING_PATH    = os.path.join(BASE_DIR, "value_pending.json")  # 자금부족 미체결 큐
+os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
+OVERRIDE_PATH = os.path.join(BASE_DIR, "momentum_override.json") # 수동 개입 경로
+MAX_HOLDINGS = 25   # 최대 보유 종목 수
+MOMENTUM_PENDING_PATH    = os.path.join(BASE_DIR, "momentum_pending.json")  # 자금부족 미체결 큐
+
 
 # ================================================================
 # StockEasy 크롤링
 # ================================================================
-CRAWL_URL = "https://stockeasy.intellio.kr/strategy-room/value"
+CRAWL_URL = "https://stockeasy.intellio.kr/strategy-room/momentum"
 CRAWL_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -111,7 +112,7 @@ def extract_data_from_html(html: str) -> dict:
             continue
     return {}
 
-def crawl_value_strategy() -> dict:
+def crawl_momentum_strategy() -> dict:
     """크롤링 → 진입/이탈/보유 종목 dict 반환"""
     html = fetch_stockeasy_page()
     raw = extract_data_from_html(html)
@@ -174,24 +175,24 @@ def save_json(data: dict, path: str):
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        TA.send_tele(f"VALUE: {path} 저장 실패: {e}")
+        TA.send_tele(f"MOMENTUM: {path} 저장 실패: {e}")
         backup = os.path.join(BASE_DIR, f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
         with open(backup, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        TA.send_tele(f"VALUE: 백업 저장: {backup}")
+        TA.send_tele(f"MOMENTUM: 백업 저장: {backup}")
 
 
 def health_check():
     checks = []
     if not KIS.access_token:
-        checks.append("VALUE체크: API 토큰 없음")
+        checks.append("MOMENTUM체크: API 토큰 없음")
     try:
         import socket
         socket.create_connection(("openapi.koreainvestment.com", 9443), timeout=5)
     except:
-        checks.append("VALUE체크: KIS API 서버 접속 불가")
+        checks.append("MOMENTUM체크: KIS API 서버 접속 불가")
     if not KIS.is_KR_trading_day():
-        checks.append("VALUE체크: 거래일이 아닙니다.")
+        checks.append("MOMENTUM체크: 거래일이 아닙니다.")
     if checks:
         TA.send_tele(checks)
         sys.exit(0)
@@ -200,10 +201,10 @@ def health_check():
 def order_time():
     """
     거래회차 산출 (UTC 기준)
-    1회차:  UTC 00:08 (KST 09:08)
-    2회차:  UTC 00:38 (KST 09:38)
+    1회차:  UTC 00:06 (KST 09:06)
+    2회차:  UTC 00:36 (KST 09:36)
     ...
-    12회차: UTC 05:38 (KST 14:38)
+    12회차: UTC 05:36 (KST 14:36)
     """
     now = datetime.now()
     result = {
@@ -259,8 +260,8 @@ def split_data(round_num):
 def cancel_orders(side="all"):
     summary = KIS.cancel_all_KR_unfilled_orders(side)
     if isinstance(summary, dict):
-        return f"VALUE: {summary['success']}/{summary['total']} 주문 취소"
-    return "VALUE: 주문 취소 에러"
+        return f"MOMENTUM: {summary['success']}/{summary['total']} 주문 취소"
+    return "MOMENTUM: 주문 취소 에러"
 
 
 def load_today_override() -> dict:
@@ -382,16 +383,16 @@ def apply_manual_override(target: dict, message: list,
 
 
 # ================================================================
-# 1회차 전용: 크롤링 → 매매대상 산출 → value_target.json 저장
+# 1회차 전용: 크롤링 → 매매대상 산출 → momentum_target.json 저장
 # ================================================================
 def do_crawl_and_build_target(message: list) -> dict:
     """크롤링 후 target dict를 생성·저장하고 반환"""
-    message.append(f"VALUE 크롤링 시작 ({datetime.now().strftime('%H:%M:%S')} UTC)")
+    message.append(f"MOMENTUM 크롤링 시작 ({datetime.now().strftime('%H:%M:%S')} UTC)")
 
     try:
-        crawl = crawl_value_strategy()
+        crawl = crawl_momentum_strategy()
     except Exception as e:
-        TA.send_tele(f"VALUE: 크롤링 실패 - {e}")
+        TA.send_tele(f"MOMENTUM: 크롤링 실패 - {e}")
         sys.exit(1)
 
     new_entries  = crawl["buy_list"]
@@ -399,9 +400,9 @@ def do_crawl_and_build_target(message: list) -> dict:
     all_holdings = crawl["holdings"]
     message.append(f"기준일: {crawl['target_date']} | 진입: {len(new_entries)} | 이탈: {len(exits)} | 사이트보유: {len(all_holdings)}")
 
-    # 기존 value_data.json (내 실제 보유이력)
-    value_data    = load_json(VALUE_DATA_PATH)
-    my_holdings  = value_data.get("holdings", {})
+    # 기존 momentum_data.json (내 실제 보유이력)
+    momentum_data    = load_json(MOMENTUM_DATA_PATH)
+    my_holdings  = momentum_data.get("holdings", {})
     cur_hold_cnt = len(my_holdings)
 
     # 매도 = 이탈 종목 중 내가 보유한 것
@@ -409,7 +410,7 @@ def do_crawl_and_build_target(message: list) -> dict:
 
     # 매수 = 진입 종목 중 아직 미보유
     buy_codes = [e["stock_code"] for e in new_entries if e["stock_code"] not in my_holdings]
-    
+
     # ────────────────────────────────────────────
     # [결손 보충] 사이트 보유 중 내가 안 가진 종목을 holding_days 짧은 순으로 채움
     # 대상에서 제외할 코드: 이미 buy_codes(신규진입)/sell_codes(이탈)/내 보유에 포함된 코드
@@ -436,7 +437,7 @@ def do_crawl_and_build_target(message: list) -> dict:
 
     # ────────────────────────────────────────────
     # [pending 큐] 어제 자금부족으로 못 산 종목 우선 추가
-    pending_data = load_json(VALUE_PENDING_PATH)
+    pending_data = load_json(MOMENTUM_PENDING_PATH)
     pending_codes_raw = pending_data.get("pending_codes", [])
     # 이미 보유했거나 오늘 매도 대상이면 큐에서 제거
     pending_codes = [
@@ -465,27 +466,18 @@ def do_crawl_and_build_target(message: list) -> dict:
     # 계좌 조회 → 종목당 투자금
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
-        TA.send_tele(f"VALUE: 계좌요약 조회 불가 ({account})")
+        TA.send_tele(f"MOMENTUM: 계좌요약 조회 불가 ({account})")
         sys.exit(1)
     total_asset = account['total_krw_asset']
-    # 분모 = max(MAX_HOLDINGS, 사이트보유수, 현재보유+신규)
-    # 사이트가 MAX 미만이면 MAX_HOLDINGS 유지 (보수적, 자금초과 방지)
-    # 사이트가 MAX 이상이거나 결손누적 상태면 더 큰 분모 사용 (자금부족 방지)
-    site_count = len(all_holdings)
-    after_count = cur_hold_cnt - len(sell_codes) + len(buy_codes)
-    invest_divisor = max(MAX_HOLDINGS, site_count, after_count)
-    per_stock_invest = int(total_asset / invest_divisor)
-    message.append(
-        f"총자산: {int(total_asset):,}원 | 분모: {invest_divisor}"
-        f"(MAX={MAX_HOLDINGS},사이트={site_count},예상={after_count}) | 종목당: {per_stock_invest:,}원"
-    )
+    per_stock_invest = int(total_asset / MAX_HOLDINGS)
+    message.append(f"총자산: {int(total_asset):,}원 | 종목당: {per_stock_invest:,}원")
 
     # 매수 종목별 목표수량
     buy_targets = {}
     for code in buy_codes:
         price = KIS.get_KR_current_price(code)
         if not isinstance(price, int) or price == 0:
-            message.append(f"VALUE: {code} 현재가 조회 실패, 매수 스킵")
+            message.append(f"MOMENTUM: {code} 현재가 조회 실패, 매수 스킵")
             continue
         tgt_qty = per_stock_invest // price
         if tgt_qty > 0:
@@ -526,7 +518,7 @@ def do_crawl_and_build_target(message: list) -> dict:
     }
     # ▼ 추가: 수동 개입 적용
     target = apply_manual_override(target, message, per_stock_invest)
-    save_json(target, VALUE_TARGET_PATH)
+    save_json(target, MOMENTUM_TARGET_PATH)
 
     for code, info in target["buy_targets"].items():
         message.append(f"  매수목표: {info['name']}({code}) {info['target_qty']}주")
@@ -534,19 +526,19 @@ def do_crawl_and_build_target(message: list) -> dict:
         message.append(f"  매도목표: {info['name']}({code}) {info['target_qty']}주")
 
     if not target["buy_targets"] and not target["sell_targets"]:
-        TA.send_tele(message + ["VALUE: 오늘 매매 대상 없음. 종료."])
+        TA.send_tele(message + ["MOMENTUM: 오늘 매매 대상 없음. 종료."])
         sys.exit(0)
 
     return target
 
 
 # ================================================================
-# 12회차 완료 후: 결산 → value_data.json 저장
+# 12회차 완료 후: 결산 → momentum_data.json 저장
 # ================================================================
 def do_daily_settlement():
     """12회차 매매 종료 후 10분 대기 → 미체결 취소 → 잔고 저장 → Telegram 리포트"""
     # message = []
-    # message.append("VALUE: 12회차 완료, 10분 대기 후 결산...")
+    # message.append("MOMENTUM: 12회차 완료, 10분 대기 후 결산...")
     # TA.send_tele(message)
     message = []
 
@@ -561,24 +553,24 @@ def do_daily_settlement():
     # 잔고 조회
     stocks = KIS.get_KR_stock_balance()
     if not isinstance(stocks, list):
-        TA.send_tele(f"VALUE결산: 잔고 조회 실패 ({stocks})")
+        TA.send_tele(f"MOMENTUM결산: 잔고 조회 실패 ({stocks})")
         sys.exit(1)
 
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
-        TA.send_tele(f"VALUE결산: 계좌요약 실패 ({account})")
+        TA.send_tele(f"MOMENTUM결산: 계좌요약 실패 ({account})")
         sys.exit(1)
 
     total_asset  = account['total_krw_asset']
     cash_balance = account['cash_balance']
     stock_eval   = account['stock_eval_amt']
 
-    # 이전 value_data (보유이력 유지용)
-    prev_data     = load_json(VALUE_DATA_PATH)
+    # 이전 momentum_data (보유이력 유지용)
+    prev_data     = load_json(MOMENTUM_DATA_PATH)
     prev_holdings = prev_data.get("holdings", {})
 
     # 오늘 target (이탈 코드 참조)
-    target     = load_json(VALUE_TARGET_PATH)
+    target     = load_json(MOMENTUM_TARGET_PATH)
     sell_codes = target.get("sell_codes", [])
 
     # 현재 보유종목 정리
@@ -636,10 +628,10 @@ def do_daily_settlement():
     this_year  = datetime.now().strftime("%Y")
     month_start_asset, year_start_asset = None, None
 
-    history_files = sorted([f for f in os.listdir(VALUE_HISTORY_DIR) if f.endswith('.json')])
+    history_files = sorted([f for f in os.listdir(MOMENTUM_HISTORY_DIR) if f.endswith('.json')])
     for hf in history_files:
         try:
-            with open(os.path.join(VALUE_HISTORY_DIR, hf), 'r') as f:
+            with open(os.path.join(MOMENTUM_HISTORY_DIR, hf), 'r') as f:
                 hdata = json.load(f)
             hdate  = hdata.get("total", {}).get("date", "")
             hasset = hdata.get("total", {}).get("total_balance", 0)
@@ -655,8 +647,8 @@ def do_daily_settlement():
     if year_start_asset and year_start_asset > 0:
         year_return = round((total_asset - year_start_asset) / year_start_asset * 100, 2)
 
-    # value_data.json 저장
-    value_data = {
+    # momentum_data.json 저장
+    momentum_data = {
         "total": {
             "date":           today,
             "total_balance":  total_asset,
@@ -669,12 +661,12 @@ def do_daily_settlement():
         "holdings":    new_holdings,
         "exits_today": exits_today,
     }
-    save_json(value_data, VALUE_DATA_PATH)
-    save_json(value_data, os.path.join(VALUE_HISTORY_DIR, f"value_{today}.json"))
+    save_json(momentum_data, MOMENTUM_DATA_PATH)
+    save_json(momentum_data, os.path.join(MOMENTUM_HISTORY_DIR, f"momentum_{today}.json"))
 
     # ────────────────────────────────────────────
     # [pending 큐 갱신] target과 실제 보유 비교 → 매수 미체결 종목 기록
-    target = load_json(VALUE_TARGET_PATH)
+    target = load_json(MOMENTUM_TARGET_PATH)
     buy_targets = target.get("buy_targets", {})
 
     new_pending = []
@@ -692,7 +684,7 @@ def do_daily_settlement():
         "pending_codes": new_pending,
         "names":         pending_names,
     }
-    save_json(pending_obj, VALUE_PENDING_PATH)
+    save_json(pending_obj, MOMENTUM_PENDING_PATH)
 
     if new_pending:
         message.append(f"⏭️ pending큐 등록 {len(new_pending)}종목: {list(pending_names.values())}")
@@ -702,7 +694,7 @@ def do_daily_settlement():
 
     # Telegram 리포트
     message.append(
-        f"📊 VALUE 일일결산 {today}\n"
+        f"📊 MOMENTUM 일일결산 {today}\n"
         f"💰 총자산: {int(total_asset):,}원\n"
         f"   주식: {int(stock_eval):,}원 | 현금: {int(cash_balance):,}원\n"
         f"   보유: {len(new_holdings)}종목 | 월수익: {month_return:+.2f}% | 연수익: {year_return:+.2f}%"
@@ -727,7 +719,7 @@ def do_daily_settlement():
                 f"({ex['buy_date']}→{ex['sell_date']})"
             )
 
-    message.append("✅ value_data.json 저장 완료")
+    message.append("✅ momentum_data.json 저장 완료")
     TA.send_tele(message)
 
 
@@ -744,7 +736,7 @@ def do_trade(order: dict, target: dict, message: list):
     try:
         rs = split_data(order['round'])
     except ValueError as e:
-        TA.send_tele(f"VALUE: {e}")
+        TA.send_tele(f"MOMENTUM: {e}")
         sys.exit(1)
     sell_split = [rs["sell_splits"], rs["sell_price"]]
     buy_split  = [rs["buy_splits"],  rs["buy_price"]]
@@ -760,9 +752,9 @@ def do_trade(order: dict, target: dict, message: list):
     sell = {code: current_hold.get(code, 0) for code in sell_targets if current_hold.get(code, 0) > 0}
 
     if len(sell) == 0:
-        message.append("VALUE: 매도 종목 없음")
+        message.append("MOMENTUM: 매도 종목 없음")
     elif sell_split[0] > 0:
-        message.append(f"VALUE: {order['round']}회차 - 매도 주문")
+        message.append(f"MOMENTUM: {order['round']}회차 - 매도 주문")
         for code, qty in sell.items():
             lsc = sell_split[0]
             lsp = sell_split[1][:]
@@ -774,7 +766,7 @@ def do_trade(order: dict, target: dict, message: list):
 
             price = KIS.get_KR_current_price(code)
             if not isinstance(price, int) or price == 0:
-                message.append(f"VALUE: {code} 현재가 불가, 매도 스킵")
+                message.append(f"MOMENTUM: {code} 현재가 불가, 매도 스킵")
                 continue
 
             name = sell_targets.get(code, {}).get("name", code)
@@ -792,7 +784,7 @@ def do_trade(order: dict, target: dict, message: list):
                     message.append(f"매도실패 {name}: {oi.get('error_message','')}")
                 time_module.sleep(0.125)
     else:
-        message.append(f"VALUE: {order['round']}회차 - 매도 분할횟수 0")
+        message.append(f"MOMENTUM: {order['round']}회차 - 매도 분할횟수 0")
 
     TA.send_tele(message)
     message = []
@@ -803,7 +795,7 @@ def do_trade(order: dict, target: dict, message: list):
     # ────────────── 매수 ──────────────
     KRW = KIS.get_KR_orderable_cash()
     if not isinstance(KRW, (int, float)):
-        TA.send_tele(f"VALUE: 주문가능현금 조회 불가 ({KRW})")
+        TA.send_tele(f"MOMENTUM: 주문가능현금 조회 불가 ({KRW})")
         sys.exit(1)
     orderable_KRW = float(KRW)
 
@@ -826,7 +818,7 @@ def do_trade(order: dict, target: dict, message: list):
     for code, qty in buy.items():
         p = KIS.get_KR_current_price(code)
         if not isinstance(p, int) or p == 0:
-            message.append(f"VALUE: {code} 현재가 불가, 매수 스킵")
+            message.append(f"MOMENTUM: {code} 현재가 불가, 매수 스킵")
             buy[code] = 0
             continue
         buy_prices[code] = p
@@ -836,34 +828,23 @@ def do_trade(order: dict, target: dict, message: list):
     buy = {k: v for k, v in buy.items() if v > 0}
 
     message.append(
-        f"VALUE 매수가능: {int(orderable_KRW):,}원 | 목표매수금: {int(target_KRW):,}원"
+        f"MOMENTUM 매수가능: {int(orderable_KRW):,}원 | 목표매수금: {int(target_KRW):,}원"
         + (f" | 조정비율: {orderable_KRW/target_KRW:.4f}" if target_KRW > 0 else "")
     )
 
     if target_KRW > orderable_KRW and target_KRW > 0:
         adj = orderable_KRW / target_KRW
-        # 1차 조정: 비례 축소 (최소 1주 보장으로 종목 누락 방지)
         for code in buy:
-            buy[code] = max(int(buy[code] * adj), 1)
-        # 1주 보장으로 자금 초과 가능 → 비싼 종목부터 1주씩 감액
-        recheck_KRW = sum(buy[c] * buy_rate * buy_prices.get(c, 0) for c in buy)
-        if recheck_KRW > orderable_KRW:
-            sorted_codes = sorted(buy.keys(), key=lambda c: -buy_prices.get(c, 0))
-            for c in sorted_codes:
-                while recheck_KRW > orderable_KRW and buy[c] > 1:
-                    buy[c] -= 1
-                    recheck_KRW -= buy_rate * buy_prices.get(c, 0)
-                if recheck_KRW <= orderable_KRW:
-                    break
+            buy[code] = int(buy[code] * adj)
         buy = {k: v for k, v in buy.items() if v > 0}
-        message.append(f"VALUE 매수수량 조정 (adjust_rate={adj:.4f}, 최소1주)")
+        message.append(f"MOMENTUM 매수수량 조정 (adjust_rate={adj:.4f})")
     else:
-        message.append("VALUE 매수가능금 충분")
+        message.append("MOMENTUM 매수가능금 충분")
 
     if len(buy) == 0:
-        message.append("VALUE: 매수 종목 없음")
+        message.append("MOMENTUM: 매수 종목 없음")
     elif buy_split[0] > 0:
-        message.append(f"VALUE: {order['round']}회차 - 매수 주문")
+        message.append(f"MOMENTUM: {order['round']}회차 - 매수 주문")
         for code, qty in buy.items():
             lsc = buy_split[0]
             lsp = buy_split[1][:]
@@ -908,10 +889,10 @@ message = []
 
 order = order_time()
 if order['round'] == 0:
-    TA.send_tele("VALUE: 매매시간이 아닙니다.")
+    TA.send_tele("MOMENTUM: 매매시간이 아닙니다.")
     sys.exit(0)
 
-message.append(f"VALUE: {order['date']} {order['time']} {order['round']}/{order['total_round']}회차")
+message.append(f"MOMENTUM: {order['date']} {order['time']} {order['round']}/{order['total_round']}회차")
 
 # 전회 미체결 취소
 cancel_msg = cancel_orders(side='all')
@@ -920,16 +901,16 @@ message.append(cancel_msg)
 # ── 1회차: 크롤링 + target 생성 + 3분 대기 ──
 if order['round'] == 1:
     target = do_crawl_and_build_target(message)
-    message.append("VALUE: 크롤링 완료, 3분 대기 후 매매 시작...")
+    message.append("MOMENTUM: 크롤링 완료, 3분 대기 후 매매 시작...")
     # TA.send_tele(message)
     # message = []
     time_module.sleep(180)   # 3분 대기
 
 # ── 2~12회차: target 로드 ──
 else:
-    target = load_json(VALUE_TARGET_PATH)
+    target = load_json(MOMENTUM_TARGET_PATH)
     if not target:
-        TA.send_tele("VALUE: value_target.json 없음. 1회차 미실행?")
+        TA.send_tele("MOMENTUM: momentum_target.json 없음. 1회차 미실행?")
         sys.exit(1)
     # TA.send_tele(message)
     # message = []

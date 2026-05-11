@@ -468,17 +468,8 @@ def do_crawl_and_build_target(message: list) -> dict:
         TA.send_tele(f"VALUE: 계좌요약 조회 불가 ({account})")
         sys.exit(1)
     total_asset = account['total_krw_asset']
-    # 분모 = max(MAX_HOLDINGS, 사이트보유수, 현재보유+신규)
-    # 사이트가 MAX 미만이면 MAX_HOLDINGS 유지 (보수적, 자금초과 방지)
-    # 사이트가 MAX 이상이거나 결손누적 상태면 더 큰 분모 사용 (자금부족 방지)
-    site_count = len(all_holdings)
-    after_count = cur_hold_cnt - len(sell_codes) + len(buy_codes)
-    invest_divisor = max(MAX_HOLDINGS, site_count, after_count)
-    per_stock_invest = int(total_asset / invest_divisor)
-    message.append(
-        f"총자산: {int(total_asset):,}원 | 분모: {invest_divisor}"
-        f"(MAX={MAX_HOLDINGS},사이트={site_count},예상={after_count}) | 종목당: {per_stock_invest:,}원"
-    )
+    per_stock_invest = int(total_asset / MAX_HOLDINGS)
+    message.append(f"총자산: {int(total_asset):,}원 | 종목당: {per_stock_invest:,}원")
 
     # 매수 종목별 목표수량
     buy_targets = {}
@@ -842,21 +833,10 @@ def do_trade(order: dict, target: dict, message: list):
 
     if target_KRW > orderable_KRW and target_KRW > 0:
         adj = orderable_KRW / target_KRW
-        # 1차 조정: 비례 축소 (최소 1주 보장으로 종목 누락 방지)
         for code in buy:
-            buy[code] = max(int(buy[code] * adj), 1)
-        # 1주 보장으로 자금 초과 가능 → 비싼 종목부터 1주씩 감액
-        recheck_KRW = sum(buy[c] * buy_rate * buy_prices.get(c, 0) for c in buy)
-        if recheck_KRW > orderable_KRW:
-            sorted_codes = sorted(buy.keys(), key=lambda c: -buy_prices.get(c, 0))
-            for c in sorted_codes:
-                while recheck_KRW > orderable_KRW and buy[c] > 1:
-                    buy[c] -= 1
-                    recheck_KRW -= buy_rate * buy_prices.get(c, 0)
-                if recheck_KRW <= orderable_KRW:
-                    break
+            buy[code] = int(buy[code] * adj)
         buy = {k: v for k, v in buy.items() if v > 0}
-        message.append(f"VALUE 매수수량 조정 (adjust_rate={adj:.4f}, 최소1주)")
+        message.append(f"VALUE 매수수량 조정 (adjust_rate={adj:.4f})")
     else:
         message.append("VALUE 매수가능금 충분")
 
