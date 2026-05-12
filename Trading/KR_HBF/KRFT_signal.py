@@ -464,18 +464,21 @@ def update_positions(json_path: str, signals: dict) -> None:
         json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-
 # ------------------------------------------------------------------
 # CLI 테스트
 # ------------------------------------------------------------------
 
 if __name__ == "__main__":
     import sys
-    path = sys.argv[1] if len(sys.argv) > 1 else "krfuture_monthly.json"
+
+    # 스크립트와 같은 폴더의 krfuture_monthly.json 을 기본값으로
+    DEFAULT_PATH = str(Path(__file__).resolve().parent / "krfuture_monthly.json")
+
+    path   = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_PATH
     target = sys.argv[2] if len(sys.argv) > 2 else None
 
     sigs = compute_signals(path, target)
-    print(f"[{sigs['target_month']}] 시그널")
+    print(f"[{sigs['target_month']}] 시그널  (data: {path})")
     print("-" * 60)
     for name in ("boost", "hedge1", "hedge2"):
         s = sigs[name]
