@@ -121,8 +121,8 @@ US_MODE_KEYS = {"USAA", "USQT", "Crypto"}
 # 파일이 없으면 최초 1회 자동 생성, 이후 수동 수정
 _MANUAL_DEFAULTS = {
     "43685950_29_IRP_cash": {
-        "value": 94976,
-        "updated": "2026-04-18",
+        "value": 102831,
+        "updated": "2026-05-12",
         "note": "MTS IRP 자산 - 주식평가금액 = 예수금(RP 운용). MTS에서 확인 후 수동 수정"
     }
 }
@@ -2074,21 +2074,23 @@ def format_report(mode: str, items: list, prev: dict) -> list:
 
     # ── 총자산 ──
     grand_total = sum(it.get("total_krw", 0) for it in items)
+
+    # 전일 합계는 현재와 "동일 mode"에서만 합산 (ASIA↔ASIA, US↔US)
+    # 이유: save_snapshot이 같은 날 파일에 ASIA/US 블록을 병합 저장하므로
+    #      두 mode를 다 더하면 자산이 중복 계산되어 변동률이 왜곡됨
     prev_grand = 0
     if isinstance(prev, dict):
-        for m in ("ASIA", "US"):
-            node = prev.get(m, {})
-            if not isinstance(node, dict):
-                continue
+        node = prev.get(mode, {})
+        if isinstance(node, dict):
             cats = node.get("categories", {})
-            if not isinstance(cats, dict):
-                continue
-            for cat in cats.values():
-                if not isinstance(cat, dict):
-                    continue
-                for it in cat.get("items", []) or []:
-                    if isinstance(it, dict):
-                        prev_grand += it.get("total_krw", 0)
+            if isinstance(cats, dict):
+                for cat in cats.values():
+                    if not isinstance(cat, dict):
+                        continue
+                    for it in cat.get("items", []) or []:
+                        if isinstance(it, dict):
+                            prev_grand += it.get("total_krw", 0)
+
     grand_chg = calc_day_change(grand_total, prev_grand)
 
     if mode == "ASIA":
