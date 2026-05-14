@@ -59,7 +59,7 @@ K200_REG_MULT       = 250_000     # KOSPI200 정규: 지수 × 250,000원
 K200_MINI_MULT      = 50_000      # 미니: 지수 × 50,000원
 KQ150_MULT          = 10_000      # KOSDAQ150: 지수 × 10,000원 (참고: 실제로는 10,000)
 
-# 정규 우선배분 임계비율 (KOSPI200 선물 현물가치 90% 이상이면 1계약)
+# 정규 우선배분 임계비율 (지침 15: 90% 이상이면 1계약)
 K200_REG_THRESHOLD_RATIO = 0.9
 
 # 라운드 시간표 (KST, HH:MM:SS)
@@ -773,7 +773,8 @@ def run_signal_entry() -> None:
     log.append(f"  [현재보유] K200정규={current['k200_regular']} "
                f"미니={current['k200_mini']} KQ150={current['kq150']}")
     log.append(f"  예수금 dnca_cash={bal['dnca_cash']:,.0f}원 / "
-               f"순자산={bal['nass_amt']:,.0f}원")
+               f"추정예탁={bal['prsm_dpast_amt']:,.0f}원 / "
+               f"증거금={bal['mgna_tota']:,.0f}원")
 
     # 9) 액션 분해
     actions = diff_positions(current, target, symbols)

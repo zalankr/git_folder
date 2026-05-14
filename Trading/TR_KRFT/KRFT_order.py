@@ -143,13 +143,42 @@ def get_futures_orderbook(kis, shtn_code: str) -> Optional[dict]:
     res = _retry_request("GET", url, headers, params=params)
     if not res or res.get("rt_cd") != "0":
         return None
-    out = res.get("output1") or res.get("output") or {}
+    # 호가는 output2 에 있음 (KIS 실측 확인)
+    out = res.get("output2") or res.get("output1") or res.get("output") or {}
     try:
         return {
             "bid1":     float(out.get("futs_bidp1", 0) or 0),
             "ask1":     float(out.get("futs_askp1", 0) or 0),
             "bid1_qty": int(float(out.get("bidp_rsqn1", 0) or 0)),
             "ask1_qty": int(float(out.get("askp_rsqn1", 0) or 0)),
+        }
+    except (TypeError, ValueError):
+        return None
+
+
+def get_futures_orderbook_full(kis, shtn_code: str) -> Optional[dict]:
+    """5단 호가 전체 반환 (확장용)"""
+    kis._rate_limit_sleep()
+    url = f"{kis.url_base}/uapi/domestic-futureoption/v1/quotations/inquire-asking-price"
+    headers = _headers(kis, "FHMIF10010000")
+    params = {
+        "FID_COND_MRKT_DIV_CODE": "F",
+        "FID_INPUT_ISCD":         shtn_code,
+    }
+    res = _retry_request("GET", url, headers, params=params)
+    if not res or res.get("rt_cd") != "0":
+        return None
+    out = res.get("output2") or {}
+    try:
+        bids = [(float(out.get(f"futs_bidp{i}", 0) or 0),
+                 int(float(out.get(f"bidp_rsqn{i}", 0) or 0))) for i in range(1, 6)]
+        asks = [(float(out.get(f"futs_askp{i}", 0) or 0),
+                 int(float(out.get(f"askp_rsqn{i}", 0) or 0))) for i in range(1, 6)]
+        return {
+            "bids":            bids,           # [(price, qty), ...] 5단
+            "asks":            asks,
+            "total_bid_qty":   int(float(out.get("total_bidp_rsqn", 0) or 0)),
+            "total_ask_qty":   int(float(out.get("total_askp_rsqn", 0) or 0)),
         }
     except (TypeError, ValueError):
         return None
@@ -214,10 +243,15 @@ def get_futures_balance(kis) -> Optional[dict]:
         })
 
     return {
-        "dnca_cash":     float(out2.get("dnca_cash", 0) or 0),
-        "nass_amt":      float(out2.get("nass_amt", 0) or 0),
-        "ord_psbl_cash": float(out2.get("ord_psbl_cash", 0) or 0),
-        "positions":     positions,
+        "dnca_cash":       float(out2.get("dnca_cash", 0) or 0),
+        "prsm_dpast_amt":  float(out2.get("prsm_dpast_amt", 0) or 0),   # 추정예탁자산
+        "ord_psbl_cash":   float(out2.get("ord_psbl_cash", 0) or 0),
+        "wdrw_psbl":       float(out2.get("wdrw_psbl_tot_amt", 0) or 0), # 출금가능
+        "evlu_amt_smtl":   float(out2.get("evlu_amt_smtl", 0) or 0),    # 포지션 평가금합계
+        "pchs_amt_smtl":   float(out2.get("pchs_amt_smtl", 0) or 0),    # 매입금액합계
+        "evlu_pfls_smtl":  float(out2.get("evlu_pfls_amt_smtl", 0) or 0),
+        "mgna_tota":       float(out2.get("mgna_tota", 0) or 0),         # 증거금총액
+        "positions":       positions,
     }
 
 

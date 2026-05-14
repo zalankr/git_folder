@@ -5,7 +5,7 @@
     "_comment_1": "── 현물평가금 계산 비중 (KRQT 100% + KRTR 90%) ──",
     "spot_basis": {
       "krqt_weight": 1.00,
-      "krtr_weight": 0.90
+      "krtr_weight": 0.80
     },
 
     "_comment_2": "── 전략 ON/OFF (월말일 자동매매 시 로드) ──",
