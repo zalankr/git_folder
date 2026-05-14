@@ -1,0 +1,12 @@
+{
+  "_doc": "월말 시장 데이터 누적 저장. KRFT_data.py가 매월말 자동 추가. PBR은 KIS시점 환산값.",
+  "data": {
+  },
+  "positions": {
+    "boost":  {"stage": 0, "entry_month": null, "expire_month": null, "ratio": 0.0},
+    "hedge1": {"active": false, "entry_month": null, "signal_end_month": null, "exit_month": null, "ratio": 0.0},
+    "hedge2": {"active": false, "entry_month": null, "expire_month": null, "ratio": 0.0}
+  },
+  "signals": {
+  }
+}
