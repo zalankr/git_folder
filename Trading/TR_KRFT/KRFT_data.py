@@ -87,8 +87,8 @@ def get_kosdaq(kis) -> Optional[float]:
 
 
 def get_vkospi(kis) -> Optional[float]:
-    # VKOSPI 코드 = '0050' (KIS 국내업종 표준)
-    return get_index_value(kis, "U", "0050")
+    # VKOSPI 코드 = (U, '0503') — KIS 실측 확인 (MTS 코드와 일치, 현재값 69.13 검증됨)
+    return get_index_value(kis, "U", "0503")
 
 
 # ------------------------------------------------------------------
@@ -239,3 +239,97 @@ def update_monthly_data(kis, today: date,
         "kospi_pbr":  kospi_pbr,
         "messages":   messages,
     }
+
+
+# ==================================================================
+#  Daily PBR 컨텍스트 (Hedge3 daily 모드용)
+# ==================================================================
+def get_daily_market_context(kis,
+                              pbr_override: Optional[float] = None) -> dict:
+    """
+    Hedge3 daily 모드에서 15:25 시점에 호출.
+    당일 KOSPI/KOSDAQ/VKOSPI 실시간 + 전일 PBR 환산.
+
+    Returns:
+      {
+        "ok":           bool,
+        "kospi":        float,
+        "kosdaq":       float,
+        "vkospi":       float,
+        "kospi_pbr":    float,   # 전일 PBR을 현재 KOSPI로 환산
+        "krx_basedate": str,     # "YYYY-MM-DD" 환산 원본 KRX 기준일
+        "messages":     [...]
+      }
+    """
+    messages = []
+
+    kospi = get_kospi(kis)
+    if kospi is None or kospi <= 0:
+        return {"ok": False, "messages": ["KIS KOSPI 조회 실패"]}
+    time.sleep(0.15)
+
+    kosdaq = get_kosdaq(kis)
+    if kosdaq is None or kosdaq <= 0:
+        return {"ok": False, "messages": ["KIS KOSDAQ 조회 실패"]}
+    time.sleep(0.15)
+
+    vkospi = get_vkospi(kis)
+    if vkospi is None or vkospi <= 0:
+        vkospi = 0.0
+        messages.append("VKOSPI 조회 실패 (0 처리)")
+
+    # PBR
+    if pbr_override is not None:
+        kospi_pbr = float(pbr_override)
+        krx_basedate = "manual"
+        messages.append(f"PBR override 사용: {kospi_pbr}")
+    else:
+        krx = load_krx_pbr_cache()
+        if not krx:
+            return {"ok": False,
+                    "messages": [f"KRX PBR 캐시 없음: {KOSPI_PBR_CACHE}"]}
+        kospi_pbr = adjust_pbr_to_kis_time(
+            krx_pbr=float(krx["pbr"]),
+            krx_kospi=float(krx["kospi_close"]),
+            kis_kospi=kospi,
+        )
+        kospi_pbr = round(kospi_pbr, 4)
+        krx_basedate = krx["date"]
+        messages.append(
+            f"PBR 환산: KRX {krx['pbr']}@{krx['kospi_close']} "
+            f"→ KOSPI {kospi:.2f} → {kospi_pbr}"
+        )
+
+    return {
+        "ok":            True,
+        "kospi":         round(float(kospi), 2),
+        "kosdaq":        round(float(kosdaq), 2),
+        "vkospi":        round(float(vkospi), 2),
+        "kospi_pbr":     kospi_pbr,
+        "krx_basedate":  krx_basedate,
+        "messages":      messages,
+    }
+
+
+# ==================================================================
+#  Daily PBR snapshot (KRFT_result.json 기록용)
+# ==================================================================
+def append_daily_pbr_to_result(result: dict, today: date,
+                                pbr: float, kospi: float) -> None:
+    """
+    KRFT_result.json의 daily_pbr 리스트에 오늘 PBR을 기록.
+    매일 일별 매매 후 호출됨. 최근 90일만 보관.
+    """
+    daily = result.setdefault("daily_pbr", [])
+    iso = today.isoformat()
+    # 같은 날 중복 방지
+    daily = [d for d in daily if d.get("date") != iso]
+    daily.append({
+        "date":   iso,
+        "pbr":    round(float(pbr), 4),
+        "kospi":  round(float(kospi), 2),
+    })
+    # 최근 90일만 보관
+    daily.sort(key=lambda x: x["date"])
+    result["daily_pbr"] = daily[-90:]
+

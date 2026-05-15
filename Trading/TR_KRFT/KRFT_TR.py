@@ -42,6 +42,57 @@ import KRFT_data as DATA
 import KRFT_signal as SIG
 
 # ------------------------------------------------------------------
+# DRY-RUN MODE (환경변수로 제어)
+# ------------------------------------------------------------------
+# KRFT_DRY_RUN=1 또는 KRFT_DRY_RUN=true 면 실제 주문 차단,
+# 시그널 계산/잔고 조회/시간 대기까지는 정상 동작
+DRY_RUN = os.getenv("KRFT_DRY_RUN", "0").lower() in ("1", "true", "yes")
+
+if DRY_RUN:
+    # ORDER 의 변경 함수만 mock 로 교체. 조회 함수는 그대로 사용.
+    _real_order_futures   = ORDER.order_futures
+    _real_cancel_order    = ORDER.cancel_order
+    _real_cancel_all      = ORDER.cancel_all_unfilled
+
+    def _dry_order_futures(kis, shtn_code, qty, price, side, cls,
+                            market_order=False):
+        print(f"  [DRY-RUN] order_futures({shtn_code}, qty={qty}, price={price}, "
+              f"side={side}, cls={cls}, mkt={market_order})")
+        return {"ok": True, "order_no": f"DRY-{shtn_code}-{int(time.time()*1000)%100000}",
+                "org_orgno": "DRYORGN", "msg": "dry_run"}
+
+    def _dry_cancel_order(kis, org_orgno, order_no, qty=0):
+        print(f"  [DRY-RUN] cancel_order({order_no}, qty={qty})")
+        return {"ok": True, "msg": "dry_run"}
+
+    def _dry_cancel_all(kis, log_fn=print):
+        print(f"  [DRY-RUN] cancel_all_unfilled")
+        return 0
+
+    ORDER.order_futures    = _dry_order_futures
+    ORDER.cancel_order     = _dry_cancel_order
+    ORDER.cancel_all_unfilled = _dry_cancel_all
+
+    # 카카오는 완전 차단 (토큰 갱신까지도 막음)
+    _real_send_tele = TA.send_tele
+    def _dry_send_tele(msg):
+        print(f"\n  ========== [DRY-RUN TELEGRAM] ==========")
+        print(msg)
+        print(f"  ========== [END TELEGRAM] ==========\n")
+    TA.send_tele = _dry_send_tele
+
+    # KRFT_kakao 모듈 미리 mock 주입 (이후 import 시 실제 모듈 대신 사용됨)
+    import types as _types
+    _kakao_mock = _types.ModuleType("KRFT_kakao")
+    def _dry_send_kakao(msg):
+        print(f"  [DRY-RUN kakao] {msg[:200]}{'...' if len(msg)>200 else ''}")
+        return True
+    _kakao_mock.send_kakao_to_self = _dry_send_kakao
+    sys.modules["KRFT_kakao"] = _kakao_mock
+
+    print("⚠️  KRFT_DRY_RUN=1 — 주문/카카오/텔레그램은 실제로 발사되지 않습니다.")
+
+# ------------------------------------------------------------------
 # 경로 / 상수
 # ------------------------------------------------------------------
 TR_DIR              = "/var/autobot/TR_KRFT"
@@ -170,67 +221,105 @@ def resolve_hedge_conflict(signals: dict, positions: dict) -> dict:
 
 
 # ==================================================================
-#  Hedge3 신호 산출 (KRFT_signal.py 외부에서 별도 처리)
+#  Hedge3 신호 산출 — daily 모드
 # ==================================================================
-def compute_hedge3_signal(monthly_data: dict, positions: dict,
-                          current_ym: str) -> dict:
+def compute_hedge3_daily_signal(pbr: float, positions: dict) -> dict:
     """
-    Hedge3 자체 신호:
-      - 진입: PBR ≥ 2.5 → 30%, PBR ≥ 2.8 → 50%
-      - 청산: PBR ≤ 1.66 월말  (또는 Hedge1 발동으로 흡수)
-    """
-    rec = monthly_data.get(current_ym) or {}
-    pbr = rec.get("kospi_pbr")
-    if pbr is None:
-        return {"action": "none", "reason": "PBR 데이터 없음"}
+    Hedge3 daily 신호 (요구사항 변경 후 신 버전):
+      - 진입: PBR ≥ 2.5 즉시 30%, PBR ≥ 2.8 즉시 50%
+      - 청산: 진입 후 갱신한 peak_pbr 의 2/3 이하로 떨어지면 즉시 (peak는 일별 갱신)
+      - 흡수: Hedge1 진입 시 별도 처리 (run_signal_entry에서)
 
+    Args:
+      pbr:        오늘(또는 15:25 시점) KIS 환산 PBR
+      positions:  result["positions"] (hedge3 현재 상태)
+
+    Returns:
+      {
+        "action":   "open"|"scale_up"|"hold"|"close"|"none",
+        "ratio":    float,           # 목표 비중 (close 시 0)
+        "active":   bool,            # 목표 상태
+        "peak_pbr": float,           # 갱신할 peak
+        "reason":   str,
+      }
+    """
     pos = positions.get("hedge3", {}) or {}
     active = bool(pos.get("active", False))
     cur_ratio = float(pos.get("ratio", 0.0) or 0.0)
+    cur_peak = float(pos.get("peak_pbr", 0.0) or 0.0)
+    # 새 peak = max(기존 peak, 오늘 pbr)
+    new_peak = max(cur_peak, pbr) if active or pbr >= 2.5 else cur_peak
 
-    # 청산 조건 (최우선)
-    if active and pbr <= 1.66:
+    # 1) 청산 조건 (active 일 때만)
+    if active and new_peak > 0 and pbr <= new_peak * (2.0 / 3.0):
         return {
-            "action": "close",
-            "ratio":  0.0,
-            "active": False,
-            "reason": f"Hedge3 청산: PBR {pbr:.3f} ≤ 1.66",
+            "action":   "close",
+            "ratio":    0.0,
+            "active":   False,
+            "peak_pbr": 0.0,
+            "reason":   f"Hedge3 청산: PBR {pbr:.4f} ≤ peak {new_peak:.4f}×2/3 "
+                        f"= {new_peak*2/3:.4f}",
         }
 
-    # 진입/조정 대상 비중
-    target_ratio = 0.0
+    # 2) 목표 비중 결정 (단조 비감소)
     if pbr >= 2.8:
         target_ratio = 0.5
     elif pbr >= 2.5:
         target_ratio = 0.3
+    else:
+        target_ratio = 0.0
 
+    # 3) 진입 / 증액 / 유지 / 미발동
     if not active and target_ratio > 0:
         return {
-            "action": "open",
-            "ratio":  target_ratio,
-            "active": True,
-            "reason": f"Hedge3 진입: PBR {pbr:.3f} → {target_ratio*100:.0f}%",
+            "action":   "open",
+            "ratio":    target_ratio,
+            "active":   True,
+            "peak_pbr": pbr,
+            "reason":   f"Hedge3 진입: PBR {pbr:.4f} → {target_ratio*100:.0f}%",
         }
 
     if active and target_ratio > cur_ratio:
         return {
-            "action": "scale_up",
-            "ratio":  target_ratio,
-            "active": True,
-            "reason": f"Hedge3 증액: PBR {pbr:.3f}, "
-                      f"{cur_ratio*100:.0f}% → {target_ratio*100:.0f}%",
+            "action":   "scale_up",
+            "ratio":    target_ratio,
+            "active":   True,
+            "peak_pbr": new_peak,
+            "reason":   f"Hedge3 증액: PBR {pbr:.4f}, "
+                        f"{cur_ratio*100:.0f}% → {target_ratio*100:.0f}%",
         }
 
     if active:
         return {
-            "action": "hold",
-            "ratio":  cur_ratio,
-            "active": True,
-            "reason": f"Hedge3 유지 (PBR {pbr:.3f}, 비중 {cur_ratio*100:.0f}%)",
+            "action":   "hold",
+            "ratio":    cur_ratio,
+            "active":   True,
+            "peak_pbr": new_peak,
+            "reason":   f"Hedge3 유지 (PBR {pbr:.4f}, peak {new_peak:.4f}, "
+                        f"비중 {cur_ratio*100:.0f}%)",
         }
 
-    return {"action": "none", "ratio": 0.0, "active": False,
-            "reason": f"Hedge3 미발동 (PBR {pbr:.3f} < 2.5)"}
+    return {
+        "action":   "none",
+        "ratio":    0.0,
+        "active":   False,
+        "peak_pbr": cur_peak,
+        "reason":   f"Hedge3 미발동 (PBR {pbr:.4f} < 2.5)",
+    }
+
+
+# ──────────────────────────────────────────────────────────
+# 기존 월말 진입 시 사용되는 헬퍼 (signal 결과 dict 형식 변환)
+# ──────────────────────────────────────────────────────────
+def compute_hedge3_signal(monthly_data: dict, positions: dict,
+                          current_ym: str) -> dict:
+    """월말 진입 흐름에서 사용하는 wrapper (KRFT_TR.run_signal_entry 호출)"""
+    rec = monthly_data.get(current_ym) or {}
+    pbr = rec.get("kospi_pbr")
+    if pbr is None:
+        return {"action": "none", "reason": "PBR 데이터 없음",
+                "ratio": 0.0, "active": False, "peak_pbr": 0.0}
+    return compute_hedge3_daily_signal(float(pbr), positions)
 
 
 # ==================================================================
@@ -518,7 +607,10 @@ def _kst_now() -> datetime:
 
 
 def _sleep_until(hhmmss: str) -> None:
-    """KST 기준 목표 시각까지 sleep"""
+    """KST 기준 목표 시각까지 sleep (DRY_RUN 일 때는 즉시 통과)"""
+    if DRY_RUN:
+        print(f"  [DRY-RUN] _sleep_until({hhmmss}) → skip")
+        return
     now = _kst_now()
     h, m, s = [int(x) for x in hhmmss.split(":")]
     tgt = now.replace(hour=h, minute=m, second=s, microsecond=0)
@@ -532,6 +624,7 @@ def _sleep_until(hhmmss: str) -> None:
 def _place_orders_with_first_quote(kis, actions: list, log: list) -> list:
     """
     각 액션마다 1호가 지정가로 주문.
+    1호가가 0이거나 비어있으면 2호가, 3호가까지 fallback.
     Returns: 주문 결과 리스트 [{"action": a, "order_no": str, "org_orgno": str, "price": float}]
     """
     placed = []
@@ -542,10 +635,28 @@ def _place_orders_with_first_quote(kis, actions: list, log: list) -> list:
         if not ob:
             log.append(f"  [SKIP] {a['symbol']} 호가조회실패")
             continue
-        # BUY → 매도1호가(ask1) / SELL → 매수1호가(bid1) 에 즉시체결 시도
+        # BUY → 매도호가(ask), SELL → 매수호가(bid)
         price = ob["ask1"] if a["side"] == "BUY" else ob["bid1"]
+
+        # 1호가가 0이면 5단 호가 조회 후 fallback
         if price <= 0:
-            log.append(f"  [SKIP] {a['symbol']} 1호가 0")
+            ob5 = ORDER.get_futures_orderbook_full(kis, a["symbol"])
+            if ob5:
+                target = ob5["asks"] if a["side"] == "BUY" else ob5["bids"]
+                for p, q in target:
+                    if p > 0:
+                        price = p
+                        log.append(f"  [QUOTE-FB] {a['symbol']} 1호가 0 → 다음 호가 {p}")
+                        break
+            # 그래도 0이면 현재가
+            if price <= 0:
+                cur = ORDER.get_futures_price(kis, a["symbol"])
+                if cur and cur["price"] > 0:
+                    price = cur["price"]
+                    log.append(f"  [QUOTE-FB] {a['symbol']} 호가전체 0 → 현재가 {price}")
+
+        if price <= 0:
+            log.append(f"  [SKIP] {a['symbol']} 가격 0 (호가/현재가 모두 부재)")
             continue
 
         side = ORDER.SIDE_BUY if a["side"] == "BUY" else ORDER.SIDE_SELL
@@ -902,17 +1013,28 @@ def run_signal_entry() -> None:
 
     # Hedge3 별도 갱신
     h3 = signals["hedge3"]
+    today_iso = today.isoformat()
     if h3["action"] in ("open", "scale_up"):
         result["positions"]["hedge3"] = {
-            "active": True, "entry_month": today.strftime("%Y-%m"),
-            "ratio": h3["ratio"],
-            "_note": "Hedge3 종료조건: PBR<=1.66 월말 OR Hedge1 발동 시 자동 흡수",
+            "active":     True,
+            "entry_date": today_iso if h3["action"] == "open"
+                          else result["positions"]["hedge3"].get("entry_date", today_iso),
+            "ratio":      h3["ratio"],
+            "peak_pbr":   h3.get("peak_pbr", data_res["kospi_pbr"]),
+            "entry_pbr":  result["positions"]["hedge3"].get("entry_pbr", data_res["kospi_pbr"])
+                          if h3["action"] == "scale_up" else data_res["kospi_pbr"],
+            "_note":      "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수",
         }
     elif h3["action"] == "close":
         result["positions"]["hedge3"] = {
-            "active": False, "entry_month": None, "ratio": 0.0,
-            "_note": "Hedge3 종료조건: PBR<=1.66 월말 OR Hedge1 발동 시 자동 흡수",
+            "active": False, "entry_date": None, "ratio": 0.0,
+            "peak_pbr": 0.0, "entry_pbr": 0.0,
+            "_note": "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수",
         }
+    elif h3["action"] == "hold":
+        # peak 갱신만
+        result["positions"]["hedge3"]["peak_pbr"] = h3.get("peak_pbr",
+            result["positions"]["hedge3"].get("peak_pbr", 0))
 
     result["last_run"] = {
         "date":    today.isoformat(),
@@ -1032,6 +1154,364 @@ def run_rollover() -> None:
 
 
 # ==================================================================
+#  메인: Hedge3 daily 모드 (run_hedge3_daily)
+# ==================================================================
+def run_hedge3_daily() -> dict:
+    """
+    Hedge3 ON 상태에서 평일 15:25 ~ 15:34 동안 실행되는 일별 매매.
+
+    동작:
+      1) 15:25 데이터 수집 (KIS KOSPI/KOSDAQ/VKOSPI + KRX PBR 환산)
+      2) compute_hedge3_daily_signal() → action 결정
+      3) action 별 처리:
+         - open/scale_up: 신규 매도 진입 (현물의 30% 또는 50%)
+         - close: 보유 Hedge3 환매수 청산
+         - hold/none: 매매 없음, peak_pbr만 갱신
+      4) daily_pbr 기록
+      5) snapshots.prev_day 갱신
+
+    Returns:
+      {
+        "ok": bool,
+        "executed": bool,           # 실제 매매가 발생했는지
+        "action": str,
+        "pbr": float,
+        "pnl": float,               # 현재 평가손익
+        "context": dict,            # KRFT_notify가 사용할 컨텍스트
+      }
+    """
+    log = []
+    today = _kst_now().date()
+    log.append(f"=== Hedge3 daily: {today} ===")
+
+    # 1) KIS 초기화
+    try:
+        kis = KIS_API(FUT_KEY_FILE, FUT_TOKEN_FILE, FUT_CANO, FUT_ACNT_PRDT_CD)
+    except Exception as e:
+        return {"ok": False, "executed": False,
+                "error": f"KIS init: {e}"}
+
+    # 2) result.json 로드
+    result = load_result()
+    cfg = result.get("manual_config", {})
+
+    # 3) 15:25 시점 데이터 수집
+    ctx = DATA.get_daily_market_context(
+        kis,
+        pbr_override=cfg.get("pbr_override"),
+    )
+    if not ctx["ok"]:
+        log.extend("  " + m for m in ctx["messages"])
+        return {"ok": False, "executed": False,
+                "error": "data context fail", "log": log}
+
+    pbr   = ctx["kospi_pbr"]
+    kospi = ctx["kospi"]
+    log.append(f"  PBR={pbr:.4f} KOSPI={kospi:.2f} KOSDAQ={ctx['kosdaq']:.2f} "
+               f"VKOSPI={ctx['vkospi']:.2f}")
+
+    # 4) PBR 일별 기록 (active 시에만 — 미발동 상태일 땐 노이즈)
+    if result["positions"]["hedge3"].get("active") or pbr >= 2.5:
+        DATA.append_daily_pbr_to_result(result, today, pbr, kospi)
+
+    # 5) 시그널 계산
+    sig = compute_hedge3_daily_signal(pbr, result["positions"])
+    log.append(f"  [SIG] action={sig['action']} | {sig['reason']}")
+
+    # 6) 보유 잔고 조회 (PNL/포지션)
+    bal = ORDER.get_futures_balance(kis)
+    if not bal:
+        log.append("  [WARN] 잔고 조회 실패")
+
+    # 7) action 분기
+    executed = False
+    orders_placed = []
+
+    symbols = SYM.get_current_symbols(today)
+
+    if sig["action"] in ("open", "scale_up", "close"):
+        spot = calc_spot_eval_krw(result)
+        spot_krw = spot["krw"]
+        log.append(f"  현물평가금: {spot_krw:,.0f}원")
+        if spot_krw <= 0:
+            log.append("  [ERR] 현물평가금 0 — 매매 보류")
+            return {"ok": False, "executed": False, "log": log,
+                    "context": ctx}
+
+        # 현재가 조회
+        cur_k200 = ORDER.get_futures_price(kis, symbols["k200_regular"])
+        cur_kq   = ORDER.get_futures_price(kis, symbols["kq150"])
+        if not cur_k200 or not cur_kq:
+            log.append("  [ERR] 선물가격 조회 실패")
+            return {"ok": False, "executed": False, "log": log,
+                    "context": ctx}
+        prices = {"k200": cur_k200["price"], "kq150": cur_kq["price"]}
+
+        # 보유 동기화
+        if bal:
+            _sync_holdings_from_balance(result, bal, symbols)
+        current = _signed_current_from_holdings(result)
+
+        # 목표 포지션: Hedge3 단독 계산 (다른 전략은 daily에서 건드리지 않음)
+        # target = current + (Hedge3 의도 변화)
+        h3_pos = result["positions"]["hedge3"]
+        cur_h3_ratio = float(h3_pos.get("ratio", 0))
+        new_h3_ratio = sig["ratio"]
+        delta_ratio = new_h3_ratio - cur_h3_ratio
+        log.append(f"  Hedge3 비중: {cur_h3_ratio:.2f} → {new_h3_ratio:.2f} "
+                   f"(Δ {delta_ratio:+.2f})")
+
+        if abs(delta_ratio) >= 0.0001:
+            # K200측 (50%) + KQ150측 (50%) 분배
+            delta_notional = spot_krw * delta_ratio  # 양수면 매도 증가(+short), 음수면 감소
+            k200_delta = delta_notional / 2.0
+            kq_delta   = delta_notional / 2.0
+
+            # 매도 = - 부호, 매수 = + 부호. delta>0 이면 추가 매도 필요 → split 입력은 -k200_delta
+            r, m = split_k200_qty(-k200_delta, prices["k200"])
+            kq_unit = prices["kq150"] * KQ150_MULT
+            kq_qty = -int(round(kq_delta / kq_unit)) if kq_unit > 0 else 0
+
+            target = {
+                "k200_regular": current["k200_regular"] + r,
+                "k200_mini":    current["k200_mini"]    + m,
+                "kq150":        current["kq150"]        + kq_qty,
+            }
+            log.append(f"  목표 보유: {target}")
+            actions = diff_positions(current, target, symbols)
+            for a in actions:
+                log.append(f"    [ACT] {a['kind']:5s} {a['side']} "
+                           f"{a['symbol']} {a['qty']}계약")
+
+            if actions:
+                # 증거금 체크
+                margin = check_margin(kis, actions, prices)
+                if not margin["ok"]:
+                    shortage = margin["shortage_krw"]
+                    msg = (f"⚠️ Hedge3 daily 증거금 {shortage:,.0f}원 부족 "
+                           f"(현물의 {shortage/spot_krw*100:.1f}%) 및 내일 다시 매매")
+                    log.append(msg)
+                    if cfg.get("kakao_alert_enabled", True):
+                        try:
+                            import KRFT_kakao
+                            KRFT_kakao.send_kakao_to_self(
+                                "[KRFT Hedge3 증거금 부족]\n" + msg)
+                        except Exception as e:
+                            log.append(f"  카카오 실패: {e}")
+                    TA.send_tele("[KRFT Hedge3]\n" + "\n".join(log))
+                    return {"ok": False, "executed": False,
+                            "error": f"margin short {int(shortage)}",
+                            "log": log, "context": ctx}
+
+                # 라운드별 실행 (월말 진입과 동일 스케줄)
+                executed = _execute_daily_orders(kis, actions, log)
+                orders_placed = actions
+
+    # 8) 포지션 상태 업데이트
+    today_iso = today.isoformat()
+    if sig["action"] == "open":
+        result["positions"]["hedge3"] = {
+            "active":     True,
+            "entry_date": today_iso,
+            "ratio":      sig["ratio"],
+            "peak_pbr":   sig["peak_pbr"],
+            "entry_pbr":  pbr,
+            "_note":      "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수",
+        }
+    elif sig["action"] == "scale_up":
+        result["positions"]["hedge3"]["ratio"]    = sig["ratio"]
+        result["positions"]["hedge3"]["peak_pbr"] = sig["peak_pbr"]
+    elif sig["action"] == "close":
+        result["positions"]["hedge3"] = {
+            "active": False, "entry_date": None, "ratio": 0.0,
+            "peak_pbr": 0.0, "entry_pbr": 0.0,
+            "_note": "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수",
+        }
+    elif sig["action"] == "hold":
+        result["positions"]["hedge3"]["peak_pbr"] = sig["peak_pbr"]
+
+    # 9) 잔고 재조회 + 동기화 + PNL
+    if executed:
+        time.sleep(3)
+        bal2 = ORDER.get_futures_balance(kis)
+        if bal2:
+            _sync_holdings_from_balance(result, bal2, symbols)
+            bal = bal2
+
+    pnl = float(bal["evlu_pfls_smtl"]) if bal else 0.0
+    eval_amt = float(bal["evlu_amt_smtl"]) if bal else 0.0
+
+    # 10) snapshots.prev_day 갱신은 알림 송신 후 (scheduler 가 마지막에 처리)
+    # 여기서는 비교용으로 result["snapshots"]["prev_day"] 를 변경하지 않음.
+    # _pending_prev_day_update 에 새 값만 저장.
+    result["_pending_prev_day_update"] = {
+        "date":      today_iso,
+        "evlu_pfls": pnl,
+        "evlu_amt":  eval_amt,
+    }
+
+    # 11) trade_history
+    if executed:
+        result["trade_history"].append({
+            "date":     today_iso,
+            "type":     "hedge3_daily",
+            "action":   sig["action"],
+            "pbr":      pbr,
+            "actions":  orders_placed,
+        })
+        result["trade_history"] = result["trade_history"][-200:]
+
+    # 12) last_run
+    result["last_run"] = {
+        "date":    today_iso,
+        "type":    "hedge3_daily",
+        "signals": {"hedge3": sig},
+        "orders":  [],
+        "status":  "executed" if executed else "no_trade",
+    }
+    save_result(result)
+
+    return {
+        "ok":       True,
+        "executed": executed,
+        "action":   sig["action"],
+        "pbr":      pbr,
+        "kospi":    kospi,
+        "kosdaq":   ctx["kosdaq"],
+        "vkospi":   ctx["vkospi"],
+        "pnl":      pnl,
+        "eval_amt": eval_amt,
+        "log":      log,
+        "context":  ctx,
+        "sig":      sig,
+    }
+
+
+def _execute_daily_orders(kis, actions: list, log: list) -> bool:
+    """
+    Hedge3 daily 매매 — 월말 진입과 동일한 시간표:
+      R1 15:30 첫호가 / R2~4 호가갱신 /
+      R5 15:32 청산미체결 시장가 /
+      R6~8 신규호가갱신 /
+      R9 15:34 신규미체결 시장가.
+
+    Returns: 매매 발생 여부
+    """
+    close_actions = [a for a in actions if a["kind"] == "close"]
+    open_actions  = [a for a in actions if a["kind"] == "open"]
+    log.append(f"  === 라운드 (청산 {len(close_actions)} + "
+               f"신규 {len(open_actions)}) ===")
+
+    # R1
+    _sleep_until("15:30:00")
+    log.append(f"  [{_kst_now().strftime('%H:%M:%S')}] R1 1호가 발주")
+    if close_actions:
+        _place_orders_with_first_quote(kis, close_actions, log)
+    if open_actions:
+        _place_orders_with_first_quote(kis, open_actions, log)
+
+    # R2~R4
+    for hhmmss in ("15:30:30", "15:31:00", "15:31:30"):
+        _sleep_until(hhmmss)
+        _refresh_unfilled_to_first_quote(kis, log)
+
+    # R5: 청산 시장가
+    _sleep_until("15:32:00")
+    close_keys = {(a["symbol"], a["side"]) for a in close_actions}
+    for u in ORDER.get_unfilled(kis):
+        u_side_str = "BUY" if u["side"] == ORDER.SIDE_BUY else "SELL"
+        if (u["symbol"], u_side_str) not in close_keys:
+            continue
+        c = ORDER.cancel_order(kis, u["org_orgno"], u["order_no"], qty=0)
+        if c and c.get("ok"):
+            time.sleep(0.3)
+            ORDER.order_futures(kis, u["symbol"], u["rem_qty"], 0,
+                                side=u["side"], cls=ORDER.CLS_CLOSE,
+                                market_order=True)
+
+    # R6~R8
+    for hhmmss in ("15:32:30", "15:33:00", "15:33:30"):
+        _sleep_until(hhmmss)
+        _refresh_unfilled_to_first_quote(kis, log)
+
+    # R9: 신규 시장가
+    _sleep_until("15:34:00")
+    open_keys = {(a["symbol"], a["side"]) for a in open_actions}
+    for u in ORDER.get_unfilled(kis):
+        u_side_str = "BUY" if u["side"] == ORDER.SIDE_BUY else "SELL"
+        if (u["symbol"], u_side_str) not in open_keys:
+            continue
+        c = ORDER.cancel_order(kis, u["org_orgno"], u["order_no"], qty=0)
+        if c and c.get("ok"):
+            time.sleep(0.3)
+            ORDER.order_futures(kis, u["symbol"], u["rem_qty"], 0,
+                                side=u["side"], cls=ORDER.CLS_OPEN,
+                                market_order=True)
+
+    return True
+
+
+# ==================================================================
+#  Daily 데이터 컨텍스트 조회 (매매 없이도 알림용 데이터만)
+# ==================================================================
+def get_daily_context_only() -> dict:
+    """
+    매매 없이 평일 알림 송신용으로 시장 데이터 + 보유 상태 조회.
+    Hedge3 OFF 인 평일에 호출 (월말/만기일 아닌 날).
+
+    Returns:
+      {
+        "ok": bool,
+        "kospi": float, "kosdaq": float, "pbr": float, "vkospi": float,
+        "pnl": float, "eval_amt": float,
+        "holdings": dict,
+        "enabled": dict,
+      }
+    """
+    try:
+        kis = KIS_API(FUT_KEY_FILE, FUT_TOKEN_FILE, FUT_CANO, FUT_ACNT_PRDT_CD)
+    except Exception:
+        return {"ok": False, "error": "KIS init"}
+
+    result = load_result()
+    cfg = result.get("manual_config", {})
+    today = _kst_now().date()
+
+    # 데이터
+    ctx = DATA.get_daily_market_context(
+        kis, pbr_override=cfg.get("pbr_override"))
+    if not ctx["ok"]:
+        return {"ok": False, "error": "data context"}
+
+    # 잔고
+    bal = ORDER.get_futures_balance(kis)
+    holdings = {}
+    pnl = 0.0
+    eval_amt = 0.0
+    if bal:
+        symbols = SYM.get_current_symbols(today)
+        _sync_holdings_from_balance(result, bal, symbols)
+        holdings = result["holdings"]
+        pnl = float(bal["evlu_pfls_smtl"])
+        eval_amt = float(bal["evlu_amt_smtl"])
+
+    return {
+        "ok":         True,
+        "today":      today.isoformat(),
+        "kospi":      ctx["kospi"],
+        "kosdaq":     ctx["kosdaq"],
+        "pbr":        ctx["kospi_pbr"],
+        "vkospi":     ctx["vkospi"],
+        "pnl":        pnl,
+        "eval_amt":   eval_amt,
+        "holdings":   holdings,
+        "positions":  result["positions"],
+        "enabled":    cfg.get("strategy_enabled", {}),
+        "snapshots":  result.get("snapshots", {}),
+    }
+
+
+# ==================================================================
 #  CLI
 # ==================================================================
 if __name__ == "__main__":
@@ -1040,6 +1520,43 @@ if __name__ == "__main__":
         run_signal_entry()
     elif mode == "rollover":
         run_rollover()
+    elif mode == "hedge3_daily":
+        result = run_hedge3_daily()
+        print(f"\nexecuted={result.get('executed')} action={result.get('action')}")
+        # log 전체 출력
+        for line in result.get("log", []):
+            print(line)
+        # 알림 빌드 시뮬레이션 (scheduler가 실제 송신)
+        try:
+            import json as _j
+            with open(RESULT_PATH, "r", encoding="utf-8") as f:
+                rj = _j.load(f)
+            import KRFT_notify as _NF
+            msg_ctx = {
+                "today":     result.get("log",[""])[0].split(": ")[-1].strip() if result.get("log") else "",
+                "kospi":     result.get("kospi", 0),
+                "kosdaq":    result.get("kosdaq", 0),
+                "pbr":       result.get("pbr", 0),
+                "vkospi":    result.get("vkospi", 0),
+                "pnl":       result.get("pnl", 0),
+                "eval_amt":  result.get("eval_amt", 0),
+                "enabled":   rj["manual_config"]["strategy_enabled"],
+                "positions": rj["positions"],
+                "holdings":  rj["holdings"],
+                "snapshots": rj.get("snapshots", {}),
+            }
+            if result.get("executed"):
+                msg = _NF.build_trade_end_message(
+                    msg_ctx["today"], "hedge3_daily", True, msg_ctx)
+            else:
+                msg = _NF.build_daily_message(msg_ctx, mode="hedge3_active")
+            TA.send_tele(msg)
+        except Exception as e:
+            print(f"  알림 빌드 실패: {e}")
+    elif mode == "daily_context":
+        ctx = get_daily_context_only()
+        import json as _j
+        print(_j.dumps(ctx, ensure_ascii=False, indent=2, default=str))
     else:
         print(f"Unknown mode: {mode}")
         sys.exit(2)

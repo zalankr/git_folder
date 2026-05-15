@@ -4,10 +4,10 @@ KRFT_symbol.py
 ==============
 선물 종목코드 (단축코드) 자동 산출. 캘린더 기반 (방식 C).
 
-종목코드 규칙:
+종목코드 규칙 (KIS 종목마스터 fo_idx_code_mts.mst 실측 확인):
   KOSPI200 정규:  A 01 YMM   (예: A01612 = 2026-12)
   KOSPI200 미니:  A 05 YMM   (예: A05612 = 2026-12)
-  KOSDAQ150:      A 41 YMM   (예: A41612 = 2026-12)
+  KOSDAQ150:      A 06 YMM   (예: A06612 = 2026-12)  ★ 41 아님 ★
 
 YMM 인코딩:
   Y = 연도 끝자리 1자 (2026 → 6)
@@ -83,7 +83,8 @@ def symbol_k200_mini(year: int, month: int) -> str:
 
 
 def symbol_kq150(year: int, month: int) -> str:
-    return _encode("41", year, month)
+    # KIS 종목마스터 실측: KOSDAQ150 선물 = A 06 YMM
+    return _encode("06", year, month)
 
 
 # ------------------------------------------------------------------

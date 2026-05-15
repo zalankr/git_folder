@@ -5,10 +5,10 @@
     "_comment_1": "── 현물평가금 계산 비중 (KRQT 100% + KRTR 90%) ──",
     "spot_basis": {
       "krqt_weight": 1.00,
-      "krtr_weight": 0.80
+      "krtr_weight": 0.90
     },
 
-    "_comment_2": "── 전략 ON/OFF (월말일 자동매매 시 로드) ──",
+    "_comment_2": "── 전략 ON/OFF (Hedge3가 ON이면 daily 모드) ──",
     "strategy_enabled": {
       "boost":  true,
       "hedge1": true,
@@ -17,12 +17,12 @@
     },
 
     "_comment_3": "── override (null=자동, 값 입력 시 자동값 무시) ──",
-    "spot_eval_override": null,
-    "pbr_override": null,
-    "vkospi_override": null,
+    "spot_eval_override":    null,
+    "pbr_override":          null,
+    "vkospi_override":       null,
 
-    "_comment_4": "── 카카오톡/텔레그램 알림 활성화 ──",
-    "kakao_alert_enabled": true,
+    "_comment_4": "── 알림 활성화 ──",
+    "kakao_alert_enabled":    true,
     "telegram_alert_enabled": true
   },
 
@@ -56,18 +56,22 @@
     },
     "hedge3": {
       "active":       false,
-      "entry_month":  null,
+      "entry_date":   null,
       "ratio":        0.0,
-      "_note":        "Hedge3 종료조건: PBR<=1.66 월말 OR Hedge1 발동 시 자동 흡수"
+      "peak_pbr":     0.0,
+      "entry_pbr":    0.0,
+      "_note":        "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수"
     }
   },
 
   "holdings": {
-    "_comment": "선물 보유 계약 (잔고 동기화 시점에 갱신). side: long=매수보유, short=매도보유",
+    "_comment": "선물 보유 계약. side: long=매수보유, short=매도보유",
     "K200_regular": {"symbol": null, "qty": 0, "side": null, "avg_price": 0},
     "K200_mini":    {"symbol": null, "qty": 0, "side": null, "avg_price": 0},
     "KQ150":        {"symbol": null, "qty": 0, "side": null, "avg_price": 0}
   },
+
+  "daily_pbr": [],
 
   "last_run": {
     "date":           null,
@@ -75,6 +79,20 @@
     "signals":        null,
     "orders":         [],
     "status":         null
+  },
+
+  "snapshots": {
+    "_comment": "전일/전월 평가금 스냅샷 (수익 변동 계산용)",
+    "prev_day": {
+      "date":         null,
+      "evlu_pfls":    0,
+      "evlu_amt":     0
+    },
+    "prev_month_end": {
+      "date":         null,
+      "evlu_pfls":    0,
+      "evlu_amt":     0
+    }
   },
 
   "trade_history": []
