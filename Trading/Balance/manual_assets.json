@@ -11,7 +11,7 @@
   "JPUSbond": {
     "_label": "Global시트 AX4 — ETC JPUSbond (도쿄거래소)",
     "market": "JP",
-    "excg": "TKSE",
+    "excg": "TSE",
     "deposit": {
       "JPY": 19657,
       "KRW": 32555

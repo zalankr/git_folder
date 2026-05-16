@@ -36,7 +36,7 @@ from google.oauth2.service_account import Credentials
 # ══════════════════════════════════════════════════
 
 # 서비스계정 키 경로 (사용자 확정 경로로 교체)
-GOOGLE_SA_KEY_PATH = "/var/autobot/gspread/service_account.json"
+GOOGLE_SA_KEY_PATH = "/var/autobot/KIS/google_service_account.json"
 
 # 대상 스프레드시트 ID (URL 의 /d/ 와 /edit 사이)
 SPREADSHEET_ID = "1_9kp7fv0_gZXpaUmMqLgpDC80poa7qkW3FjWbs_K03M"
@@ -77,8 +77,8 @@ CELL_MAP = {
     ("GBFT", None):                ("Global",      "BA4"),  # Hedge&Boost + Commodity 합산
     # ETC(JPUSbond) 는 수기 자산 → MANUAL_CELL_MAP
 
-    # ── Alternative 시트 ───────────────────────
-    ("Crypto", None):              ("Alternative", "P3"),
+    # ── ALTERNATIVE 시트 ───────────────────────
+    ("Crypto", None):              ("ALTERNATIVE", "P3"),
 
     # ── PENSION 시트 ───────────────────────────
     ("Pension", "연금저축-2"):     ("PENSION",     "S4"),
@@ -90,7 +90,7 @@ CELL_MAP = {
 # 수기 입력 자산 → 셀 매핑. key 는 manual_assets.json 의 최상위 key.
 MANUAL_CELL_MAP = {
     "JPUSbond":          ("Global",      "AX4"),
-    "Gold":              ("Alternative", "M3"),
+    "Gold":              ("ALTERNATIVE", "M3"),
     "Pension_퇴직연금":  ("PENSION",     "J4"),
     "Pension_연금저축-1":("PENSION",     "P4"),
 }
@@ -192,29 +192,43 @@ def _kis_kr_price(kis_headers_fn, base_url: str, cano: str, code: str) -> float:
 
 
 def _kis_jp_price(kis_headers_fn, base_url: str, cano: str,
-                  code: str, excg: str = "TKSE") -> tuple:
+                  code: str, excg: str = "TSE") -> tuple:
     """
-    일본주식 현재가 + 환율. (HHDFS00000300)
-    Returns: (price_jpy, krw_per_jpy)
+    일본주식 현재가 조회. (HHDFS00000300)
+    EXCD 후보를 순회 — 현재가 API의 도쿄 코드는 'TSE'.
+    Returns: (price_jpy, 0.0)   ※ 환율은 _get_fx_rate 로 별도 조회
     """
     url = f"{base_url}/uapi/overseas-price/v1/quotations/price"
     h = kis_headers_fn(cano, "HHDFS00000300")
-    params = {"AUTH": "", "EXCD": excg, "SYMB": code}
-    price = 0.0
-    try:
-        r = requests.get(url, headers=h, params=params, timeout=10)
-        r.raise_for_status()
-        d = r.json()
-        if d.get("rt_cd") == "0":
-            out = d.get("output", {})
-            for f in ("last", "base", "open"):
-                v = str(out.get(f, "")).strip()
-                if v and v != "0":
-                    price = float(v)
-                    break
-    except Exception:
-        pass
-    return price, 0.0
+
+    # excg(설정값)를 우선 시도, 이후 알려진 도쿄 코드 후보 순회
+    candidates = []
+    for c in (excg, "TSE", "TKS"):
+        if c and c not in candidates:
+            candidates.append(c)
+
+    for exc in candidates:
+        params = {"AUTH": "", "EXCD": exc, "SYMB": code}
+        try:
+            r = requests.get(url, headers=h, params=params, timeout=10)
+            r.raise_for_status()
+            d = r.json()
+            if d.get("rt_cd") == "0":
+                out = d.get("output", {})
+                for f in ("last", "base", "open"):
+                    v = str(out.get(f, "")).strip()
+                    if v and v not in ("", "0", "0.0"):
+                        try:
+                            price = float(v)
+                            if price > 0:
+                                return price, 0.0
+                        except ValueError:
+                            continue
+        except Exception:
+            pass
+        time.sleep(0.1)
+
+    return 0.0, 0.0
 
 
 def _get_fx_rate(kis_headers_fn, base_url: str, cano: str,
@@ -242,6 +256,12 @@ def _get_fx_rate(kis_headers_fn, base_url: str, cano: str,
                 if o.get("crcy_cd") == currency:
                     rt = float(o.get("frst_bltn_exrt", 0) or 0)
                     if rt > 0:
+                        # JPY 등은 KIS가 100단위로 고시 → 1단위 환율로 정규화.
+                        # 1엔당 환율이 100원을 넘을 일은 없으므로 크기로 판정:
+                        #   rt > 100  → 100엔 기준 고시값 → /100
+                        #   rt <= 100 → 이미 1엔 기준 → 그대로
+                        if currency == "JPY" and rt > 100:
+                            rt = rt / 100.0
                         return rt
     except Exception:
         pass
@@ -253,7 +273,7 @@ def calc_manual_asset_krw(asset_key: str, asset: dict,
     """
     수기 자산 1건의 총 원화 평가금 계산.
     asset: manual_assets.json 의 한 항목 (deposit + holdings).
-    Returns: {"total_krw": float, "detail": [...], "error": ""}
+    Returns: {"total_krw", "stock_krw", "cash_krw", "detail", "warnings", "error"}
     """
     market = asset.get("market", "KR")
     # 평가금 계산에 쓸 임시 계좌 (토큰 발급용) — 국내조회는 어떤 계좌든 무관
@@ -261,12 +281,22 @@ def calc_manual_asset_krw(asset_key: str, asset: dict,
 
     stock_krw = 0.0
     detail = []
+    warnings = []
+
+    # JP 자산: 엔화 환율 1회만 조회해 재사용
+    fx_jpy = 0.0
+    if market == "JP":
+        fx_jpy = _get_fx_rate(kis_headers_fn, base_url,
+                              quote_cano, "01", "JPY")
+        if fx_jpy <= 0:
+            warnings.append(f"{asset_key}: JPY 환율 조회 실패")
 
     for h in asset.get("holdings", []):
         code = str(h.get("code", "")).strip()
         qty = float(h.get("qty", 0) or 0)
+        name = h.get("name", "")
         if qty <= 0 or not code:
-            detail.append({"code": code, "name": h.get("name", ""),
+            detail.append({"code": code, "name": name,
                            "qty": qty, "eval_krw": 0.0})
             continue
 
@@ -275,19 +305,21 @@ def calc_manual_asset_krw(asset_key: str, asset: dict,
             # 코드가 ETF가 아니면 0 반환 → 사용자가 deposit에 평가금 합산하거나
             # holdings code 를 KRX 금현물 종목코드로 지정.
             price = _kis_kr_price(kis_headers_fn, base_url, quote_cano, code)
+            if price <= 0:
+                warnings.append(f"{asset_key}: {code}({name}) 현재가 조회 실패")
             eval_krw = price * qty
         elif market == "JP":
-            excg = asset.get("excg", "TKSE")
+            excg = asset.get("excg", "TSE")
             price_jpy, _ = _kis_jp_price(kis_headers_fn, base_url,
                                          quote_cano, code, excg)
-            fx = _get_fx_rate(kis_headers_fn, base_url,
-                              quote_cano, "01", "JPY")
-            eval_krw = price_jpy * qty * fx
+            if price_jpy <= 0:
+                warnings.append(f"{asset_key}: {code}({name}) 엔화 시세 조회 실패")
+            eval_krw = price_jpy * qty * fx_jpy
         else:
             eval_krw = 0.0
 
         stock_krw += eval_krw
-        detail.append({"code": code, "name": h.get("name", ""),
+        detail.append({"code": code, "name": name,
                        "qty": qty, "eval_krw": eval_krw})
         time.sleep(0.12)
 
@@ -297,8 +329,12 @@ def calc_manual_asset_krw(asset_key: str, asset: dict,
         amt = float(amt or 0)
         if cur == "KRW":
             cash_krw += amt
+        elif cur == "JPY" and fx_jpy > 0:
+            cash_krw += amt * fx_jpy        # 위에서 조회한 엔화 환율 재사용
         else:
             fx = _get_fx_rate(kis_headers_fn, base_url, quote_cano, "01", cur)
+            if fx <= 0:
+                warnings.append(f"{asset_key}: {cur} 예수금 환율 조회 실패")
             cash_krw += amt * fx
             time.sleep(0.12)
 
@@ -307,6 +343,7 @@ def calc_manual_asset_krw(asset_key: str, asset: dict,
         "stock_krw": stock_krw,
         "cash_krw": cash_krw,
         "detail": detail,
+        "warnings": warnings,
         "error": "",
     }
 
@@ -377,13 +414,30 @@ def update_google_sheet(items: list, mode: str,
     ws_cache = {}
     month_row_cache = {}
 
+    # 실제 탭 목록을 (정규화 이름 → 워크시트) 으로 미리 인덱싱
+    # → CELL_MAP 의 시트명이 대소문자/공백만 달라도 매칭되도록 fallback
+    _ws_by_norm = {}
+    try:
+        for w in sh.worksheets():
+            _ws_by_norm[w.title.strip().lower()] = w
+    except Exception as e:
+        log.append(f"⚠️ 탭 목록 조회 실패: {e}")
+
     def _get_ws(name):
         if name not in ws_cache:
             try:
                 ws_cache[name] = sh.worksheet(name)
-            except Exception as e:
-                ws_cache[name] = None
-                log.append(f"⚠️ 시트 '{name}' 없음: {e}")
+            except Exception:
+                # 정확한 이름 실패 → 정규화(소문자/공백제거) 매칭 시도
+                w = _ws_by_norm.get(name.strip().lower())
+                if w is not None:
+                    ws_cache[name] = w
+                    log.append(f"  ℹ️ 시트 '{name}' → '{w.title}' 로 매칭")
+                else:
+                    ws_cache[name] = None
+                    avail = ", ".join(sorted(
+                        repr(w.title) for w in _ws_by_norm.values()))
+                    log.append(f"⚠️ 시트 '{name}' 없음. 사용가능 탭: {avail}")
         return ws_cache[name]
 
     def _get_month_row(name):
@@ -429,6 +483,8 @@ def update_google_sheet(items: list, mode: str,
             _queue(sheet_name, cell, round(res["total_krw"]), f"수기:{akey}")
             log.append(f"  · {akey}: ₩{res['total_krw']:,.0f} "
                        f"(주식 ₩{res['stock_krw']:,.0f} + 예수금 ₩{res['cash_krw']:,.0f})")
+            for w in res.get("warnings", []):
+                log.append(f"    ⚠️ {w}")
         except Exception as e:
             log.append(f"⚠️ 수기자산 '{akey}' 계산 실패: {e}")
 
@@ -460,8 +516,7 @@ def update_google_sheet(items: list, mode: str,
             log.append(f"  ❌ {sheet_name} 기록 실패: {e}")
         time.sleep(1.0)   # gspread API quota (분당 60회) 여유
 
-    if target_ym not in [month_row_cache and None]:
-        ym_str = f"{target_ym[0]}-{target_ym[1]:02d}"
-        log.append(f"  현재월 인덱스: {ym_str}")
+    ym_str = f"{target_ym[0]}-{target_ym[1]:02d}"
+    log.append(f"  현재월 인덱스: {ym_str}")
 
     return log
