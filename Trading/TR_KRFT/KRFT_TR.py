@@ -1211,7 +1211,7 @@ def run_hedge3_daily() -> dict:
                f"VKOSPI={ctx['vkospi']:.2f}")
 
     # 4) PBR 일별 기록 (active 시에만 — 미발동 상태일 땐 노이즈)
-    if result["positions"]["hedge3"].get("active") or pbr >= 2.5:
+    if result["positions"]["hedge3"].get("active") or pbr >= 2.4:
         DATA.append_daily_pbr_to_result(result, today, pbr, kospi)
 
     # 5) 시그널 계산
