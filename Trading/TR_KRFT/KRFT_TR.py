@@ -226,7 +226,7 @@ def resolve_hedge_conflict(signals: dict, positions: dict) -> dict:
 def compute_hedge3_daily_signal(pbr: float, positions: dict) -> dict:
     """
     Hedge3 daily 신호 (요구사항 변경 후 신 버전):
-      - 진입: PBR ≥ 2.5 즉시 30%, PBR ≥ 2.8 즉시 50%
+      - 진입: PBR ≥ 2.4 즉시 30%, PBR ≥ 2.8 즉시 60%
       - 청산: 진입 후 갱신한 peak_pbr 의 2/3 이하로 떨어지면 즉시 (peak는 일별 갱신)
       - 흡수: Hedge1 진입 시 별도 처리 (run_signal_entry에서)
 
@@ -248,7 +248,7 @@ def compute_hedge3_daily_signal(pbr: float, positions: dict) -> dict:
     cur_ratio = float(pos.get("ratio", 0.0) or 0.0)
     cur_peak = float(pos.get("peak_pbr", 0.0) or 0.0)
     # 새 peak = max(기존 peak, 오늘 pbr)
-    new_peak = max(cur_peak, pbr) if active or pbr >= 2.5 else cur_peak
+    new_peak = max(cur_peak, pbr) if active or pbr >= 2.4 else cur_peak
 
     # 1) 청산 조건 (active 일 때만)
     if active and new_peak > 0 and pbr <= new_peak * (2.0 / 3.0):
@@ -263,8 +263,8 @@ def compute_hedge3_daily_signal(pbr: float, positions: dict) -> dict:
 
     # 2) 목표 비중 결정 (단조 비감소)
     if pbr >= 2.8:
-        target_ratio = 0.5
-    elif pbr >= 2.5:
+        target_ratio = 0.6
+    elif pbr >= 2.4:
         target_ratio = 0.3
     else:
         target_ratio = 0.0
@@ -304,7 +304,7 @@ def compute_hedge3_daily_signal(pbr: float, positions: dict) -> dict:
         "ratio":    0.0,
         "active":   False,
         "peak_pbr": cur_peak,
-        "reason":   f"Hedge3 미발동 (PBR {pbr:.4f} < 2.5)",
+        "reason":   f"Hedge3 미발동 (PBR {pbr:.4f} < 2.4)",
     }
 
 
