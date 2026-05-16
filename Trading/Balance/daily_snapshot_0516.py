@@ -25,7 +25,6 @@ from collections import OrderedDict
 
 sys.path.insert(0, "/var/autobot")
 import telegram_alert as TA
-import sheet_sync
 
 # ══════════════════════════════════════════════════
 #  공용 설정
@@ -40,7 +39,7 @@ os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
 # 수동 입력 잔고 (IRP 예수금 등 KIS API 조회 불가한 값)
 # 없으면 자동 생성, 사용자가 직접 수정 가능
-MANUAL_BALANCE_PATH = os.path.join(SNAPSHOT_DIR, "manual_IRP_balance.json")
+MANUAL_BALANCE_PATH = os.path.join(SNAPSHOT_DIR, "manual_balance.json")
 
 MAX_PAGE = 30
 API_SLEEP = 0.12    # KIS rate limit: 20/sec 이론, 실사용 ~8/sec
@@ -2326,16 +2325,6 @@ def main():
 
     if path:
         summary_msg.append(f"\n✅ JSON: {path}")
-
-    # 3.5. Google Sheet 업데이트 (ASIA 모드 = 최종 스냅샷에서만)
-    if mode == "ASIA":
-        try:
-            sheet_log = sheet_sync.update_google_sheet(
-                items, mode, kis_headers, BASE_URL)
-            summary_msg.append("")
-            summary_msg.extend(sheet_log)
-        except Exception as e:
-            summary_msg.append(f"\n❌ 시트 업데이트 예외: {e}")
 
     # 4. 메시지 분할 전송 (요약 → 종목상세)
     TA.send_tele(summary_msg)

@@ -1,0 +1,79 @@
+{
+  "_README": [
+    "다른 증권사 보유 자산 수기 입력 파일 — /var/autobot/Balance/manual_assets.json 에 배치",
+    "평가금은 코드가 매번 현재가로 계산. 여기에는 수량과 통화별 예수금만 입력.",
+    "수량/예수금이 바뀔 때만 이 파일을 수정하면 됨. 시세는 자동 갱신.",
+    "deposit 은 통화코드(KRW/JPY/USD)별 dict. 환율은 KIS API 환율 자동 적용.",
+    "code 는 평가금 계산용 종목코드: KR ETF는 6자리, 일본주식은 TSE 코드(예 2621).",
+    "updated 는 사용자가 수기 갱신한 날짜(참고용)."
+  ],
+
+  "JPUSbond": {
+    "_label": "Global시트 AX4 — ETC JPUSbond (도쿄거래소)",
+    "market": "JP",
+    "excg": "TKSE",
+    "deposit": {
+      "JPY": 19657,
+      "KRW": 32555
+    },
+    "holdings": [
+      {
+        "code": "2621",
+        "name": "iShares 20+ Year US Treasury Bond JPY Hedged ETF",
+        "qty": 2082
+      }
+    ],
+    "updated": "2026-05-16"
+  },
+
+  "Gold": {
+    "_label": "Alternative시트 M3 — Gold (KRX 금현물)",
+    "market": "KR_GOLD",
+    "deposit": {
+      "KRW": 30844162
+    },
+    "holdings": [
+      {
+        "code": "04020000",
+        "name": "금 99.99_1kg",
+        "qty": 0
+      }
+    ],
+    "updated": "2026-05-16"
+  },
+
+  "Pension_퇴직연금": {
+    "_label": "PENSION시트 J4 — 퇴직연금 (미래에셋)",
+    "market": "KR",
+    "deposit": {
+      "KRW": 140099
+    },
+    "holdings": [
+      { "code": "441800", "name": "TIMEFOLIO Korea플러스배당액티브", "qty": 516 },
+      { "code": "426030", "name": "TIMEFOLIO 미국나스닥100액티브",   "qty": 329 },
+      { "code": "371160", "name": "TIGER 차이나항셍테크",            "qty": 669 },
+      { "code": "411060", "name": "ACE KRX금현물",                   "qty": 289 },
+      { "code": "490490", "name": "SOL 미국배당미국채혼합50",        "qty": 1493 },
+      { "code": "148070", "name": "KOSEF 국고채10년",                "qty": 113 }
+    ],
+    "updated": "2026-05-16"
+  },
+
+  "Pension_연금저축-1": {
+    "_label": "PENSION시트 P4 — 연금저축-1",
+    "market": "KR",
+    "deposit": {
+      "KRW": 74448
+    },
+    "holdings": [
+      { "code": "441800", "name": "TIMEFOLIO Korea플러스배당액티브", "qty": 267 },
+      { "code": "426030", "name": "TIMEFOLIO 미국나스닥100액티브",   "qty": 170 },
+      { "code": "371160", "name": "TIGER 차이나항셍테크",            "qty": 307 },
+      { "code": "411060", "name": "ACE KRX금현물",                   "qty": 149 },
+      { "code": "490490", "name": "SOL 미국배당미국채혼합50",        "qty": 644 },
+      { "code": "148070", "name": "KOSEF 국고채10년",                "qty": 59 },
+      { "code": "261220", "name": "KODEX WTI원유선물(H)",            "qty": 121 }
+    ],
+    "updated": "2026-05-16"
+  }
+}
