@@ -363,7 +363,7 @@ def order_futures(kis, shtn_code: str, qty: int, price: float,
 
 
 # ------------------------------------------------------------------
-# 미체결 조회 (TTTO5301R)
+# 미체결 조회 (TTTO5201R, CCLD_NCCS_DVSN='02')
 # ------------------------------------------------------------------
 def get_unfilled(kis) -> list:
     """미체결 주문 리스트"""
@@ -410,11 +410,11 @@ def get_unfilled(kis) -> list:
 # ------------------------------------------------------------------
 def cancel_order(kis, org_orgno: str, order_no: str, qty: int = 0) -> Optional[dict]:
     """
-    주문 취소.
+    주문 취소 (TTTO1103U).
 
     Args:
-      org_orgno: 한국거래소 전송주문 조직번호
-      order_no:  원주문번호
+      org_orgno: (KIS 선물옵션 TR은 사용 안 함, 호환성 위해 남김)
+      order_no:  원주문번호 (ORGN_ODNO)
       qty:       0이면 전량 취소
     """
     kis._rate_limit_sleep()
@@ -422,11 +422,10 @@ def cancel_order(kis, org_orgno: str, order_no: str, qty: int = 0) -> Optional[d
     headers = _headers(kis, "TTTO1103U", post=True)
 
     body = {
-        "ORD_PRCS_DVSN_CD":     "02",
+        "ORD_PRCS_DVSN_CD":     "02",          # 02 = 전송
         "CANO":                 kis.cano,
         "ACNT_PRDT_CD":         kis.acnt_prdt_cd,
-        "RVSE_CNCL_DVSN_CD":    "02",          # 02=취소
-        "KRX_FWDG_ORD_ORGNO":   org_orgno,
+        "RVSE_CNCL_DVSN_CD":    "02",          # 02 = 취소 (01 = 정정)
         "ORGN_ODNO":            order_no,
         "ORD_QTY":              str(int(qty)),
         "UNIT_PRICE":           "0",
@@ -434,6 +433,7 @@ def cancel_order(kis, org_orgno: str, order_no: str, qty: int = 0) -> Optional[d
         "KRX_NMPR_CNDT_CD":     "0",
         "RMN_QTY_YN":           "Y" if qty == 0 else "N",  # Y=잔량전부, N=수량지정
         "ORD_DVSN_CD":          "01",
+        "FUOP_ITEM_DVSN_CD":    "",
     }
     res = _retry_request("POST", url, headers, json=body)
     if not res:
