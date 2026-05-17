@@ -367,11 +367,16 @@ def _aggregate_items(items: list) -> dict:
         agg[(strat, sub)] = agg.get((strat, sub), 0.0) + tk
 
     # 2) strategy 전체 합산 (CELL_MAP key 의 sub 가 None 인 것)
+    #    ⚠️ 해당 전략 items 가 실제로 1건 이상 있을 때만 키 등록.
+    #       items 가 없으면 키를 만들지 않음 → update 시 agg.get()=None 으로 스킵.
+    #       (무조건 0 을 넣으면 '미수집'과 '값 0'이 구별 안 되어 0 이 기록됨)
     for (strat, sub) in CELL_MAP:
         if sub is None:
-            total = sum(float(it.get("total_krw", 0) or 0)
-                        for it in items if it.get("strategy") == strat)
-            agg[(strat, None)] = total
+            matched = [it for it in items if it.get("strategy") == strat]
+            if not matched:
+                continue
+            agg[(strat, None)] = sum(
+                float(it.get("total_krw", 0) or 0) for it in matched)
 
     return agg
 
