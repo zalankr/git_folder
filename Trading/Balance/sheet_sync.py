@@ -36,7 +36,7 @@ from google.oauth2.service_account import Credentials
 # ══════════════════════════════════════════════════
 
 # 서비스계정 키 경로 (사용자 확정 경로로 교체)
-GOOGLE_SA_KEY_PATH = "/var/autobot/KIS/google_service_account.json"
+GOOGLE_SA_KEY_PATH = "/var/autobot/gspread/service_account.json"
 
 # 대상 스프레드시트 ID (URL 의 /d/ 와 /edit 사이)
 SPREADSHEET_ID = "1_9kp7fv0_gZXpaUmMqLgpDC80poa7qkW3FjWbs_K03M"
@@ -78,21 +78,21 @@ CELL_MAP = {
     # ETC(JPUSbond) 는 수기 자산 → MANUAL_CELL_MAP
 
     # ── ALTERNATIVE 시트 ───────────────────────
-    ("Crypto", None):              ("ALTERNATIVE", "P3"),
+    ("Crypto", None):              ("Alternative", "P3"),
 
     # ── PENSION 시트 ───────────────────────────
-    ("Pension", "연금저축-2"):     ("PENSION",     "S4"),
-    ("Pension", "IRP"):            ("PENSION",     "V4"),
-    ("ISA", "ISA"):                ("PENSION",     "AE4"),
-    ("ISA", "윤숙ISA"):            ("PENSION",     "AK4"),
+    ("Pension", "연금저축-2"):     ("Pension",     "S4"),
+    ("Pension", "IRP"):            ("Pension",     "V4"),
+    ("ISA", "ISA"):                ("Pension",     "AE4"),
+    ("ISA", "윤숙ISA"):            ("Pension",     "AK4"),
 }
 
 # 수기 입력 자산 → 셀 매핑. key 는 manual_assets.json 의 최상위 key.
 MANUAL_CELL_MAP = {
     "JPUSbond":          ("Global",      "AX4"),
-    "Gold":              ("ALTERNATIVE", "M3"),
-    "Pension_퇴직연금":  ("PENSION",     "J4"),
-    "Pension_연금저축-1":("PENSION",     "P4"),
+    "Gold":              ("Alternative", "M3"),
+    "Pension_퇴직연금":  ("Pension",     "J4"),
+    "Pension_연금저축-1":("Pension",     "P4"),
 }
 
 
@@ -464,7 +464,7 @@ def update_google_sheet(items: list, mode: str,
 
     # 3-2. 수기 입력 자산
     manual = {}
-    if os.path.exists(MANUAL_ASSETS_PATH):
+    if mode == "ASIA" and os.path.exists(MANUAL_ASSETS_PATH):
         try:
             with open(MANUAL_ASSETS_PATH, encoding="utf-8") as f:
                 manual = json.load(f)

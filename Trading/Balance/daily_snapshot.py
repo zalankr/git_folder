@@ -2327,15 +2327,16 @@ def main():
     if path:
         summary_msg.append(f"\n✅ JSON: {path}")
 
-    # 3.5. Google Sheet 업데이트 (ASIA 모드 = 최종 스냅샷에서만)
-    if mode == "ASIA":
-        try:
-            sheet_log = sheet_sync.update_google_sheet(
-                items, mode, kis_headers, BASE_URL)
-            summary_msg.append("")
-            summary_msg.extend(sheet_log)
-        except Exception as e:
-            summary_msg.append(f"\n❌ 시트 업데이트 예외: {e}")
+    # 3.5. Google Sheet 업데이트 (ASIA=전계좌 / US=USAA·USQT·Crypto만)
+    #      update_google_sheet 내부에서 미수집 전략은 자동 스킵되므로
+    #      mode 분기 없이 호출해도 해당 모드가 수집한 셀만 기록됨.
+    try:
+        sheet_log = sheet_sync.update_google_sheet(
+            items, mode, kis_headers, BASE_URL)
+        summary_msg.append("")
+        summary_msg.extend(sheet_log)
+    except Exception as e:
+        summary_msg.append(f"\n❌ 시트 업데이트 예외: {e}")
 
     # 4. 메시지 분할 전송 (요약 → 종목상세)
     TA.send_tele(summary_msg)

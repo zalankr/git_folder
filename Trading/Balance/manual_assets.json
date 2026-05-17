@@ -43,7 +43,7 @@
   },
 
   "Pension_퇴직연금": {
-    "_label": "PENSION시트 J4 — 퇴직연금 (미래에셋)",
+    "_label": "Pension시트 J4 — 퇴직연금 (미래에셋)",
     "market": "KR",
     "deposit": {
       "KRW": 140099
@@ -60,7 +60,7 @@
   },
 
   "Pension_연금저축-1": {
-    "_label": "PENSION시트 P4 — 연금저축-1",
+    "_label": "Pension시트 P4 — 연금저축-1",
     "market": "KR",
     "deposit": {
       "KRW": 74448
