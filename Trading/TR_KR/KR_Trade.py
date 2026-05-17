@@ -34,7 +34,7 @@ BUY_TRADE_DAYS = 26            # 총 거래일 수 (분할매수일 수)
 BUY_SPLIT      = 4             # 일 분할 횟수
 
 # ── 매도 모드 설정 ──────────────────────────
-SELL_TOTAL_QTY  = 2393         # 총 매도 수량 (4,787주보유 중인 절반 매도 KRX금 매입))
+SELL_TOTAL_QTY  = 1701         # 총 매도 수량 (4,787주보유 중인 절반 매도 KRX금 매입))
 # SELL_TOTAL_QTY  = None       # 총 매도 수량 (None이면 보유 전량)
 SELL_TRADE_DAYS = 5            # 총 거래일 수 (분할매도일 수)
 SELL_SPLIT      = 7            # 일 분할 횟수

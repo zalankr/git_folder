@@ -61,12 +61,12 @@ GSPREAD_SCOPES = [
 
 CELL_MAP = {
     # ── KR 시트 ─────────────────────────────────
-    ("KRQT", None):                ("KR",          "T4"),   # 4개 sub 합산
-    ("KRTR", "PEAK"):              ("KR",          "Z4"),
-    ("KRTR", "VALUE"):             ("KR",          "AC4"),
-    ("KRTR", "MOMENTUM"):          ("KR",          "AF4"),
-    ("KRTR", "Coverdcall"):        ("KR",          "AI4"),
-    ("KRFT", None):                ("KR",          "AL4"),  # Hedge & Boost
+    ("KRQT", None):                ("KR",          "R4"),   # 4개 sub 합산
+    ("KRTR", "PEAK"):              ("KR",          "X4"),
+    ("KRTR", "VALUE"):             ("KR",          "AA4"),
+    ("KRTR", "MOMENTUM"):          ("KR",          "AD4"),
+    ("KRTR", "Coverdcall"):        ("KR",          "AG4"),
+    ("KRFT", None):                ("KR",          "AJ4"),  # Hedge & Boost
 
     # ── Global 시트 ─────────────────────────────
     ("USAA", "USLA"):              ("Global",      "AC4"),  # 시트 표기 UALA
