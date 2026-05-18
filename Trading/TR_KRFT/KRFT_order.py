@@ -228,17 +228,36 @@ def get_futures_balance(kis) -> Optional[dict]:
 
     positions = []
     for p in out1:
-        qty = int(float(p.get("cblc_qty", 0) or 0))
-        if qty == 0:
+        # 수량: cblc_qty(잔고) 우선, 0이면 lqd_psbl_qty(청산가능) 사용.
+        # KIS 선물 잔고는 당일 체결분이 cblc_qty 또는 lqd_psbl_qty 에 잡힘.
+        cblc = int(float(p.get("cblc_qty", 0) or 0))
+        lqd  = int(float(p.get("lqd_psbl_qty", 0) or 0))
+        # 두 값 중 절대값이 큰 쪽 채택 (당일 체결 반영)
+        if abs(cblc) >= abs(lqd):
+            raw_qty = cblc
+        else:
+            raw_qty = lqd
+        if raw_qty == 0:
             continue
-        sgnb = str(p.get("sll_buy_dvsn_cd", "") or "")  # 01=매도, 02=매수
-        side = "short" if sgnb == "01" else "long"
+
+        # side 판정: 명시적 구분코드가 없으므로 부호로 판정.
+        # 양수=매수보유(long), 음수=매도보유(short).
+        side = "long" if raw_qty > 0 else "short"
+        qty = abs(raw_qty)
+
+        # 평균단가: pchs_avg_pric 우선, 없으면 ccld_avg_unpr1, excc_unpr 순.
+        avg_price = (float(p.get("pchs_avg_pric", 0) or 0)
+                     or float(p.get("ccld_avg_unpr1", 0) or 0)
+                     or float(p.get("excc_unpr", 0) or 0))
+
         positions.append({
-            "symbol":    str(p.get("pdno", "") or "").strip(),
+            "symbol":    str(p.get("shtn_pdno", "") or "").strip(),  # 단축코드
+            "std_code":  str(p.get("pdno", "") or "").strip(),       # 표준코드
             "name":      str(p.get("prdt_name", "") or "").strip(),
             "side":      side,
             "qty":       qty,
-            "avg_price": float(p.get("pchs_avg_pric", 0) or 0),
+            "raw_qty":   raw_qty,   # 부호 보존값
+            "avg_price": avg_price,
             "eval_pnl":  float(p.get("evlu_pfls_amt", 0) or 0),
         })
 
@@ -252,6 +271,7 @@ def get_futures_balance(kis) -> Optional[dict]:
         "evlu_pfls_smtl":  float(out2.get("evlu_pfls_amt_smtl", 0) or 0),
         "mgna_tota":       float(out2.get("mgna_tota", 0) or 0),         # 증거금총액
         "positions":       positions,
+        "_raw_output1":    out1,   # 진단용 원본
     }
 
 
@@ -401,6 +421,56 @@ def get_unfilled(kis) -> list:
             "qty":       int(float(r.get("ord_qty", 0) or 0)),
             "rem_qty":   rem,
             "price":     float(r.get("ord_unpr", 0) or 0),
+        })
+    return out
+
+
+# ------------------------------------------------------------------
+# 체결내역 조회 (TTTO5201R, CCLD_NCCS_DVSN='01')
+# ------------------------------------------------------------------
+def get_filled(kis, order_no: str = "") -> list:
+    """
+    당일 체결내역 조회.
+
+    Args:
+      order_no: 특정 주문번호로 필터 (빈 문자열이면 전체)
+
+    Returns: [{order_no, symbol, side, ord_qty, ccld_qty, ccld_price}, ...]
+    """
+    kis._rate_limit_sleep()
+    url = f"{kis.url_base}/uapi/domestic-futureoption/v1/trading/inquire-ccnl"
+    headers = _headers(kis, "TTTO5201R")
+    params = {
+        "CANO":              kis.cano,
+        "ACNT_PRDT_CD":      kis.acnt_prdt_cd,
+        "STRT_ORD_DT":       "",
+        "END_ORD_DT":        "",
+        "SLL_BUY_DVSN_CD":   "00",   # 00=전체
+        "CCLD_NCCS_DVSN":    "01",   # 01=체결
+        "SORT_SQN":          "DS",
+        "STRT_ODNO":         "",
+        "PDNO":              "",
+        "MKET_ID_CD":        "",
+        "CTX_AREA_FK200":    "",
+        "CTX_AREA_NK200":    "",
+    }
+    res = _retry_request("GET", url, headers, params=params)
+    if not res or res.get("rt_cd") != "0":
+        return []
+    rows = res.get("output1") or []
+    out = []
+    for r in rows:
+        odno = str(r.get("odno", "") or "")
+        if order_no and odno != order_no:
+            continue
+        ccld = int(float(r.get("tot_ccld_qty", 0) or r.get("ccld_qty", 0) or 0))
+        out.append({
+            "order_no":   odno,
+            "symbol":     str(r.get("shtn_pdno", "") or r.get("pdno", "") or ""),
+            "side":       str(r.get("sll_buy_dvsn_cd", "") or ""),
+            "ord_qty":    int(float(r.get("ord_qty", 0) or 0)),
+            "ccld_qty":   ccld,
+            "ccld_price": float(r.get("avg_idx", 0) or r.get("ccld_unpr", 0) or 0),
         })
     return out
 

@@ -182,22 +182,44 @@ def main():
     buy_order_no = buy_r["order_no"]
     print(f"  ✓ 매수 주문번호: {buy_order_no}")
 
-    # 9) 체결 확인 (최대 10초)
-    _hr("STEP 7: 매수 체결 확인 (최대 10초)")
+    # 9) 체결 확인 (최대 15초) — 체결내역 조회 우선 + raw 덤프
+    _hr("STEP 7: 매수 체결 확인 (최대 15초)")
     filled = False
-    for i in range(20):  # 0.5초 × 20 = 10초
+    for i in range(30):  # 0.5초 × 30 = 15초
         time.sleep(0.5)
+
+        # (1) 체결내역 조회 — 가장 확실한 판정
+        fills = ORDER.get_filled(kis, order_no=buy_order_no)
+        if fills:
+            f = fills[0]
+            if f['ccld_qty'] >= TEST_QTY:
+                elapsed = time.time() - t0
+                print(f"  ✓ 체결내역 확인 ({elapsed:.1f}초): "
+                      f"{f['ccld_qty']}계약 @ {f['ccld_price']}")
+                filled = True
+                break
+
+        # (2) 잔고 조회 — raw 덤프 (진단)
         bal_mid = ORDER.get_futures_balance(kis)
-        if not bal_mid:
-            continue
-        my_pos = [p for p in bal_mid['positions']
-                  if p['symbol'] == symbol and p['side'] == 'long']
-        if my_pos and my_pos[0]['qty'] >= TEST_QTY:
-            elapsed = time.time() - t0
-            print(f"  ✓ 체결 확인 ({elapsed:.1f}초): "
-                  f"{my_pos[0]['qty']}계약 avg={my_pos[0]['avg_price']}")
-            filled = True
-            break
+        if bal_mid:
+            raw1 = bal_mid.get("_raw_output1") or []
+            if raw1:
+                for r in raw1:
+                    sp = r.get("shtn_pdno", "?")
+                    cb = r.get("cblc_qty", "?")
+                    lq = r.get("lqd_psbl_qty", "?")
+                    if str(cb) != "0" or str(lq) != "0":
+                        print(f"  [{i*0.5+0.5:.1f}s] {sp}: "
+                              f"cblc_qty={cb} lqd_psbl_qty={lq}")
+            my_pos = [p for p in bal_mid['positions']
+                      if p['symbol'] == symbol]
+            if my_pos and my_pos[0]['qty'] >= TEST_QTY:
+                elapsed = time.time() - t0
+                print(f"  ✓ 잔고 확인 ({elapsed:.1f}초): "
+                      f"{my_pos[0]['side']} {my_pos[0]['qty']}계약 "
+                      f"avg={my_pos[0]['avg_price']}")
+                filled = True
+                break
         if i % 4 == 3:
             print(f"  대기 중... ({i*0.5+0.5:.1f}초)")
 
@@ -233,21 +255,31 @@ def main():
     sell_order_no = sell_r["order_no"]
     print(f"  ✓ 청산 주문번호: {sell_order_no}")
 
-    # 11) 청산 체결 확인
-    _hr("STEP 9: 청산 체결 확인 (최대 10초)")
+    # 11) 청산 체결 확인 (최대 15초)
+    _hr("STEP 9: 청산 체결 확인 (최대 15초)")
     cleared = False
-    for i in range(20):
+    for i in range(30):
         time.sleep(0.5)
-        bal_after = ORDER.get_futures_balance(kis)
-        if not bal_after:
-            continue
-        my_pos = [p for p in bal_after['positions']
-                  if p['symbol'] == symbol and p['side'] == 'long']
-        if not my_pos or my_pos[0]['qty'] == 0:
+        # (1) 청산 주문 체결내역
+        fills = ORDER.get_filled(kis, order_no=sell_order_no)
+        if fills and fills[0]['ccld_qty'] >= TEST_QTY:
             elapsed = time.time() - t0
-            print(f"  ✓ 청산 완료 (총 소요 {elapsed:.1f}초)")
+            print(f"  ✓ 청산 체결내역 확인 (총 {elapsed:.1f}초): "
+                  f"{fills[0]['ccld_qty']}계약 @ {fills[0]['ccld_price']}")
             cleared = True
             break
+        # (2) 잔고에서 포지션 소멸 확인
+        bal_after = ORDER.get_futures_balance(kis)
+        if bal_after:
+            my_pos = [p for p in bal_after['positions']
+                      if p['symbol'] == symbol]
+            if not my_pos or my_pos[0]['qty'] == 0:
+                elapsed = time.time() - t0
+                print(f"  ✓ 청산 완료 - 포지션 소멸 (총 {elapsed:.1f}초)")
+                cleared = True
+                break
+        if i % 4 == 3:
+            print(f"  대기 중... ({i*0.5+0.5:.1f}초)")
 
     if not cleared:
         print(f"  ⚠️ 청산 체결 확인 안 됨. 미체결 조회 시도...")
