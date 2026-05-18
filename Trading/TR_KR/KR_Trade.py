@@ -34,10 +34,13 @@ BUY_TRADE_DAYS = 26            # 총 거래일 수 (분할매수일 수)
 BUY_SPLIT      = 4             # 일 분할 횟수
 
 # ── 매도 모드 설정 ──────────────────────────
-SELL_TOTAL_QTY  = 1701         # 총 매도 수량 (4,787주보유 중인 절반 매도 KRX금 매입))
+#   분할 구조: cron이 하루 SELL_SPLIT 회 호출 × SELL_TRADE_DAYS 일
+#   → 1회 주문량 = (남은잔량 / SELL_TRADE_DAYS) / SELL_SPLIT  (호출당 1주문)
+#   ※ SELL_SPLIT 은 'cron이 하루에 호출하는 횟수'와 반드시 일치시킬 것
+SELL_TOTAL_QTY  = 1064         # 총 매도 수량
 # SELL_TOTAL_QTY  = None       # 총 매도 수량 (None이면 보유 전량)
-SELL_TRADE_DAYS = 3            # 총 거래일 수 (분할매도일 수)
-SELL_SPLIT      = 7            # 일 분할 횟수
+SELL_TRADE_DAYS = 2            # 총 거래일 수 (분할매도일 수)
+SELL_SPLIT      = 7            # 일 분할 횟수 = 하루 cron 호출 횟수
 
 # ============================================
 
@@ -123,7 +126,14 @@ def run_buy(message):
 
 
 def run_sell(message):
-    """분할매도 로직"""
+    """분할매도 로직 — 호출 1회 = 주문 1회
+
+    분할 구조 (내부 루프 아님!):
+      · cron이 하루 SELL_SPLIT 회 호출  → 하루치를 SELL_SPLIT 등분
+      · 이를 SELL_TRADE_DAYS 일간 반복  → 총 목표를 일별로 등분
+      · 1회 주문량 = (남은잔량 / SELL_TRADE_DAYS) / SELL_SPLIT
+    매 호출 시 보유수량을 재조회하므로 미체결/부분체결은 자연 보정된다.
+    """
     if SELL_TRADE_DAYS <= 0 or SELL_SPLIT <= 0:
         TA.send_tele("KR: 매도 거래일수/분할횟수 설정 오류로 종료합니다.")
         sys.exit(0)
@@ -141,73 +151,46 @@ def run_sell(message):
         TA.send_tele(f"KR: {TICKER} 보유수량 0주로 종료합니다.")
         sys.exit(0)
 
-    # ── 목표 매도 수량 결정 (None이면 보유 전량)
-    #    매 실행 시 현재 보유수량을 재조회하므로, "현재 보유분 중 처분할 잔량"이
-    #    곧 남은 목표가 된다. 부분매도가 진행될수록 hold_qty가 줄어 자연 수렴.
-    target_total = hold_qty if SELL_TOTAL_QTY is None else min(SELL_TOTAL_QTY, hold_qty)
-    remaining_target = target_total
+    # ── 처분할 잔량 (None이면 보유 전량)
+    #    매 호출 시 hold_qty를 재조회 → 부분매도가 진행될수록 잔량이 줄어 수렴
+    remaining_target = hold_qty if SELL_TOTAL_QTY is None else min(SELL_TOTAL_QTY, hold_qty)
 
     if remaining_target <= 0:
         TA.send_tele(f"KR: {TICKER} 매도 목표 달성 완료 (잔량 0).")
         sys.exit(0)
 
-    # ── 일별 매도 수량: 남은 잔량을 남은 거래일로 균등 분할
-    #    실행 일수를 별도 카운트하지 않고, 매 실행을 1거래일로 간주해
-    #    "잔량 / TRADE_DAYS" 를 일 목표로 사용 → 미체결 누적 시 자연 보정
-    day_qty = remaining_target // SELL_TRADE_DAYS
-    if day_qty < 1:
-        day_qty = remaining_target   # 잔량이 거래일수보다 적으면 당일 전량
+    # ── 1회 주문 수량 = 남은잔량 / (남은거래일 × 일분할횟수)
+    #    호출당 1주문이므로 내부 분할 루프는 없다.
+    slots = SELL_TRADE_DAYS * SELL_SPLIT       # 남은 총 호출 횟수(이론값)
+    order_qty = remaining_target // slots
+    if order_qty < 1:
+        order_qty = remaining_target           # 잔량이 slot보다 적으면 당일 전량 처분
 
     # ── 매도가능수량으로 캡핑 (T+2 미정산분 매도 실패 방지)
-    day_qty = min(day_qty, sellable_qty)
-    if day_qty <= 0:
+    order_qty = min(order_qty, sellable_qty)
+    if order_qty <= 0:
         TA.send_tele(
             f"KR: {TICKER} 당일 매도가능수량 0주로 종료합니다. "
             f"(보유:{hold_qty} / 매도가능:{sellable_qty})"
         )
         sys.exit(0)
 
-    # ── 일 분할 횟수로 재분할
-    split_qty = day_qty // SELL_SPLIT
-    remainder = day_qty - split_qty * SELL_SPLIT
-    if split_qty < 1:
-        # 일 목표가 분할횟수보다 적으면 1회 주문으로 처리
-        split_count = 1
-        split_qty = day_qty
-        remainder = 0
-    else:
-        split_count = SELL_SPLIT
-
     message.append(f"KR: {TICKER_NM} 분할매도 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
     message.append(
         f"KR: 보유 {hold_qty}주 / 매도가능 {sellable_qty}주 / "
-        f"목표잔량 {remaining_target}주 / 당일 {day_qty}주 ({split_count}분할)"
+        f"잔량 {remaining_target}주 / 이번회차 {order_qty}주"
     )
 
-    # ── 분할 시장가 매도 주문
-    order_numbers = []
-    for i in range(split_count):
-        this_qty = split_qty + (remainder if i == split_count - 1 else 0)
-        if this_qty < 1:
-            continue
+    # ── 시장가 매도 주문 (호출당 1회)
+    order_info = KIS.order_sell_KR(ticker=TICKER, quantity=order_qty, price=0, ord_dvsn="01")
 
-        order_info = KIS.order_sell_KR(ticker=TICKER, quantity=this_qty, price=0, ord_dvsn="01")
-
-        if not order_info or not order_info.get("success"):
-            err = order_info.get("error_message", "") if isinstance(order_info, dict) else "API 응답 없음"
-            message.append(f"매도 실패 {this_qty}주: {err}")
-        else:
-            order_numbers.append(order_info.get("order_number", ""))
-            message.append(f"매도 주문 접수: {this_qty}주 주문번호:{order_info.get('order_number', '')}")
-
-        time_module.sleep(0.2)
-
-    if not order_numbers:
-        TA.send_tele(["KR: 매도 주문 전량 실패로 종료합니다."] + message)
+    if not order_info or not order_info.get("success"):
+        err = order_info.get("error_message", "") if isinstance(order_info, dict) else "API 응답 없음"
+        TA.send_tele([f"KR: 매도 주문 실패로 종료합니다. ({err})"] + message)
         sys.exit(0)
 
-    # 체결 확인용으로 마지막 주문번호 반환
-    return order_numbers[-1]
+    message.append(f"매도 주문 접수: {order_qty}주 주문번호:{order_info.get('order_number', '')}")
+    return order_info.get("order_number", "")
 
 
 # ============================================
