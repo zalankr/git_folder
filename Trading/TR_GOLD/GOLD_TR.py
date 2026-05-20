@@ -143,6 +143,14 @@ SPLIT_SCHEDULE = [
 # ── 분할 인덱스 수동 지정 (None=현재 시각 자동 판별 / 1~N 직접 지정) ──────
 SPLIT_INDEX_OVERRIDE = None
 
+# ── 매매 일자 수동 지정 (None=오늘 날짜 자동 판별 / 1~TRADING_DAYS 직접 지정) ─
+#   cron이 날짜별로 스케줄을 제한하지 않는 경우 직접 지정 필요
+#   None 이면 STATE_FILE 에 기록된 시작일 기준으로 몇 번째 날인지 자동 계산
+DAY_INDEX_OVERRIDE = None
+
+# ── 매매 상태 파일 경로 (첫 실행일 기록 → 매매 일차 자동 계산) ──────────────
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gold_trade_state.json")
+
 # ── 지정가 슬리피지 (금현물은 시장가 없음 → 지정가로 체결 유도) ──────────
 LIMIT_SLIPPAGE_BUY  = 0.005     # 매수: 현재가 +0.5%
 LIMIT_SLIPPAGE_SELL = 0.005     # 매도: 현재가 -0.5%
@@ -644,11 +652,68 @@ def get_today_split_index():
 
     if best_diff is not None and best_diff > 30:
         log.warning(
-            f"현재시각이 분할 스케줄과 {best_diff}분 차이 → "
+            f"현재시각이 분할 스케줄과 {best_diff}분 차이 -> "
             f"{best_idx}번째 분할로 처리 (확인 필요)"
         )
     log.info(f"오늘 분할 인덱스: {best_idx} / {SPLITS_PER_DAY}")
     return best_idx
+
+
+def get_day_index():
+    """오늘이 전체 매매 기간 중 몇 번째 날인지 반환 (1-base).
+
+    DAY_INDEX_OVERRIDE 가 설정되어 있으면 그 값을 사용.
+    그렇지 않으면 STATE_FILE 에 기록된 매매 시작일 기준으로 자동 계산.
+      - 첫 실행(파일 없음 또는 모드 변경)이면 오늘을 1일차로 기록.
+      - 이후 호출에서 경과 거래일 수를 세어 day_index 를 반환.
+      - TRADING_DAYS 를 초과하면 경고 후 TRADING_DAYS 를 반환.
+    """
+    if DAY_INDEX_OVERRIDE is not None:
+        log.info(f"매매 일차 수동 지정: {DAY_INDEX_OVERRIDE}")
+        return DAY_INDEX_OVERRIDE
+
+    today     = datetime.date.today()
+    state     = {}
+    need_save = False
+
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        except Exception as e:
+            log.warning(f"STATE_FILE 로드 실패, 초기화: {e}")
+            state = {}
+
+    if state.get("mode") != MODE:
+        log.info(f"MODE 변경 감지({state.get('mode')} -> {MODE}) -> 1일차로 초기화")
+        state     = {"mode": MODE, "start_date": today.isoformat()}
+        need_save = True
+
+    if "start_date" not in state:
+        state     = {"mode": MODE, "start_date": today.isoformat()}
+        need_save = True
+
+    if need_save:
+        try:
+            with open(STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(state, f, ensure_ascii=False, indent=2)
+            log.info(f"STATE_FILE 저장: {state}")
+        except Exception as e:
+            log.warning(f"STATE_FILE 저장 실패: {e}")
+
+    start_date   = datetime.date.fromisoformat(state["start_date"])
+    elapsed_days = (today - start_date).days   # 0-base
+    day_index    = elapsed_days + 1            # 1-base
+
+    if day_index > TRADING_DAYS:
+        log.warning(
+            f"매매 일차({day_index}) > TRADING_DAYS({TRADING_DAYS}) -> "
+            f"{TRADING_DAYS}일차로 캡핑. 매매 완료 후 STATE_FILE 삭제 필요."
+        )
+        day_index = TRADING_DAYS
+
+    log.info(f"매매 일차: {day_index} / {TRADING_DAYS} (시작일 {start_date})")
+    return day_index
 
 
 # ===========================================================================
@@ -678,12 +743,19 @@ def _fmt_balance(bal):
 # ===========================================================================
 # 11) 매수 로직 — 호출 1회 = 주문 1회
 # ===========================================================================
-def run_buy(token, split_index):
-    """분할매수 1회 실행 → (메시지 리스트, 주문번호 or None).
+def run_buy(token, split_index, day_index):
+    """분할매수 1회 실행 -> (메시지 리스트, 주문번호 or None).
 
-    1회 주문금액 = (주문가능금액 × BUY_CASH_RATIO%) / SPLITS_PER_DAY
-    ※ 매 호출 시 예수금을 재조회하므로, 일자가 바뀌어도 자연스럽게 분할됨.
-       하루 안에서는 SPLITS_PER_DAY 등분.
+    1회 주문금액 = (주문가능금액 × BUY_CASH_RATIO%) / 전체_잔여_분할횟수
+
+    전체 분할 구조:  TRADING_DAYS × SPLITS_PER_DAY = 총 분할 횟수
+      예) 3일 × 5회 = 15회. 1일차 1번째 호출 → global_index=1, remaining=15
+          1일차 2번째 호출 → global_index=2, remaining=14
+          2일차 1번째 호출 → global_index=6, remaining=10
+    이렇게 하면 매 호출 시 재조회한 예수금을 잔여 분할 수로 나누어
+    3일에 걸쳐 고르게 분산 매수된다.
+
+    ※ 매 호출 시 예수금을 재조회하므로 부분체결/슬리피지 오차가 자동 보정됨.
     """
     msg   = []
     cash  = get_orderable_cash(token)
@@ -691,29 +763,34 @@ def run_buy(token, split_index):
 
     target_cash = int(cash * BUY_CASH_RATIO / 100)
     if target_cash <= 0 or price <= 0:
-        msg.append("GOLD: 매수가능금액 또는 현재가 0 → 매수 중단")
+        msg.append("GOLD: 매수가능금액 또는 현재가 0 -> 매수 중단")
         return msg, None
 
-    # 이번 분할 배정금액 = 남은 예수금 / (남은 분할 횟수)
-    #   split_index 가 진행될수록 직전 분할이 이미 소진되어 cash가 줄어듦
-    remaining_splits = SPLITS_PER_DAY - (split_index - 1)
+    # 전체 진행 회차(1-base) = (day_index-1)*SPLITS_PER_DAY + split_index
+    total_splits   = TRADING_DAYS * SPLITS_PER_DAY
+    global_index   = (day_index - 1) * SPLITS_PER_DAY + split_index
+    global_index   = max(1, min(global_index, total_splits))   # 범위 안전 처리
+
+    # 남은 전체 분할 횟수 = total_splits - (global_index - 1)
+    remaining_splits = total_splits - (global_index - 1)
     if remaining_splits < 1:
         remaining_splits = 1
+
     this_cash = target_cash // remaining_splits
 
-    # 지정가 = 현재가 + 슬리피지 → 10원 호가단위로 올림
+    # 지정가 = 현재가 + 슬리피지 -> 10원 호가단위로 올림
     order_price = ceil_to_tick(price * (1 + LIMIT_SLIPPAGE_BUY))
 
     this_qty = this_cash // order_price if order_price > 0 else 0
     if this_qty <= 0:
         msg.append(
-            f"GOLD: {split_index}회차 매수수량 0g → 건너뜀 "
+            f"GOLD: {split_index}회차 매수수량 0g -> 건너뜀 "
             f"(배정금액 {this_cash:,}원 / 지정가 {order_price:,}원)"
         )
         return msg, None
 
     msg.append(
-        f"[매수] {split_index}/{SPLITS_PER_DAY}회차 | "
+        f"[매수] {split_index}/{SPLITS_PER_DAY}회차 ({day_index}일차, 전체 {global_index}/{total_splits}회) | "
         f"배정금액 {this_cash:,}원 | 지정가 {order_price:,}원 | 수량 {this_qty}g"
     )
 
@@ -728,11 +805,15 @@ def run_buy(token, split_index):
 # ===========================================================================
 # 12) 매도 로직 — 호출 1회 = 주문 1회
 # ===========================================================================
-def run_sell(token, split_index):
-    """분할매도 1회 실행 → (메시지 리스트, 주문번호 or None).
+def run_sell(token, split_index, day_index):
+    """분할매도 1회 실행 -> (메시지 리스트, 주문번호 or None).
 
-    1회 주문수량 = (매도가능수량 × SELL_QTY_RATIO%) / (남은 분할 횟수)
-    ※ 매 호출 시 보유/매도가능수량을 재조회 → 부분체결 자연 보정.
+    1회 주문수량 = (매도가능수량 × SELL_QTY_RATIO%) / 전체_잔여_분할횟수
+
+    run_buy 와 동일한 global_index 논리 적용:
+      전체 분할 = TRADING_DAYS × SPLITS_PER_DAY.
+      남은 분할 횟수 기준으로 균등 매도.
+    ※ 매 호출 시 보유/매도가능수량을 재조회 -> 부분체결 자연 보정.
     """
     msg = []
     bal = get_gold_balance(token)
@@ -742,18 +823,23 @@ def run_sell(token, split_index):
     price        = bal["cur_price"] or get_gold_current_price(token)
 
     if hold_qty <= 0:
-        msg.append("GOLD: 보유수량 0g → 매도 중단")
+        msg.append("GOLD: 보유수량 0g -> 매도 중단")
         return msg, None
 
     target_qty = int(hold_qty * SELL_QTY_RATIO / 100)
     if target_qty <= 0:
-        msg.append("GOLD: 매도 목표수량 0g → 매도 중단")
+        msg.append("GOLD: 매도 목표수량 0g -> 매도 중단")
         return msg, None
 
-    # 이번 분할 수량 = 남은 목표 / 남은 분할 횟수
-    remaining_splits = SPLITS_PER_DAY - (split_index - 1)
+    # 전체 진행 회차(1-base)
+    total_splits   = TRADING_DAYS * SPLITS_PER_DAY
+    global_index   = (day_index - 1) * SPLITS_PER_DAY + split_index
+    global_index   = max(1, min(global_index, total_splits))
+
+    remaining_splits = total_splits - (global_index - 1)
     if remaining_splits < 1:
         remaining_splits = 1
+
     this_qty = target_qty // remaining_splits
     if this_qty < 1:
         this_qty = target_qty       # 잔량이 분할 수보다 적으면 당일 전량
@@ -762,16 +848,16 @@ def run_sell(token, split_index):
     this_qty = min(this_qty, sellable_qty)
     if this_qty <= 0:
         msg.append(
-            f"GOLD: 매도가능수량 0g → 건너뜀 "
+            f"GOLD: 매도가능수량 0g -> 건너뜀 "
             f"(보유 {hold_qty}g / 매도가능 {sellable_qty}g)"
         )
         return msg, None
 
-    # 지정가 = 현재가 - 슬리피지 → 10원 호가단위로 내림
+    # 지정가 = 현재가 - 슬리피지 -> 10원 호가단위로 내림
     order_price = floor_to_tick(price * (1 - LIMIT_SLIPPAGE_SELL))
 
     msg.append(
-        f"[매도] {split_index}/{SPLITS_PER_DAY}회차 | "
+        f"[매도] {split_index}/{SPLITS_PER_DAY}회차 ({day_index}일차, 전체 {global_index}/{total_splits}회) | "
         f"보유 {hold_qty}g / 매도가능 {sellable_qty}g | "
         f"이번 {this_qty}g | 지정가 {order_price:,}원"
     )
@@ -817,23 +903,27 @@ def main():
 
         # ── 분할 인덱스 결정
         split_index = get_today_split_index()
+        day_index   = get_day_index()
 
         # ── 하루 첫 번째 분할: 매매 시작 알림
         if split_index == 1:
+            total_splits = TRADING_DAYS * SPLITS_PER_DAY
+            global_index = (day_index - 1) * SPLITS_PER_DAY + split_index
             TA.send_tele([
                 "━━━━━━━━━━━━━━━━━━━━━━━━",
                 "🥇 KRX 금현물 자동매매 시작",
                 f"일시  : {now_str}",
                 f"모드  : {mode_kor} ({SPLITS_PER_DAY}회 분할 / {TRADING_DAYS}일간)",
+                f"진행  : {day_index}일차 | 전체 {global_index}/{total_splits}회차",
                 f"종목  : 금 99.99% 1kg ({GOLD_STOCK_CODE})",
                 "━━━━━━━━━━━━━━━━━━━━━━━━",
             ])
 
         # ── 매매 실행
         if MODE == "buy":
-            order_msg, ord_no = run_buy(token, split_index)
+            order_msg, ord_no = run_buy(token, split_index, day_index)
         else:
-            order_msg, ord_no = run_sell(token, split_index)
+            order_msg, ord_no = run_sell(token, split_index, day_index)
 
         # ── 5초 대기 후 당일 체결 확인
         time.sleep(5)
