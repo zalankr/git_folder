@@ -299,9 +299,9 @@ def test_kt50030(token):
     s, d = _post(token, "kt50030", {
         "ord_dt":       today,
         "mrkt_deal_tp": "0",       # 0=전체
-        "qry_tp":       "0",       # 0=전체
         "stk_bond_tp":  "0",
-        "sell_tp":      "0",
+        "slby_tp":      "0",       # 매도매수구분 (필드명 slby_tp 주의)
+        "qry_tp":       "1",       # 1=주문순
         "stk_cd":       GOLD_STOCK_CODE,
         "fr_ord_no":    "",
         "dmst_stex_tp": "KRX",
@@ -316,7 +316,7 @@ def test_kt50031(token):
     print("\n▶ [kt50031] 금현물 주문체결조회")
     today = datetime.date.today().strftime("%Y%m%d")
     s, d = _post(token, "kt50031", {
-        "qry_tp":       "0",
+        "qry_tp":       "1",        # 1=주문순(전체) ※ 0은 무효값
         "stk_bond_tp":  "0",
         "sell_tp":      "0",
         "dmst_stex_tp": "KRX",
@@ -350,6 +350,7 @@ def test_kt50075(token):
         "mrkt_deal_tp": "0",
         "stk_bond_tp":  "0",
         "sell_tp":      "0",
+        "qry_tp":       "1",       # 1=주문순
         "stk_cd":       GOLD_STOCK_CODE,
         "fr_ord_no":    "",
         "dmst_stex_tp": "KRX",
@@ -359,6 +360,20 @@ def test_kt50075(token):
 
 
 # ── 주문 (⚠️ 실제 주문 발생) ────────────────────────────────────────────
+
+# KRX 금현물 호가단위 10원 고정 — 주문단가 끝자리 0 필수
+GOLD_TICK_SIZE = 10
+
+def ceil_to_tick(price, tick=GOLD_TICK_SIZE):
+    """호가단위 올림 (매수용)."""
+    price = int(price)
+    return ((price + tick - 1) // tick) * tick
+
+def floor_to_tick(price, tick=GOLD_TICK_SIZE):
+    """호가단위 내림 (매도용)."""
+    price = int(price)
+    return (price // tick) * tick
+
 
 def _get_ref_price(token):
     """주문 단가 기준이 될 현재가 추정.
@@ -385,8 +400,8 @@ def test_order_buy(token):
         return {}
 
     ref   = _get_ref_price(token)
-    price = int(ref * 1.005) if ref > 0 else 1
-    print(f"  기준가: {ref:,}원 / 주문단가(+0.5%): {price:,}원")
+    price = ceil_to_tick(ref * 1.005) if ref > 0 else GOLD_TICK_SIZE
+    print(f"  기준가: {ref:,}원 / 주문단가(+0.5%, 10원올림): {price:,}원")
 
     # 금현물 주문 body: 계좌번호 불필요, trde_tp="0"(보통/지정가)
     s, d = _post(token, "kt50000", {
@@ -411,8 +426,8 @@ def test_order_sell(token):
         return {}
 
     ref   = _get_ref_price(token)
-    price = int(ref * 0.995) if ref > 0 else 1
-    print(f"  기준가: {ref:,}원 / 주문단가(-0.5%): {price:,}원")
+    price = floor_to_tick(ref * 0.995) if ref > 0 else GOLD_TICK_SIZE
+    print(f"  기준가: {ref:,}원 / 주문단가(-0.5%, 10원내림): {price:,}원")
 
     s, d = _post(token, "kt50001", {
         "stk_cd":  GOLD_STOCK_CODE,
@@ -527,10 +542,23 @@ def main():
     args    = sys.argv[1:]
     results = {}
 
+    # ── cancel <주문번호> [수량] : 미체결 주문 취소 ──────────────────────
+    if args and args[0] == "cancel":
+        if len(args) < 2:
+            print("\n  사용법: python3 GOLD_TR_test.py cancel <주문번호> [취소수량]")
+            print("  예시:   python3 GOLD_TR_test.py cancel 0229466")
+            print("          (취소수량 생략 시 잔량 전량 취소)\n")
+            return
+        ord_no = args[1]
+        qty    = int(args[2]) if len(args) >= 3 else 0
+        test_order_cancel(token, ord_no, qty)
+        return
+
     if not args:
         print(f"\n  ※ 인수 없음 → 핵심 조회 TR {ESSENTIAL_TRS} 실행")
         print(f"  ※ 전체: python3 GOLD_TR_test.py all")
-        print(f"  ※ 주문 테스트: python3 GOLD_TR_test.py order_buy\n")
+        print(f"  ※ 주문 테스트: python3 GOLD_TR_test.py order_buy")
+        print(f"  ※ 주문 취소: python3 GOLD_TR_test.py cancel <주문번호>\n")
         targets = ESSENTIAL_TRS
     elif "all" in args:
         targets = [k for k in TR_MAP if not k.startswith("order_")]
