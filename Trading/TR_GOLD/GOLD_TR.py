@@ -666,7 +666,8 @@ def get_day_index():
     그렇지 않으면 STATE_FILE 에 기록된 매매 시작일 기준으로 자동 계산.
       - 첫 실행(파일 없음 또는 모드 변경)이면 오늘을 1일차로 기록.
       - 이후 호출에서 경과 거래일 수를 세어 day_index 를 반환.
-      - TRADING_DAYS 를 초과하면 경고 후 TRADING_DAYS 를 반환.
+      - 이전 사이클이 만료(TRADING_DAYS 경과)되면 오늘을 새 사이클의
+        1일차로 자동 초기화 → STATE_FILE 수동 삭제 불필요.
     """
     if DAY_INDEX_OVERRIDE is not None:
         log.info(f"매매 일차 수동 지정: {DAY_INDEX_OVERRIDE}")
@@ -684,15 +685,36 @@ def get_day_index():
             log.warning(f"STATE_FILE 로드 실패, 초기화: {e}")
             state = {}
 
+    # ── 1) 모드 변경 감지 → 새 사이클 시작 ──
     if state.get("mode") != MODE:
         log.info(f"MODE 변경 감지({state.get('mode')} -> {MODE}) -> 1일차로 초기화")
         state     = {"mode": MODE, "start_date": today.isoformat()}
         need_save = True
 
+    # ── 2) 시작일 누락 → 오늘을 1일차로 기록 ──
     if "start_date" not in state:
         state     = {"mode": MODE, "start_date": today.isoformat()}
         need_save = True
 
+    # ── 3) 경과일 계산 ──
+    start_date   = datetime.date.fromisoformat(state["start_date"])
+    elapsed_days = (today - start_date).days   # 0-base
+
+    # ── 4) 이전 사이클 만료 → 새 사이클 1일차로 자동 초기화 ──
+    #   (이전 매매가 끝난 뒤 한참 후 같은 코드를 다시 가동해도 자동 리셋되도록)
+    if elapsed_days >= TRADING_DAYS:
+        log.info(
+            f"이전 사이클 만료(시작일 {start_date} + {TRADING_DAYS}일 경과) "
+            f"-> 새 사이클 1일차로 초기화"
+        )
+        state        = {"mode": MODE, "start_date": today.isoformat()}
+        start_date   = today
+        elapsed_days = 0
+        need_save    = True
+
+    day_index = elapsed_days + 1   # 1-base
+
+    # ── 5) 상태 저장 (모든 변경을 한 번에 반영) ──
     if need_save:
         try:
             with open(STATE_FILE, "w", encoding="utf-8") as f:
@@ -700,17 +722,6 @@ def get_day_index():
             log.info(f"STATE_FILE 저장: {state}")
         except Exception as e:
             log.warning(f"STATE_FILE 저장 실패: {e}")
-
-    start_date   = datetime.date.fromisoformat(state["start_date"])
-    elapsed_days = (today - start_date).days   # 0-base
-    day_index    = elapsed_days + 1            # 1-base
-
-    if day_index > TRADING_DAYS:
-        log.warning(
-            f"매매 일차({day_index}) > TRADING_DAYS({TRADING_DAYS}) -> "
-            f"{TRADING_DAYS}일차로 캡핑. 매매 완료 후 STATE_FILE 삭제 필요."
-        )
-        day_index = TRADING_DAYS
 
     log.info(f"매매 일차: {day_index} / {TRADING_DAYS} (시작일 {start_date})")
     return day_index
