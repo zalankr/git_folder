@@ -11,8 +11,10 @@ daily_snapshot.py
   python3 daily_snapshot.py US
   python3 daily_snapshot.py ASIA
 
-계좌 정보: account_data.csv (CSV 기반 선언적 구성)
-미연결 계좌(GOLD, 노라임, 노라송, 퇴직연금): 0원 placeholder
+계좌 정보: ACCOUNTS 리스트 (코드 내 선언적 구성)
+미연결 계좌(노라임/노라송/퇴직연금): 0원 placeholder
+Gold: 키움 실계좌 실시간 조회 (GOLD_TR.py import)
+JPUSbond·연금저축-1: 한투 계좌 투자금 0원 → manual_assets.json 수기 잔고 사용
 """
 
 import sys
@@ -38,9 +40,9 @@ USAA_TR_PATH = "/var/autobot/TR_USAA/USAA_TR.json"
 SNAPSHOT_DIR = "/var/autobot/Balance"
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
-# 수동 입력 잔고 (IRP 예수금 등 KIS API 조회 불가한 값)
-# 없으면 자동 생성, 사용자가 직접 수정 가능
-MANUAL_BALANCE_PATH = os.path.join(SNAPSHOT_DIR, "manual_IRP_balance.json")
+# 수동 입력 자산 (다른 증권사 보유분 + IRP 예수금 등 KIS API 조회 불가 값)
+# 종목/예수금만 수기 입력하면 시세는 코드가 실시간 조회해 평가금 계산
+MANUAL_ASSETS_PATH = os.path.join(SNAPSHOT_DIR, "manual_assets.json")
 
 MAX_PAGE = 30
 API_SLEEP = 0.12    # KIS rate limit: 20/sec 이론, 실사용 ~8/sec
@@ -83,21 +85,21 @@ ACCOUNTS = [
     # HKQT: 홍콩주식
     ("Global Market", "HKQT", "HKQ1T", "63604155", "01", "overseas_all", {"natn_cd": "344", "currency": "HKD", "excg": "SEHK", "repr_cd": "00700"}),
 
-    # ETC: 일본 채권 (일본주식 API로 조회)
-    ("Global Market", "ETC",  "JPUSbond", "63721147", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
+    # ETC: 일본 채권 (한투 실계좌 63721147 투자금 0원 → manual_assets.json 수기 잔고 사용)
+    ("Global Market", "ETC",  "JPUSbond", "63721147", "01", "manual_asset", {"section": "JPUSbond"}),
 
     # GBFT: 해외선물옵션 (acnt_prdt_cd=08) — OTFM3118R + OTFM3114R 사용
     ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "gbft", {"currency": "USD"}),
     ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "gbft", {"currency": "USD"}),
 
     # ── Alternative ──────────────────────────────
-    ("Alternative", "Gold",   "Gold",   "키움 52953897", "", "placeholder", {"currency": "KRW"}),
+    ("Alternative", "Gold",   "Gold",   "키움 52953897", "", "gold", {"currency": "KRW"}),
     ("Alternative", "Crypto", "Crypto", "ilpus@naver.com", "", "upbit", {}),
 
     # ── 연금 & ISA ────────────────────────────────
     ("연금&ISA", "ISA",     "ISA",        "43665648", "01", "kr_simple",   {}),
     ("연금&ISA", "ISA",     "윤숙ISA",    "43680827", "01", "kr_simple",   {}),
-    ("연금&ISA", "Pension", "연금저축-1", "43685950", "22", "kr_simple",   {}),
+    ("연금&ISA", "Pension", "연금저축-1", "43685950", "22", "manual_asset", {"section": "Pension_연금저축-1"}),
     ("연금&ISA", "Pension", "연금저축-2", "44334640", "22", "kr_simple",   {}),
     ("연금&ISA", "Pension", "IRP",        "43685950", "29", "kr_simple",   {}),
     ("연금&ISA", "Pension", "퇴직연금",   "미래에셋", "",   "placeholder", {"currency": "KRW"}),
@@ -117,45 +119,37 @@ US_MODE_KEYS = {"USAA", "USQT", "Crypto"}
 #  KIS 인증 (계좌별 토큰 관리)
 # ══════════════════════════════════════════════════
 
-# ── 수동 입력 잔고 (IRP 예수금 등) ────────────────────
-# IRP는 KIS API로 예수금(RP 운용자산) 조회 불가 → 사용자가 MTS 보고 직접 입력
-# 파일이 없으면 최초 1회 자동 생성, 이후 수동 수정
-_MANUAL_DEFAULTS = {
-    "43685950_29_IRP_cash": {
-        "value": 102831,
-        "updated": "2026-05-12",
-        "note": "MTS IRP 자산 - 주식평가금액 = 예수금(RP 운용). MTS에서 확인 후 수동 수정"
-    }
-}
+# ── 수동 입력 자산 (manual_assets.json) ────────────────────
+# 다른 증권사 보유분(JPUSbond, 연금 등) + IRP 예수금을 한 파일로 통합 관리.
+# 종목/예수금만 수기 입력 → 시세는 코드가 실시간 조회.
+_manual_assets_cache = None
 
-_manual_cache = None
+def load_manual_assets() -> dict:
+    """manual_assets.json 전체 로드 (1회 캐시). 파일 없으면 빈 dict."""
+    global _manual_assets_cache
+    if _manual_assets_cache is None:
+        try:
+            with open(MANUAL_ASSETS_PATH, encoding="utf-8") as f:
+                _manual_assets_cache = json.load(f)
+        except Exception:
+            _manual_assets_cache = {}
+    return _manual_assets_cache
 
-def get_manual_balance(key: str) -> tuple:
+
+def get_manual_irp_cash(cano: str, acnt_prdt_cd: str) -> tuple:
     """
-    manual_balance.json 에서 수동 입력된 잔고값을 가져옴.
-    파일이 없으면 _MANUAL_DEFAULTS 로 최초 생성.
+    manual_assets.json 의 IRP 섹션에서 IRP 예수금 조회.
+    구조: {"IRP_<cano>": {"<cano>_<acnt>_IRP_cash": {"value":..., "updated":...}}}
     Returns: (value, updated_date)
     """
-    global _manual_cache
-    if _manual_cache is None:
-        if not os.path.exists(MANUAL_BALANCE_PATH):
-            try:
-                with open(MANUAL_BALANCE_PATH, "w", encoding="utf-8") as f:
-                    json.dump(_MANUAL_DEFAULTS, f, ensure_ascii=False, indent=2)
-                _manual_cache = dict(_MANUAL_DEFAULTS)
-            except Exception:
-                _manual_cache = {}
-        else:
-            try:
-                with open(MANUAL_BALANCE_PATH, encoding="utf-8") as f:
-                    _manual_cache = json.load(f)
-            except Exception:
-                _manual_cache = {}
-    entry = _manual_cache.get(key, {})
+    data = load_manual_assets()
+    section = data.get(f"IRP_{cano}", {})
+    if not isinstance(section, dict):
+        return 0.0, ""
+    entry = section.get(f"{cano}_{acnt_prdt_cd}_IRP_cash", {})
     if isinstance(entry, dict):
-        return (float(entry.get("value", 0) or 0),
-                entry.get("updated", ""))
-    return (float(entry or 0), "")
+        return float(entry.get("value", 0) or 0), entry.get("updated", "")
+    return float(entry or 0), ""
 
 
 _token_cache = {}   # {cano: {"appkey":..., "secret":..., "token":...}}
@@ -367,13 +361,13 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         except Exception:
             pass
 
-        # ── 3차: IRP(29) 전용 — KIS API 조회 불가, manual_balance.json 사용 ──
+        # ── 3차: IRP(29) 전용 — KIS API 조회 불가, manual_assets.json 사용 ──
         # IRP의 예수금(RP 운용자산)은 증권 API에서 조회되지 않음.
-        # manual_balance.json 에서 사용자가 MTS 보고 직접 입력한 값 사용.
+        # manual_assets.json 의 IRP 섹션에서 사용자가 MTS 보고 입력한 값 사용.
         manual_note = ""
         manual_cash = 0.0
         if acnt_prdt_cd == "29":
-            mv, md = get_manual_balance(f"{cano}_{acnt_prdt_cd}_IRP_cash")
+            mv, md = get_manual_irp_cash(cano, acnt_prdt_cd)
             if mv > 0:
                 manual_cash = mv
                 manual_note = f"수동입력 예수금 ({md})"
@@ -1156,56 +1150,6 @@ def apply_rp_adjustment(usd_raw: dict, usaa_tr: dict) -> tuple:
 
 
 # ══════════════════════════════════════════════════
-#  KRQT/USQT 카테고리 분류 (CSV 기반)
-# ══════════════════════════════════════════════════
-
-def load_category_map(csv_path: str, us: bool = False) -> dict:
-    """
-    stock.csv 로드 → {code: category}
-    code는 국내: 'A삼성' → '005930' (첫글자 제거), 미국: 그대로
-    같은 code가 여러 category에 속하면 첫 번째만 사용 (경고)
-    """
-    if not os.path.exists(csv_path):
-        return {}
-    mapping = {}
-    try:
-        with open(csv_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        # header 파싱
-        header = [h.strip() for h in lines[0].strip().split(",")]
-        ci = {h: i for i, h in enumerate(header)}
-        for raw in lines[1:]:
-            parts = [p.strip() for p in raw.strip().split(",")]
-            if len(parts) < len(header):
-                continue
-            code = parts[ci.get("code", 0)]
-            cat  = parts[ci.get("category", 3)]
-            if not code or not cat or cat.lower() == "nan":
-                continue
-            # 국내주식: A 접두어 제거
-            if not us and code.startswith(("A", "a")):
-                code = code[1:]
-            if code == "CASH":
-                continue
-            if code not in mapping:
-                mapping[code] = cat
-    except Exception:
-        return {}
-    return mapping
-
-
-def filter_by_category(balance: dict, code_to_cat: dict, target_cat: str) -> dict:
-    """balance의 stocks를 category로 필터링해 반환 (eval_amt만 재합산)"""
-    filtered = []
-    stock_eval = 0.0
-    for s in balance.get("stocks", []):
-        if code_to_cat.get(s["code"]) == target_cat:
-            filtered.append(s)
-            stock_eval += s["eval_amt"]
-    return {"stocks": filtered, "stock_eval": stock_eval}
-
-
-# ══════════════════════════════════════════════════
 #  KRQT 전용: result.json / rebal.json 기반 분류
 # ══════════════════════════════════════════════════
 
@@ -1860,6 +1804,328 @@ def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
     }
 
 
+# ══════════════════════════════════════════════════
+#  시세 조회 (수동자산 평가금 계산용)
+# ══════════════════════════════════════════════════
+
+# manual_assets 평가금 계산을 위한 대표 KIS 계좌 (시세 조회는 어느 계좌 토큰이든 가능)
+_QUOTE_CANO = "63604155"
+
+# 시세 1회 캐시 {(market, code): price}
+_price_cache = {}
+
+
+def fetch_kr_price(code: str) -> float:
+    """국내주식/ETF 현재가 (FHKST01010100). 실패 시 0.0"""
+    ck = ("KR", code)
+    if ck in _price_cache:
+        return _price_cache[ck]
+    price = 0.0
+    try:
+        url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price"
+        h = kis_headers(_QUOTE_CANO, "FHKST01010100")
+        params = {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code}
+        time.sleep(API_SLEEP)
+        r = requests.get(url, headers=h, params=params, timeout=10)
+        r.raise_for_status()
+        d = r.json()
+        if d.get("rt_cd") == "0":
+            price = float(d.get("output", {}).get("stck_prpr", 0) or 0)
+    except Exception:
+        price = 0.0
+    _price_cache[ck] = price
+    return price
+
+
+def fetch_overseas_price(excd: str, symb: str) -> float:
+    """
+    해외주식 현재가 (HHDFS00000300). 실패 시 0.0
+    excd: 거래소코드 (도쿄=TSE, 홍콩=HKS, 나스닥=NAS, 뉴욕=NYS, 아멕스=AMS)
+    """
+    ck = (excd, symb)
+    if ck in _price_cache:
+        return _price_cache[ck]
+    price = 0.0
+    try:
+        url = f"{BASE_URL}/uapi/overseas-price/v1/quotations/price"
+        h = kis_headers(_QUOTE_CANO, "HHDFS00000300")
+        params = {"AUTH": "", "EXCD": excd, "SYMB": symb}
+        time.sleep(API_SLEEP)
+        r = requests.get(url, headers=h, params=params, timeout=10)
+        r.raise_for_status()
+        d = r.json()
+        if d.get("rt_cd") == "0":
+            out = d.get("output", {}) or {}
+            for fld in ("last", "base", "open"):
+                v = str(out.get(fld, "")).strip()
+                if v and v not in ("0", "0.0"):
+                    price = float(v)
+                    break
+    except Exception:
+        price = 0.0
+    _price_cache[ck] = price
+    return price
+
+
+# 환율 1회 캐시 {통화: KRW/통화 환율}
+_fx_cache = {}
+
+
+def fetch_fx_rate(currency: str) -> float:
+    """
+    KRW 대비 환율 (1 외화 = ? KRW). KRW면 1.0.
+    해외주식 매수가능금액 조회(TTTS3007R)의 exrt 필드를 사용.
+    실패 시 0.0 (호출부에서 폴백 처리).
+    """
+    if currency == "KRW":
+        return 1.0
+    if currency in _fx_cache:
+        return _fx_cache[currency]
+    # 통화별 대표 거래소/종목 (TTTS3007R 입력용)
+    fx_param = {
+        "USD": ("NASD", "AAPL", "100"),
+        "JPY": ("TKSE", "7203", "1000"),
+        "HKD": ("SEHK", "00700", "100"),
+    }.get(currency)
+    rate = 0.0
+    if fx_param:
+        excg, item, unpr = fx_param
+        try:
+            url = f"{BASE_URL}/uapi/overseas-stock/v1/trading/inquire-psamount"
+            h = kis_headers(_QUOTE_CANO, "TTTS3007R")
+            params = {
+                "CANO": _QUOTE_CANO, "ACNT_PRDT_CD": "01",
+                "OVRS_EXCG_CD": excg, "ITEM_CD": item, "OVRS_ORD_UNPR": unpr
+            }
+            time.sleep(API_SLEEP)
+            r = requests.get(url, headers=h, params=params, timeout=10)
+            r.raise_for_status()
+            d = r.json()
+            if d.get("rt_cd") == "0":
+                rate = float(d.get("output", {}).get("exrt", 0) or 0)
+        except Exception:
+            rate = 0.0
+    _fx_cache[currency] = rate
+    return rate
+
+
+# ══════════════════════════════════════════════════
+#  KRX 금현물 잔고 조회 (키움 GOLD_TR.py import)
+# ══════════════════════════════════════════════════
+
+def fetch_gold_balance() -> dict:
+    """키움 KRX 금현물 실계좌 잔고를 GOLD_TR.py import 해 실시간 조회.
+
+    실패 시 placeholder 반환하되 note 에 구체적 원인을 담아
+    텔레그램 메시지에 표시되도록 한다 ([미연결] 만 뜨면 디버깅 불가).
+    kt50020 일시 오류 대비 1회 재시도.
+    """
+    import importlib
+    import time as _t
+
+    GOLD_DIR = "/var/autobot/TR_GOLD"
+    if GOLD_DIR not in sys.path:
+        sys.path.insert(0, GOLD_DIR)
+
+    try:
+        if "GOLD_TR" in sys.modules:
+            gold = importlib.reload(sys.modules["GOLD_TR"])
+        else:
+            gold = importlib.import_module("GOLD_TR")
+    except Exception as e:
+        return {"error": f"GOLD_TR import 실패: {e}"}
+
+    # 토큰 발급 (key 파일 없음/발급 API 실패 → RuntimeError)
+    try:
+        token = gold.get_access_token()
+    except RuntimeError as e:
+        return {"placeholder": True, "note": f"GOLD 토큰: {e}"}
+    except SystemExit as e:
+        return {"placeholder": True, "note": f"GOLD 토큰 발급 실패: {e}"}
+    except Exception as e:
+        return {"placeholder": True, "note": f"GOLD 토큰 예외: {e}"}
+
+    # 잔고 조회: kt50020 일시 오류 대비 1회 재시도
+    bal = None
+    last_err = ""
+    for attempt in range(2):
+        try:
+            bal = gold.get_gold_balance(token)
+            break
+        except RuntimeError as e:
+            last_err = str(e)
+            if attempt == 0:
+                _t.sleep(2)   # 일시 오류 가능성 → 2초 후 재시도
+                continue
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {e}"
+            break
+    if bal is None:
+        # 원인을 note 에 남겨 텔레그램에 표시 ([미연결] 만으로는 디버깅 불가)
+        return {"placeholder": True, "note": f"GOLD 잔고조회 실패: {last_err}"}
+
+    hold_qty  = int(bal.get("hold_qty", 0) or 0)
+    # GOLD_TR.get_gold_balance 가 산출한 값:
+    #   eval_amt  = est_amt             (금 평가금, 1g 시세 기준 정상값)
+    #   deposit   = net_entr            (당일 매수 정산반영 순예수금)
+    #   total_amt = est_amt + net_entr  (계좌 총평가금)
+    #   ※ tot_entr(미정산 예수금)는 당일 매수분 이중계산 → 쓰지 않음
+    eval_amt  = float(bal.get("eval_amt", 0) or 0)
+    deposit   = float(bal.get("deposit", 0) or 0)
+    total_amt = float(bal.get("total_amt", 0) or 0)
+    cur_price = float(bal.get("cur_price", 0) or 0)
+    avg_price = float(bal.get("avg_price", 0) or 0)
+    ret_rate  = float(bal.get("return_rate", 0) or 0)
+
+    # total: GOLD_TR 가 준 total_amt 우선. 비정상(0)이면 eval+deposit 으로 폴백.
+    total = total_amt if total_amt > 0 else (eval_amt + deposit)
+
+    stocks = []
+    if hold_qty > 0:
+        stocks.append({
+            "code": "M04020000",
+            "name": "금 99.99% 1kg",
+            "qty": hold_qty,            # 단위: g
+            "eval_amt": eval_amt,
+            "price": cur_price,         # 1g 현재가 (정상 시세)
+            "avg_price": avg_price,     # 1g 평균매입단가
+            "profit_rate": ret_rate,
+        })
+
+    return {
+        "stocks": stocks,
+        "stock_eval": eval_amt,
+        "cash": deposit,
+        "total": total,                 # 금평가금(est_amt) + 예수금
+    }
+
+
+# ══════════════════════════════════════════════════
+#  수동 입력 자산 평가 (manual_assets.json)
+# ══════════════════════════════════════════════════
+
+def fetch_manual_asset(section_key: str) -> dict:
+    """
+    manual_assets.json 의 한 섹션을 읽어 실시간 시세로 평가금 계산.
+
+    지원 market:
+      "KR"      : 국내 ETF/주식 (FHKST01010100 현재가)
+      "JP"/"TSE": 일본 도쿄거래소 주식 (HHDFS00000300, EXCD=TSE)
+    예수금(deposit)은 통화별 dict → 외화는 환율로 KRW 환산해 합산.
+
+    Returns (KRW 기준):
+      {"stocks":[...], "stock_eval":float, "cash":float, "total":float,
+       "currency":"KRW"}
+      또는 {"error": "..."}
+    """
+    data = load_manual_assets()
+    section = data.get(section_key)
+    if not isinstance(section, dict):
+        return {"error": f"manual_assets.json 에 '{section_key}' 섹션 없음"}
+
+    market = str(section.get("market", "KR")).upper()
+    excg   = str(section.get("excg", "")).upper()
+
+    stocks = []
+    stock_eval_krw = 0.0
+
+    for h in section.get("holdings", []):
+        code = str(h.get("code", "")).strip()
+        name = str(h.get("name", "") or code)
+        qty  = float(h.get("qty", 0) or 0)
+        if not code or qty <= 0:
+            continue
+
+        # ── 종목 현재가 조회 (시장별) ──
+        if market in ("JP", "TSE"):
+            price_native = fetch_overseas_price(excg or "TSE", code)
+            fx = fetch_fx_rate("JPY") or 0.0
+            price_krw = price_native * fx
+        else:  # KR / KR_GOLD 등 — 국내 코드
+            price_krw = fetch_kr_price(code)
+
+        evl_krw = price_krw * qty
+        stock_eval_krw += evl_krw
+        stocks.append({
+            "code": code,
+            "name": name,
+            "qty": qty,
+            "eval_amt": evl_krw,
+            "price": price_krw,
+            "profit_rate": 0.0,   # 수동자산은 매입가 미보유 → 0
+        })
+
+    # ── 예수금: 통화별 KRW 환산 합산 ──
+    cash_krw = 0.0
+    deposit = section.get("deposit", {})
+    if isinstance(deposit, dict):
+        for cur, amt in deposit.items():
+            amt = float(amt or 0)
+            if cur == "KRW":
+                cash_krw += amt
+            else:
+                fx = fetch_fx_rate(cur)
+                cash_krw += amt * fx if fx > 0 else 0.0
+
+    return {
+        "stocks": stocks,
+        "stock_eval": stock_eval_krw,
+        "cash": cash_krw,
+        "total": stock_eval_krw + cash_krw,
+        "currency": "KRW",
+    }
+
+
+# ══════════════════════════════════════════════════
+#  핸들러: Gold / 수동자산
+# ══════════════════════════════════════════════════
+
+def handle_gold(cano: str, acnt: str, kwargs: dict) -> dict:
+    """KRX 금현물 (키움 실계좌 실시간 조회)"""
+    bal = fetch_gold_balance()
+
+    if bal.get("placeholder"):
+        return {
+            "currency": "KRW", "total_krw": 0.0,
+            "stock_eval_krw": 0.0, "cash_krw": 0.0,
+            "stocks": [], "exchange_rate": 1.0,
+            "placeholder": True, "note": bal.get("note", ""),
+        }
+    if "error" in bal:
+        return {"error": bal["error"], "currency": "KRW",
+                "total_krw": 0.0, "stock_eval_krw": 0.0,
+                "cash_krw": 0.0, "stocks": []}
+
+    return {
+        "currency": "KRW",
+        "total_krw": bal["total"],
+        "stock_eval_krw": bal["stock_eval"],
+        "cash_krw": bal["cash"],
+        "stocks": bal["stocks"],
+        "exchange_rate": 1.0,
+    }
+
+
+def handle_manual_asset(cano: str, acnt: str, kwargs: dict) -> dict:
+    """manual_assets.json 수동 입력 자산 (JPUSbond, 연금저축-1 등)"""
+    section_key = kwargs.get("section", "")
+    bal = fetch_manual_asset(section_key)
+
+    if "error" in bal:
+        return {"error": bal["error"], "currency": "KRW",
+                "total_krw": 0.0, "stock_eval_krw": 0.0,
+                "cash_krw": 0.0, "stocks": []}
+
+    return {
+        "currency": "KRW",
+        "total_krw": bal["total"],
+        "stock_eval_krw": bal["stock_eval"],
+        "cash_krw": bal["cash"],
+        "stocks": bal["stocks"],
+        "exchange_rate": 1.0,
+    }
+
+
 def handle_placeholder(cano: str, acnt: str, kwargs: dict) -> dict:
     """미연결 계좌: 0원 반환"""
     cur = kwargs.get("currency", "KRW")
@@ -1883,6 +2149,8 @@ HANDLERS = {
     "upbit":         handle_upbit,
     "krft":          handle_krft,
     "gbft":          handle_gbft,
+    "gold":          handle_gold,
+    "manual_asset":  handle_manual_asset,
     "placeholder":   handle_placeholder,
 }
 
