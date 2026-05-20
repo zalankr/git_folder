@@ -22,9 +22,14 @@
   주문 규격:
     - body: stk_cd / ord_qty / trde_tp / ord_uv  (계좌번호 불필요)
     - trde_tp: "0"=보통(지정가), "10"=IOC, "20"=FOK  ※ 시장가 없음
+<<<<<<< HEAD
     - 호가단위 10원 고정 → 주문단가 끝자리 0 필수 (아니면 857024 오류)
     - 금현물은 지정가만 가능 → 미체결 방지용 슬리피지 적용
       (매수 현재가 +0.5% 후 10원 올림, 매도 -0.5% 후 10원 내림)
+=======
+    - 금현물은 지정가만 가능 → 미체결 방지용 슬리피지 적용
+      (매수 현재가 +0.5%, 매도 현재가 -0.5%)
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
     - 응답: ord_no (주문번호)
 
  key 파일 : /var/autobot/KIS/kiwgold52953897.txt
@@ -44,11 +49,40 @@ from tendo import singleton
 import telegram_alert as TA
 
 # ===========================================================================
+<<<<<<< HEAD
+=======
+# 중복 실행 방지 (crontab 겹침 방지)
+# ===========================================================================
+try:
+    me = singleton.SingleInstance()
+except singleton.SingleInstanceException:
+    TA.send_tele("GOLD: 이미 실행 중입니다.")
+    sys.exit(0)
+
+
+# ===========================================================================
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 # 1) API 인증 정보 로드
 # ===========================================================================
 KEY_FILE_PATH   = "/var/autobot/KIS/kiwgold52953897.txt"
 TOKEN_FILE_PATH = "/var/autobot/KIS/kiwgold_token.json"
 
+<<<<<<< HEAD
+=======
+try:
+    with open(KEY_FILE_PATH, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f.readlines()]
+    APP_KEY    = lines[0]
+    APP_SECRET = lines[1]
+except Exception as e:
+    print(f"GOLD: key 파일 로드 실패 → 종료 ({e})")
+    try:
+        TA.send_tele(f"GOLD: key 파일 로드 실패 → 종료 ({e})")
+    except Exception:
+        pass
+    sys.exit(1)
+
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 BASE_URL        = "https://api.kiwoom.com"
 GOLD_STOCK_CODE = "M04020000"           # 금 99.99% 1kg (앞에 M 필수)
 TOKEN_SAFETY_MARGIN_MIN = 30
@@ -66,6 +100,7 @@ TR_URI_MAP = {
     "kt50000": URI_ORDR, "kt50001": URI_ORDR, "kt50003": URI_ORDR,
 }
 
+<<<<<<< HEAD
 # appkey/secret 은 load_api_keys() 호출 시 채워짐 (import 시점엔 None)
 APP_KEY    = None
 APP_SECRET = None
@@ -91,6 +126,8 @@ def load_api_keys():
         return APP_KEY, APP_SECRET
     except Exception as e:
         raise RuntimeError(f"GOLD: key 파일 로드 실패: {e}")
+=======
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 
 # ===========================================================================
 # 2) 매매 설정  (상황에 맞게 자유롭게 수정)
@@ -115,6 +152,7 @@ TRADING_DAYS   = 3          # 총 매매일 수
 SPLITS_PER_DAY = 5          # 1일 분할 횟수 = 1일 cron 호출 횟수
 
 # ── 분할 스케줄 (시, 분) — 현재 시각으로 몇 번째 분할인지 자동 판별 ───────
+<<<<<<< HEAD
 #   ※ EC2가 UTC로 동작하므로 SPLIT_SCHEDULE / crontab 모두 UTC 기준!
 #     UTC = KST - 9시간
 #
@@ -138,6 +176,20 @@ SPLIT_SCHEDULE = [
     (3,  13),   # 3번째 분할  (UTC 03:13 = KST 12:13)
     (4,  13),   # 4번째 분할  (UTC 04:13 = KST 13:13)
     (6,  20),   # 5번째 분할  (UTC 06:20 = KST 15:20)
+=======
+#   crontab 권장 (평일 KST):
+#     13 9  * * 1-5  → 09:13 (1번째)
+#     13 10 * * 1-5  → 10:13 (2번째)
+#     13 12 * * 1-5  → 12:13 (3번째)
+#     13 13 * * 1-5  → 13:13 (4번째)
+#     20 15 * * 1-5  → 15:20 (5번째)  ※ 정규장 15:30 마감 전
+SPLIT_SCHEDULE = [
+    (9,  13),   # 1번째 분할
+    (10, 13),   # 2번째 분할
+    (12, 13),   # 3번째 분할
+    (13, 13),   # 4번째 분할
+    (15, 20),   # 5번째 분할
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 ]
 
 # ── 분할 인덱스 수동 지정 (None=현재 시각 자동 판별 / 1~N 직접 지정) ──────
@@ -170,6 +222,7 @@ log = logging.getLogger("krx_gold")
 
 # ===========================================================================
 # 3) 공통 유틸
+<<<<<<< HEAD
 # ===========================================================================
 def _to_int(val):
     """키움 응답 문자열(zero-padded, +/- 부호 포함) → 정수."""
@@ -218,6 +271,31 @@ def get_access_token(force_new: bool = False):
     """
     load_api_keys()                      # APP_KEY/APP_SECRET 보장
     if not force_new and os.path.exists(TOKEN_FILE_PATH):
+=======
+# ===========================================================================
+def _to_int(val):
+    """키움 응답 문자열(zero-padded, +/- 부호 포함) → 정수."""
+    s = str(val).replace(",", "").replace("+", "").strip()
+    if not s or s in ("-", ""):
+        return 0
+    return int(float(s))
+
+
+def _to_float(val):
+    """키움 응답 문자열 → 실수 (수익률 등)."""
+    s = str(val).replace(",", "").replace("+", "").replace("%", "").strip()
+    if not s or s in ("-", ""):
+        return 0.0
+    return float(s)
+
+
+# ===========================================================================
+# 4) 인증 / 토큰 관리
+# ===========================================================================
+def get_access_token():
+    """접근토큰을 캐시에서 로드하거나 신규 발급."""
+    if os.path.exists(TOKEN_FILE_PATH):
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
         try:
             with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
                 cached = json.load(f)
@@ -258,7 +336,11 @@ def get_access_token(force_new: bool = False):
     with open(TOKEN_FILE_PATH, "w", encoding="utf-8") as f:
         json.dump({"access_token": token, "expires_at": expires_at.isoformat()},
                   f, ensure_ascii=False, indent=2)
+<<<<<<< HEAD
     log.info(f"접근토큰 신규 발급 완료{' (강제)' if force_new else ''}")
+=======
+    log.info("접근토큰 신규 발급 완료")
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
     return token
 
 
@@ -277,6 +359,7 @@ def _api_headers(token, api_id):
     }
 
 
+<<<<<<< HEAD
 # 현재 유효 토큰 보관 (8005 오류 시 _post 가 재발급하여 갱신)
 _CURRENT_TOKEN = None
 
@@ -289,6 +372,10 @@ def _post(token, api_id, body, timeout=10, _token_retry=True):
     """
     global _CURRENT_TOKEN
 
+=======
+def _post(token, api_id, body, timeout=10):
+    """TR에 맞는 URI로 POST → 응답 dict 반환. return_code != 0 이면 예외."""
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
     uri  = TR_URI_MAP.get(api_id)
     if uri is None:
         raise ValueError(f"알 수 없는 TR: {api_id}")
@@ -300,6 +387,7 @@ def _post(token, api_id, body, timeout=10, _token_retry=True):
     rc = data.get("return_code", -1)
     if rc != 0:
         msg = data.get("return_msg", "")
+<<<<<<< HEAD
         # ── 토큰 무효(8005 등) → 강제 재발급 후 1회 재시도 ──
         is_token_err = any(kw in str(msg) for kw in _TOKEN_ERR_KEYWORDS)
         if is_token_err and _token_retry:
@@ -316,15 +404,22 @@ def get_current_token():
     """_post 가 8005 재시도 중 재발급했을 수 있는 최신 토큰 반환.
     재발급이 없었으면 None → 호출 측은 기존 토큰을 그대로 쓰면 된다."""
     return _CURRENT_TOKEN
+=======
+        raise RuntimeError(f"[{api_id}] return_code={rc} | {msg}")
+    return data
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 
 
 # ===========================================================================
 # 5) 거래일 확인
 #    ka50100 시세정보 조회 성공 + 당일 거래량(trde_qty) > 0 이면 거래일.
 #    휴장일에는 거래량이 0이거나 조회가 실패한다.
+<<<<<<< HEAD
 #    ※ EC2는 UTC로 동작하지만, 금현물 장중(UTC 00~07시)은 UTC 날짜·요일이
 #      KST와 동일하므로 today.weekday() 주말 판정에 문제없음.
 #      설령 경계시간에 요일이 어긋나도 2차 거래량 0 체크로 휴장일이 걸러진다.
+=======
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 # ===========================================================================
 def is_gold_trading_day(token):
     """오늘이 KRX 금현물 거래일인지 확인."""
@@ -380,6 +475,7 @@ def get_gold_balance(token):
     """금현물 잔고확인(kt50020) → 계좌 종합 dict.
 
     반환 키:
+<<<<<<< HEAD
       deposit       예수금(원)               ← net_entr (정산반영 순예수금)
       eval_amt      금 평가금액(원)          ← gold_acnt_evlt_prst[].est_amt
       total_amt     계좌 총평가금(원)        ← eval_amt + deposit (파생)
@@ -443,6 +539,29 @@ def get_gold_balance(token):
         "return_rate":      0.0,
         "sellable_qty":     0,
         "tot_dep_amt_raw":  _to_int(data.get("tot_dep_amt", 0)),  # 참조용(미사용)
+=======
+      deposit       주문가능 예수금(원)      ← tot_entr
+      hold_qty      보유수량(g)              ← gold_acnt_evlt_prst[].real_qty
+      avg_price     평균단가(원)             ← avg_prc
+      cur_price     현재가(원)               ← cur_prc
+      eval_amt      평가금액(원)             ← est_amt
+      profit_loss   평가손익(원)             ← est_lspft
+      return_rate   수익률(%)                ← est_ratio
+      sellable_qty  매도가능수량(g)          ← able_qty
+    보유 종목이 없으면 수량/단가/손익은 0.
+    """
+    data = _post(token, "kt50020", {})
+
+    result = {
+        "deposit":      _to_int(data.get("tot_entr", 0)),
+        "hold_qty":     0,
+        "avg_price":    0,
+        "cur_price":    0,
+        "eval_amt":     0,
+        "profit_loss":  0,
+        "return_rate":  0.0,
+        "sellable_qty": 0,
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
     }
 
     for item in data.get("gold_acnt_evlt_prst", []) or []:
@@ -450,7 +569,11 @@ def get_gold_balance(token):
             result["hold_qty"]     = _to_int(item.get("real_qty", 0))
             result["avg_price"]    = _to_int(item.get("avg_prc", 0))
             result["cur_price"]    = _to_int(item.get("cur_prc", 0))
+<<<<<<< HEAD
             result["eval_amt"]     = _to_int(item.get("est_amt", 0))   # ★ 금 평가금 정답
+=======
+            result["eval_amt"]     = _to_int(item.get("est_amt", 0))
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
             # 평가손익은 부호 유지
             pl_raw = str(item.get("est_lspft", "0")).replace(",", "").replace("+", "").strip()
             result["profit_loss"]  = int(float(pl_raw)) if pl_raw and pl_raw != "-" else 0
@@ -459,6 +582,7 @@ def get_gold_balance(token):
             result["sellable_qty"] = _to_int(item.get("able_qty", 0))
             break
 
+<<<<<<< HEAD
     # ── 금 평가금이 비어있으면 cur_prc × hold_qty 로 폴백 ──
     if result["eval_amt"] <= 0 and result["hold_qty"] > 0:
         if result["cur_price"] <= 0:
@@ -481,6 +605,12 @@ def get_gold_balance(token):
         f"예수금 {result['deposit']:,}원(정산반영) / 총평가금 {result['total_amt']:,}원 / "
         f"손익 {result['profit_loss']:,}원 ({result['return_rate']:.2f}%) "
         f"[미정산예수금 tot_entr={result['deposit_raw']:,}원·미사용]"
+=======
+    log.info(
+        f"잔고: 보유 {result['hold_qty']}g / 매도가능 {result['sellable_qty']}g / "
+        f"평단 {result['avg_price']:,}원 / 손익 {result['profit_loss']:,}원 "
+        f"({result['return_rate']:.2f}%) / 예수금 {result['deposit']:,}원"
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
     )
     return result
 
@@ -508,7 +638,11 @@ def get_today_execution(token):
     today = datetime.date.today().strftime("%Y%m%d")
     try:
         data = _post(token, "kt50031", {
+<<<<<<< HEAD
             "qry_tp":       "1",        # 1=주문순(전체) ※ 0은 무효값
+=======
+            "qry_tp":       "0",
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
             "stk_bond_tp":  "0",
             "sell_tp":      "0",
             "dmst_stex_tp": "KRX",
@@ -524,10 +658,13 @@ def get_today_execution(token):
     filled_amt = 0
     count      = 0
     for item in data.get("acnt_ord_cntr_prps_dtl", []) or []:
+<<<<<<< HEAD
         # 빈 더미 레코드 제외 (ord_no="0000000" 또는 stk_cd 빈 값)
         ord_no = str(item.get("ord_no", "")).strip().lstrip("0")
         if not ord_no:
             continue
+=======
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
         if item.get("stk_cd") and item.get("stk_cd") != GOLD_STOCK_CODE:
             continue
         cq = _to_int(item.get("cntr_qty", 0))
@@ -549,7 +686,10 @@ def get_unfilled_qty(token):
             "mrkt_deal_tp": "0",
             "stk_bond_tp":  "0",
             "sell_tp":      "0",
+<<<<<<< HEAD
             "qry_tp":       "1",        # 1=주문순
+=======
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
             "stk_cd":       GOLD_STOCK_CODE,
             "fr_ord_no":    "",
             "dmst_stex_tp": "KRX",
@@ -655,6 +795,7 @@ def get_today_split_index():
 # 10) 텔레그램 헬퍼
 # ===========================================================================
 def _fmt_balance(bal):
+<<<<<<< HEAD
     """잔고 dict → 텔레그램 출력 라인 리스트.
 
     cur_price/avg_price 는 1g 기준 정상 시세(매수체결금액으로 검증됨).
@@ -672,6 +813,17 @@ def _fmt_balance(bal):
         f"수익률     : {bal['return_rate']:.2f}%",
         f"예수금     : {bal['deposit']:,}원  (정산반영)",
         f"총평가금   : {bal['total_amt']:,}원  (금평가금+예수금)",
+=======
+    """잔고 dict → 텔레그램 출력 라인 리스트."""
+    return [
+        f"보유수량   : {bal['hold_qty']}g",
+        f"평균단가   : {bal['avg_price']:,}원",
+        f"현재가     : {bal['cur_price']:,}원",
+        f"평가금액   : {bal['eval_amt']:,}원",
+        f"평가손익   : {bal['profit_loss']:,}원",
+        f"수익률     : {bal['return_rate']:.2f}%",
+        f"예수금     : {bal['deposit']:,}원",
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
     ]
 
 
@@ -701,8 +853,13 @@ def run_buy(token, split_index):
         remaining_splits = 1
     this_cash = target_cash // remaining_splits
 
+<<<<<<< HEAD
     # 지정가 = 현재가 + 슬리피지 → 10원 호가단위로 올림
     order_price = ceil_to_tick(price * (1 + LIMIT_SLIPPAGE_BUY))
+=======
+    # 지정가 = 현재가 + 슬리피지
+    order_price = int(price * (1 + LIMIT_SLIPPAGE_BUY))
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 
     this_qty = this_cash // order_price if order_price > 0 else 0
     if this_qty <= 0:
@@ -767,8 +924,13 @@ def run_sell(token, split_index):
         )
         return msg, None
 
+<<<<<<< HEAD
     # 지정가 = 현재가 - 슬리피지 → 10원 호가단위로 내림
     order_price = floor_to_tick(price * (1 - LIMIT_SLIPPAGE_SELL))
+=======
+    # 지정가 = 현재가 - 슬리피지
+    order_price = int(price * (1 - LIMIT_SLIPPAGE_SELL))
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 
     msg.append(
         f"[매도] {split_index}/{SPLITS_PER_DAY}회차 | "
@@ -895,6 +1057,7 @@ if __name__ == "__main__":
 # [ crontab 설정 예시 ]  (AWS EC2 Linux — UTC 기준!)
 #   $ crontab -e
 #
+<<<<<<< HEAD
 #   ※ EC2 시스템 시간대는 UTC 유지. crontab 시각도 UTC로 작성.
 #     UTC = KST - 9시간
 #
@@ -910,4 +1073,17 @@ if __name__ == "__main__":
 #     UTC 요일과 KST 요일이 동일하므로 1-5 그대로 사용 가능.
 #   ※ 며칠간만 매매 시 날짜 필드로 제한 (날짜도 UTC 기준):
 #       13 0 19-21 * 1-5  → 매월 19~21일 평일 KST 09:13 실행
+=======
+#   # KRX 금현물 분할 매매 - 평일(월~금) 1일 5회 분할
+#   13 9  * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
+#   13 10 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
+#   13 12 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
+#   13 13 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
+#   20 15 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
+#
+#   ※ EC2 시간대를 KST로 설정:  sudo timedatectl set-timezone Asia/Seoul
+#   ※ SPLIT_SCHEDULE 의 (시,분) 5개와 위 cron 시각 5개를 일치시킬 것
+#   ※ 며칠간만 매매 시 날짜 필드로 제한:
+#       13 9 19-21 * 1-5  → 매월 19~21일 평일에만 실행
+>>>>>>> dd574692b0c7db8cdaf0aedd2dd258da13210f3f
 # ===========================================================================
