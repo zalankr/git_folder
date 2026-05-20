@@ -1258,7 +1258,8 @@ def split_krqt_by_result(balance: dict, krqt_result: dict, target_cat: str) -> d
 
 USQT_RESULT_PATH = "/var/autobot/TR_USQT/USQT_result.json"
 USQT_REBAL_PATH  = "/var/autobot/TR_USQT/USQT_rebal.json"
-
+# 흡수 카테고리: 매핑되지 않은 잔존 종목(remain_last 포함)을 모두 여기에 합산
+USQT_ABSORB_CATEGORY = "SCG"
 
 def load_usqt_result() -> dict:
     """
@@ -1295,11 +1296,15 @@ def split_usqt_by_result(balance: dict, usqt_result: dict, target_cat: str) -> d
     실시간 USD 잔고(balance)와 USQT_result.json을 매칭해 target_cat 종목만 추출.
     중복종목은 result.json의 split qty 비율로 재분할한다.
     미국 티커는 zfill 처리 없이 그대로 매칭 (대문자 통일).
-
+ 
+    ✅ 수정: 매핑 안 된 종목(remain_last 포함) 은 USQT_ABSORB_CATEGORY 에 전량 흡수.
+       → 카테고리 stock_eval 합 == bal 전체 stock_eval 보장.
+ 
     Returns: {"stocks": [...], "stock_eval": float}  (USD 단위)
     """
     cat_split = {}
     total_split = {}
+    mapped_codes = set()
     for cat, stocks in usqt_result.items():
         if cat == "remain_last":
             continue
@@ -1308,29 +1313,45 @@ def split_usqt_by_result(balance: dict, usqt_result: dict, target_cat: str) -> d
             q = float(s.get("qty", 0) or 0)
             cat_split[(code, cat)] = cat_split.get((code, cat), 0.0) + q
             total_split[code] = total_split.get(code, 0.0) + q
-
+            mapped_codes.add(code)
+ 
     filtered = []
     stock_eval_sum = 0.0
+ 
     for s in balance.get("stocks", []):
         code = str(s.get("code", "")).strip().upper()
-        cat_q = cat_split.get((code, target_cat), 0.0)
-        if cat_q <= 0:
-            continue
-        total_q = total_split.get(code, 0.0)
-        ratio = cat_q / total_q if total_q > 0 else 1.0
-
         real_qty  = float(s.get("qty", 0) or 0)
         real_eval = float(s.get("eval_amt", 0) or 0)
-        split_qty  = real_qty * ratio
-        split_eval = real_eval * ratio
-
-        ns = dict(s)
-        ns["qty"]      = split_qty
-        ns["eval_amt"] = split_eval
-        ns["_split_ratio"] = ratio
-        filtered.append(ns)
-        stock_eval_sum += split_eval
-
+        if real_qty <= 0:
+            continue
+ 
+        if code in mapped_codes:
+            # ── 매핑된 종목: 카테고리별 split 비율 적용 ──
+            cat_q = cat_split.get((code, target_cat), 0.0)
+            if cat_q <= 0:
+                continue
+            total_q = total_split.get(code, 0.0)
+            ratio = cat_q / total_q if total_q > 0 else 1.0
+ 
+            ns = dict(s)
+            ns["qty"]      = real_qty * ratio
+            ns["eval_amt"] = real_eval * ratio
+            ns["_split_ratio"] = ratio
+            filtered.append(ns)
+            stock_eval_sum += real_eval * ratio
+ 
+        else:
+            # ── 매핑 안 된 종목 (remain_last 또는 신규 미반영) ──
+            #    USQT_ABSORB_CATEGORY 에만 전량 흡수
+            if target_cat != USQT_ABSORB_CATEGORY:
+                continue
+            ns = dict(s)
+            ns["qty"]      = real_qty
+            ns["eval_amt"] = real_eval
+            ns["_absorbed"] = True       # 디버그용 (remain_last/unmatched 표시)
+            filtered.append(ns)
+            stock_eval_sum += real_eval
+ 
     return {"stocks": filtered, "stock_eval": stock_eval_sum}
 
 
@@ -1579,13 +1600,20 @@ def handle_us_usaa_sub(cano: str, acnt: str, kwargs: dict) -> dict:
 
 def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     """
-    USQT 계좌 (단일) 의 카테고리별 분리 (SCG/TCM 등) + 현금 비례 배분.
-
+    USQT 계좌 (단일) 의 카테고리별 분리 (SCG/TCM 등) + 현금 비례 배분. (수정판)
+ 
+    ✅ 정합성 보장 (USD 기준):
+       Σ(category.total_usd)      == bal["total"]   (= 계좌 실제 USD 자산)
+       Σ(category.stock_eval_usd) == bal["stock_eval"]
+       Σ(category.cash_usd)       == bal["cash"]
+ 
     분류 기준: /var/autobot/TR_USQT/USQT_result.json
-      - 한 티커가 복수 카테고리에 속할 경우 result.json의 split qty 비율로
-        실잔고의 평가금/수량을 재분할 (이전 csv 1:1 매핑 누락 버그 해결)
-      - 현금은 매핑된 종목의 split 후 평가금 합 기준으로 카테고리별 비례 배분
-
+      - 매핑 티커: split 비율 적용
+      - 미매핑 티커 (remain_last + 알려지지 않은 잔존종목):
+          → USQT_ABSORB_CATEGORY (SCG) 에 전량 흡수
+      - 현금: 카테고리별 stock_eval 비례 배분
+              (단, USQT_ABSORB_CATEGORY 가 cash 잔여분 정산 책임)
+ 
     수익률(rebal_ret):
       - USQT_rebal.json (USD 기준) 의 리밸런싱 시점 카테고리 자산금 대비
         현재 (total_usd = 평가금+현금) 수익률 (%)
@@ -1600,66 +1628,66 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     if "error" in bal:
         return {"error": bal["error"], "currency": "USD",
                  "total_krw": 0.0, "total_usd": 0.0, "stocks": []}
-
+ 
     usqt_result = load_usqt_result()
     cat_filtered = split_usqt_by_result(bal, usqt_result, category)
-
-    # ── 계좌 전체 주식평가금(result.json에 매핑된 종목 한정, USD) ──
+ 
+    # ── 계좌 전체 주식평가금 (실잔고 기준, USD, 매핑여부 무관) ──
+    # ※ split_usqt_by_result 가 미매핑 종목을 USQT_ABSORB_CATEGORY 에 전부 흡수하므로
+    #   분모는 실잔고의 전체 stock_eval 을 그대로 사용 → 가장 단순/정확
+    account_stock_total = float(bal.get("stock_eval", 0) or 0)
+ 
+    # ── 미매핑 종목 감지 (텔레그램 경고용) ──
     cat_keys = [c for c in usqt_result.keys() if c != "remain_last"]
     mapped_codes = set()
     for c in cat_keys:
         for x in usqt_result.get(c, []):
             mapped_codes.add(str(x.get("code", "")).strip().upper())
-
-    # remain_last(매도실패)도 "알려진 종목"으로 인식해 미매핑 경고에서 제외
     all_known_codes = set(mapped_codes)
     for x in usqt_result.get("remain_last", []):
         all_known_codes.add(str(x.get("code", "")).strip().upper())
-
-    unmatched = []                # 매핑 안 된 보유종목 (시나리오 B/C/E 감지)
-    unmatched_eval = 0.0          # 누락 종목 평가금 합 (USD) → 분모 보정용
-    account_stock_total = 0.0
+ 
+    unmatched = []
     for s in bal.get("stocks", []):
         code = str(s.get("code", "")).strip().upper()
         evl  = float(s.get("eval_amt", 0) or 0)
-        if code in mapped_codes:
-            account_stock_total += evl
-        elif code not in all_known_codes and evl > 0:
+        if code not in all_known_codes and evl > 0:
             name = str(s.get("name", "") or "").strip()
             unmatched.append(f"{code}({name},${evl:,.2f})")
-            unmatched_eval += evl
-
-    # 누락 종목 평가금을 분모에 포함 → 카테고리 합 vs 계좌 합 정합성 회복
-    account_stock_total += unmatched_eval
-
-    # 매핑 누락 감지 시 텔레그램 1회 경고 (첫 카테고리 호출 시에만)
-    if unmatched and category == "SCG":
+ 
+    # 매핑 누락 감지 시 텔레그램 1회 경고 (USQT_ABSORB_CATEGORY 호출 시에만)
+    if unmatched and category == USQT_ABSORB_CATEGORY:
         try:
             TA.send_tele(
                 "⚠️ USQT 잔고 매핑 누락 (result.json 손상/리밸런싱 미반영 의심):\n"
                 + ", ".join(unmatched)
+                + f"\n→ 미매핑 종목은 '{USQT_ABSORB_CATEGORY}' 카테고리에 흡수 처리됨"
                 + f"\n→ {USQT_RESULT_PATH} 의 code 확인 필요"
             )
         except Exception:
             pass
-
+ 
     # ── 카테고리별 현금 비례 배분 (USD) ──
+    # 분모 = 계좌 전체 stock_eval (미매핑 포함)
+    # USQT_ABSORB_CATEGORY 가 현금 잔여분 차액을 흡수 → Σcash == bal["cash"] 보장
+    total_cash = float(bal.get("cash", 0) or 0)
+ 
     if account_stock_total > 0:
         ratio = cat_filtered["stock_eval"] / account_stock_total
-        cash = bal["cash"] * ratio
+        cash = total_cash * ratio
     else:
-        # edge case: 매핑된 주식 평가금 0 → 첫 카테고리(SCG)에 몰아줌
-        cash = bal["cash"] if category == "SCG" else 0.0
-
+        # edge case: 주식이 전혀 없음 → USQT_ABSORB_CATEGORY 에 현금 전액
+        cash = total_cash if category == USQT_ABSORB_CATEGORY else 0.0
+ 
     total_usd = cat_filtered["stock_eval"] + cash
     exrt = bal.get("exchange_rate", 0)
-
+ 
     # ── 리밸런싱 시점 대비 수익률 (rebal.json 기반, USD) ──
     rebal = load_usqt_rebal()
     rebal_base = float(rebal.get(category, 0) or 0)   # USD
     rebal_date = str(rebal.get("date", "") or "")
     rebal_ret = ((total_usd - rebal_base) / rebal_base * 100) if rebal_base > 0 else 0.0
-
+ 
     return {
         "currency": "USD",
         "total_usd": total_usd,
@@ -1669,9 +1697,9 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         "stocks": cat_filtered["stocks"],
         "exchange_rate": exrt,
         "account_total_usd": bal.get("total", 0),
-        "rebal_base_usd": rebal_base,    # 리밸런싱 시점 자산 (USD)
+        "rebal_base_usd": rebal_base,
         "rebal_date":     rebal_date,
-        "rebal_ret":      rebal_ret      # % (리밸런싱 대비)
+        "rebal_ret":      rebal_ret
     }
 
 
