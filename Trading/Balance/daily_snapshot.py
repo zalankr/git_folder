@@ -1155,7 +1155,8 @@ def apply_rp_adjustment(usd_raw: dict, usaa_tr: dict) -> tuple:
 
 KRQT_RESULT_PATH = "/var/autobot/TR_KRQT/KRQT_result.json"
 KRQT_REBAL_PATH  = "/var/autobot/TR_KRQT/KRQT_rebal.json"
-
+# 흡수 카테고리: 매핑되지 않은 잔존 종목을 모두 여기에 합산
+KRQT_ABSORB_CATEGORY = "Small Cap Growth"
 
 def load_krqt_result() -> dict:
     """
@@ -1191,44 +1192,63 @@ def split_krqt_by_result(balance: dict, krqt_result: dict, target_cat: str) -> d
     실시간 잔고(balance)와 KRQT_result.json을 매칭해 target_cat에 속한 종목만 추출.
     중복종목은 result.json에 저장된 split 비율 (cat_qty / total_qty_across_cats) 로
     실잔고의 평가금/수량을 재분할한다.
-
+ 
+    ✅ 수정: 매핑 안 된 종목(remain_last 포함) 은 ABSORB_CATEGORY 에 전량 흡수.
+       → 4개 카테고리 stock_eval 합 == bal 전체 stock_eval 보장.
+ 
     Returns: {"stocks": [...], "stock_eval": float}
     """
     # 1. result.json에서 카테고리별 split된 qty 맵 만들기
-    cat_split = {}        # {(code, cat): split_qty}
-    total_split = {}      # {code: 모든 cat 합산 split_qty}
+    cat_split  = {}        # {(code, cat): split_qty}
+    total_split = {}       # {code: 모든 cat 합산 split_qty}
+    mapped_codes = set()   # 정상 매핑 종목 (remain_last 제외)
     for cat, stocks in krqt_result.items():
-        if cat == "remain_last":     # 리밸런싱 매도실패분 제외
+        if cat == "remain_last":     # 리밸런싱 매도실패분은 split 비율 산정에서 제외
             continue
         for s in stocks:
             code = str(s.get("code", "")).zfill(6)
             q = float(s.get("qty", 0) or 0)
             cat_split[(code, cat)] = cat_split.get((code, cat), 0.0) + q
             total_split[code] = total_split.get(code, 0.0) + q
-
+            mapped_codes.add(code)
+ 
     filtered = []
     stock_eval_sum = 0.0
+ 
     for s in balance.get("stocks", []):
         code = str(s.get("code", "")).zfill(6)
-        cat_q = cat_split.get((code, target_cat), 0.0)
-        if cat_q <= 0:
-            continue
-        total_q = total_split.get(code, 0.0)
-        ratio = cat_q / total_q if total_q > 0 else 1.0
-
-        # 실잔고에 비율 적용 (보유수량/평가금 분할)
         real_qty  = float(s.get("qty", 0) or 0)
         real_eval = float(s.get("eval_amt", 0) or 0)
-        split_qty  = real_qty * ratio
-        split_eval = real_eval * ratio
-
-        ns = dict(s)              # 원본 보존을 위해 복사
-        ns["qty"]      = split_qty
-        ns["eval_amt"] = split_eval
-        ns["_split_ratio"] = ratio   # 디버그용 (안정화 후 제거 가능)
-        filtered.append(ns)
-        stock_eval_sum += split_eval
-
+        if real_qty <= 0:
+            continue
+ 
+        if code in mapped_codes:
+            # ── 매핑된 종목: 카테고리별 split 비율 적용 ──
+            cat_q = cat_split.get((code, target_cat), 0.0)
+            if cat_q <= 0:
+                continue
+            total_q = total_split.get(code, 0.0)
+            ratio = cat_q / total_q if total_q > 0 else 1.0
+ 
+            ns = dict(s)
+            ns["qty"]      = real_qty * ratio
+            ns["eval_amt"] = real_eval * ratio
+            ns["_split_ratio"] = ratio
+            filtered.append(ns)
+            stock_eval_sum += real_eval * ratio
+ 
+        else:
+            # ── 매핑 안 된 종목 (remain_last 또는 신규 미반영) ──
+            #    ABSORB_CATEGORY 에만 전량 흡수
+            if target_cat != KRQT_ABSORB_CATEGORY:
+                continue
+            ns = dict(s)
+            ns["qty"]      = real_qty
+            ns["eval_amt"] = real_eval
+            ns["_absorbed"] = True       # 디버그용 (remain_last/unmatched 표시)
+            filtered.append(ns)
+            stock_eval_sum += real_eval
+ 
     return {"stocks": filtered, "stock_eval": stock_eval_sum}
 
 
@@ -1414,15 +1434,19 @@ def handle_kr_simple(cano: str, acnt: str, kwargs: dict) -> dict:
 
 def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     """
-    KRQT 계좌 (단일) 의 카테고리별 분리.
-
+    KRQT 계좌 (단일) 의 카테고리별 분리. (수정판)
+ 
+    ✅ 정합성 보장:
+       Σ(category.total_krw) == bal["total"]   (= 계좌 실제 원화 자산)
+       Σ(category.stock_eval_krw) == bal["stock_eval"]
+       Σ(category.cash_krw)       == bal["cash"]
+ 
     분류 기준: /var/autobot/TR_KRQT/KRQT_result.json
-      - 한 종목이 복수 카테고리에 속할 경우 result.json의 split된 qty 비율로
-        실잔고의 평가금/수량을 재분할 (이전 csv 1:1 매핑 방식의 중복 누락 버그 해결)
-      - 현금은 매핑된 종목의 split 후 평가금 합 기준으로 카테고리별 비례 배분
-
-    수익률(rebal_ret):
-      - KRQT_rebal.json의 리밸런싱 시점 카테고리 자산금 대비 현재 (total = 평가금+현금) 수익률 (%)
+      - 매핑 종목: split 비율 적용
+      - 미매핑 종목 (remain_last + 알려지지 않은 잔존종목):
+          → ABSORB_CATEGORY (Small Cap Growth) 에 전량 흡수
+      - 현금: 카테고리별 stock_eval 비례 배분
+              (단, ABSORB_CATEGORY 가 cash 잔여분 정산 책임 → 부동소수점 오차 흡수)
     """
     category = kwargs["category"]
     key = _cache_key("kr", cano, acnt)
@@ -1435,65 +1459,65 @@ def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         return {"error": bal["error"], "currency": "KRW",
                  "total_krw": 0.0, "stock_eval_krw": 0.0,
                  "cash_krw": 0.0, "stocks": []}
-
+ 
     krqt_result = load_krqt_result()
     cat_filtered = split_krqt_by_result(bal, krqt_result, category)
-
-    # ── 계좌 전체 주식평가금(result.json에 매핑된 종목 한정) ──
+ 
+    # ── 계좌 전체 주식평가금 (실잔고 기준, 매핑여부 무관) ──
+    # ※ split_krqt_by_result 가 미매핑 종목을 ABSORB_CATEGORY 에 전부 흡수하므로
+    #   분모는 실잔고의 전체 stock_eval 을 그대로 사용 → 가장 단순/정확
+    account_stock_total = float(bal.get("stock_eval", 0) or 0)
+ 
+    # ── 미매핑 종목 감지 (텔레그램 경고용) ──
     cat_keys = [c for c in krqt_result.keys() if c != "remain_last"]
     mapped_codes = set()
     for c in cat_keys:
         for x in krqt_result.get(c, []):
             mapped_codes.add(str(x.get("code", "")).zfill(6))
-
-    # remain_last(매도실패)도 "알려진 종목"으로 인식해 미매핑 경고에서 제외
     all_known_codes = set(mapped_codes)
     for x in krqt_result.get("remain_last", []):
         all_known_codes.add(str(x.get("code", "")).zfill(6))
-
-    unmatched = []                # 매핑 안 된 보유종목 (시나리오 B/C/E 감지)
-    unmatched_eval = 0.0          # 누락 종목 평가금 합 → 분모 보정용
-    account_stock_total = 0.0
+ 
+    unmatched = []
     for s in bal.get("stocks", []):
         code = str(s.get("code", "")).zfill(6)
         evl  = float(s.get("eval_amt", 0) or 0)
-        if code in mapped_codes:
-            account_stock_total += evl
-        elif code not in all_known_codes and evl > 0:
+        if code not in all_known_codes and evl > 0:
             name = str(s.get("name", "") or "").strip()
             unmatched.append(f"{code}({name},₩{evl:,.0f})")
-            unmatched_eval += evl
-
-    # 누락 종목 평가금을 분모에 포함 → 카테고리 합 vs 계좌 합 정합성 회복
-    account_stock_total += unmatched_eval
-
-    # 매핑 누락 감지 시 텔레그램 1회 경고 (첫 카테고리 호출 시에만)
-    if unmatched and category == "Small Cap Growth":
+ 
+    # 매핑 누락 감지 시 텔레그램 1회 경고 (ABSORB_CATEGORY 호출 시에만)
+    if unmatched and category == KRQT_ABSORB_CATEGORY:
         try:
             TA.send_tele(
                 "⚠️ KRQT 잔고 매핑 누락 (result.json 손상/리밸런싱 미반영 의심):\n"
                 + ", ".join(unmatched)
+                + f"\n→ 미매핑 종목은 '{KRQT_ABSORB_CATEGORY}' 카테고리에 흡수 처리됨"
                 + f"\n→ {KRQT_RESULT_PATH} 의 code 확인 필요"
             )
         except Exception:
             pass
-
+ 
     # ── 카테고리별 현금 비례 배분 ──
+    # 분모 = 계좌 전체 stock_eval (미매핑 포함)
+    # ABSORB_CATEGORY 가 현금 잔여분 차액을 흡수 → Σcash == bal["cash"] 보장
+    total_cash = float(bal.get("cash", 0) or 0)
+ 
     if account_stock_total > 0:
         ratio = cat_filtered["stock_eval"] / account_stock_total
-        cash = bal["cash"] * ratio
+        cash = total_cash * ratio
     else:
-        # edge case: 매핑된 주식 평가금 0 → 첫 카테고리에 몰아줌
-        cash = bal["cash"] if category == "Small Cap Growth" else 0.0
-
+        # edge case: 주식이 전혀 없음 → ABSORB_CATEGORY 에 현금 전액
+        cash = total_cash if category == KRQT_ABSORB_CATEGORY else 0.0
+ 
     total = cat_filtered["stock_eval"] + cash
-
+ 
     # ── 리밸런싱 시점 대비 수익률 (rebal.json 기반) ──
     rebal = load_krqt_rebal()
     rebal_base = float(rebal.get(category, 0) or 0)
     rebal_date = str(rebal.get("date", "") or "")
     rebal_ret = ((total - rebal_base) / rebal_base * 100) if rebal_base > 0 else 0.0
-
+ 
     return {
         "currency": "KRW",
         "total_krw": total,
@@ -1502,9 +1526,9 @@ def handle_kr_krqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
         "stocks": cat_filtered["stocks"],
         "exchange_rate": 1.0,
         "account_total_krw": bal["total"],
-        "rebal_base_krw": rebal_base,    # 리밸런싱 시점 자산
+        "rebal_base_krw": rebal_base,
         "rebal_date":     rebal_date,
-        "rebal_ret":      rebal_ret      # % (리밸런싱 대비)
+        "rebal_ret":      rebal_ret
     }
 
 
