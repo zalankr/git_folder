@@ -5,9 +5,9 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 16.601,
-        "target_invest": 498.26624430000015,
-        "target_qty": 30
+        "current_price": 16.615,
+        "target_invest": 496.5069384,
+        "target_qty": 29
     },
     "AMC": {
         "name": "AMC Entertainment Holdings Class A",
@@ -15,9 +15,9 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 1.465,
-        "target_invest": 498.26624430000015,
-        "target_qty": 340
+        "current_price": 1.4825,
+        "target_invest": 496.5069384,
+        "target_qty": 334
     },
     "ARKO": {
         "name": "ARKO",
@@ -25,9 +25,9 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 7.105,
-        "target_invest": 498.26624430000015,
-        "target_qty": 70
+        "current_price": 7.16,
+        "target_invest": 496.5069384,
+        "target_qty": 69
     },
     "CASH": {
         "name": "CASH",
@@ -35,7 +35,7 @@
         "categories": [
             "nan"
         ],
-        "target_invest": 150.98977100000005,
+        "target_invest": 150.456648,
         "target_qty": 0
     },
     "CHGG": {
@@ -44,9 +44,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 1.05,
-        "target_invest": 498.26624430000015,
-        "target_qty": 474
+        "current_price": 1.13,
+        "target_invest": 496.5069384,
+        "target_qty": 439
     },
     "CLF": {
         "name": "Cleveland Cliffs",
@@ -54,8 +54,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 10.21,
-        "target_invest": 498.26624430000015,
+        "current_price": 10.17,
+        "target_invest": 496.5069384,
         "target_qty": 48
     },
     "CLOV": {
@@ -64,9 +64,9 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 3.49,
-        "target_invest": 498.26624430000015,
-        "target_qty": 142
+        "current_price": 3.54,
+        "target_invest": 496.5069384,
+        "target_qty": 140
     },
     "CNDT": {
         "name": "Conduent",
@@ -75,8 +75,8 @@
             "SCG"
         ],
         "current_price": 1.43,
-        "target_invest": 498.26624430000015,
-        "target_qty": 348
+        "target_invest": 496.5069384,
+        "target_qty": 347
     },
     "CTRN": {
         "name": "Citi Trends",
@@ -84,8 +84,8 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 37.35,
-        "target_invest": 498.26624430000015,
+        "current_price": 37.935,
+        "target_invest": 496.5069384,
         "target_qty": 13
     },
     "CURV": {
@@ -94,9 +94,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 1.305,
-        "target_invest": 498.26624430000015,
-        "target_qty": 381
+        "current_price": 1.29,
+        "target_invest": 496.5069384,
+        "target_qty": 384
     },
     "DBI": {
         "name": "Designer Brands Class A",
@@ -104,9 +104,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 6.05,
-        "target_invest": 498.26624430000015,
-        "target_qty": 82
+        "current_price": 6.22,
+        "target_invest": 496.5069384,
+        "target_qty": 79
     },
     "DNUT": {
         "name": "Krispy Kreme",
@@ -114,8 +114,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 3.2,
-        "target_invest": 498.26624430000015,
+        "current_price": 3.19,
+        "target_invest": 496.5069384,
         "target_qty": 155
     },
     "DOMO": {
@@ -124,9 +124,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 3.515,
-        "target_invest": 498.26624430000015,
-        "target_qty": 141
+        "current_price": 3.53,
+        "target_invest": 496.5069384,
+        "target_qty": 140
     },
     "DOW": {
         "name": "Dow",
@@ -134,8 +134,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 37.52,
-        "target_invest": 498.26624430000015,
+        "current_price": 37.41,
+        "target_invest": 496.5069384,
         "target_qty": 13
     },
     "GCO": {
@@ -145,7 +145,7 @@
             "SCG"
         ],
         "current_price": 32.59,
-        "target_invest": 498.26624430000015,
+        "target_invest": 496.5069384,
         "target_qty": 15
     },
     "HTZ": {
@@ -154,9 +154,9 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 4.895,
-        "target_invest": 498.26624430000015,
-        "target_qty": 101
+        "current_price": 4.94,
+        "target_invest": 496.5069384,
+        "target_qty": 100
     },
     "HUN": {
         "name": "Huntsman",
@@ -164,8 +164,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 13.47,
-        "target_invest": 498.26624430000015,
+        "current_price": 13.635,
+        "target_invest": 496.5069384,
         "target_qty": 36
     },
     "MAGN": {
@@ -174,9 +174,9 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 10.205,
-        "target_invest": 498.26624430000015,
-        "target_qty": 48
+        "current_price": 10.36,
+        "target_invest": 496.5069384,
+        "target_qty": 47
     },
     "MYGN": {
         "name": "Myriad Genetics",
@@ -184,9 +184,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 3.551,
-        "target_invest": 498.26624430000015,
-        "target_qty": 140
+        "current_price": 3.585,
+        "target_invest": 496.5069384,
+        "target_qty": 138
     },
     "OLN": {
         "name": "Olin",
@@ -194,8 +194,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 25.995,
-        "target_invest": 498.26624430000015,
+        "current_price": 26.03,
+        "target_invest": 496.5069384,
         "target_qty": 19
     },
     "OSCR": {
@@ -204,8 +204,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 24.265,
-        "target_invest": 498.26624430000015,
+        "current_price": 24.19,
+        "target_invest": 496.5069384,
         "target_qty": 20
     },
     "PBF": {
@@ -214,8 +214,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 42.09,
-        "target_invest": 498.26624430000015,
+        "current_price": 42.22,
+        "target_invest": 496.5069384,
         "target_qty": 11
     },
     "RXO": {
@@ -224,8 +224,8 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 21.065,
-        "target_invest": 498.26624430000015,
+        "current_price": 21.431,
+        "target_invest": 496.5069384,
         "target_qty": 23
     },
     "RXT": {
@@ -234,9 +234,9 @@
         "categories": [
             "TCM"
         ],
-        "current_price": 4.463,
-        "target_invest": 498.26624430000015,
-        "target_qty": 111
+        "current_price": 4.485,
+        "target_invest": 496.5069384,
+        "target_qty": 110
     },
     "SNBR": {
         "name": "Sleep Number",
@@ -244,9 +244,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 1.55,
-        "target_invest": 498.26624430000015,
-        "target_qty": 321
+        "current_price": 1.57,
+        "target_invest": 496.5069384,
+        "target_qty": 316
     },
     "SPWH": {
         "name": "Sportsmans Warehouse Holdings",
@@ -254,9 +254,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 1.25,
-        "target_invest": 498.26624430000015,
-        "target_qty": 398
+        "current_price": 1.23,
+        "target_invest": 496.5069384,
+        "target_qty": 403
     },
     "SPWR": {
         "name": "Sunpower",
@@ -265,8 +265,8 @@
             "SCG"
         ],
         "current_price": 1.005,
-        "target_invest": 498.26624430000015,
-        "target_qty": 495
+        "target_invest": 496.5069384,
+        "target_qty": 494
     },
     "STRZ": {
         "name": "Starz Entertainment",
@@ -274,9 +274,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 20.706,
-        "target_invest": 498.26624430000015,
-        "target_qty": 24
+        "current_price": 21.8099,
+        "target_invest": 496.5069384,
+        "target_qty": 22
     },
     "TBI": {
         "name": "Trueblue",
@@ -284,9 +284,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 5.346,
-        "target_invest": 498.26624430000015,
-        "target_qty": 93
+        "current_price": 5.2122,
+        "target_invest": 496.5069384,
+        "target_qty": 95
     },
     "UIS": {
         "name": "Unisys",
@@ -294,9 +294,9 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 2.87,
-        "target_invest": 498.26624430000015,
-        "target_qty": 173
+        "current_price": 2.85,
+        "target_invest": 496.5069384,
+        "target_qty": 174
     },
     "ZIP": {
         "name": "Ziprecruiter Class A",
@@ -304,8 +304,8 @@
         "categories": [
             "SCG"
         ],
-        "current_price": 3.256,
-        "target_invest": 498.26624430000015,
-        "target_qty": 153
+        "current_price": 3.27,
+        "target_invest": 496.5069384,
+        "target_qty": 151
     }
 }

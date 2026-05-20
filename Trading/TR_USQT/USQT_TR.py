@@ -478,8 +478,8 @@ for stock in stocks:
     hold[ticker] = {
         "name": stock["name"],
         "hold_balance": stock["eval_amt"],
-        "hold_qty": stock["quantity"],                       # ccld_qty_smtl1 (목표수량 비교용)
-        "ord_psbl_qty": stock.get("ord_psbl_qty", 0),        # ✅ 추가: 실제 매도가능수량
+        "hold_qty": stock["quantity"],                                   # ccld_qty_smtl1 (목표수량 비교용)
+        "ord_psbl_qty": stock.get("ord_psbl_qty") or stock["quantity"],  # ✅ 0/None → quantity 사용
         "current_price": stock["current_price"],
         "exchange": stock["exchange"],
     }

@@ -478,7 +478,7 @@ for stock in stocks:
         "name": stock["name"],
         "hold_balance": stock["eval_amt"],
         "hold_qty": stock["quantity"],
-        "ord_psbl_qty": stock.get("ord_psbl_qty", 0),   # ✅ 매도가능수량
+        "ord_psbl_qty": stock.get("ord_psbl_qty") or stock["quantity"],   # ✅ 매도가능수량
         "current_price": stock["current_price"],
         "exchange": stock["exchange"],
     }

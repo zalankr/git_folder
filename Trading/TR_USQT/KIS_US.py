@@ -606,8 +606,8 @@ class KIS_API:
                     stocks.append({
                         'ticker': stock.get('pdno', ''),
                         'name': stock.get('prdt_name', ''),
-                        'quantity': quantity,                                      # ccld_qty_smtl1 (체결기준 총보유)
-                        'ord_psbl_qty': int(float(stock.get('ord_psbl_qty', 0))),  # ✅ 추가: 실제 매도가능수량
+                        'quantity': quantity,                      # ccld_qty_smtl1 (체결기준 총보유)
+                        'ord_psbl_qty': quantity,                  # ✅ CTRP6504R에 ord_psbl_qty 없음 → ccld_qty_smtl1 대체
                         'avg_price': float(stock.get('avg_unpr3', 0)),
                         'current_price': float(stock.get('ovrs_now_pric1', 0)),
                         'eval_amt': float(stock.get('frcr_evlu_amt2', 0)),
