@@ -28,7 +28,6 @@ KRQT_target_path = "/var/autobot/TR_KRQT/KRQT_target.json" # json
 KRQT_result_path = "/var/autobot/TR_KRQT/KRQT_result.json" # json
 KRQT_rebal_path = "/var/autobot/TR_KRQT/KRQT_rebal.json" # json
 KRQT_stock_path = "/var/autobot/TR_KRQT/KRQT_stock.csv" # csv
-KRQT_suspended_path = "/var/autobot/TR_KRQT/suspended_codes.json" # 거래정지 종목 사전 등록
 
 def order_time(day=1):
     """거래일자와 거래회차 확인""" 
@@ -228,27 +227,6 @@ cancel_message = cancel_orders(side='all')
 message.append(cancel_message)
 time_module.sleep(2)
 
-# ============================================
-# [공통 선행 단계] 보유 종목 잔고 조회
-# - target 산출 시 거래정지 종목 평가금 참조 필요
-# - 모든 회차에서 hold 변수 사전 정의 보장
-# ============================================
-stocks = KIS.get_KR_stock_balance()
-if not isinstance(stocks, list):
-    TA.send_tele(f"KRQT: 잔고 조회 불가로 종료합니다. ({stocks})")
-    sys.exit(1)
-
-hold = {}
-for stock in stocks:
-    code = stock["종목코드"]
-    hold[code] = {
-        "name":         stock["종목명"],
-        "hold_balance": stock["평가금액"],
-        "hold_qty":     stock["보유수량"],
-        "sellable_qty": stock["매도가능수량"],
-    }
-hold_code = list(hold.keys())
-
 # 회차별 target 데이터 불러오기 (1, 8회차 불러오기와 계산)
 if order['round'] == 1 or order['round'] == 8:
     # 목표종목 csv파일 불러오기 > Dic, JSON 변환
@@ -303,97 +281,18 @@ if order['round'] == 1 or order['round'] == 8:
         TA.send_tele(f"KRQT 경고: CSV weight 합계 = {total_weight:.3f} (1.0 아님). 계속 진행합니다.")
         message.append(f"weight 합계 경고: {total_weight:.3f}")
 
-    # ========================================================================
-    # [옵션 3] 거래정지 종목 사전 등록 로드 (1·8회차 진입 시 1회만)
-    # - 장중 변경 금지 (운영 규칙)
-    # - 파일 없거나 비어있어도 오류 아님 (정상 진행)
-    # ========================================================================
-    import os
-    suspended_codes = set()
-    try:
-        if os.path.exists(KRQT_suspended_path):
-            with open(KRQT_suspended_path, 'r', encoding='utf-8') as f:
-                sc_data = json.load(f)
-                raw_list = sc_data.get("suspended", [])
-                for c in raw_list:
-                    c_str = str(c).strip()
-                    if c_str.startswith("A") and len(c_str) == 7:
-                        c_str = c_str[1:]
-                    if c_str:
-                        suspended_codes.add(c_str)
-                if suspended_codes:
-                    message.append(f"KRQT: 거래정지 사전등록 {len(suspended_codes)}개 → {sorted(suspended_codes)}")
-                else:
-                    message.append("KRQT: 거래정지 사전등록 없음 (빈 리스트)")
-        else:
-            message.append(f"KRQT: {KRQT_suspended_path} 파일 없음 (거래정지 사전등록 스킵)")
-    except Exception as e:
-        message.append(f"KRQT: suspended_codes.json 로드 실패 → 무시하고 진행 ({e})")
-        suspended_codes = set()
-    # ========================================================================
-
-    suspended_asset = 0.0   # 거래정지 종목 평가금 합계
-    price_cache = {}        # 종목별 현재가 캐시 (API 중복 호출 방지)
-
-    # ========================================================================
-    # [추가 개선] target 외 거래정지 보유종목 평가금 사전 누적
-    # - CSV(target_code)에는 없지만 hold_code에 있고 suspended_codes 등록된 종목
-    # - 지난 시즌 보유 → 이번 시즌 CSV 미포함 + 거래정지 케이스
-    # - effective_asset 정확도 향상 (target_qty 미세 과대 산출 방지)
-    # - 반드시 suspended_asset 초기화 이후, target 산출 루프 이전에 위치
-    # ========================================================================
-    for code in hold_code:
-        if code in suspended_codes and code not in target_code:
-            bal = hold[code]['hold_balance']
-            suspended_asset += bal
-            message.append(f"KRQT: {code} 보유중 거래정지(target 외) → 평가금 {int(bal):,}원 차감")
-    # ========================================================================
-
     for i in target_code:
-        if i == "CASH":
+        if i == "CASH":                        # CASH는 주식 아님 → 스킵
             target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
             target[i]['target_qty'] = 0
             continue
-
-        # [옵션 3 적용] 사전 등록된 거래정지 종목 즉시 처리 (API 호출 없음)
-        if i in suspended_codes:
-            holding = hold.get(i, {})
-            hold_bal = holding.get('hold_balance', 0)
-            suspended_asset += hold_bal
-            target[i]['target_invest'] = 0
-            target[i]['target_qty'] = 0
-            message.append(f"KRQT: {i} 사전등록 거래정지 → 매매 제외 (평가금 {int(hold_bal):,}원, 보유 {holding.get('hold_qty', 0)}주)")
-            continue
-
         price = KIS.get_KR_current_price(i)
-        if not isinstance(price, int) or price == 0:
-            # 사전등록되지 않았지만 현재가 0/오류 (이중 안전망)
-            holding = hold.get(i, {})
-            hold_bal = holding.get('hold_balance', 0)
-            suspended_asset += hold_bal
-            target[i]['target_invest'] = 0
-            target[i]['target_qty'] = 0
-            message.append(f"KRQT 경고: {i} 현재가 0/오류 → 거래정지 추정, 매매 제외 (평가금 {int(hold_bal):,}원)")
-            time_module.sleep(0.1)
-            continue
-
-        price_cache[i] = price   # 정상 종목만 캐싱
-        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)
+        if price == 0 or not isinstance(price, int):
+            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            sys.exit(1)
+        target[i]['target_invest'] = int(target[i]['weight'] * total_krw_asset)  # ✅ 전체 자산 기준
         target[i]['target_qty'] = int(target[i]['target_invest'] / price)
         time_module.sleep(0.1)
-
-    # 거래정지 종목 자산을 총 자산에서 제외하여 나머지 종목 target 재산출
-    if suspended_asset > 0:
-        effective_asset = total_krw_asset - suspended_asset
-        message.append(f"KRQT: 거래정지 자산 {int(suspended_asset):,}원 제외 → 유효자산 {int(effective_asset):,}원")
-        for i in target_code:
-            if i == "CASH" or target[i]['target_qty'] == 0:
-                continue
-            price = price_cache.get(i)
-            if price is None or price == 0:
-                continue
-            target[i]['target_invest'] = int(target[i]['weight'] * effective_asset)
-            target[i]['target_qty'] = int(target[i]['target_invest'] / price)
 
     # 당일 target 저장하기
     json_message = save_json(target, KRQT_target_path, order)
@@ -410,6 +309,24 @@ else: # 1회, 8회차가 아닌 경우 불러오기만 시행
         sys.exit(1)
     target_code = list(target.keys())
     
+# 보유 종목 잔고 불러오기
+stocks = KIS.get_KR_stock_balance()
+if not isinstance(stocks, list):
+    TA.send_tele(f"KRQT: 잔고 조회 불가로 종료합니다. ({stocks})")
+    sys.exit(1)
+
+hold = {}
+for stock in stocks:
+    code = stock["종목코드"]
+    hold[code] = {
+        "name": stock["종목명"],
+        "hold_balance": stock["평가금액"],
+        "hold_qty": stock["보유수량"],
+        "sellable_qty": stock["매도가능수량"],   # ← 추가: 실제 매도 가능 수량
+    }
+
+hold_code = list(hold.keys())
+
 # 투자수량과 잔고수량 비교해서 매수매도수량 산출하기
 buy = {}
 sell = {}
@@ -426,8 +343,7 @@ for code in hold_code:
             if sell_qty > 0:
                 sell[code] = sell_qty
     else:
-        # target에 없는 종목 → 전량 매도 (sellable_qty까지만)
-        # 거래정지 종목은 sellable_qty=0이면 자동 스킵됨
+        # target에 없는 종목 전량 매도 → sellable_qty까지만
         if hold[code]["sellable_qty"] > 0:
             sell[code] = hold[code]["sellable_qty"]
 
@@ -435,9 +351,7 @@ for code in target_code:
     if code == "CASH":                     # CASH는 매매 대상 아님
         continue
     if code not in hold_code:
-        # target_qty=0 (거래정지로 처리된 종목)은 매수 대상에서 제외
-        if target[code]["target_qty"] > 0:
-            buy[code] = target[code]["target_qty"]
+        buy[code] = target[code]["target_qty"]
 
 # 분할 주문 수량 구하기
 round_split = split_data(order['round'])
@@ -453,14 +367,6 @@ if len(sell_code) == 0:
 elif sell_split[0] > 0:
     message.append(f"KRQT: {order['round']}회차 - 매도 주문")
     for code, qty in sell.items():
-        # [옵션 3] 사전등록 거래정지 종목 매도 시도 차단
-        try:
-            if code in suspended_codes:
-                message.append(f"KRQT 매도 스킵: {code} 사전등록 거래정지")
-                continue
-        except NameError:
-            pass   # 2~7, 9~14회차에서는 suspended_codes 미정의 → 통과
-
         local_split_count = sell_split[0]    # 루프마다 원본에서 복사
         local_split_price = sell_split[1][:]
         split_qty = int(qty // local_split_count)
@@ -473,9 +379,9 @@ elif sell_split[0] > 0:
             remainder = 0
 
         price = KIS.get_KR_current_price(code)
-        if not isinstance(price, int) or price == 0:
-            message.append(f"KRQT 매도 스킵: {code} 현재가 조회 실패 (거래정지 추정)")
-            continue   # ← sys.exit(1) 대신 continue
+        if price == 0 or not isinstance(price, int):
+            TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+            sys.exit(1)
 
         for i in range(local_split_count):
             this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
@@ -516,24 +422,11 @@ target_KRW = 0
 buy_prices = {}                                              # 현재가 저장
 buy_price_rate = buy_split[1][-1] if buy_split[1] else 1.0  # 최대 배율 기준
 
-for code in list(buy.keys()):   # dict 순회 중 삭제 위해 list 복사
-    qty = buy[code]
-
-    # [옵션 3] 사전등록 거래정지 종목 매수 차단
-    try:
-        if code in suspended_codes:
-            message.append(f"KRQT 매수 스킵: {code} 사전등록 거래정지")
-            del buy[code]
-            continue
-    except NameError:
-        pass   # 2~7, 9~14회차에서는 suspended_codes 미정의 → 통과
-
+for code, qty in buy.items():
     price = KIS.get_KR_current_price(code)
     if not isinstance(price, int) or price == 0:
-        message.append(f"KRQT 매수 스킵: {code} 현재가 조회 실패 (거래정지 추정)")
-        del buy[code]
-        time_module.sleep(0.125)
-        continue
+        TA.send_tele(f"KRQT: 현재가 조회 불가로 종료합니다. ({price})")
+        sys.exit(1)
     buy_prices[code] = price                                 # 저장
     ticker_invest = price * buy_price_rate * qty             # 최대 배율 반영
     target_KRW += ticker_invest
@@ -584,8 +477,8 @@ elif len(buy_code) > 0 and buy_split[0] > 0:
 
         price = buy_prices.get(code)
         if not isinstance(price, int) or price == 0:
-            message.append(f"KRQT 매수 스킵: {code} 현재가 없음 (방어적 처리)")
-            continue
+            TA.send_tele(f"KRQT: 현재가 없음으로 종료합니다. ({code})")
+            sys.exit(1)
 
         for i in range(local_split_count):
             this_qty = split_qty + (remainder if i == local_split_count - 1 else 0)
