@@ -78,6 +78,7 @@ CELL_MAP = {
     # ETC(JPUSbond) 는 수기 자산 → MANUAL_CELL_MAP
 
     # ── ALTERNATIVE 시트 ───────────────────────
+    ("Gold",   "Gold"):          ("Alternative", "M3"),   # 키움 금현물 실계좌 실시간
     ("Crypto", None):              ("Alternative", "P3"),
 
     # ── PENSION 시트 ───────────────────────────
@@ -88,9 +89,12 @@ CELL_MAP = {
 }
 
 # 수기 입력 자산 → 셀 매핑. key 는 manual_assets.json 의 최상위 key.
+# ※ Gold 는 키움 실계좌(52953897) 실시간 조회로 전환됨 (daily_snapshot.py 의
+#   gold 핸들러가 Alternative!M3 셀을 CELL_MAP 경로로 직접 기록).
+#   manual_assets.json 의 Gold 섹션을 여기서 중복 기록하면 키움 실계좌 값과
+#   충돌하므로 MANUAL_CELL_MAP 에서 제거함.
 MANUAL_CELL_MAP = {
     "JPUSbond":          ("Global",      "AX4"),
-    "Gold":              ("Alternative", "M3"),
     "Pension_퇴직연금":  ("Pension",     "J4"),
     "Pension_연금저축-1":("Pension",     "P4"),
 }

@@ -22,8 +22,9 @@
   주문 규격:
     - body: stk_cd / ord_qty / trde_tp / ord_uv  (계좌번호 불필요)
     - trde_tp: "0"=보통(지정가), "10"=IOC, "20"=FOK  ※ 시장가 없음
+    - 호가단위 10원 고정 → 주문단가 끝자리 0 필수 (아니면 857024 오류)
     - 금현물은 지정가만 가능 → 미체결 방지용 슬리피지 적용
-      (매수 현재가 +0.5%, 매도 현재가 -0.5%)
+      (매수 현재가 +0.5% 후 10원 올림, 매도 -0.5% 후 10원 내림)
     - 응답: ord_no (주문번호)
 
  key 파일 : /var/autobot/KIS/kiwgold52953897.txt
@@ -42,35 +43,11 @@ import requests
 from tendo import singleton
 import telegram_alert as TA
 
-
-# ===========================================================================
-# 중복 실행 방지 (crontab 겹침 방지)
-# ===========================================================================
-try:
-    me = singleton.SingleInstance()
-except singleton.SingleInstanceException:
-    TA.send_tele("GOLD: 이미 실행 중입니다.")
-    sys.exit(0)
-
-
 # ===========================================================================
 # 1) API 인증 정보 로드
 # ===========================================================================
 KEY_FILE_PATH   = "/var/autobot/KIS/kiwgold52953897.txt"
 TOKEN_FILE_PATH = "/var/autobot/KIS/kiwgold_token.json"
-
-try:
-    with open(KEY_FILE_PATH, "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f.readlines()]
-    APP_KEY    = lines[0]
-    APP_SECRET = lines[1]
-except Exception as e:
-    print(f"GOLD: key 파일 로드 실패 → 종료 ({e})")
-    try:
-        TA.send_tele(f"GOLD: key 파일 로드 실패 → 종료 ({e})")
-    except Exception:
-        pass
-    sys.exit(1)
 
 BASE_URL        = "https://api.kiwoom.com"
 GOLD_STOCK_CODE = "M04020000"           # 금 99.99% 1kg (앞에 M 필수)
@@ -89,6 +66,31 @@ TR_URI_MAP = {
     "kt50000": URI_ORDR, "kt50001": URI_ORDR, "kt50003": URI_ORDR,
 }
 
+# appkey/secret 은 load_api_keys() 호출 시 채워짐 (import 시점엔 None)
+APP_KEY    = None
+APP_SECRET = None
+
+def acquire_singleton():
+    """crontab 중복 실행 방지 락 획득. 직접 실행(main)에서만 호출."""
+    try:
+        return singleton.SingleInstance()
+    except singleton.SingleInstanceException:
+        TA.send_tele("GOLD: 이미 실행 중입니다.")
+        sys.exit(0)
+
+def load_api_keys():
+    """키움 appkey/secret 로드 → 전역 APP_KEY/APP_SECRET 설정.
+    실패 시 RuntimeError 발생 (sys.exit 아님 → import한 쪽이 잡을 수 있음)."""
+    global APP_KEY, APP_SECRET
+    if APP_KEY and APP_SECRET:          # 이미 로드됨 → 재사용
+        return APP_KEY, APP_SECRET
+    try:
+        with open(KEY_FILE_PATH, "r", encoding="utf-8") as f:
+            lines = [line.strip() for line in f.readlines()]
+        APP_KEY, APP_SECRET = lines[0], lines[1]
+        return APP_KEY, APP_SECRET
+    except Exception as e:
+        raise RuntimeError(f"GOLD: key 파일 로드 실패: {e}")
 
 # ===========================================================================
 # 2) 매매 설정  (상황에 맞게 자유롭게 수정)
@@ -113,18 +115,29 @@ TRADING_DAYS   = 3          # 총 매매일 수
 SPLITS_PER_DAY = 5          # 1일 분할 횟수 = 1일 cron 호출 횟수
 
 # ── 분할 스케줄 (시, 분) — 현재 시각으로 몇 번째 분할인지 자동 판별 ───────
-#   crontab 권장 (평일 KST):
-#     13 9  * * 1-5  → 09:13 (1번째)
-#     13 10 * * 1-5  → 10:13 (2번째)
-#     13 12 * * 1-5  → 12:13 (3번째)
-#     13 13 * * 1-5  → 13:13 (4번째)
-#     20 15 * * 1-5  → 15:20 (5번째)  ※ 정규장 15:30 마감 전
+#   ※ EC2가 UTC로 동작하므로 SPLIT_SCHEDULE / crontab 모두 UTC 기준!
+#     UTC = KST - 9시간
+#
+#   분할     KST(장중)    UTC(코드/crontab)
+#   ────────────────────────────────────────
+#   1번째    09:13        00:13
+#   2번째    10:13        01:13
+#   3번째    12:13        03:13
+#   4번째    13:13        04:13
+#   5번째    15:20        06:20   ※ 정규장 KST 15:30 마감 전
+#
+#   crontab 권장 (UTC, 평일):
+#     13 0 * * 1-5  → UTC 00:13 (KST 09:13, 1번째)
+#     13 1 * * 1-5  → UTC 01:13 (KST 10:13, 2번째)
+#     13 3 * * 1-5  → UTC 03:13 (KST 12:13, 3번째)
+#     13 4 * * 1-5  → UTC 04:13 (KST 13:13, 4번째)
+#     20 6 * * 1-5  → UTC 06:20 (KST 15:20, 5번째)
 SPLIT_SCHEDULE = [
-    (9,  13),   # 1번째 분할
-    (10, 13),   # 2번째 분할
-    (12, 13),   # 3번째 분할
-    (13, 13),   # 4번째 분할
-    (15, 20),   # 5번째 분할
+    (0,  13),   # 1번째 분할  (UTC 00:13 = KST 09:13)
+    (1,  13),   # 2번째 분할  (UTC 01:13 = KST 10:13)
+    (3,  13),   # 3번째 분할  (UTC 03:13 = KST 12:13)
+    (4,  13),   # 4번째 분할  (UTC 04:13 = KST 13:13)
+    (6,  20),   # 5번째 분할  (UTC 06:20 = KST 15:20)
 ]
 
 # ── 분할 인덱스 수동 지정 (None=현재 시각 자동 판별 / 1~N 직접 지정) ──────
@@ -174,12 +187,37 @@ def _to_float(val):
     return float(s)
 
 
+# ── 호가단위 처리 ──────────────────────────────────────────────────────────
+#   KRX 금현물 호가단위는 10원 고정. 주문단가 끝자리는 반드시 0이어야 한다.
+#   (10원 단위가 아니면 키움 857024 '호가단위를 확인하세요' 오류로 거부됨)
+GOLD_TICK_SIZE = 10
+
+def ceil_to_tick(price, tick=GOLD_TICK_SIZE):
+    """가격을 호가단위로 올림 (매수 지정가용 — 체결 유리하게)."""
+    price = int(price)
+    return ((price + tick - 1) // tick) * tick
+
+def floor_to_tick(price, tick=GOLD_TICK_SIZE):
+    """가격을 호가단위로 내림 (매도 지정가용 — 체결 유리하게)."""
+    price = int(price)
+    return (price // tick) * tick
+
+
 # ===========================================================================
 # 4) 인증 / 토큰 관리
 # ===========================================================================
-def get_access_token():
-    """접근토큰을 캐시에서 로드하거나 신규 발급."""
-    if os.path.exists(TOKEN_FILE_PATH):
+def get_access_token(force_new: bool = False):
+    """접근토큰을 캐시에서 로드하거나 신규 발급.
+
+    force_new=True 면 캐시를 무시하고 무조건 신규 발급한다.
+    (kt50020 등이 8005 '유효하지 않은 토큰' 오류를 낼 때 _post 가 호출)
+
+    ※ 캐시 토큰이 만료시각상으론 유효해 보여도 키움 서버에서 무효화된
+      경우가 있다(같은 앱키로 다른 프로세스가 재발급 시 이전 토큰 무효화).
+      그 경우 force_new=True 로 강제 재발급해야 한다.
+    """
+    load_api_keys()                      # APP_KEY/APP_SECRET 보장
+    if not force_new and os.path.exists(TOKEN_FILE_PATH):
         try:
             with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
                 cached = json.load(f)
@@ -203,13 +241,12 @@ def get_access_token():
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
-        TA.send_tele(f"GOLD: 토큰 발급 실패 → 종료 ({e})")
-        sys.exit(1)
+        # sys.exit 대신 RuntimeError: import한 쪽(fetch_gold_balance)이 잡을 수 있도록
+        raise RuntimeError(f"GOLD: 토큰 발급 API 실패: {e}")
 
     token = data.get("token") or data.get("access_token")
     if not token:
-        TA.send_tele(f"GOLD: 토큰 발급 응답 오류 → 종료 ({data})")
-        sys.exit(1)
+        raise RuntimeError(f"GOLD: 토큰 발급 응답에 토큰 없음: {data}")
 
     if data.get("expires_dt"):
         expires_at = datetime.datetime.strptime(data["expires_dt"], "%Y%m%d%H%M%S")
@@ -221,8 +258,12 @@ def get_access_token():
     with open(TOKEN_FILE_PATH, "w", encoding="utf-8") as f:
         json.dump({"access_token": token, "expires_at": expires_at.isoformat()},
                   f, ensure_ascii=False, indent=2)
-    log.info("접근토큰 신규 발급 완료")
+    log.info(f"접근토큰 신규 발급 완료{' (강제)' if force_new else ''}")
     return token
+
+
+# 8005 등 토큰 무효 오류 감지용 키워드
+_TOKEN_ERR_KEYWORDS = ("8005", "토큰", "token", "유효하지 않")
 
 
 def _api_headers(token, api_id):
@@ -236,8 +277,18 @@ def _api_headers(token, api_id):
     }
 
 
-def _post(token, api_id, body, timeout=10):
-    """TR에 맞는 URI로 POST → 응답 dict 반환. return_code != 0 이면 예외."""
+# 현재 유효 토큰 보관 (8005 오류 시 _post 가 재발급하여 갱신)
+_CURRENT_TOKEN = None
+
+def _post(token, api_id, body, timeout=10, _token_retry=True):
+    """TR에 맞는 URI로 POST → 응답 dict 반환. return_code != 0 이면 예외.
+
+    응답이 8005(토큰 무효) 계열 오류이면 토큰을 강제 재발급하여 1회 재시도한다.
+    재발급된 토큰은 모듈 전역 _CURRENT_TOKEN 에 반영되므로, 호출 측은
+    이후 get_current_token() 으로 최신 토큰을 다시 받을 수 있다.
+    """
+    global _CURRENT_TOKEN
+
     uri  = TR_URI_MAP.get(api_id)
     if uri is None:
         raise ValueError(f"알 수 없는 TR: {api_id}")
@@ -249,14 +300,31 @@ def _post(token, api_id, body, timeout=10):
     rc = data.get("return_code", -1)
     if rc != 0:
         msg = data.get("return_msg", "")
+        # ── 토큰 무효(8005 등) → 강제 재발급 후 1회 재시도 ──
+        is_token_err = any(kw in str(msg) for kw in _TOKEN_ERR_KEYWORDS)
+        if is_token_err and _token_retry:
+            log.warning(f"[{api_id}] 토큰 무효 감지({msg}) → 토큰 강제 재발급 후 재시도")
+            new_token = get_access_token(force_new=True)
+            _CURRENT_TOKEN = new_token
+            # 재시도는 1회만 (_token_retry=False)
+            return _post(new_token, api_id, body, timeout=timeout, _token_retry=False)
         raise RuntimeError(f"[{api_id}] return_code={rc} | {msg}")
     return data
+
+
+def get_current_token():
+    """_post 가 8005 재시도 중 재발급했을 수 있는 최신 토큰 반환.
+    재발급이 없었으면 None → 호출 측은 기존 토큰을 그대로 쓰면 된다."""
+    return _CURRENT_TOKEN
 
 
 # ===========================================================================
 # 5) 거래일 확인
 #    ka50100 시세정보 조회 성공 + 당일 거래량(trde_qty) > 0 이면 거래일.
 #    휴장일에는 거래량이 0이거나 조회가 실패한다.
+#    ※ EC2는 UTC로 동작하지만, 금현물 장중(UTC 00~07시)은 UTC 날짜·요일이
+#      KST와 동일하므로 today.weekday() 주말 판정에 문제없음.
+#      설령 경계시간에 요일이 어긋나도 2차 거래량 0 체크로 휴장일이 걸러진다.
 # ===========================================================================
 def is_gold_trading_day(token):
     """오늘이 KRX 금현물 거래일인지 확인."""
@@ -312,27 +380,69 @@ def get_gold_balance(token):
     """금현물 잔고확인(kt50020) → 계좌 종합 dict.
 
     반환 키:
-      deposit       주문가능 예수금(원)      ← tot_entr
-      hold_qty      보유수량(g)              ← gold_acnt_evlt_prst[].real_qty
-      avg_price     평균단가(원)             ← avg_prc
-      cur_price     현재가(원)               ← cur_prc
-      eval_amt      평가금액(원)             ← est_amt
+      deposit       예수금(원)               ← net_entr (정산반영 순예수금)
+      eval_amt      금 평가금액(원)          ← gold_acnt_evlt_prst[].est_amt
+      total_amt     계좌 총평가금(원)        ← eval_amt + deposit (파생)
+      hold_qty      보유수량(g)              ← real_qty
+      avg_price     평균매입단가(원/g)       ← avg_prc
+      cur_price     현재가(원/g)             ← cur_prc
       profit_loss   평가손익(원)             ← est_lspft
       return_rate   수익률(%)                ← est_ratio
       sellable_qty  매도가능수량(g)          ← able_qty
+      deposit_raw   미정산 예수금(원)        ← tot_entr (참조용, 사용 안 함)
     보유 종목이 없으면 수량/단가/손익은 0.
+
+    ※ 평가금 산출 방식 (실데이터 + 매수체결금액 교차검증, 2026-05-19):
+      금 평가금 = kt50020 종목배열의 est_amt. 검증 근거:
+        - 오늘 28g 매수 체결금액(kt50021 buy_exct_amt) = 6,144,136원
+          → 1g 매수단가 ≈ 219,400원 (kt50031 체결가 cntr_uv 219,560 과 일치)
+        - 보유 56g × 약 219,000원/g ≈ 1,228만원 → est_amt(12,147,453) 와 일치
+
+    ※ 예수금 필드 선택 (중요 — 이중계산 방지):
+      kt50020 의 예수금 필드는 tot_entr 와 net_entr 두 가지다.
+        - tot_entr(24,716,370): 당일 매수 체결대금이 아직 차감 안 된 '미정산 예수금'
+        - net_entr(18,572,234): 당일 매수 체결분이 차감된 '정산반영 순예수금' ★
+      tot_entr 를 쓰면 당일 매수분이 금 평가금(est_amt)과 예수금에 이중 계산되어
+      총잔고가 매수대금(6,144,136)만큼 부풀려진다.
+        tot_entr 사용 시: 금 12,147,453 + 예수금 24,716,370 = 36,863,823 ❌
+        net_entr 사용 시: 금 12,147,453 + 예수금 18,572,234 = 30,719,687 ✅
+      → net_entr 를 예수금으로 사용한다 (KIS 한국주식 D+2 정산 반영과 동일 원칙).
+      net_entr 가 비정상(0)이면 kt50021 의 prsm_entra(추정예수금)로 보강한다.
+      ※ prsm_entra 는 kt50020 응답에는 없고 kt50021 응답에만 존재한다.
     """
     data = _post(token, "kt50020", {})
 
+    # 예수금: net_entr(kt50020, 정산반영 순예수금) 우선. 0이면 kt50021 보강.
+    deposit     = _to_int(data.get("net_entr", 0))        # 정산반영 순예수금 (정답)
+    deposit_raw = _to_int(data.get("tot_entr", 0))        # 미정산 예수금 (참조용)
+    if deposit <= 0:
+        # net_entr 미제공/0 → kt50021 의 prsm_entra(추정예수금)로 보강
+        try:
+            dep_data = _post(token, "kt50021", {})
+            deposit = _to_int(dep_data.get("prsm_entra", 0))
+            if deposit <= 0:
+                deposit = _to_int(dep_data.get("prsm_pymn_alow_amt", 0))
+            if deposit <= 0:
+                # 최후 폴백: 미정산예수금 - 당일매수체결금
+                buy_exct = _to_int(dep_data.get("buy_exct_amt", 0))
+                deposit = max(deposit_raw - buy_exct, 0)
+            log.warning(f"kt50020 net_entr 없음 → kt50021 로 예수금 보강: {deposit:,}원")
+        except Exception as e:
+            log.warning(f"kt50021 예수금 보강 실패, tot_entr 사용: {e}")
+            deposit = deposit_raw
+
     result = {
-        "deposit":      _to_int(data.get("tot_entr", 0)),
-        "hold_qty":     0,
-        "avg_price":    0,
-        "cur_price":    0,
-        "eval_amt":     0,
-        "profit_loss":  0,
-        "return_rate":  0.0,
-        "sellable_qty": 0,
+        "deposit":          deposit,
+        "deposit_raw":      deposit_raw,    # 미정산 예수금 (참조용)
+        "eval_amt":         0,
+        "total_amt":        0,
+        "hold_qty":         0,
+        "avg_price":        0,
+        "cur_price":        0,
+        "profit_loss":      0,
+        "return_rate":      0.0,
+        "sellable_qty":     0,
+        "tot_dep_amt_raw":  _to_int(data.get("tot_dep_amt", 0)),  # 참조용(미사용)
     }
 
     for item in data.get("gold_acnt_evlt_prst", []) or []:
@@ -340,7 +450,7 @@ def get_gold_balance(token):
             result["hold_qty"]     = _to_int(item.get("real_qty", 0))
             result["avg_price"]    = _to_int(item.get("avg_prc", 0))
             result["cur_price"]    = _to_int(item.get("cur_prc", 0))
-            result["eval_amt"]     = _to_int(item.get("est_amt", 0))
+            result["eval_amt"]     = _to_int(item.get("est_amt", 0))   # ★ 금 평가금 정답
             # 평가손익은 부호 유지
             pl_raw = str(item.get("est_lspft", "0")).replace(",", "").replace("+", "").strip()
             result["profit_loss"]  = int(float(pl_raw)) if pl_raw and pl_raw != "-" else 0
@@ -349,10 +459,28 @@ def get_gold_balance(token):
             result["sellable_qty"] = _to_int(item.get("able_qty", 0))
             break
 
+    # ── 금 평가금이 비어있으면 cur_prc × hold_qty 로 폴백 ──
+    if result["eval_amt"] <= 0 and result["hold_qty"] > 0:
+        if result["cur_price"] <= 0:
+            try:
+                result["cur_price"] = get_gold_current_price(token)
+            except Exception as e:
+                log.warning(f"현재가 보강 실패(get_gold_current_price): {e}")
+        result["eval_amt"] = result["cur_price"] * result["hold_qty"]
+        log.warning(
+            f"kt50020 est_amt=0 → cur_prc×수량으로 폴백 산출: "
+            f"{result['eval_amt']:,}원"
+        )
+
+    # ── 계좌 총평가금 = 금 평가금 + 예수금(정산반영) ──
+    result["total_amt"] = result["eval_amt"] + deposit
+
     log.info(
         f"잔고: 보유 {result['hold_qty']}g / 매도가능 {result['sellable_qty']}g / "
-        f"평단 {result['avg_price']:,}원 / 손익 {result['profit_loss']:,}원 "
-        f"({result['return_rate']:.2f}%) / 예수금 {result['deposit']:,}원"
+        f"현재가 {result['cur_price']:,}원/g / 금평가금 {result['eval_amt']:,}원 / "
+        f"예수금 {result['deposit']:,}원(정산반영) / 총평가금 {result['total_amt']:,}원 / "
+        f"손익 {result['profit_loss']:,}원 ({result['return_rate']:.2f}%) "
+        f"[미정산예수금 tot_entr={result['deposit_raw']:,}원·미사용]"
     )
     return result
 
@@ -380,7 +508,7 @@ def get_today_execution(token):
     today = datetime.date.today().strftime("%Y%m%d")
     try:
         data = _post(token, "kt50031", {
-            "qry_tp":       "0",
+            "qry_tp":       "1",        # 1=주문순(전체) ※ 0은 무효값
             "stk_bond_tp":  "0",
             "sell_tp":      "0",
             "dmst_stex_tp": "KRX",
@@ -396,6 +524,10 @@ def get_today_execution(token):
     filled_amt = 0
     count      = 0
     for item in data.get("acnt_ord_cntr_prps_dtl", []) or []:
+        # 빈 더미 레코드 제외 (ord_no="0000000" 또는 stk_cd 빈 값)
+        ord_no = str(item.get("ord_no", "")).strip().lstrip("0")
+        if not ord_no:
+            continue
         if item.get("stk_cd") and item.get("stk_cd") != GOLD_STOCK_CODE:
             continue
         cq = _to_int(item.get("cntr_qty", 0))
@@ -417,6 +549,7 @@ def get_unfilled_qty(token):
             "mrkt_deal_tp": "0",
             "stk_bond_tp":  "0",
             "sell_tp":      "0",
+            "qry_tp":       "1",        # 1=주문순
             "stk_cd":       GOLD_STOCK_CODE,
             "fr_ord_no":    "",
             "dmst_stex_tp": "KRX",
@@ -522,15 +655,23 @@ def get_today_split_index():
 # 10) 텔레그램 헬퍼
 # ===========================================================================
 def _fmt_balance(bal):
-    """잔고 dict → 텔레그램 출력 라인 리스트."""
+    """잔고 dict → 텔레그램 출력 라인 리스트.
+
+    cur_price/avg_price 는 1g 기준 정상 시세(매수체결금액으로 검증됨).
+    예수금은 prsm_entra(당일 매수 정산반영) 기준 — tot_entr 사용 시
+    당일 매수분이 금·현금 이중계산되므로 prsm_entra 가 정답.
+    금평가금 = est_amt, 총평가금 = est_amt + 예수금(정산반영).
+    """
     return [
         f"보유수량   : {bal['hold_qty']}g",
-        f"평균단가   : {bal['avg_price']:,}원",
-        f"현재가     : {bal['cur_price']:,}원",
-        f"평가금액   : {bal['eval_amt']:,}원",
+        f"매도가능   : {bal['sellable_qty']}g",
+        f"매입단가   : {bal['avg_price']:,}원/g",
+        f"현재가     : {bal['cur_price']:,}원/g",
+        f"금평가금   : {bal['eval_amt']:,}원",
         f"평가손익   : {bal['profit_loss']:,}원",
         f"수익률     : {bal['return_rate']:.2f}%",
-        f"예수금     : {bal['deposit']:,}원",
+        f"예수금     : {bal['deposit']:,}원  (정산반영)",
+        f"총평가금   : {bal['total_amt']:,}원  (금평가금+예수금)",
     ]
 
 
@@ -560,8 +701,8 @@ def run_buy(token, split_index):
         remaining_splits = 1
     this_cash = target_cash // remaining_splits
 
-    # 지정가 = 현재가 + 슬리피지
-    order_price = int(price * (1 + LIMIT_SLIPPAGE_BUY))
+    # 지정가 = 현재가 + 슬리피지 → 10원 호가단위로 올림
+    order_price = ceil_to_tick(price * (1 + LIMIT_SLIPPAGE_BUY))
 
     this_qty = this_cash // order_price if order_price > 0 else 0
     if this_qty <= 0:
@@ -626,8 +767,8 @@ def run_sell(token, split_index):
         )
         return msg, None
 
-    # 지정가 = 현재가 - 슬리피지
-    order_price = int(price * (1 - LIMIT_SLIPPAGE_SELL))
+    # 지정가 = 현재가 - 슬리피지 → 10원 호가단위로 내림
+    order_price = floor_to_tick(price * (1 - LIMIT_SLIPPAGE_SELL))
 
     msg.append(
         f"[매도] {split_index}/{SPLITS_PER_DAY}회차 | "
@@ -647,6 +788,7 @@ def run_sell(token, split_index):
 # 13) 메인 실행
 # ===========================================================================
 def main():
+    me = acquire_singleton()             # ← 추가: cron 실행 시에만 락 획득
     now_str  = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     mode_kor = "매수" if MODE == "buy" else "매도"
 
@@ -750,18 +892,22 @@ if __name__ == "__main__":
 
 
 # ===========================================================================
-# [ crontab 설정 예시 ]  (AWS EC2 Linux, KST 기준)
+# [ crontab 설정 예시 ]  (AWS EC2 Linux — UTC 기준!)
 #   $ crontab -e
 #
-#   # KRX 금현물 분할 매매 - 평일(월~금) 1일 5회 분할
-#   13 9  * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
-#   13 10 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
-#   13 12 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
-#   13 13 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
-#   20 15 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py
+#   ※ EC2 시스템 시간대는 UTC 유지. crontab 시각도 UTC로 작성.
+#     UTC = KST - 9시간
 #
-#   ※ EC2 시간대를 KST로 설정:  sudo timedatectl set-timezone Asia/Seoul
-#   ※ SPLIT_SCHEDULE 의 (시,분) 5개와 위 cron 시각 5개를 일치시킬 것
-#   ※ 며칠간만 매매 시 날짜 필드로 제한:
-#       13 9 19-21 * 1-5  → 매월 19~21일 평일에만 실행
+#   # KRX 금현물 분할 매매 - 평일(월~금) 1일 5회 분할 (UTC 시각)
+#   13 0 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py   # KST 09:13
+#   13 1 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py   # KST 10:13
+#   13 3 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py   # KST 12:13
+#   13 4 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py   # KST 13:13
+#   20 6 * * 1-5  /usr/bin/python3 /var/autobot/TR_GOLD/GOLD_TR.py   # KST 15:20
+#
+#   ※ SPLIT_SCHEDULE 의 (시,분) 5개와 위 cron 시각 5개를 일치시킬 것 (둘 다 UTC)
+#   ※ crontab의 요일(1-5)도 UTC 기준. 한국 월~금 장중 시간대(UTC 00~07시)는
+#     UTC 요일과 KST 요일이 동일하므로 1-5 그대로 사용 가능.
+#   ※ 며칠간만 매매 시 날짜 필드로 제한 (날짜도 UTC 기준):
+#       13 0 19-21 * 1-5  → 매월 19~21일 평일 KST 09:13 실행
 # ===========================================================================

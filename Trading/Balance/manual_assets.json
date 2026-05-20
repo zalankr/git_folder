@@ -1,11 +1,12 @@
 {
   "_README": [
-    "다른 증권사 보유 자산 수기 입력 파일 — /var/autobot/Balance/manual_assets.json 에 배치",
+    "다른 증권사 보유 자산 / KIS API 조회 불가 값 수기 입력 파일 — /var/autobot/Balance/manual_assets.json 에 배치",
     "평가금은 코드가 매번 현재가로 계산. 여기에는 수량과 통화별 예수금만 입력.",
     "수량/예수금이 바뀔 때만 이 파일을 수정하면 됨. 시세는 자동 갱신.",
     "deposit 은 통화코드(KRW/JPY/USD)별 dict. 환율은 KIS API 환율 자동 적용.",
     "code 는 평가금 계산용 종목코드: KR ETF는 6자리, 일본주식은 TSE 코드(예 2621).",
-    "updated 는 사용자가 수기 갱신한 날짜(참고용)."
+    "updated 는 사용자가 수기 갱신한 날짜(참고용).",
+    "IRP 섹션(_IRP_cash)은 종목이 아닌 예수금(RP 운용자산)만 수기 입력 — daily_snapshot.py가 실시간 주식평가금에 합산."
   ],
 
   "JPUSbond": {
@@ -27,19 +28,7 @@
   },
 
   "Gold": {
-    "_label": "Alternative시트 M3 — Gold (KRX 금현물)",
-    "market": "KR_GOLD",
-    "deposit": {
-      "KRW": 30810276
-    },
-    "holdings": [
-      {
-        "code": "04020000",
-        "name": "금 99.99_1kg",
-        "qty": 0
-      }
-    ],
-    "updated": "2026-05-16"
+    "_REMOVED": "키움 실계좌(52953897) 실시간 조회로 완전 전환됨 (2026-05-19). daily_snapshot.py 의 gold 핸들러가 키움 GOLD_TR.py 를 import 해 평가금+예수금을 직접 조회하며, sheet_sync.py 의 CELL_MAP[('Gold','Gold')] 가 Alternative!M3 에 기록한다. 이 섹션은 코드 어디에서도 더 이상 참조되지 않으므로 안전하게 삭제 가능하나, 이력 보존을 위해 비활성 마커만 남겨둠. 완전 삭제해도 무방."
   },
 
   "Pension_퇴직연금": {
@@ -75,5 +64,15 @@
       { "code": "261220", "name": "KODEX WTI원유선물(H)",            "qty": 121 }
     ],
     "updated": "2026-05-16"
+  },
+
+  "IRP_43685950": {
+    "_label": "Pension시트 — IRP 예수금 (KIS API 조회불가, MTS 수동입력)",
+    "_note": "IRP는 예수금(RP 운용자산)이 KIS API로 조회되지 않음. MTS에서 'IRP 자산 - 주식평가금액' 확인 후 value 수정.",
+    "43685950_29_IRP_cash": {
+      "value": 107672,
+      "updated": "2026-05-18",
+      "note": "MTS IRP 자산 - 주식평가금액 = 예수금(RP 운용). MTS에서 확인 후 수동 수정"
+    }
   }
 }
