@@ -789,11 +789,7 @@ def run_buy(token, split_index, day_index):
 
     this_cash = target_cash // remaining_splits
 
-<<<<<<< HEAD
-    # 지정가 = 현재가 + 슬리피지 → 10원 호가단위로 올림
-=======
     # 지정가 = 현재가 + 슬리피지 -> 10원 호가단위로 올림
->>>>>>> be2410178f3ff1df566774a8125bc35fae4215d4
     order_price = ceil_to_tick(price * (1 + LIMIT_SLIPPAGE_BUY))
 
     this_qty = this_cash // order_price if order_price > 0 else 0
@@ -868,11 +864,7 @@ def run_sell(token, split_index, day_index):
         )
         return msg, None
 
-<<<<<<< HEAD
-    # 지정가 = 현재가 - 슬리피지 → 10원 호가단위로 내림
-=======
     # 지정가 = 현재가 - 슬리피지 -> 10원 호가단위로 내림
->>>>>>> be2410178f3ff1df566774a8125bc35fae4215d4
     order_price = floor_to_tick(price * (1 - LIMIT_SLIPPAGE_SELL))
 
     msg.append(
