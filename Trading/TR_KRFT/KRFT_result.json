@@ -1,99 +1,157 @@
 {
   "_doc": "KRFT 국내선물 자동매매 상태 파일. manual_config 만 수기 편집 권장.",
-
   "manual_config": {
     "_comment_1": "── 현물평가금 계산 비중 (KRQT 100% + KRTR 90%) ──",
     "spot_basis": {
-      "krqt_weight": 1.00,
-      "krtr_weight": 0.90
+      "krqt_weight": 1.0,
+      "krtr_weight": 0.9
     },
-
     "_comment_2": "── 전략 ON/OFF (Hedge3가 ON이면 daily 모드) ──",
     "strategy_enabled": {
-      "boost":  true,
+      "boost": true,
       "hedge1": true,
       "hedge2": false,
       "hedge3": true
     },
-
     "_comment_3": "── override (null=자동, 값 입력 시 자동값 무시) ──",
-    "spot_eval_override":    null,
-    "pbr_override":          null,
-    "vkospi_override":       null,
-
+    "spot_eval_override": null,
+    "pbr_override": null,
+    "vkospi_override": null,
     "_comment_4": "── 알림 활성화 ──",
-    "kakao_alert_enabled":    true,
+    "kakao_alert_enabled": true,
     "telegram_alert_enabled": true
   },
-
-  "spot_eval_krw":      0,
-  "spot_eval_source":   "auto",
+  "spot_eval_krw": 530363895.9,
+  "spot_eval_source": "auto",
   "spot_eval_breakdown": {
-    "krqt_total_krw":   0,
-    "krtr_total_krw":   0,
-    "computed_at":      null
+    "krqt_total_krw": 326758902.0,
+    "krtr_total_krw": 226227771.0,
+    "computed_at": "2026-05-15T08:14:56"
   },
-
   "positions": {
     "boost": {
-      "stage":        0,
-      "entry_month":  null,
+      "stage": 0,
+      "entry_month": null,
       "expire_month": null,
-      "ratio":        0.0
+      "ratio": 0.0
     },
     "hedge1": {
-      "active":           false,
-      "entry_month":      null,
+      "active": false,
+      "entry_month": null,
       "signal_end_month": null,
-      "exit_month":       null,
-      "ratio":            0.0
+      "exit_month": null,
+      "ratio": 0.0
     },
     "hedge2": {
-      "active":       false,
-      "entry_month":  null,
+      "active": false,
+      "entry_month": null,
       "expire_month": null,
-      "ratio":        0.0
+      "ratio": 0.0
     },
     "hedge3": {
-      "active":       false,
-      "entry_date":   null,
-      "ratio":        0.0,
-      "peak_pbr":     0.0,
-      "entry_pbr":    0.0,
-      "_note":        "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수"
+      "active": true,
+      "entry_date": "2026-05-21",
+      "ratio": 0.3,
+      "peak_pbr": 2.4166,
+      "entry_pbr": 2.4166,
+      "_note": "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수"
     }
   },
-
   "holdings": {
-    "_comment": "선물 보유 계약. side: long=매수보유, short=매도보유",
-    "K200_regular": {"symbol": null, "qty": 0, "side": null, "avg_price": 0},
-    "K200_mini":    {"symbol": null, "qty": 0, "side": null, "avg_price": 0},
-    "KQ150":        {"symbol": null, "qty": 0, "side": null, "avg_price": 0}
+    "K200_regular": {
+      "symbol": null,
+      "qty": 0,
+      "side": null,
+      "avg_price": 0
+    },
+    "K200_mini": {
+      "symbol": null,
+      "qty": 0,
+      "side": null,
+      "avg_price": 0
+    },
+    "KQ150": {
+      "symbol": null,
+      "qty": 0,
+      "side": null,
+      "avg_price": 0
+    },
+    "k200_regular": {
+      "symbol": "A01606",
+      "qty": 0,
+      "side": null,
+      "avg_price": 0.0
+    },
+    "k200_mini": {
+      "symbol": "A05606",
+      "qty": 1,
+      "side": "long",
+      "avg_price": 1226.04
+    },
+    "kq150": {
+      "symbol": "A06606",
+      "qty": 2,
+      "side": "long",
+      "avg_price": 1869.0
+    }
   },
-
-  "daily_pbr": [],
-
+  "daily_pbr": [
+    {
+      "date": "2026-05-21",
+      "pbr": 2.4166,
+      "kospi": 7806.82
+    }
+  ],
   "last_run": {
-    "date":           null,
-    "type":           null,
-    "signals":        null,
-    "orders":         [],
-    "status":         null
+    "date": "2026-05-21",
+    "type": "hedge3_daily",
+    "signals": {
+      "hedge3": {
+        "action": "open",
+        "ratio": 0.3,
+        "active": true,
+        "peak_pbr": 2.4166,
+        "reason": "Hedge3 진입: PBR 2.4166 → 30%"
+      }
+    },
+    "orders": [],
+    "status": "executed"
   },
-
   "snapshots": {
     "_comment": "전일/전월 평가금 스냅샷 (수익 변동 계산용)",
     "prev_day": {
-      "date":         null,
-      "evlu_pfls":    0,
-      "evlu_amt":     0
+      "date": "2026-05-21",
+      "evlu_pfls": 231000.0,
+      "evlu_amt": 98451000.0
     },
     "prev_month_end": {
-      "date":         null,
-      "evlu_pfls":    0,
-      "evlu_amt":     0
+      "date": null,
+      "evlu_pfls": 0,
+      "evlu_amt": 0
     }
   },
-
-  "trade_history": []
+  "trade_history": [
+    {
+      "date": "2026-05-21",
+      "type": "hedge3_daily",
+      "action": "open",
+      "pbr": 2.4166,
+      "actions": [
+        {
+          "kind": "open",
+          "symbol": "A05606",
+          "side": "SELL",
+          "qty": 1,
+          "group": "k200_mini"
+        },
+        {
+          "kind": "open",
+          "symbol": "A06606",
+          "side": "SELL",
+          "qty": 2,
+          "group": "kq150"
+        }
+      ]
+    }
+  ]
 }

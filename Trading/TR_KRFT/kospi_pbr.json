@@ -1,6 +1,11 @@
 {
-  "date": "2026-05-15",
-  "pbr": 2.4625,
-  "kospi_close": 7874.4,
-  "computed_at": "2026-05-15T01:52:46"
+  "date": "2026-05-21",
+  "pbr": 2.39,
+  "kospi_close": 7815.59,
+  "pbr_official": 2.39,
+  "per_official": 29.76,
+  "div_yield": 0.81,
+  "base_close": 7815.59,
+  "pbr_estimated": 2.4198,
+  "computed_at": "2026-05-21T14:30:54"
 }

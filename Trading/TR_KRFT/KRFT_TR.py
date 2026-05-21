@@ -165,7 +165,7 @@ def calc_spot_eval_krw(result_cfg: dict) -> dict:
     krtr_w = float(cfg.get("spot_basis", {}).get("krtr_weight", 0.90))
 
     # daily_snapshot 모듈 import (동일 EC2에서 작동 중)
-    sys.path.insert(0, "/var/autobot")
+    sys.path.insert(0, "/var/autobot/Balance")
     try:
         import daily_snapshot as DS
     except Exception as e:
@@ -805,8 +805,10 @@ def run_signal_entry() -> None:
     result["spot_eval_krw"]   = spot_krw
     result["spot_eval_source"] = spot["source"]
     result["spot_eval_breakdown"] = {
+        "spot_eval_krw":  spot_krw,
         "krqt_total_krw": spot["krqt"],
         "krtr_total_krw": spot["krtr"],
+        "source":         spot["source"],
         "computed_at":    datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -1232,11 +1234,42 @@ def run_hedge3_daily() -> dict:
     if sig["action"] in ("open", "scale_up", "close"):
         spot = calc_spot_eval_krw(result)
         spot_krw = spot["krw"]
-        log.append(f"  현물평가금: {spot_krw:,.0f}원")
+        log.append(f"  현물평가금: {spot_krw:,.0f}원 "
+                   f"(KRQT {spot['krqt']:,.0f} + KRTR {spot['krtr']:,.0f} × 가중) "
+                   f"[{spot['source']}]")
         if spot_krw <= 0:
             log.append("  [ERR] 현물평가금 0 — 매매 보류")
             return {"ok": False, "executed": False, "log": log,
                     "context": ctx}
+
+        # ── [SAFETY] 직전 spot_krw 대비 급변 감지 (리밸런싱 직후 데이터 누락 대비) ──
+        prev_bd = result.get("spot_eval_breakdown", {})
+        prev_spot = float(prev_bd.get("spot_eval_krw", 0) or 0)
+        if prev_spot > 0:
+            change_pct = (spot_krw - prev_spot) / prev_spot * 100
+            if abs(change_pct) >= 30.0:
+                msg = (
+                    f"⚠️ spot_krw 급변 {change_pct:+.1f}% — Hedge3 매매 보류\n"
+                    f"  직전: {prev_spot:,.0f} (@ {prev_bd.get('computed_at','?')})\n"
+                    f"  현재: {spot_krw:,.0f}\n"
+                    f"  KRQT: {spot['krqt']:,.0f} / KRTR: {spot['krtr']:,.0f}\n"
+                    f"  리밸런싱 직후 daily_snapshot 매핑 누락 가능성 확인 필요"
+                )
+                log.append("  [SAFETY] " + msg.replace("\n", "\n  "))
+                TA.send_tele("[KRFT Hedge3 SAFETY]\n" + msg)
+                return {"ok": False, "executed": False, "log": log,
+                        "context": ctx, "safety_block": True}
+
+        # ── spot_eval_breakdown 갱신 (daily 모드에서도 디버깅 가능하도록) ──
+        result["spot_eval_breakdown"] = {
+            "spot_eval_krw":  spot_krw,
+            "krqt_total_krw": spot["krqt"],
+            "krtr_total_krw": spot["krtr"],
+            "source":         spot["source"],
+            "computed_at":    datetime.now().isoformat(timespec="seconds"),
+        }
+        result["spot_eval_krw"]    = spot_krw
+        result["spot_eval_source"] = spot["source"]
 
         # 현재가 조회
         cur_k200 = ORDER.get_futures_price(kis, symbols["k200_regular"])
