@@ -1,0 +1,19 @@
+{
+    "in_rsi_hedge": false,
+    "last_monthly_target": {
+        "USQT": 1.0,
+        "IAU":  0.0,
+        "BOND": 0.0,
+        "bond_ticker": "IEF"
+    },
+    "last_monthly_state": "Bull",
+    "last_monthly_vol":   0.15,
+    "last_signal_date":   "2026-05-22",
+    "current_target": {
+        "USQT": 1.0,
+        "IAU":  0.0,
+        "BOND": 0.0,
+        "bond_ticker": "IEF"
+    },
+    "active_since": "2026-05-22"
+}
