@@ -224,7 +224,8 @@ def load_state():
         "last_monthly_vol":   0.15,
         "last_signal_date":   "1970-01-01",
         "current_target":     {"USQT": 1.0, "IAU": 0.0, "BOND": 0.0, "bond_ticker": "IEF"},
-        "active_since":       "1970-01-01"
+        "active_since":       "1970-01-01",
+        "active_trading_day": "1970-01-01"   # ✅ 매매 진행 중인 날짜 (1회차 매매 결정 시 세팅, 24회차 종료 시 클리어)
     }
     if not os.path.exists(USQT_hedge_state_path):
         return default
@@ -481,6 +482,17 @@ def main():
     message = []
     message.append(f"USQT_Hedge: {ot['date']} {ot['round']}/{ot['total_round']}회차 시작 (season={ot['season']})")
 
+    # ============================================
+    # ✅ [신규] 2회차 이후: active_trading_day 체크
+    # 1회차에서 "매매 필요 없음"으로 판정된 날에는
+    # 2~24회차 진입 시 즉시 조용히 종료 (알림도 보내지 않음)
+    # ============================================
+    if ot['round'] >= 2:
+        _state_check = load_state()
+        if _state_check.get("active_trading_day", "1970-01-01") != str(ot['date']):
+            # 1회차에서 매매 결정이 없었던 날 → 조용히 종료
+            return
+
     # 전회 주문 취소
     cmsg, _ = cancel_orders()
     message.append(cmsg)
@@ -573,6 +585,35 @@ def main():
         tgt_qty = int(target[t].get("target_qty", 0))
         if t not in hold_code and tgt_qty > 0:
             buy[t] = tgt_qty
+
+    # ============================================
+    # ✅ [신규] 1회차 분기: 매매 필요 여부 확인
+    # 매매할 종목이 1개도 없으면 알림 1회 후 즉시 종료
+    # (이후 2~24회차는 active_trading_day 미일치로 자동 스킵됨)
+    # 매매 필요시 active_trading_day 저장 → 24회차까지 진행
+    # ============================================
+    if ot['round'] == 1:
+        total_orders = len(buy) + len(sell)
+        if total_orders == 0:
+            message.append(
+                f"USQT_Hedge: 헤지 비중 변경 없음 → 매매 종목 0건. "
+                f"오늘 24회차 매매 모두 스킵하고 종료."
+            )
+            # active_trading_day 명시적으로 클리어 (안전장치)
+            _st = load_state()
+            _st["active_trading_day"] = "1970-01-01"
+            save_state(_st)
+            TA.send_tele(message)
+            return
+        else:
+            # 매매 진행 결정 → active_trading_day 저장
+            _st = load_state()
+            _st["active_trading_day"] = str(ot['date'])
+            save_state(_st)
+            message.append(
+                f"USQT_Hedge: 매매 진행 결정 → 매도 {len(sell)}종목, 매수 {len(buy)}종목, "
+                f"오늘 24회차 매매 활성화"
+            )
 
     # ============================================
     # 분할 매매 (HAA 패턴)
@@ -718,6 +759,12 @@ def main():
         message.append(f"USQT_Hedge 최종 주식 평가금: ${tot_eval:,.2f}")
         message.append(f"USQT_Hedge 최종 USD 가용: ${final_usd:,.2f}")
         message.append(f"USQT_Hedge 총 자산: ${tot_eval + final_usd:,.2f}")
+
+        # ✅ [신규] active_trading_day 클리어 (다음 매매일까지 idle 상태)
+        _st = load_state()
+        _st["active_trading_day"] = "1970-01-01"
+        save_state(_st)
+        message.append("USQT_Hedge: active_trading_day 클리어 → 다음 매매일 대기")
 
         TA.send_tele(message)
 
