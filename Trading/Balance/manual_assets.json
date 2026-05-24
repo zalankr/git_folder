@@ -14,7 +14,7 @@
     "market": "JP",
     "excg": "TSE",
     "deposit": {
-      "JPY": 19657,
+      "JPY": 40815,
       "KRW": 32555
     },
     "holdings": [
@@ -24,7 +24,7 @@
         "qty": 2082
       }
     ],
-    "updated": "2026-05-16"
+    "updated": "2026-05-24"
   },
 
   "Gold": {
@@ -35,7 +35,7 @@
     "_label": "Pension시트 J4 — 퇴직연금 (미래에셋)",
     "market": "KR",
     "deposit": {
-      "KRW": 140099
+      "KRW": 173036
     },
     "holdings": [
       { "code": "441800", "name": "TIMEFOLIO Korea플러스배당액티브", "qty": 516 },
@@ -45,7 +45,7 @@
       { "code": "490490", "name": "SOL 미국배당미국채혼합50",        "qty": 1493 },
       { "code": "148070", "name": "KOSEF 국고채10년",                "qty": 113 }
     ],
-    "updated": "2026-05-16"
+    "updated": "2026-05-24"
   },
 
   "Pension_연금저축-1": {
@@ -70,8 +70,8 @@
     "_label": "Pension시트 — IRP 예수금 (KIS API 조회불가, MTS 수동입력)",
     "_note": "IRP는 예수금(RP 운용자산)이 KIS API로 조회되지 않음. MTS에서 'IRP 자산 - 주식평가금액' 확인 후 value 수정.",
     "43685950_29_IRP_cash": {
-      "value": 107672,
-      "updated": "2026-05-18",
+      "value": 107693,
+      "updated": "2026-05-24",
       "note": "MTS IRP 자산 - 주식평가금액 = 예수금(RP 운용). MTS에서 확인 후 수동 수정"
     }
   }

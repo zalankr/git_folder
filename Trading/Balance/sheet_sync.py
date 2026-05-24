@@ -471,31 +471,34 @@ def update_google_sheet(items: list, mode: str,
         label = f"{strat}/{sub or '합산'}"
         _queue(sheet_name, cell, round(val), label)
 
-    # 3-2. 수기 입력 자산
-    manual = {}
-    if mode == "ASIA" and os.path.exists(MANUAL_ASSETS_PATH):
-        try:
-            with open(MANUAL_ASSETS_PATH, encoding="utf-8") as f:
-                manual = json.load(f)
-        except Exception as e:
-            log.append(f"⚠️ manual_assets.json 로드 실패: {e}")
+    # 3-2. 수기 입력 자산 (ASIA 모드 전용 — US 모드는 조용히 스킵)
+    if mode != "ASIA":
+        pass  # US 모드에서는 manual 자산 셀 갱신 안 함
     else:
-        log.append(f"⚠️ manual_assets.json 없음: {MANUAL_ASSETS_PATH}")
+        if not os.path.exists(MANUAL_ASSETS_PATH):
+            log.append(f"⚠️ manual_assets.json 없음: {MANUAL_ASSETS_PATH}")
+        else:
+            try:
+                with open(MANUAL_ASSETS_PATH, encoding="utf-8") as f:
+                    manual = json.load(f)
+            except Exception as e:
+                log.append(f"⚠️ manual_assets.json 로드 실패: {e}")
+                manual = {}
 
-    for akey, (sheet_name, cell) in MANUAL_CELL_MAP.items():
-        asset = manual.get(akey)
-        if not isinstance(asset, dict):
-            log.append(f"⚠️ 수기자산 '{akey}' 항목 없음 → 스킵")
-            continue
-        try:
-            res = calc_manual_asset_krw(akey, asset, kis_headers_fn, base_url)
-            _queue(sheet_name, cell, round(res["total_krw"]), f"수기:{akey}")
-            log.append(f"  · {akey}: ₩{res['total_krw']:,.0f} "
-                       f"(주식 ₩{res['stock_krw']:,.0f} + 예수금 ₩{res['cash_krw']:,.0f})")
-            for w in res.get("warnings", []):
-                log.append(f"    ⚠️ {w}")
-        except Exception as e:
-            log.append(f"⚠️ 수기자산 '{akey}' 계산 실패: {e}")
+            for akey, (sheet_name, cell) in MANUAL_CELL_MAP.items():
+                asset = manual.get(akey)
+                if not isinstance(asset, dict):
+                    log.append(f"⚠️ 수기자산 '{akey}' 항목 없음 → 스킵")
+                    continue
+                try:
+                    res = calc_manual_asset_krw(akey, asset, kis_headers_fn, base_url)
+                    _queue(sheet_name, cell, round(res["total_krw"]), f"수기:{akey}")
+                    log.append(f"  · {akey}: ₩{res['total_krw']:,.0f} "
+                               f"(주식 ₩{res['stock_krw']:,.0f} + 예수금 ₩{res['cash_krw']:,.0f})")
+                    for w in res.get("warnings", []):
+                        log.append(f"    ⚠️ {w}")
+                except Exception as e:
+                    log.append(f"⚠️ 수기자산 '{akey}' 계산 실패: {e}")
 
     # ── 4. 시트별 batch_update ──
     for sheet_name, entries in writes.items():
