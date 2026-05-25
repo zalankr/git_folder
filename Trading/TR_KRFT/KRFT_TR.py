@@ -66,7 +66,7 @@ K200_REG_THRESHOLD_RATIO = 0.9
 # Hedge3는 PBR 절대값 기준으로 단계 진입/청산.
 # 향후 임계값 조정 시 아래 상수만 변경하면 모든 참조처가 자동 반영됨.
 HEDGE3_T1_PBR     = 2.5         # 1단계 진입 PBR (30%)
-HEDGE3_T2_PBR     = 2.8         # 2단계 진입 PBR (60%)
+HEDGE3_T2_PBR     = 2.9         # 2단계 진입 PBR (60%)
 HEDGE3_T1_RATIO   = 0.3         # 1단계 비중
 HEDGE3_T2_RATIO   = 0.6         # 2단계 비중
 HEDGE3_EXIT_RATIO = 2.0 / 3.0   # peak × 2/3 이하 시 청산
@@ -106,7 +106,7 @@ def save_result(obj: dict) -> None:
 # ==================================================================
 def calc_spot_eval_krw(result_cfg: dict) -> dict:
     """
-    KRQT 100% + KRTR 90% 의 합산 (manual_config.spot_basis 가중치 반영).
+    KRQT 100% + KRTR 80% 의 합산 (manual_config.spot_basis 가중치 반영).
     override 우선.
 
     Returns:
@@ -120,7 +120,7 @@ def calc_spot_eval_krw(result_cfg: dict) -> dict:
                 "krqt": 0.0, "krtr": 0.0}
 
     krqt_w = float(cfg.get("spot_basis", {}).get("krqt_weight", 1.00))
-    krtr_w = float(cfg.get("spot_basis", {}).get("krtr_weight", 0.90))
+    krtr_w = float(cfg.get("spot_basis", {}).get("krtr_weight", 0.80))
 
     # daily_snapshot 모듈 import (동일 EC2에서 작동 중)
     sys.path.insert(0, "/var/autobot/Balance")

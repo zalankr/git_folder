@@ -365,6 +365,15 @@ def decide_target(signals, state_file, is_month_end, is_friday):
                                    "bond_ticker": "IEF"})
     rsi = signals["rsi14"]
 
+    # ✅ [PATCH] last_monthly 의 bond_ticker 는 직전 월말 시점 값.
+    #   현재 신호 기준 IEF/SGOV 판단이 바뀌었으면 갱신해서 사용한다.
+    #   비중(USQT/IAU/BOND) 은 last_monthly 그대로 유지 → 다른 영향 없음.
+    cur_bond_ticker = signals.get("bond_ticker", last_monthly.get("bond_ticker", "IEF"))
+    def _last_monthly_with_cur_bond():
+        out = dict(last_monthly)
+        out["bond_ticker"] = cur_bond_ticker
+        return out
+
     # === 1) 월말 정기 신호 우선 ===
     if is_month_end:
         # 사양 §4: 월말과 RSI 신호 동시 → 월말 우선
@@ -387,21 +396,24 @@ def decide_target(signals, state_file, is_month_end, is_friday):
             return signals["hedge_target"], "rsi_enter", log
 
         if in_rsi_hedge and rsi > RSI_RECOVER:
+            exit_target = _last_monthly_with_cur_bond()
             log.append(f"RSI 헤지 청산: RSI14={rsi:.2f} > {RSI_RECOVER} → "
-                       f"직전 월말 비중 복귀 last_monthly={last_monthly}")
-            return last_monthly, "rsi_exit", log
+                       f"직전 월말 비중 복귀 (bond={cur_bond_ticker} 갱신) "
+                       f"last_monthly={exit_target}")
+            return exit_target, "rsi_exit", log
 
         # 헤지 유지 또는 진입조건 미충족
         if in_rsi_hedge:
             log.append(f"RSI 헤지 유지: RSI14={rsi:.2f} (청산조건 {RSI_RECOVER} 미달)")
             return signals["hedge_target"], "rsi_hold", log
         else:
+            no_change_target = _last_monthly_with_cur_bond()
             log.append(f"RSI 신호 변경 없음: RSI14={rsi:.2f} (진입조건 {RSI_LOW} 미달)")
-            return last_monthly, "no_change", log
+            return no_change_target, "no_change", log
 
     # === 3) 이도 저도 아니면(수동/임시 실행) 현재 상태 유지 ===
     if in_rsi_hedge:
         log.append("수동 실행/예외: RSI 헤지 유지")
         return signals["hedge_target"], "rsi_hold", log
     log.append("수동 실행/예외: 직전 월말 비중 유지")
-    return last_monthly, "no_change", log
+    return _last_monthly_with_cur_bond(), "no_change", log
