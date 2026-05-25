@@ -460,24 +460,23 @@ def _is_friday_signal(today):
 # 메인
 # ============================================
 def main():
-    # 거래일 체크
+    # 거래일 체크 - 비거래일이면 조용히 종료 (크론 스팸 방지)
     if not is_US_trading_day():
-        TA.send_tele("USQT_Hedge: 미국 거래일이 아닙니다.")
         return
 
-    # 분기 리밸런싱일이면 USQT_TR.py 가 통합 처리하므로 종료
+    # 분기 리밸런싱일이면 USQT_TR.py 가 통합 처리하므로 조용히 종료
     today = datetime.now(timezone.utc).date()
     if USQT_Calender.check_USQT_rebal_day(today):
-        TA.send_tele("USQT_Hedge: 오늘은 분기 리밸런싱일 → USQT_TR.py 가 헤지 통합 처리. 헤지 스크립트 종료.")
         return
 
-    health_check()
-
-    # 회차 확인
+    # 회차 확인 - 매매시간/매매일 아니면 조용히 종료 (크론 스팸 방지)
     ot = USQT_Calender.check_order_time()
     if ot['season'] == "USQT_not_hedge_day" or ot['round'] == 0:
-        TA.send_tele(f"USQT_Hedge: 매매시간/매매일 아님 ({ot['date']} {ot['time']})")
         return
+
+    # ✅ 여기까지 통과한 경우만 실제 헤지 매매일 + 매매시간대
+    #    health_check 는 실제 매매 시작 전에 실행 (불필요한 호출 방지)
+    health_check()
 
     message = []
     message.append(f"USQT_Hedge: {ot['date']} {ot['round']}/{ot['total_round']}회차 시작 (season={ot['season']})")

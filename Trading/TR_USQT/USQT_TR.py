@@ -346,9 +346,9 @@ except Exception as e:
     sys.exit(1)
 
 # ✅ 분기 리밸일 체크 (rebal_dates 에 등록된 날만 실행)
+# 리밸일이 아니면 알림 없이 조용히 종료 (크론을 항상 켜둬도 텔레그램 스팸 안 발생)
 today_utc = datetime.now(timezone.utc).date()
 if str(today_utc) not in TR_day.get("rebal_dates", []):
-    TA.send_tele(f"USQT: 오늘({today_utc}) 분기 리밸 일자 아님 → 종료")
     sys.exit(0)
 
 order = order_time(day=TR_day['day'])
