@@ -1,10 +1,10 @@
 {
   "_doc": "KRFT 국내선물 자동매매 상태 파일. manual_config 만 수기 편집 권장.",
   "manual_config": {
-    "_comment_1": "── 현물평가금 계산 비중 (KRQT 100% + KRTR 90%) ──",
+    "_comment_1": "── 현물평가금 계산 비중 (KRQT 100% + KRTR 80%) ──",
     "spot_basis": {
       "krqt_weight": 1.0,
-      "krtr_weight": 0.9
+      "krtr_weight": 0.8
     },
     "_comment_2": "── 전략 ON/OFF (Hedge3가 ON이면 daily 모드) ──",
     "strategy_enabled": {
@@ -58,24 +58,6 @@
     }
   },
   "holdings": {
-    "K200_regular": {
-      "symbol": null,
-      "qty": 0,
-      "side": null,
-      "avg_price": 0
-    },
-    "K200_mini": {
-      "symbol": null,
-      "qty": 0,
-      "side": null,
-      "avg_price": 0
-    },
-    "KQ150": {
-      "symbol": null,
-      "qty": 0,
-      "side": null,
-      "avg_price": 0
-    },
     "k200_regular": {
       "symbol": "A01606",
       "qty": 0,
