@@ -37,9 +37,9 @@ BUY_SPLIT      = 4             # 일 분할 횟수
 #   분할 구조: cron이 하루 SELL_SPLIT 회 호출 × SELL_TRADE_DAYS 일
 #   → 1회 주문량 = (남은잔량 / SELL_TRADE_DAYS) / SELL_SPLIT  (호출당 1주문)
 #   ※ SELL_SPLIT 은 'cron이 하루에 호출하는 횟수'와 반드시 일치시킬 것
-SELL_TOTAL_QTY  = 830        # 총 매도 수량
+SELL_TOTAL_QTY  = 600          # 총 매도 수량
 # SELL_TOTAL_QTY  = None       # 총 매도 수량 (None이면 보유 전량)
-SELL_TRADE_DAYS = 4            # 총 거래일 수 (분할매도일 수)
+SELL_TRADE_DAYS = 1            # 총 거래일 수 (분할매도일 수)
 SELL_SPLIT      = 7            # 일 분할 횟수 = 하루 cron 호출 횟수
 
 # ============================================
