@@ -3,7 +3,7 @@ JP_Hedge_TR.py
 일본 시장 헷지 매월 리밸런싱 (단독 실행)
 
 운영 시나리오:
-- 매월 1~5일 KST 09:07 (UTC 00:07) ~ 매매시간까지 crontab으로 호출
+- 매월 1~7일 KST 09:07 (UTC 00:07) ~ 매매시간까지 crontab으로 호출
 - 1회차 시작에서 순차 검사:
   (1) "오늘 JPQT 분기 리밸런싱일?" → JPQT_TR.py가 처리 중이면 종료
   (2) "월 첫 거래일?" → 아니면 종료
@@ -194,7 +194,7 @@ def is_first_trading_day_of_month():
             today_jst = datetime.now(timezone.utc).astimezone(jst).date()
         except ImportError:
             today_jst = datetime.utcnow().date()
-        return today_jst.day <= 5 and today_jst.weekday() < 5
+        return today_jst.day <= 7 and today_jst.weekday() < 5
 
 
 def jpqt_is_active_today(today_date) -> bool:
@@ -273,6 +273,12 @@ if is_first_round:
         TA.send_tele(f"JP_Hedge: {order['date']}은 월 첫 거래일 아님 → 종료")
         sys.exit(0)
 
+    # 이번 달 이미 점검 완료 확인 (7일 윈도우 중복 실행 방지)
+    prev_check = load_hedge_state().get('last_check_month', '')
+    if prev_check == str(order['date'])[:7]:
+        TA.send_tele(f"JP_Hedge: {order['date']} - 이번 달({prev_check}) 이미 점검 완료 → 종료")
+        sys.exit(0)
+
     message.append(f"JP_Hedge: 월 첫 거래일 - {order['round']}/{order['total_round']}회차 시작")
 
     # ----------------------------------------
@@ -298,6 +304,7 @@ if is_first_round:
     # 신호 이력은 매월 저장 (매매 여부와 무관)
     new_state_data = {
         "last_signal_date":  signal['date'],
+        "last_check_month":  str(order['date'])[:7],   # ← 추가 (예: "2026-06")
         "last_rebal_date":   str(order['date']) if state_changed else prev_state_data.get('last_rebal_date'),
         "current_state":     state,
         "previous_state":    prev_state,
