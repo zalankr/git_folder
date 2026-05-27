@@ -49,11 +49,11 @@
       "ratio": 0.0
     },
     "hedge3": {
-      "active": true,
-      "entry_date": "2026-05-21",
-      "ratio": 0.3,
-      "peak_pbr": 2.4166,
-      "entry_pbr": 2.4166,
+      "active": false,
+      "entry_date": null,
+      "ratio": 0.0,
+      "peak_pbr": 0.0,
+      "entry_pbr": 0.0,
       "_note": "Hedge3 종료: peak_pbr×2/3 이하 즉시 OR Hedge1 진입 시 자동 흡수"
     }
   },
@@ -66,15 +66,15 @@
     },
     "k200_mini": {
       "symbol": "A05606",
-      "qty": 1,
-      "side": "long",
-      "avg_price": 1226.04
+      "qty": 0,
+      "side": null,
+      "avg_price": 0.0
     },
     "kq150": {
       "symbol": "A06606",
       "qty": 2,
-      "side": "long",
-      "avg_price": 1869.0
+      "side": null,
+      "avg_price": 0.0
     }
   },
   "daily_pbr": [
@@ -82,29 +82,39 @@
       "date": "2026-05-21",
       "pbr": 2.4166,
       "kospi": 7806.82
+    },
+    {
+      "date": "2026-05-26",
+      "pbr": 2.467,
+      "kospi": 8066.66
+    },
+    {
+      "date": "2026-05-27",
+      "pbr": 2.5155,
+      "kospi": 8225.26
     }
   ],
   "last_run": {
-    "date": "2026-05-21",
+    "date": "2026-05-27",
     "type": "hedge3_daily",
     "signals": {
       "hedge3": {
-        "action": "open",
+        "action": "hold",
         "ratio": 0.3,
         "active": true,
-        "peak_pbr": 2.4166,
-        "reason": "Hedge3 진입: PBR 2.4166 → 30%"
+        "peak_pbr": 2.5155,
+        "reason": "Hedge3 유지 (PBR 2.5155, peak 2.5155, 비중 30%)"
       }
     },
     "orders": [],
-    "status": "executed"
+    "status": "no_trade"
   },
   "snapshots": {
     "_comment": "전일/전월 평가금 스냅샷 (수익 변동 계산용)",
     "prev_day": {
-      "date": "2026-05-21",
-      "evlu_pfls": 231000.0,
-      "evlu_amt": 98451000.0
+      "date": "2026-05-27",
+      "evlu_pfls": 0.0,
+      "evlu_amt": 0.0
     },
     "prev_month_end": {
       "date": null,
@@ -113,6 +123,28 @@
     }
   },
   "trade_history": [
+    {
+      "date": "2026-05-27",
+      "type": "manual_close",
+      "action": "close",
+      "reason": "신호 산식 오류로 잘못 진입된 Hedge3 포지션 수동 청산",
+      "actions": [
+        {
+          "kind": "close", 
+          "symbol": "A05606", 
+          "side": "BUY", 
+          "qty": 1, 
+          "group": "k200_mini"
+        },
+        {
+          "kind": "close",
+          "symbol": "A06606",
+          "side": "BUY",
+          "qty": 2,
+          "group": "kq150"
+        }
+      ]
+    },
     {
       "date": "2026-05-21",
       "type": "hedge3_daily",
