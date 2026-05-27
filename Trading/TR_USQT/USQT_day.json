@@ -1,6 +1,6 @@
 {
     "_comment": "USQT 분기 리밸런싱 14회차 매매일 2일을 rebal_dates 에 등록.",
-    "day": 1,
+    "day": 2,
     "rebal_dates": [
         "2026-05-26",
         "2026-05-27"

@@ -65,8 +65,8 @@ K200_REG_THRESHOLD_RATIO = 0.9
 # ── Hedge3 PBR 임계값 ─────────────────────────────────────
 # Hedge3는 PBR 절대값 기준으로 단계 진입/청산.
 # 향후 임계값 조정 시 아래 상수만 변경하면 모든 참조처가 자동 반영됨.
-HEDGE3_T1_PBR     = 3.0         # 1단계 진입 PBR (30%)
-HEDGE3_T2_PBR     = 3.6         # 2단계 진입 PBR (60%)
+HEDGE3_T1_PBR     = 2.9         # 1단계 진입 PBR (30%)
+HEDGE3_T2_PBR     = 3.5         # 2단계 진입 PBR (60%)
 HEDGE3_T1_RATIO   = 0.3         # 1단계 비중
 HEDGE3_T2_RATIO   = 0.6         # 2단계 비중
 HEDGE3_EXIT_RATIO = 2.0 / 3.0   # peak × 2/3 이하 시 청산
