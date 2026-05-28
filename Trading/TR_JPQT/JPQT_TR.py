@@ -509,6 +509,14 @@ else:
         TA.send_tele(f"JPQT_target.json 파일 오류: {e}")
         sys.exit(1)
 
+    # ✅ 추가: _meta 키 자체가 없는 구버전/손상 파일 차단
+    if "_meta" not in target:
+        TA.send_tele(
+            f"JPQT 경고: target에 _meta 없음 (구버전 잔존 파일 가능성). "
+            f"1회차 미생성 상태로 판단 → 매매 중단."
+        )
+        sys.exit(1)
+
     # 메타 검증
     target_date = target.get('_meta', {}).get('date', '')
     if target_date != str(order['date']):
