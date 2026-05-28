@@ -14,7 +14,7 @@ daily_snapshot.py
 계좌 정보: ACCOUNTS 리스트 (코드 내 선언적 구성)
 미연결 계좌(노라임/노라송/퇴직연금): 0원 placeholder
 Gold: 키움 실계좌 실시간 조회 (GOLD_TR.py import)
-연금저축(22)·IRP(29): KIS 잔고 조회 + 예수금 수기 fallback(manual_assets.json)
+JPUSbond·연금저축-1: 한투 계좌 투자금 0원 → manual_assets.json 수기 잔고 사용
 """
 
 import sys
@@ -85,8 +85,12 @@ ACCOUNTS = [
     # HKQT: 홍콩주식
     ("Global Market", "HKQT", "HKQ1T", "63604155", "01", "overseas_all", {"natn_cd": "344", "currency": "HKD", "excg": "SEHK", "repr_cd": "00700"}),
 
+    # ETC: 일본 채권 (한투 실계좌 63721147 투자금 0원 → manual_assets.json 수기 잔고 사용)
+    ("Global Market", "ETC",  "JPUSbond", "63721147", "01", "manual_asset", {"section": "JPUSbond"}),
+
     # GBFT: 해외선물옵션 (acnt_prdt_cd=08) — OTFM3118R + OTFM3114R 사용
-    ("Global Market", "GBFT", "Commodity", "64753341", "08", "gbft", {"currency": "USD"}),
+    ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "gbft", {"currency": "USD"}),
+    ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "gbft", {"currency": "USD"}),
 
     # ── Alternative ──────────────────────────────
     ("Alternative", "Gold",   "Gold",   "키움 52953897", "", "gold", {"currency": "KRW"}),
@@ -95,7 +99,7 @@ ACCOUNTS = [
     # ── 연금 & ISA ────────────────────────────────
     ("연금&ISA", "ISA",     "ISA",        "43665648", "01", "kr_simple",   {}),
     ("연금&ISA", "ISA",     "윤숙ISA",    "43680827", "01", "kr_simple",   {}),
-    ("연금&ISA", "Pension", "연금저축-1", "43685950", "22", "kr_simple",   {}),
+    ("연금&ISA", "Pension", "연금저축-1", "43685950", "22", "manual_asset", {"section": "Pension_연금저축-1"}),
     ("연금&ISA", "Pension", "연금저축-2", "44334640", "22", "kr_simple",   {}),
     ("연금&ISA", "Pension", "IRP",        "43685950", "29", "kr_simple",   {}),
     ("연금&ISA", "Pension", "퇴직연금",   "미래에셋", "",   "placeholder", {"currency": "KRW"}),
@@ -116,7 +120,7 @@ US_MODE_KEYS = {"USAA", "USQT", "Crypto"}
 # ══════════════════════════════════════════════════
 
 # ── 수동 입력 자산 (manual_assets.json) ────────────────────
-# 다른 증권사 보유분(연금저축-1 등) + IRP 예수금을 한 파일로 통합 관리.
+# 다른 증권사 보유분(JPUSbond, 연금 등) + IRP 예수금을 한 파일로 통합 관리.
 # 종목/예수금만 수기 입력 → 시세는 코드가 실시간 조회.
 _manual_assets_cache = None
 
@@ -146,33 +150,6 @@ def get_manual_irp_cash(cano: str, acnt_prdt_cd: str) -> tuple:
     if isinstance(entry, dict):
         return float(entry.get("value", 0) or 0), entry.get("updated", "")
     return float(entry or 0), ""
-
-
-def get_manual_pension_cash(cano: str, acnt_prdt_cd: str) -> tuple:
-    """
-    manual_assets.json 의 연금/IRP 예수금 수기 fallback 통합 조회.
-
-    KIS API 로 연금저축(22)·IRP(29) 의 예수금(RP 운용자산 등)이
-    0 으로만 잡히는 경우, 사용자가 MTS 보고 입력한 값으로 보강한다.
-
-    조회 우선순위 (먼저 매칭되는 것 사용):
-      1) "PensionCash_<cano>_<acnt>" : {"value":..., "updated":..., "note":...}
-         (연금저축/IRP 공용 신규 표준 섹션)
-      2) "IRP_<cano>" : {"<cano>_<acnt>_IRP_cash": {...}}
-         (기존 IRP 섹션 — 하위호환)
-
-    Returns: (value, updated_date)
-    """
-    data = load_manual_assets()
-
-    # 1) 신규 표준 섹션 (연금저축/IRP 공용)
-    key = f"PensionCash_{cano}_{acnt_prdt_cd}"
-    entry = data.get(key)
-    if isinstance(entry, dict):
-        return float(entry.get("value", 0) or 0), entry.get("updated", "")
-
-    # 2) 기존 IRP 섹션 (하위호환) — acnt_prdt_cd=29 등
-    return get_manual_irp_cash(cano, acnt_prdt_cd)
 
 
 _token_cache = {}   # {cano: {"appkey":..., "secret":..., "token":...}}
@@ -384,36 +361,29 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         except Exception:
             pass
 
-        # ── 3차: 수기 예수금 fallback (연금저축 22 + IRP 29 공용) ──
-        # 연금저축(22)·IRP(29) 모두 예수금(특히 RP 운용자산)이 KIS API 에서
-        # 0 으로만 잡히는 경우가 있음. manual_assets.json 에 사용자가 MTS 보고
-        # 입력한 값이 있으면, 자동조회 cash 보다 클 때 그 값을 사용 (하이브리드).
-        #   - 자동조회가 정상이면 그 값이 그대로 유지됨 (수기값이 더 작으면 무시)
-        #   - 자동조회가 0/과소면 수기값으로 보강
+        # ── 3차: IRP(29) 전용 — KIS API 조회 불가, manual_assets.json 사용 ──
+        # IRP의 예수금(RP 운용자산)은 증권 API에서 조회되지 않음.
+        # manual_assets.json 의 IRP 섹션에서 사용자가 MTS 보고 입력한 값 사용.
         manual_note = ""
         manual_cash = 0.0
-        mv, md = get_manual_pension_cash(cano, acnt_prdt_cd)
-        if mv > 0:
-            manual_cash = mv
-            if manual_cash > cash:
-                cash = manual_cash
-                manual_note = f"수동입력 예수금 ({md})"
-
-        # ── 총자산 = 주식평가금 + 현금 ──
         if acnt_prdt_cd == "29":
-            # IRP(29): tot_evlu_amt = 주식평가액만 → 현금 반드시 합산
+            mv, md = get_manual_irp_cash(cano, acnt_prdt_cd)
+            if mv > 0:
+                manual_cash = mv
+                manual_note = f"수동입력 예수금 ({md})"
+                # API cash 가 0이면 수동값 사용, API에 값이 있으면 둘 중 큰 쪽
+                if manual_cash > cash:
+                    cash = manual_cash
+
+        # ── 총자산 = 주식평가금 + 현금 (IRP는 수동 예수금 포함) ──
+        # IRP(29): tot_evlu_amt = 주식평가액만 이므로, 수동 예수금 반드시 합산
+        if acnt_prdt_cd == "29" and manual_cash > 0:
             total = stock_eval + cash
         else:
-            # 연금저축(22):
-            #   기본은 (주식+현금) 과 API 총평가액(tot_evlu_amt) 중 큰 쪽.
-            #   단, 수기 예수금이 적용된 경우(manual_note)에는 API 총평가액이
-            #   예수금을 누락했을 가능성이 크므로 (주식+수기현금) 을 우선.
-            if manual_note:
-                total = stock_eval + cash
-            else:
-                total = max(stock_eval + cash, tot_evlu_amt)
-                if cash <= 0 and tot_evlu_amt > stock_eval:
-                    cash = tot_evlu_amt - stock_eval
+            # 연금저축(22): 기존 로직 유지
+            total = max(stock_eval + cash, tot_evlu_amt)
+            if cash <= 0 and tot_evlu_amt > stock_eval:
+                cash = tot_evlu_amt - stock_eval
 
         return {
             "stocks": stocks,
@@ -1812,10 +1782,10 @@ def handle_krft(cano: str, acnt: str, kwargs: dict) -> dict:
 def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
     """해외선물옵션 계좌 잔고 (OTFM1412R + OTFM1411R, USD)
 
-    현재 단일 sub("Commodity")만 매핑됨:
+    한 계좌에 여러 sub("Hedge & Boost", "Commodity")가 매핑된 경우:
       - 캐시 키는 (cano, acnt, currency) 단위 → 첫 sub에서 잔고 1회 조회 후 캐시
-      - 첫 호출자(=Commodity)에게 잔고 전체를 부여
-      - (향후 여러 sub로 분리 시 result.json 기반 split 도입 가능)
+      - 첫 호출자(=Hedge & Boost)에게 잔고 전체를 부여
+      - 두 번째 이후 sub는 0원 (향후 result.json 기반 split 도입 가능)
 
     fetch_gbft_balance가 placeholder=True 반환시:
       - 에러가 아닌 정상 placeholder로 처리 → 텔레그램 '[미연결] 0원'
@@ -1860,7 +1830,7 @@ def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
     # KRW 환산: 1) native total × 환율,   2) 실패 시 KRW 직접값(tot_asst_krw) 사용
     total_krw = (total_native * exrt) if exrt > 0 else bal.get("tot_asst_krw", 0)
 
-    # 첫 호출자(Commodity)에만 전체 잔고 부여, 나머지는 0
+    # 첫 호출자(Hedge & Boost)에만 전체 잔고 부여, 나머지는 0
     if not is_first_caller:
         total_native = 0.0
         total_krw    = 0.0
@@ -2189,9 +2159,7 @@ def handle_gold(cano: str, acnt: str, kwargs: dict) -> dict:
 
 
 def handle_manual_asset(cano: str, acnt: str, kwargs: dict) -> dict:
-    """manual_assets.json 수동 입력 자산 (다른 증권사 보유분 등).
-    ※ 현재 ACCOUNTS 에서 직접 참조하는 항목은 없음 (연금저축-1 은 KIS 직접조회로 전환).
-       향후 KIS API 로 조회 불가한 타 증권사 자산 추가 시 재사용 가능."""
+    """manual_assets.json 수동 입력 자산 (JPUSbond, 연금저축-1 등)"""
     section_key = kwargs.get("section", "")
     bal = fetch_manual_asset(section_key)
 
@@ -2276,7 +2244,7 @@ def collect_accounts(mode: str) -> list:
                 prev_s.get("eval_amt", 0)
             )
 
-        # 통화별 전일 대비 (USAA/USQT/JPQT/HKQT)
+        # 통화별 전일 대비 (USAA/USQT/JPQT/HKQT/ETC)
         day_change_native = 0.0
         if data.get("currency") != "KRW":
             cur_l = data["currency"].lower()
@@ -2474,7 +2442,7 @@ def format_report(mode: str, items: list, prev: dict) -> list:
             # USAA/USQT: 메인(is_main=True) 항목에만 MODE / 통화소계 표기
             is_usaa = (strategy == "USAA")
             is_usqt = (strategy == "USQT")
-            is_jp_hk = strategy in ("JPQT", "HKQT")
+            is_jp_hk = strategy in ("JPQT", "HKQT", "ETC")
             is_gbft = (strategy == "GBFT")
             is_krqt = (strategy == "KRQT")
 
@@ -2571,7 +2539,7 @@ def format_report(mode: str, items: list, prev: dict) -> list:
 
                 msg.append(line)
 
-            # 소계 (KRQT/USQT/USAA/GBFT/JPQT/HKQT)
+            # 소계 (KRQT/USQT/USAA/GBFT/JPQT/HKQT/ETC)
             if strategy == "KRTR":
                 msg.append(f"  → {strategy}소계: {fmt_krw(strat_sum_krw)}")
             elif strategy == "KRQT":

@@ -6,12 +6,29 @@
     "deposit 은 통화코드(KRW/JPY/USD)별 dict. 환율은 KIS API 환율 자동 적용.",
     "code 는 평가금 계산용 종목코드: KR ETF는 6자리, 일본주식은 TSE 코드(예 2621).",
     "updated 는 사용자가 수기 갱신한 날짜(참고용).",
-    "[예수금 fallback] PensionCash_<cano>_<acnt> 섹션은 연금저축(22)·IRP(29) 의 예수금(RP 운용자산 등)이 KIS API 로 0 으로만 잡힐 때 쓰는 수기 보강값. daily_snapshot.py 의 fetch_kr_balance 가 자동조회 예수금과 비교해 더 큰 쪽을 채택(하이브리드). 자동조회가 정상이면 이 값은 무시됨.",
-    "[하위호환] 기존 IRP_<cano> 섹션(_IRP_cash)도 계속 지원됨 — 예수금 fallback 으로 동작."
+    "IRP 섹션(_IRP_cash)은 종목이 아닌 예수금(RP 운용자산)만 수기 입력 — daily_snapshot.py가 실시간 주식평가금에 합산."
   ],
 
+  "JPUSbond": {
+    "_label": "Global시트 AX4 — ETC JPUSbond (도쿄거래소)",
+    "market": "JP",
+    "excg": "TSE",
+    "deposit": {
+      "JPY": 40815,
+      "KRW": 32555
+    },
+    "holdings": [
+      {
+        "code": "2621",
+        "name": "iShares 20+ Year US Treasury Bond JPY Hedged ETF",
+        "qty": 2082
+      }
+    ],
+    "updated": "2026-05-24"
+  },
+
   "Gold": {
-    "_REMOVED": "키움 실계좌(52953897) 실시간 조회로 완전 전환됨 (2026-05-19). daily_snapshot.py 의 gold 핸들러가 키움 GOLD_TR.py 를 import 해 평가금+예수금을 직접 조회하며, sheet_sync.py 의 CELL_MAP[('Gold','Gold')] 가 Alternative!J3 에 기록한다(2026-05-28 M3→J3 이동). 이 섹션은 코드 어디에서도 더 이상 참조되지 않으므로 안전하게 삭제 가능하나, 이력 보존을 위해 비활성 마커만 남겨둠. 완전 삭제해도 무방."
+    "_REMOVED": "키움 실계좌(52953897) 실시간 조회로 완전 전환됨 (2026-05-19). daily_snapshot.py 의 gold 핸들러가 키움 GOLD_TR.py 를 import 해 평가금+예수금을 직접 조회하며, sheet_sync.py 의 CELL_MAP[('Gold','Gold')] 가 Alternative!M3 에 기록한다. 이 섹션은 코드 어디에서도 더 이상 참조되지 않으므로 안전하게 삭제 가능하나, 이력 보존을 위해 비활성 마커만 남겨둠. 완전 삭제해도 무방."
   },
 
   "Pension_퇴직연금": {
@@ -31,17 +48,12 @@
     "updated": "2026-05-24"
   },
 
-  "PensionCash_43685950_22": {
-    "_label": "Pension시트 P4 — 연금저축-1 예수금 수기 fallback (KIS 43685950-22)",
-    "_note": "연금저축-1 은 KIS 직접조회(kr_simple)로 전환됨 (2026-05-28). 종목/평가금은 자동조회. 단 예수금(RP 운용자산 등)이 KIS API 로 0 으로만 잡히면 아래 value 로 보강. MTS에서 '연금저축-1 예수금'(또는 총평가금-주식평가금) 확인 후 value 수정. 자동조회가 정상이면 이 값은 무시됨(둘 중 큰 쪽 채택).",
-    "value": 0,
-    "updated": "2026-05-28"
-  },
-
-  "_Pension_연금저축-1_REMOVED": {
-    "_REMOVED": "연금저축-1 이 KIS 계좌(43685950-22) 직접조회로 전환됨 (2026-05-28). 더 이상 수기 holdings/평가금을 쓰지 않음. 예수금 보강은 PensionCash_43685950_22 섹션 사용. 아래는 이력 보존용 스냅샷(코드 미참조, 삭제 무방).",
+  "Pension_연금저축-1": {
+    "_label": "Pension시트 P4 — 연금저축-1",
     "market": "KR",
-    "deposit": { "KRW": 88616 },
+    "deposit": {
+      "KRW": 88616
+    },
     "holdings": [
       { "code": "441800", "name": "TIMEFOLIO Korea플러스배당액티브", "qty": 267 },
       { "code": "426030", "name": "TIMEFOLIO 미국나스닥100액티브",   "qty": 170 },

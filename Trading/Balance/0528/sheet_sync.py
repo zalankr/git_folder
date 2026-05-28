@@ -74,14 +74,14 @@ CELL_MAP = {
     ("USQT", None):                ("Global",      "AO4"),  # SCG+TCM 합산
     ("JPQT", None):                ("Global",      "AR4"),
     ("HKQT", None):                ("Global",      "AU4"),
-    ("GBFT", None):                ("Global",      "BA4"),  # Commodity (단일 sub)
+    ("GBFT", None):                ("Global",      "BA4"),  # Hedge&Boost + Commodity 합산
+    # ETC(JPUSbond) 는 수기 자산 → MANUAL_CELL_MAP
 
     # ── ALTERNATIVE 시트 ───────────────────────
-    ("Gold",   "Gold"):          ("Alternative", "J3"),   # 키움 금현물 실계좌 실시간 (기존 M3 → J3)
-    ("Crypto", None):              ("Alternative", "M3"),   # (기존 P3 → M3)
+    ("Gold",   "Gold"):          ("Alternative", "M3"),   # 키움 금현물 실계좌 실시간
+    ("Crypto", None):              ("Alternative", "P3"),
 
     # ── PENSION 시트 ───────────────────────────
-    ("Pension", "연금저축-1"):     ("Pension",     "P4"),   # KIS 직접조회 전환 (구 수기 MANUAL_CELL_MAP)
     ("Pension", "연금저축-2"):     ("Pension",     "S4"),
     ("Pension", "IRP"):            ("Pension",     "V4"),
     ("ISA", "ISA"):                ("Pension",     "AE4"),
@@ -90,15 +90,13 @@ CELL_MAP = {
 
 # 수기 입력 자산 → 셀 매핑. key 는 manual_assets.json 의 최상위 key.
 # ※ Gold 는 키움 실계좌(52953897) 실시간 조회로 전환됨 (daily_snapshot.py 의
-#   gold 핸들러가 Alternative!J3 셀을 CELL_MAP 경로로 직접 기록).
+#   gold 핸들러가 Alternative!M3 셀을 CELL_MAP 경로로 직접 기록).
 #   manual_assets.json 의 Gold 섹션을 여기서 중복 기록하면 키움 실계좌 값과
 #   충돌하므로 MANUAL_CELL_MAP 에서 제거함.
-# ※ JPUSbond(Global!AX4) 는 운용 중단됨 (2026-05-28). 계좌이체로 잔고 0.
-#   사용자가 수기로 0 입력하며, 이력은 시트에 그대로 보존됨.
-# ※ 연금저축-1(Pension!P4) 은 KIS 계좌(43685950-22) 직접조회로 전환됨 (2026-05-28).
-#   CELL_MAP 의 ("Pension","연금저축-1") 경로로 자동 기록되므로 여기서 제거함.
 MANUAL_CELL_MAP = {
+    "JPUSbond":          ("Global",      "AX4"),
     "Pension_퇴직연금":  ("Pension",     "J4"),
+    "Pension_연금저축-1":("Pension",     "P4"),
 }
 
 
