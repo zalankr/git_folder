@@ -1,245 +1,165 @@
 {
     "TCM": [
         {
-            "code": "OSCR",
-            "name": "Oscar Health Class A",
-            "qty": 27.0,
-            "balance": 414.18,
-            "weight": 0.033,
+            "code": "ARKO",
+            "name": "ARKO",
+            "qty": 104.0,
+            "balance": 796.12,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "AGNT",
-            "name": "eXp World Holdings Inc",
-            "qty": 69.0,
-            "balance": 412.38,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "GLXY",
-            "name": "Galaxy Digital Class A",
-            "qty": 18.0,
-            "balance": 426.33,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "REAX",
-            "name": "Real Brokerage",
-            "qty": 163.0,
-            "balance": 418.095,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "COMP",
-            "name": "Compass Class A",
-            "qty": 57.0,
-            "balance": 405.555,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "LUMN",
-            "name": "Lumen Technologies",
-            "qty": 54.0,
-            "balance": 420.39,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "CLOV",
-            "name": "Clover Health Investments Class A",
-            "qty": 209.0,
-            "balance": 427.405,
-            "weight": 0.033,
+            "code": "HTZ",
+            "name": "HERTZ GLOBAL HLDGS",
+            "qty": 148.0,
+            "balance": 773.3,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
             "code": "AMC",
             "name": "AMC Entertainment Holdings Class A",
-            "qty": 292,
-            "balance": 404.73,
-            "weight": 0.033,
+            "qty": 518.0,
+            "balance": 814.037,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "UAA",
-            "name": "Under Armour Class A",
-            "qty": 67.0,
-            "balance": 421.765,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "BKKT",
-            "name": "Bakkt Class A",
-            "qty": 46.0,
-            "balance": 414.0,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "OPEN",
-            "name": "Opendoor Technologies Class A",
-            "qty": 93.0,
-            "balance": 422.22,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "AGL",
-            "name": "agilon health",
-            "qty": 19,
-            "balance": 391.07,
-            "weight": 0.033,
+            "code": "CLF",
+            "name": "Cleveland Cliffs",
+            "qty": 69.0,
+            "balance": 890.445,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
             "code": "PBF",
             "name": "PBF Energy Class A",
-            "qty": 10.0,
-            "balance": 386.6,
-            "weight": 0.033,
+            "qty": 20.0,
+            "balance": 776.2,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "PTON",
-            "name": "Peloton Interactive Class A",
-            "qty": 89.0,
-            "balance": 421.415,
-            "weight": 0.033,
+            "code": "RXT",
+            "name": "Rackspace Technology",
+            "qty": 197.0,
+            "balance": 915.065,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "VSTS",
-            "name": "Vestis",
-            "qty": 47.0,
-            "balance": 432.4,
-            "weight": 0.033,
+            "code": "MAGN",
+            "name": "Magnera",
+            "qty": 74.0,
+            "balance": 820.66,
+            "weight": 0.0495,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "OSCR",
+            "name": "Oscar Health Class A",
+            "qty": 35.0,
+            "balance": 764.05,
+            "weight": 0.0495,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "DNUT",
+            "name": "Krispy Kreme",
+            "qty": 242.0,
+            "balance": 827.64,
+            "weight": 0.0495,
+            "status": "리밸런싱"
+        },
+        {
+            "code": "HUN",
+            "name": "Huntsman",
+            "qty": 53.0,
+            "balance": 789.965,
+            "weight": 0.0495,
             "status": "리밸런싱"
         }
     ],
     "SCG": [
         {
-            "code": "SNBR",
-            "name": "Sleep Number",
-            "qty": 265.0,
-            "balance": 462.425,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "STKS",
-            "name": "One Group Hospitality",
-            "qty": 251.0,
-            "balance": 436.74,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "FLWS",
-            "name": "1-800 FLOWERS.COM Class A",
-            "qty": 129.0,
-            "balance": 431.505,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
             "code": "CURV",
             "name": "Torrid Holdings",
-            "qty": 208.0,
-            "balance": 428.48,
-            "weight": 0.033,
+            "qty": 570.0,
+            "balance": 863.55,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "BRCC",
-            "name": "BRC Class A",
-            "qty": 511.0,
-            "balance": 416.3628,
-            "weight": 0.033,
+            "code": "TBI",
+            "name": "Trueblue",
+            "qty": 143.0,
+            "balance": 827.255,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "PRPL",
-            "name": "Purple Innovation",
-            "qty": 685.0,
-            "balance": 424.7,
-            "weight": 0.033,
+            "code": "SPWH",
+            "name": "Sportsmans Warehouse Holdings",
+            "qty": 611.0,
+            "balance": 785.135,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
             "code": "ZIP",
             "name": "Ziprecruiter Class A",
-            "qty": 189.0,
-            "balance": 462.105,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "DCGO",
-            "name": "DocGo",
-            "qty": 772.0,
-            "balance": 414.7956,
-            "weight": 0.033,
+            "qty": 252.0,
+            "balance": 835.38,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
             "code": "DOMO",
             "name": "Domo Class B",
-            "qty": 158.0,
-            "balance": 424.23,
-            "weight": 0.033,
+            "qty": 216.0,
+            "balance": 797.04,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "GPRO",
-            "name": "GoPro Class A",
-            "qty": 454.0,
-            "balance": 401.0182,
-            "weight": 0.033,
+            "code": "SPWR",
+            "name": "Sunpower",
+            "qty": 729.0,
+            "balance": 790.965,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "CMRC",
-            "name": "BigCommerce Holdings Series 1",
-            "qty": 166.0,
-            "balance": 414.9502,
-            "weight": 0.033,
+            "code": "CHGG",
+            "name": "Chegg",
+            "qty": 557.0,
+            "balance": 802.08,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "HRTX",
-            "name": "Heron Therapeutics",
-            "qty": 459.0,
-            "balance": 435.2238,
-            "weight": 0.033,
+            "code": "CNDT",
+            "name": "Conduent",
+            "qty": 443.0,
+            "balance": 792.97,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "RRGB",
-            "name": "Red Robin Gourmet Burgers",
-            "qty": 125.0,
-            "balance": 435.0,
-            "weight": 0.033,
+            "code": "DCGO",
+            "name": "DocGo",
+            "qty": 1252.0,
+            "balance": 788.134,
+            "weight": 0.0495,
             "status": "리밸런싱"
         },
         {
-            "code": "TTEC",
-            "name": "TTEC Holdings",
-            "qty": 167.0,
-            "balance": 455.8098,
-            "weight": 0.033,
-            "status": "리밸런싱"
-        },
-        {
-            "code": "LCUT",
-            "name": "Lifetime Brands",
-            "qty": 54.0,
-            "balance": 406.62,
-            "weight": 0.033,
+            "code": "UIS",
+            "name": "Unisys",
+            "qty": 264.0,
+            "balance": 1030.92,
+            "weight": 0.0495,
             "status": "리밸런싱"
         }
     ]

@@ -1,12 +1,32 @@
 {
-    "date": "2026-04-14",
-    "total_stocks": 12750.727899999998,
-    "total_cash": 2.73,
-    "total_asset": 12753.457899999998,
+    "date": "2026-05-27",
+    "total_stocks": 16481.644,
+    "total_cash": 19.2,
+    "total_asset": 16500.844,
     "total_asset_ret": 0.0,
     "currency": "USD",
-    "TCM": 5434.014999999999,
+    "hedge_state": {
+        "in_rsi_hedge": false,
+        "last_monthly_target": {
+            "USQT": 1.0,
+            "IAU": 0.0,
+            "BOND": 0.0,
+            "bond_ticker": "IEF"
+        },
+        "last_monthly_state": "Bull",
+        "last_monthly_vol": 0.15,
+        "last_signal_date": "1970-01-01",
+        "current_target": {
+            "USQT": 1.0,
+            "IAU": 0.0,
+            "BOND": 0.0,
+            "bond_ticker": "IEF"
+        },
+        "active_since": "1970-01-01",
+        "active_trading_day": "1970-01-01"
+    },
+    "TCM": 8167.482000000002,
     "TCM_ret": 0.0,
-    "SCG": 6449.9654,
+    "SCG": 8313.429,
     "SCG_ret": 0.0
 }
