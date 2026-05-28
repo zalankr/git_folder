@@ -1,0 +1,161 @@
+{
+    "3386": {
+        "name": "Cosmo Bio",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 1288.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "4579": {
+        "name": "RaQualia Pharma",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 818.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "4838": {
+        "name": "Space Shower Skiyaki Holdings",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 767.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "5491": {
+        "name": "Nippon Kinzoku",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 924.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "5870": {
+        "name": "Nalnet Communications",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 1009.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "5959": {
+        "name": "Okabe",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 968.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "6046": {
+        "name": "Linkbal",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 173.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "6616": {
+        "name": "Torex Semiconductor",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 1640.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "6666": {
+        "name": "River Eletec",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 736.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "6771": {
+        "name": "Ikegami Tsushink",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 748.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "7138": {
+        "name": "Torico",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 248.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "7266": {
+        "name": "Imasen Electric Industrial",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 854.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "7345": {
+        "name": "Ai Partners Financial",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 1186.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "8864": {
+        "name": "Airport Facilities",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 998.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "9980": {
+        "name": "Mrk Holdings",
+        "weight": 0.066,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 107.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "CASH": {
+        "name": "CASH",
+        "weight": 0.01,
+        "categories": [
+            "CASH"
+        ],
+        "target_invest": 0.0,
+        "target_qty": 0
+    }
+}
