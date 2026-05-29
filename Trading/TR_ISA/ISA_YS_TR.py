@@ -275,6 +275,7 @@ message.append(f"ISAYS: {order['date']}, {order['time']}, {order['round']}/{orde
 # 전회 주문 취소
 cancel_message = cancel_orders(side='all')
 message.append(cancel_message)
+time_module.sleep(2)   # ← 추가: 취소 반영 대기 (hold_qty == ord_psbl_qty 보장)
 
 # 1회차 투자 목표 매매 수량 파악
 if order['round'] == 1:
