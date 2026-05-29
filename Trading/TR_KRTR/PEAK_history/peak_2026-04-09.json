@@ -1,0 +1,94 @@
+{
+    "total": {
+        "date": "2026-04-09",
+        "total_balance": 18613205.0,
+        "cash_balance": 12274205.0,
+        "stock_eval_amt": 6339000.0,
+        "holdings_count": 7,
+        "month_return": -1.84,
+        "year_return": -1.84
+    },
+    "holdings": {
+        "000720": {
+            "name": "현대건설",
+            "qty": 5,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 180900.0,
+            "current_price": 180100,
+            "eval_amt": 900500,
+            "return_rate": -0.44
+        },
+        "009150": {
+            "name": "삼성전기",
+            "qty": 1,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 511000.0,
+            "current_price": 515000,
+            "eval_amt": 515000,
+            "return_rate": 0.78
+        },
+        "017670": {
+            "name": "SK텔레콤",
+            "qty": 10,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 94890.0,
+            "current_price": 94300,
+            "eval_amt": 943000,
+            "return_rate": -0.62
+        },
+        "066970": {
+            "name": "엘앤에프",
+            "qty": 4,
+            "buy_date": "2026-04-08",
+            "holding_days": 1,
+            "buy_price": 187900.0,
+            "current_price": 184700,
+            "eval_amt": 738800,
+            "return_rate": -1.7
+        },
+        "082920": {
+            "name": "비츠로셀",
+            "qty": 24,
+            "buy_date": "2026-04-02",
+            "holding_days": 7,
+            "buy_price": 39208.3333,
+            "current_price": 41700,
+            "eval_amt": 1000800,
+            "return_rate": 6.35
+        },
+        "095340": {
+            "name": "ISC",
+            "qty": 5,
+            "buy_date": "2026-03-27",
+            "holding_days": 13,
+            "buy_price": 185320.0,
+            "current_price": 269500,
+            "eval_amt": 1347500,
+            "return_rate": 45.42
+        },
+        "222800": {
+            "name": "심텍",
+            "qty": 13,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 68776.9231,
+            "current_price": 68800,
+            "eval_amt": 894400,
+            "return_rate": 0.03
+        }
+    },
+    "exits_today": [
+        {
+            "stock_code": "001120",
+            "name": "LX인터내셔널",
+            "buy_date": "2026-04-02",
+            "sell_date": "2026-04-09",
+            "qty": 18,
+            "buy_price": 51266.6667,
+            "return_rate": -10.37
+        }
+    ]
+}

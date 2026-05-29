@@ -1,0 +1,24 @@
+{
+    "total": {
+        "date": "2026-04-03",
+        "total_balance": 19955270.0,
+        "cash_balance": 19044470.0,
+        "stock_eval_amt": 910800.0,
+        "holdings_count": 1,
+        "month_return": -0.22,
+        "year_return": -0.22
+    },
+    "holdings": {
+        "161890": {
+            "name": "한국콜마",
+            "qty": 12,
+            "buy_date": "2026-04-02",
+            "holding_days": 1,
+            "buy_price": 79616.6667,
+            "current_price": 75900,
+            "eval_amt": 910800,
+            "return_rate": -4.67
+        }
+    },
+    "exits_today": []
+}

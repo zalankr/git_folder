@@ -1,0 +1,74 @@
+{
+    "total": {
+        "date": "2026-04-06",
+        "total_balance": 18585660.0,
+        "cash_balance": 12595360.0,
+        "stock_eval_amt": 5990300.0,
+        "holdings_count": 6,
+        "month_return": -1.99,
+        "year_return": -1.99
+    },
+    "holdings": {
+        "001120": {
+            "name": "LX인터내셔널",
+            "qty": 18,
+            "buy_date": "2026-04-02",
+            "holding_days": 4,
+            "buy_price": 51266.6667,
+            "current_price": 51900,
+            "eval_amt": 934200,
+            "return_rate": 1.24
+        },
+        "082920": {
+            "name": "비츠로셀",
+            "qty": 24,
+            "buy_date": "2026-04-02",
+            "holding_days": 4,
+            "buy_price": 39208.3333,
+            "current_price": 38100,
+            "eval_amt": 914400,
+            "return_rate": -2.83
+        },
+        "095340": {
+            "name": "ISC",
+            "qty": 5,
+            "buy_date": "2026-03-27",
+            "holding_days": 10,
+            "buy_price": 185320.0,
+            "current_price": 239500,
+            "eval_amt": 1197500,
+            "return_rate": 29.24
+        },
+        "112610": {
+            "name": "씨에스윈드",
+            "qty": 12,
+            "buy_date": "2026-04-06",
+            "holding_days": 0,
+            "buy_price": 75333.3333,
+            "current_price": 73400,
+            "eval_amt": 880800,
+            "return_rate": -2.57
+        },
+        "319660": {
+            "name": "피에스케이",
+            "qty": 16,
+            "buy_date": "2026-03-27",
+            "holding_days": 10,
+            "buy_price": 60952.6875,
+            "current_price": 74800,
+            "eval_amt": 1196800,
+            "return_rate": 22.72
+        },
+        "475150": {
+            "name": "SK이터닉스",
+            "qty": 14,
+            "buy_date": "2026-04-06",
+            "holding_days": 0,
+            "buy_price": 63007.1429,
+            "current_price": 61900,
+            "eval_amt": 866600,
+            "return_rate": -1.76
+        }
+    },
+    "exits_today": []
+}

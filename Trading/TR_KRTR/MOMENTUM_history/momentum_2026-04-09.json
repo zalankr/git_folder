@@ -1,0 +1,54 @@
+{
+    "total": {
+        "date": "2026-04-09",
+        "total_balance": 19956220.0,
+        "cash_balance": 16325970.0,
+        "stock_eval_amt": 3630250.0,
+        "holdings_count": 4,
+        "month_return": -0.22,
+        "year_return": -0.22
+    },
+    "holdings": {
+        "006400": {
+            "name": "삼성SDI",
+            "qty": 2,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 486500.0,
+            "current_price": 481500,
+            "eval_amt": 963000,
+            "return_rate": -1.03
+        },
+        "051910": {
+            "name": "LG화학",
+            "qty": 2,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 359000.0,
+            "current_price": 357500,
+            "eval_amt": 715000,
+            "return_rate": -0.42
+        },
+        "055550": {
+            "name": "신한지주",
+            "qty": 10,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 97450.0,
+            "current_price": 96900,
+            "eval_amt": 969000,
+            "return_rate": -0.56
+        },
+        "257720": {
+            "name": "실리콘투",
+            "qty": 23,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 42284.7826,
+            "current_price": 42750,
+            "eval_amt": 983250,
+            "return_rate": 1.1
+        }
+    },
+    "exits_today": []
+}

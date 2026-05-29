@@ -1,0 +1,34 @@
+{
+    "total": {
+        "date": "2026-05-22",
+        "total_balance": 48560571.0,
+        "cash_balance": 41944071.0,
+        "stock_eval_amt": 6616500.0,
+        "holdings_count": 2,
+        "month_return": 5.32,
+        "year_return": 142.8
+    },
+    "holdings": {
+        "009150": {
+            "name": "삼성전기",
+            "qty": 3,
+            "buy_date": "2026-04-10",
+            "holding_days": 42,
+            "buy_price": 762000.0,
+            "current_price": 1342000,
+            "eval_amt": 4026000,
+            "return_rate": 76.12
+        },
+        "011070": {
+            "name": "LG이노텍",
+            "qty": 3,
+            "buy_date": "2026-04-13",
+            "holding_days": 39,
+            "buy_price": 471666.6667,
+            "current_price": 863500,
+            "eval_amt": 2590500,
+            "return_rate": 83.07
+        }
+    },
+    "exits_today": []
+}

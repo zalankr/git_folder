@@ -1,0 +1,73 @@
+{
+    "total": {
+        "date": "2026-04-07",
+        "total_balance": 18465500.0,
+        "cash_balance": 14684100.0,
+        "stock_eval_amt": 3781400.0,
+        "holdings_count": 4,
+        "month_return": -2.62,
+        "year_return": -2.62
+    },
+    "holdings": {
+        "001120": {
+            "name": "LX인터내셔널",
+            "qty": 18,
+            "buy_date": "2026-04-02",
+            "holding_days": 5,
+            "buy_price": 51266.6667,
+            "current_price": 50300,
+            "eval_amt": 905400,
+            "return_rate": -1.89
+        },
+        "082920": {
+            "name": "비츠로셀",
+            "qty": 24,
+            "buy_date": "2026-04-02",
+            "holding_days": 5,
+            "buy_price": 39208.3333,
+            "current_price": 37650,
+            "eval_amt": 903600,
+            "return_rate": -3.97
+        },
+        "095340": {
+            "name": "ISC",
+            "qty": 5,
+            "buy_date": "2026-03-27",
+            "holding_days": 11,
+            "buy_price": 185320.0,
+            "current_price": 238000,
+            "eval_amt": 1190000,
+            "return_rate": 28.43
+        },
+        "112610": {
+            "name": "씨에스윈드",
+            "qty": 12,
+            "buy_date": "2026-04-06",
+            "holding_days": 1,
+            "buy_price": 75333.3333,
+            "current_price": 65200,
+            "eval_amt": 782400,
+            "return_rate": -13.45
+        }
+    },
+    "exits_today": [
+        {
+            "stock_code": "319660",
+            "name": "피에스케이",
+            "buy_date": "2026-03-27",
+            "sell_date": "2026-04-07",
+            "qty": 16,
+            "buy_price": 60952.6875,
+            "return_rate": 22.72
+        },
+        {
+            "stock_code": "475150",
+            "name": "SK이터닉스",
+            "buy_date": "2026-04-06",
+            "sell_date": "2026-04-07",
+            "qty": 14,
+            "buy_price": 63007.1429,
+            "return_rate": -1.76
+        }
+    ]
+}

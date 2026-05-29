@@ -1,0 +1,172 @@
+{
+    "total": {
+        "date": "2026-04-14",
+        "total_balance": 18541478.0,
+        "cash_balance": 8162278.0,
+        "stock_eval_amt": 10379200.0,
+        "holdings_count": 13,
+        "month_return": -2.22,
+        "year_return": -2.22
+    },
+    "holdings": {
+        "006400": {
+            "name": "삼성SDI",
+            "qty": 1,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 487500.0,
+            "current_price": 472000,
+            "eval_amt": 472000,
+            "return_rate": -3.18
+        },
+        "009150": {
+            "name": "삼성전기",
+            "qty": 1,
+            "buy_date": "2026-04-09",
+            "holding_days": 5,
+            "buy_price": 511000.0,
+            "current_price": 588000,
+            "eval_amt": 588000,
+            "return_rate": 15.07
+        },
+        "011070": {
+            "name": "LG이노텍",
+            "qty": 2,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 371500.0,
+            "current_price": 370500,
+            "eval_amt": 741000,
+            "return_rate": -0.27
+        },
+        "017670": {
+            "name": "SK텔레콤",
+            "qty": 10,
+            "buy_date": "2026-04-09",
+            "holding_days": 5,
+            "buy_price": 94890.0,
+            "current_price": 95700,
+            "eval_amt": 957000,
+            "return_rate": 0.85
+        },
+        "039030": {
+            "name": "이오테크닉스",
+            "qty": 1,
+            "buy_date": "2026-04-14",
+            "holding_days": 0,
+            "buy_price": 494000.0,
+            "current_price": 479000,
+            "eval_amt": 479000,
+            "return_rate": -3.04
+        },
+        "066970": {
+            "name": "엘앤에프",
+            "qty": 4,
+            "buy_date": "2026-04-08",
+            "holding_days": 6,
+            "buy_price": 187900.0,
+            "current_price": 173900,
+            "eval_amt": 695600,
+            "return_rate": -7.45
+        },
+        "082920": {
+            "name": "비츠로셀",
+            "qty": 24,
+            "buy_date": "2026-04-02",
+            "holding_days": 12,
+            "buy_price": 39208.3333,
+            "current_price": 44150,
+            "eval_amt": 1059600,
+            "return_rate": 12.6
+        },
+        "095610": {
+            "name": "테스",
+            "qty": 11,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 82590.9091,
+            "current_price": 84000,
+            "eval_amt": 924000,
+            "return_rate": 1.71
+        },
+        "120110": {
+            "name": "코오롱인더",
+            "qty": 10,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 88390.0,
+            "current_price": 90600,
+            "eval_amt": 906000,
+            "return_rate": 2.5
+        },
+        "183300": {
+            "name": "코미코",
+            "qty": 7,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 133800.0,
+            "current_price": 133300,
+            "eval_amt": 933100,
+            "return_rate": -0.37
+        },
+        "222800": {
+            "name": "심텍",
+            "qty": 13,
+            "buy_date": "2026-04-09",
+            "holding_days": 5,
+            "buy_price": 68776.9231,
+            "current_price": 67000,
+            "eval_amt": 871000,
+            "return_rate": -2.58
+        },
+        "278470": {
+            "name": "에이피알",
+            "qty": 2,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 402000.0,
+            "current_price": 383000,
+            "eval_amt": 766000,
+            "return_rate": -4.73
+        },
+        "298020": {
+            "name": "효성티앤씨",
+            "qty": 2,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 459500.0,
+            "current_price": 494500,
+            "eval_amt": 989000,
+            "return_rate": 7.62
+        }
+    },
+    "exits_today": [
+        {
+            "stock_code": "000720",
+            "name": "현대건설",
+            "buy_date": "2026-04-09",
+            "sell_date": "2026-04-14",
+            "qty": 5,
+            "buy_price": 180900.0,
+            "return_rate": -3.26
+        },
+        {
+            "stock_code": "095340",
+            "name": "ISC",
+            "buy_date": "2026-03-27",
+            "sell_date": "2026-04-14",
+            "qty": 5,
+            "buy_price": 185320.0,
+            "return_rate": 17.23
+        },
+        {
+            "stock_code": "093370",
+            "name": "후성",
+            "buy_date": "2026-04-10",
+            "sell_date": "2026-04-14",
+            "qty": 87,
+            "buy_price": 10417.8161,
+            "return_rate": 1.75
+        }
+    ]
+}

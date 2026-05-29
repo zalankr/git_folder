@@ -1,0 +1,44 @@
+{
+    "total": {
+        "date": "2026-04-01",
+        "total_balance": 18962750.0,
+        "cash_balance": 16245750.0,
+        "stock_eval_amt": 2717000.0,
+        "holdings_count": 2,
+        "month_return": 0.0,
+        "year_return": 0.0
+    },
+    "holdings": {
+        "095340": {
+            "name": "ISC",
+            "qty": 5,
+            "buy_date": "2026-03-27",
+            "holding_days": 5,
+            "buy_price": 185320.0,
+            "current_price": 265000,
+            "eval_amt": 1325000,
+            "return_rate": 43.0
+        },
+        "319660": {
+            "name": "피에스케이",
+            "qty": 16,
+            "buy_date": "2026-03-27",
+            "holding_days": 5,
+            "buy_price": 60952.6875,
+            "current_price": 87000,
+            "eval_amt": 1392000,
+            "return_rate": 42.73
+        }
+    },
+    "exits_today": [
+        {
+            "stock_code": "950160",
+            "name": "코오롱티슈진",
+            "buy_date": "2026-03-27",
+            "sell_date": "2026-04-01",
+            "qty": 9,
+            "buy_price": 101989.0,
+            "return_rate": 7.17
+        }
+    ]
+}

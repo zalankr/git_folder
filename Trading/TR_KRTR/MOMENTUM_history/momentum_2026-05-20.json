@@ -1,0 +1,80 @@
+{
+    "total": {
+        "date": "2026-05-20",
+        "total_balance": 47401071.0,
+        "cash_balance": 41944071.0,
+        "stock_eval_amt": 5457000.0,
+        "holdings_count": 2,
+        "month_return": 2.8,
+        "year_return": 137.01
+    },
+    "holdings": {
+        "009150": {
+            "name": "삼성전기",
+            "qty": 3,
+            "buy_date": "2026-04-10",
+            "holding_days": 40,
+            "buy_price": 762000.0,
+            "current_price": 1065000,
+            "eval_amt": 3195000,
+            "return_rate": 39.76
+        },
+        "011070": {
+            "name": "LG이노텍",
+            "qty": 3,
+            "buy_date": "2026-04-13",
+            "holding_days": 37,
+            "buy_price": 471666.6667,
+            "current_price": 754000,
+            "eval_amt": 2262000,
+            "return_rate": 59.86
+        }
+    },
+    "exits_today": [
+        {
+            "stock_code": "000150",
+            "name": "두산",
+            "buy_date": "2026-04-21",
+            "sell_date": "2026-05-20",
+            "qty": 1,
+            "buy_price": 1395000.0,
+            "return_rate": 7.81
+        },
+        {
+            "stock_code": "108490",
+            "name": "로보티즈",
+            "buy_date": "2026-04-27",
+            "sell_date": "2026-05-20",
+            "qty": 7,
+            "buy_price": 327785.7143,
+            "return_rate": -16.41
+        },
+        {
+            "stock_code": "012330",
+            "name": "현대모비스",
+            "buy_date": "2026-05-11",
+            "sell_date": "2026-05-20",
+            "qty": 4,
+            "buy_price": 556250.0,
+            "return_rate": -5.62
+        },
+        {
+            "stock_code": "005930",
+            "name": "삼성전자",
+            "buy_date": "2026-05-11",
+            "sell_date": "2026-05-20",
+            "qty": 9,
+            "buy_price": 285916.6667,
+            "return_rate": -2.42
+        },
+        {
+            "stock_code": "006260",
+            "name": "LS",
+            "buy_date": "2026-05-11",
+            "sell_date": "2026-05-20",
+            "qty": 5,
+            "buy_price": 523200.0,
+            "return_rate": 2.83
+        }
+    ]
+}

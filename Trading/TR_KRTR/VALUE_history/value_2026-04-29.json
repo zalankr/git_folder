@@ -1,0 +1,94 @@
+{
+    "total": {
+        "date": "2026-04-29",
+        "total_balance": 21321258.0,
+        "cash_balance": 8019358.0,
+        "stock_eval_amt": 13301900.0,
+        "holdings_count": 8,
+        "month_return": 6.75,
+        "year_return": 6.75
+    },
+    "holdings": {
+        "000150": {
+            "name": "두산",
+            "qty": 1,
+            "buy_date": "2026-04-21",
+            "holding_days": 8,
+            "buy_price": 1394000.0,
+            "current_price": 1570000,
+            "eval_amt": 1570000,
+            "return_rate": 12.63
+        },
+        "000660": {
+            "name": "SK하이닉스",
+            "qty": 1,
+            "buy_date": "2026-04-09",
+            "holding_days": 20,
+            "buy_price": 1022000.0,
+            "current_price": 1295000,
+            "eval_amt": 1295000,
+            "return_rate": 26.71
+        },
+        "004170": {
+            "name": "신세계",
+            "qty": 5,
+            "buy_date": "2026-04-09",
+            "holding_days": 20,
+            "buy_price": 352100.0,
+            "current_price": 408000,
+            "eval_amt": 2040000,
+            "return_rate": 15.88
+        },
+        "005090": {
+            "name": "SGC에너지",
+            "qty": 3,
+            "buy_date": "2026-04-21",
+            "holding_days": 8,
+            "buy_price": 50715.3333,
+            "current_price": 61300,
+            "eval_amt": 183900,
+            "return_rate": 20.87
+        },
+        "005930": {
+            "name": "삼성전자",
+            "qty": 9,
+            "buy_date": "2026-04-09",
+            "holding_days": 20,
+            "buy_price": 208083.3333,
+            "current_price": 226500,
+            "eval_amt": 2038500,
+            "return_rate": 8.85
+        },
+        "065660": {
+            "name": "안트로젠",
+            "qty": 57,
+            "buy_date": "2026-04-21",
+            "holding_days": 8,
+            "buy_price": 37030.7018,
+            "current_price": 37500,
+            "eval_amt": 2137500,
+            "return_rate": 1.27
+        },
+        "214150": {
+            "name": "클래시스",
+            "qty": 35,
+            "buy_date": "2026-04-21",
+            "holding_days": 8,
+            "buy_price": 57917.1429,
+            "current_price": 57600,
+            "eval_amt": 2016000,
+            "return_rate": -0.55
+        },
+        "352820": {
+            "name": "하이브",
+            "qty": 8,
+            "buy_date": "2026-04-21",
+            "holding_days": 8,
+            "buy_price": 252625.0,
+            "current_price": 252750,
+            "eval_amt": 2022000,
+            "return_rate": 0.05
+        }
+    },
+    "exits_today": []
+}

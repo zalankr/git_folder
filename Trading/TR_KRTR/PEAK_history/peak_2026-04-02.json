@@ -1,0 +1,54 @@
+{
+    "total": {
+        "date": "2026-04-02",
+        "total_balance": 18719800.0,
+        "cash_balance": 14381700.0,
+        "stock_eval_amt": 4338100.0,
+        "holdings_count": 4,
+        "month_return": -1.28,
+        "year_return": -1.28
+    },
+    "holdings": {
+        "001120": {
+            "name": "LX인터내셔널",
+            "qty": 18,
+            "buy_date": "2026-04-02",
+            "holding_days": 0,
+            "buy_price": 51266.6667,
+            "current_price": 53200,
+            "eval_amt": 957600,
+            "return_rate": 3.77
+        },
+        "082920": {
+            "name": "비츠로셀",
+            "qty": 24,
+            "buy_date": "2026-04-02",
+            "holding_days": 0,
+            "buy_price": 39208.3333,
+            "current_price": 38750,
+            "eval_amt": 930000,
+            "return_rate": -1.17
+        },
+        "095340": {
+            "name": "ISC",
+            "qty": 5,
+            "buy_date": "2026-03-27",
+            "holding_days": 6,
+            "buy_price": 185320.0,
+            "current_price": 232500,
+            "eval_amt": 1162500,
+            "return_rate": 25.46
+        },
+        "319660": {
+            "name": "피에스케이",
+            "qty": 16,
+            "buy_date": "2026-03-27",
+            "holding_days": 6,
+            "buy_price": 60952.6875,
+            "current_price": 80500,
+            "eval_amt": 1288000,
+            "return_rate": 32.07
+        }
+    },
+    "exits_today": []
+}

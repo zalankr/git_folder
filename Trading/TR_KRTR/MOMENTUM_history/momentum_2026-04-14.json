@@ -1,0 +1,184 @@
+{
+    "total": {
+        "date": "2026-04-14",
+        "total_balance": 20109170.0,
+        "cash_balance": 5103570.0,
+        "stock_eval_amt": 15005600.0,
+        "holdings_count": 17,
+        "month_return": 0.55,
+        "year_return": 0.55
+    },
+    "holdings": {
+        "005490": {
+            "name": "POSCO홀딩스",
+            "qty": 2,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 366000.0,
+            "current_price": 362000,
+            "eval_amt": 724000,
+            "return_rate": -1.09
+        },
+        "006400": {
+            "name": "삼성SDI",
+            "qty": 2,
+            "buy_date": "2026-04-09",
+            "holding_days": 5,
+            "buy_price": 486500.0,
+            "current_price": 471500,
+            "eval_amt": 943000,
+            "return_rate": -3.08
+        },
+        "009150": {
+            "name": "삼성전기",
+            "qty": 1,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 565000.0,
+            "current_price": 588000,
+            "eval_amt": 588000,
+            "return_rate": 4.07
+        },
+        "011070": {
+            "name": "LG이노텍",
+            "qty": 2,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 373500.0,
+            "current_price": 370500,
+            "eval_amt": 741000,
+            "return_rate": -0.8
+        },
+        "016360": {
+            "name": "삼성증권",
+            "qty": 9,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 106455.5556,
+            "current_price": 111600,
+            "eval_amt": 1004400,
+            "return_rate": 4.83
+        },
+        "032830": {
+            "name": "삼성생명",
+            "qty": 4,
+            "buy_date": "2026-04-14",
+            "holding_days": 0,
+            "buy_price": 240500.0,
+            "current_price": 245500,
+            "eval_amt": 982000,
+            "return_rate": 2.08
+        },
+        "039490": {
+            "name": "키움증권",
+            "qty": 2,
+            "buy_date": "2026-04-14",
+            "holding_days": 0,
+            "buy_price": 478500.0,
+            "current_price": 478500,
+            "eval_amt": 957000,
+            "return_rate": 0.0
+        },
+        "051910": {
+            "name": "LG화학",
+            "qty": 2,
+            "buy_date": "2026-04-09",
+            "holding_days": 5,
+            "buy_price": 359000.0,
+            "current_price": 341500,
+            "eval_amt": 683000,
+            "return_rate": -4.87
+        },
+        "055550": {
+            "name": "신한지주",
+            "qty": 10,
+            "buy_date": "2026-04-09",
+            "holding_days": 5,
+            "buy_price": 97450.0,
+            "current_price": 98800,
+            "eval_amt": 988000,
+            "return_rate": 1.39
+        },
+        "066970": {
+            "name": "엘앤에프",
+            "qty": 5,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 178100.0,
+            "current_price": 174100,
+            "eval_amt": 870500,
+            "return_rate": -2.25
+        },
+        "071050": {
+            "name": "한국금융지주",
+            "qty": 4,
+            "buy_date": "2026-04-13",
+            "holding_days": 1,
+            "buy_price": 243000.0,
+            "current_price": 258500,
+            "eval_amt": 1034000,
+            "return_rate": 6.38
+        },
+        "086790": {
+            "name": "하나금융지주",
+            "qty": 8,
+            "buy_date": "2026-04-14",
+            "holding_days": 0,
+            "buy_price": 122075.0,
+            "current_price": 121400,
+            "eval_amt": 971200,
+            "return_rate": -0.55
+        },
+        "161890": {
+            "name": "한국콜마",
+            "qty": 12,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 78266.6667,
+            "current_price": 80000,
+            "eval_amt": 960000,
+            "return_rate": 2.21
+        },
+        "257720": {
+            "name": "실리콘투",
+            "qty": 23,
+            "buy_date": "2026-04-09",
+            "holding_days": 5,
+            "buy_price": 42284.7826,
+            "current_price": 46600,
+            "eval_amt": 1071800,
+            "return_rate": 10.21
+        },
+        "278470": {
+            "name": "에이피알",
+            "qty": 2,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 390000.0,
+            "current_price": 382000,
+            "eval_amt": 764000,
+            "return_rate": -2.05
+        },
+        "373220": {
+            "name": "LG에너지솔루션",
+            "qty": 2,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 418500.0,
+            "current_price": 400000,
+            "eval_amt": 800000,
+            "return_rate": -4.42
+        },
+        "483650": {
+            "name": "달바글로벌",
+            "qty": 5,
+            "buy_date": "2026-04-10",
+            "holding_days": 4,
+            "buy_price": 180900.0,
+            "current_price": 184800,
+            "eval_amt": 924000,
+            "return_rate": 2.16
+        }
+    },
+    "exits_today": []
+}

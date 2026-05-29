@@ -1,0 +1,44 @@
+{
+    "total": {
+        "date": "2026-04-09",
+        "total_balance": 19949802.0,
+        "cash_balance": 15934802.0,
+        "stock_eval_amt": 4015000.0,
+        "holdings_count": 3,
+        "month_return": -0.12,
+        "year_return": -0.12
+    },
+    "holdings": {
+        "000660": {
+            "name": "SK하이닉스",
+            "qty": 1,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 1022000.0,
+            "current_price": 995000,
+            "eval_amt": 995000,
+            "return_rate": -2.64
+        },
+        "004170": {
+            "name": "신세계",
+            "qty": 4,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 341000.0,
+            "current_price": 348000,
+            "eval_amt": 1392000,
+            "return_rate": 2.05
+        },
+        "005930": {
+            "name": "삼성전자",
+            "qty": 8,
+            "buy_date": "2026-04-09",
+            "holding_days": 0,
+            "buy_price": 206500.0,
+            "current_price": 203500,
+            "eval_amt": 1628000,
+            "return_rate": -1.45
+        }
+    },
+    "exits_today": []
+}

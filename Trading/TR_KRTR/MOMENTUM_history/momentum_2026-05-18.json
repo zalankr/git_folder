@@ -1,0 +1,94 @@
+{
+    "total": {
+        "date": "2026-05-18",
+        "total_balance": 48085315.0,
+        "cash_balance": 31445065.0,
+        "stock_eval_amt": 16640250.0,
+        "holdings_count": 7,
+        "month_return": 4.28,
+        "year_return": 140.43
+    },
+    "holdings": {
+        "000150": {
+            "name": "두산",
+            "qty": 1,
+            "buy_date": "2026-04-21",
+            "holding_days": 27,
+            "buy_price": 1395000.0,
+            "current_price": 1597000,
+            "eval_amt": 1597000,
+            "return_rate": 14.48
+        },
+        "005930": {
+            "name": "삼성전자",
+            "qty": 9,
+            "buy_date": "2026-05-11",
+            "holding_days": 7,
+            "buy_price": 285916.6667,
+            "current_price": 283750,
+            "eval_amt": 2553750,
+            "return_rate": -0.76
+        },
+        "006260": {
+            "name": "LS",
+            "qty": 5,
+            "buy_date": "2026-05-11",
+            "holding_days": 7,
+            "buy_price": 523200.0,
+            "current_price": 525000,
+            "eval_amt": 2625000,
+            "return_rate": 0.34
+        },
+        "009150": {
+            "name": "삼성전기",
+            "qty": 3,
+            "buy_date": "2026-04-10",
+            "holding_days": 38,
+            "buy_price": 762000.0,
+            "current_price": 1042000,
+            "eval_amt": 3126000,
+            "return_rate": 36.75
+        },
+        "011070": {
+            "name": "LG이노텍",
+            "qty": 3,
+            "buy_date": "2026-04-13",
+            "holding_days": 35,
+            "buy_price": 471666.6667,
+            "current_price": 764000,
+            "eval_amt": 2292000,
+            "return_rate": 61.98
+        },
+        "012330": {
+            "name": "현대모비스",
+            "qty": 4,
+            "buy_date": "2026-05-11",
+            "holding_days": 7,
+            "buy_price": 556250.0,
+            "current_price": 577000,
+            "eval_amt": 2308000,
+            "return_rate": 3.73
+        },
+        "108490": {
+            "name": "로보티즈",
+            "qty": 7,
+            "buy_date": "2026-04-27",
+            "holding_days": 21,
+            "buy_price": 327785.7143,
+            "current_price": 305500,
+            "eval_amt": 2138500,
+            "return_rate": -6.8
+        }
+    },
+    "exits_today": [
+        {
+            "stock_code": "036930",
+            "name": "주성엔지니어링",
+            "buy_date": "2026-05-12",
+            "sell_date": "2026-05-18",
+            "qty": 16,
+            "buy_price": 158875.0,
+            "return_rate": -13.45
+        }
+    ]
+}

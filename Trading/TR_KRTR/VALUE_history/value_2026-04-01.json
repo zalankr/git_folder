@@ -1,0 +1,13 @@
+{
+    "total": {
+        "date": "2026-04-01",
+        "total_balance": 19973322.0,
+        "cash_balance": 19973322.0,
+        "stock_eval_amt": 0.0,
+        "holdings_count": 0,
+        "month_return": 0.0,
+        "year_return": 0.0
+    },
+    "holdings": {},
+    "exits_today": []
+}
