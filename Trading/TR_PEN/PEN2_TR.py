@@ -499,8 +499,8 @@ if order['round'] == 12:
     if not isinstance(stocks, list):
         TA.send_tele(f"Pension2: 잔고 조회 불가로 종료합니다. ({stocks})")
         sys.exit(1)
-    if len(stocks) < 7:
-        TA.send_tele(f"Pension2: 잔고 종목 수가 target 종목수 7개보다 작음. ({len(stocks)})")
+    if len(stocks) < len(target):
+        TA.send_tele(f"Pension2: 잔고 종목 수({len(stocks)})가 target 종목수({len(target)})보다 작음.")
 
     account = KIS.get_KR_account_summary()
     if not isinstance(account, dict):
