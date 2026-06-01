@@ -159,7 +159,11 @@ def split_data(round_num):
 def cancel_orders():
     try:
         summary, _ = KIS.cancel_all_unfilled_orders()
-        return f"JPQT: {summary['success']}/{summary['total']} 주문 취소 성공", summary
+        msg = f"JPQT: {summary['success']}/{summary['total']} 주문 취소 성공"
+        if summary.get('failed', 0) > 0 and summary.get('failed_list'):
+            err = summary['failed_list'][0].get('error', '')
+            msg += f" | 실패사유: {err}"
+        return msg, summary
     except Exception as e:
         return f"JPQT: 주문 취소 에러 ({e})", {"success": 0, "total": 0, "fail": 0}
 

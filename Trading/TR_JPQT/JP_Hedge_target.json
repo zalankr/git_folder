@@ -1,0 +1,152 @@
+{
+    "2693": {
+        "name": "YKT",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 418.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 500
+    },
+    "3723": {
+        "name": "Nihon Falcom",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 2389.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 100
+    },
+    "4286": {
+        "name": "Cl Holdings",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 1115.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 200
+    },
+    "4375": {
+        "name": "Safie",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 733.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 300
+    },
+    "5195": {
+        "name": "Bando Chemical Industries",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 2242.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 100
+    },
+    "6149": {
+        "name": "Odawara Engineering",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 2080.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 100
+    },
+    "7463": {
+        "name": "Advan Group",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 925.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 200
+    },
+    "7887": {
+        "name": "Nankai Plywood",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 1603.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 100
+    },
+    "7966": {
+        "name": "LINTEC",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 5750.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 0
+    },
+    "8141": {
+        "name": "Shinko Shoji",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 1575.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 100
+    },
+    "8887": {
+        "name": "Syla Holdings",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 343.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 700
+    },
+    "8928": {
+        "name": "Anabuki Kosan",
+        "weight": 0.06666666666666665,
+        "categories": [
+            "FINISH1"
+        ],
+        "current_price": 2535.0,
+        "target_invest": 243378.7986666666,
+        "target_qty": 0
+    },
+    "1328": {
+        "name": "Nomura NF Gold",
+        "weight": 0.2,
+        "categories": [
+            "hedge_gold"
+        ],
+        "current_price": 17010.0,
+        "target_invest": 730136.3960000001,
+        "target_qty": 42
+    },
+    "1482": {
+        "name": "iShares JGB 7-10Y",
+        "weight": 0.0,
+        "categories": [
+            "hedge_bond"
+        ],
+        "current_price": 1576.0,
+        "target_invest": 0.0,
+        "target_qty": 0
+    },
+    "_meta": {
+        "date": "2026-06-01",
+        "state": "Bull",
+        "previous_state": null,
+        "stock_ratio": 0.8,
+        "gold_ratio": 0.2,
+        "bond_ratio": 0.0,
+        "total_asset_jpy": 3650681.98,
+        "trigger": "state_change"
+    }
+}

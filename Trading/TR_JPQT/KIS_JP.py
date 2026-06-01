@@ -826,7 +826,7 @@ class KIS_API:
             "ORGN_ODNO": order_number,
             "ORD_DVSN": "00",
             "RVSE_CNCL_DVSN_CD": "02",  # 02: 취소
-            "ORD_QTY": "0",             # 취소는 0
+            "ORD_QTY": str(quantity),   # ★ 일본 취소는 실제 미체결 수량 필요 ("0" 거부됨)
             "OVRS_ORD_UNPR": "0",       # 취소는 0
             "CTAC_TLNO": "",
             "MGCO_APTM_ODNO": "",
@@ -890,7 +890,7 @@ class KIS_API:
             result = self.cancel_JP_order(
                 order_number=order['order_number'],
                 ticker=order['ticker'],
-                quantity=order['order_qty']
+                quantity=order['unfilled_qty']   # ★ ft_ord_qty(부분체결 시 부정확) → nccs_qty
             )
             
             if result and result.get('success'):
