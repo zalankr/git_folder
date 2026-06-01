@@ -259,15 +259,15 @@ if order['round'] == 0:
 
 is_first_round = (order['round'] == 1)
 
-if is_first_round:
-    # (1) JPQT가 오늘 처리 중이면 양보
-    if jpqt_is_active_today(order['date']):
-        TA.send_tele(
-            f"JP_Hedge: 오늘({order['date']}) JPQT 분기 리밸런싱과 겹침 "
-            f"→ JPQT_TR.py가 헷지 통합 처리 중. 본 스크립트 종료."
-        )
-        sys.exit(0)
+# (0) 모든 회차 공통: 오늘 JPQT가 헷지를 통합 처리 중이면 전 회차 양보
+if jpqt_is_active_today(order['date']):
+    TA.send_tele(
+        f"JP_Hedge: 오늘({order['date']}) JPQT 분기 리밸런싱과 겹침 "
+        f"→ JPQT_TR.py가 헷지 통합 처리 중. {order['round']}회차 종료."
+    )
+    sys.exit(0)
 
+if is_first_round:
     # (2) 월 첫 거래일이 아니면 종료
     if not is_first_trading_day_of_month():
         TA.send_tele(f"JP_Hedge: {order['date']}은 월 첫 거래일 아님 → 종료")
