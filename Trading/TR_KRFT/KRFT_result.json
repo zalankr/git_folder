@@ -1,10 +1,10 @@
 {
   "_doc": "KRFT 국내선물 자동매매 상태 파일. manual_config 만 수기 편집 권장.",
   "manual_config": {
-    "_comment_1": "── 현물평가금 계산 비중 (KRQT 100% + KRTR 80%) ──",
+    "_comment_1": "── 현물평가금 계산 비중 (KRQT 100% + KRTR 90%) ──",
     "spot_basis": {
       "krqt_weight": 1.0,
-      "krtr_weight": 0.8
+      "krtr_weight": 0.9
     },
     "_comment_2": "── 전략 ON/OFF (Hedge3가 ON이면 daily 모드) ──",
     "strategy_enabled": {
@@ -21,12 +21,14 @@
     "kakao_alert_enabled": true,
     "telegram_alert_enabled": true
   },
-  "spot_eval_krw": 530363895.9,
+  "spot_eval_krw": 503278400.4,
   "spot_eval_source": "auto",
   "spot_eval_breakdown": {
-    "krqt_total_krw": 326758902.0,
-    "krtr_total_krw": 226227771.0,
-    "computed_at": "2026-05-15T08:14:56"
+    "spot_eval_krw": 503278400.4,
+    "krqt_total_krw": 257665458.0,
+    "krtr_total_krw": 307016178.0,
+    "source": "auto",
+    "computed_at": "2026-05-29T06:25:02"
   },
   "positions": {
     "boost": {
@@ -72,7 +74,7 @@
     },
     "kq150": {
       "symbol": "A06606",
-      "qty": 2,
+      "qty": 0,
       "side": null,
       "avg_price": 0.0
     }
@@ -95,15 +97,15 @@
     }
   ],
   "last_run": {
-    "date": "2026-05-27",
+    "date": "2026-06-01",
     "type": "hedge3_daily",
     "signals": {
       "hedge3": {
-        "action": "hold",
-        "ratio": 0.3,
-        "active": true,
-        "peak_pbr": 2.5155,
-        "reason": "Hedge3 유지 (PBR 2.5155, peak 2.5155, 비중 30%)"
+        "action": "none",
+        "ratio": 0.0,
+        "active": false,
+        "peak_pbr": 0.0,
+        "reason": "Hedge3 미발동 (PBR 2.6971 < 3.0)"
       }
     },
     "orders": [],
@@ -112,7 +114,7 @@
   "snapshots": {
     "_comment": "전일/전월 평가금 스냅샷 (수익 변동 계산용)",
     "prev_day": {
-      "date": "2026-05-27",
+      "date": "2026-06-01",
       "evlu_pfls": 0.0,
       "evlu_amt": 0.0
     },
@@ -130,10 +132,10 @@
       "reason": "신호 산식 오류로 잘못 진입된 Hedge3 포지션 수동 청산",
       "actions": [
         {
-          "kind": "close", 
-          "symbol": "A05606", 
-          "side": "BUY", 
-          "qty": 1, 
+          "kind": "close",
+          "symbol": "A05606",
+          "side": "BUY",
+          "qty": 1,
           "group": "k200_mini"
         },
         {
