@@ -54,6 +54,7 @@ MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "MOMENTUM_history")
 os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
 OVERRIDE_PATH = os.path.join(BASE_DIR, "momentum_override.json") # 수동 개입 경로
 MAX_HOLDINGS = 25   # 최대 보유 종목 수
+MIN_ORDER_KRW = 100_000   # 비중조정 최소 주문 임계 (10만원) — 이 미만 조정은 스킵
 MOMENTUM_PENDING_PATH    = os.path.join(BASE_DIR, "momentum_pending.json")  # 자금부족 미체결 큐
 
 
@@ -423,13 +424,8 @@ def do_crawl_and_build_target(message: list) -> dict:
         [h for h in all_holdings if h["stock_code"] in missing_codes],
         key=lambda x: x.get("holding_days", 999)
     )
-    # MAX_HOLDINGS 한도 내에서만 보충
-    available_slots = MAX_HOLDINGS - cur_hold_cnt - len(buy_codes) + len(sell_codes)
-    refill_codes = []
-    for h in refill_candidates:
-        if len(refill_codes) >= max(available_slots, 0):
-            break
-        refill_codes.append(h["stock_code"])
+    # 상한 무제한: 사이트 추천 결손종목 전부 보충
+    refill_codes = [h["stock_code"] for h in refill_candidates]
 
     if refill_codes:
         names = [h["stock_name"] for h in refill_candidates if h["stock_code"] in refill_codes]
@@ -452,16 +448,7 @@ def do_crawl_and_build_target(message: list) -> dict:
     buy_codes = pending_codes + refill_codes + buy_codes
     # ────────────────────────────────────────────
 
-    # 보유 상한 초과 체크
-    expected = cur_hold_cnt - len(sell_codes) + len(buy_codes)
-    if expected > MAX_HOLDINGS:
-        overflow = expected - MAX_HOLDINGS
-        remaining = {c: info for c, info in my_holdings.items()
-                     if c not in sell_codes and c not in buy_codes}
-        sorted_rem = sorted(remaining.items(), key=lambda x: x[1].get("return_rate", 0))
-        extra = [sorted_rem[i][0] for i in range(min(overflow, len(sorted_rem)))]
-        sell_codes.extend(extra)
-        message.append(f"⚠️ 보유초과 {overflow}종목 추가매도: {[my_holdings[c].get('name','') for c in extra]}")
+    # 보유 상한 제거 — overflow 강제매도 없음 (사이트 추천 수만큼 무제한 보유)
 
     # 계좌 조회 → 종목당 투자금
     account = KIS.get_KR_account_summary()
@@ -469,54 +456,95 @@ def do_crawl_and_build_target(message: list) -> dict:
         TA.send_tele(f"MOMENTUM: 계좌요약 조회 불가 ({account})")
         sys.exit(1)
     total_asset = account['total_krw_asset']
-    # 분모 = max(MAX_HOLDINGS, 사이트보유수, 현재보유+신규)
-    # 사이트가 MAX 미만이면 MAX_HOLDINGS 유지 (보수적, 자금초과 방지)
-    # 사이트가 MAX 이상이거나 결손누적 상태면 더 큰 분모 사용 (자금부족 방지)
-    site_count = len(all_holdings)
+    # 분모 n = 오늘 거래 후 실제 보유하게 될 종목수 = 보유 ∪ 신규진입 − 이탈
+    #   buy_codes  = 신규진입(pending·refill 포함, 미보유분), sell_codes = 이탈(보유분)
+    #   → after_count = 현재보유 − 이탈 + 신규.  100% 투자 위해 n으로 균등 분할.
     after_count = cur_hold_cnt - len(sell_codes) + len(buy_codes)
-    invest_divisor = max(MAX_HOLDINGS, site_count, after_count)
+    invest_divisor = max(after_count, 1)   # 0종목 방어
     per_stock_invest = int(total_asset / invest_divisor)
+    has_change = (len(buy_codes) > 0 or len(sell_codes) > 0)   # 신규 또는 이탈 발생 여부
     message.append(
-        f"총자산: {int(total_asset):,}원 | 분모: {invest_divisor}"
-        f"(MAX={MAX_HOLDINGS},사이트={site_count},예상={after_count}) | 종목당: {per_stock_invest:,}원"
+        f"총자산: {int(total_asset):,}원 | 분모(보유후): {invest_divisor} "
+        f"(현재={cur_hold_cnt},이탈={len(sell_codes)},신규={len(buy_codes)}) | 종목당: {per_stock_invest:,}원 "
+        f"| 비중조정: {'ON' if has_change else 'OFF'}"
     )
 
-    # 매수 종목별 목표수량
+    # ── 비중조정 매매 산출 ──────────────────────────────────────
+    # 실제 잔고 1회 조회 (현재 보유수량/현재가 확보)
     buy_targets = {}
-    for code in buy_codes:
-        price = KIS.get_KR_current_price(code)
-        if not isinstance(price, int) or price == 0:
-            message.append(f"MOMENTUM: {code} 현재가 조회 실패, 매수 스킵")
-            continue
-        tgt_qty = per_stock_invest // price
-        if tgt_qty > 0:
-            name = ""
-            for e in new_entries:
-                if e["stock_code"] == code:
-                    name = e["stock_name"]
-                    break
-            buy_targets[code] = {"target_qty": tgt_qty, "name": name}
-        time_module.sleep(0.125)
-
-    # 매도 종목별 보유수량 (실제 잔고)
     sell_targets = {}
     stocks = KIS.get_KR_stock_balance()
+    bal_map = {}   # 종목코드 → {qty, price, name}
     if isinstance(stocks, list):
-        hold_map = {s["종목코드"]: s["보유수량"] for s in stocks}
+        for s in stocks:
+            bal_map[s["종목코드"]] = {
+                "qty":   s["보유수량"],
+                "price": s.get("현재가", 0),
+                "name":  s.get("종목명", s["종목코드"]),
+            }
+
+    # 신규/이탈 종목명 매핑
+    entry_name = {e["stock_code"]: e["stock_name"] for e in new_entries}
+
+    if not has_change:
+        # 신규·이탈 모두 없음 → 비중조정 안 함 (기존 보유 유지)
+        message.append("신규·이탈 없음 → 비중조정 생략 (보유 유지)")
+    else:
+        # 1) 이탈 종목: 전량매도 (임계 무시)
         for code in sell_codes:
-            qty = hold_map.get(code, 0)
-            if qty > 0:
+            held = bal_map.get(code, {}).get("qty", 0)
+            if held > 0:
                 sell_targets[code] = {
-                    "target_qty": qty,
-                    "name": my_holdings.get(code, {}).get("name", code),
+                    "target_qty": held,
+                    "name": bal_map.get(code, {}).get("name", my_holdings.get(code, {}).get("name", code)),
                 }
+
+        # 2) 보유 유지 + 신규 = 비중조정 대상 (이탈 제외)
+        #    target_universe = (현재보유 − 이탈) ∪ 신규
+        sell_set = set(sell_codes)
+        keep_codes = [c for c in my_holdings.keys() if c not in sell_set]
+        universe = list(dict.fromkeys(keep_codes + buy_codes))   # 순서보존·중복제거
+
+        for code in universe:
+            # 현재가: 잔고에 있으면 잔고 현재가, 없으면(신규) API 조회
+            if code in bal_map and bal_map[code]["price"]:
+                price = bal_map[code]["price"]
+                held  = bal_map[code]["qty"]
+                name  = bal_map[code]["name"]
+            else:
+                price = KIS.get_KR_current_price(code)
+                time_module.sleep(0.125)
+                held  = bal_map.get(code, {}).get("qty", 0)
+                name  = entry_name.get(code) or my_holdings.get(code, {}).get("name", code)
+            if not isinstance(price, int) or price <= 0:
+                message.append(f"MOMENTUM: {code}({name}) 현재가 불가, 스킵")
+                continue
+
+            tgt_qty  = per_stock_invest // price
+            diff_qty = tgt_qty - held
+            diff_amt = abs(diff_qty * price)
+            is_new   = (held == 0)
+
+            if diff_qty > 0:
+                # 신규진입은 임계 무시, 기존보유 추가매수는 임계 적용
+                if not is_new and diff_amt < MIN_ORDER_KRW:
+                    continue
+                # target_qty = 이번 리밸에서 추가매수할 수량(diff).
+                # 매수 실행부가 baseline 대비 누적 체결분을 차감한다.
+                buy_targets[code] = {"target_qty": diff_qty, "name": name}
+            elif diff_qty < 0:
+                # 초과보유 일부매도 (전량매도 아님). 임계 미만이면 스킵
+                if diff_amt < MIN_ORDER_KRW:
+                    continue
+                sell_targets[code] = {"target_qty": abs(diff_qty), "name": name}
+            # diff_qty == 0: 조정 불필요
 
     # target 저장
     target = {
         "date":              str(datetime.now().date()),
         "crawl_date":        crawl["target_date"],
-        "sell_codes":        sell_codes,
-        "buy_codes":         buy_codes,
+        "sell_codes":        list(sell_targets.keys()),
+        "buy_codes":         list(buy_targets.keys()),
         "buy_targets":       buy_targets,
         "sell_targets":      sell_targets,
         "per_stock_invest":  per_stock_invest,
@@ -678,13 +706,16 @@ def do_daily_settlement():
     target = load_json(MOMENTUM_TARGET_PATH)
     buy_targets = target.get("buy_targets", {})
 
+    # target_qty는 추가매수 수량(diff). 목표 총보유 = baseline + diff.
+    # 실제 총보유가 목표의 절반에 못 미치면 자금부족으로 보고 pending 기록.
+    baseline = target.get("baseline_hold", {})
     new_pending = []
     pending_names = {}
     for code, info in buy_targets.items():
         actual_qty = new_holdings.get(code, {}).get("qty", 0)
-        target_qty = info.get("target_qty", 0)
-        # 한 주도 못 샀거나, 절반도 못 산 경우 pending에 기록
-        if target_qty > 0 and actual_qty < target_qty // 2:
+        diff_qty   = info.get("target_qty", 0)
+        goal_total = baseline.get(code, 0) + diff_qty   # 목표 총보유수량
+        if diff_qty > 0 and actual_qty < goal_total // 2:
             new_pending.append(code)
             pending_names[code] = info.get("name", code)
 
@@ -758,7 +789,21 @@ def do_trade(order: dict, target: dict, message: list):
             current_hold[s["종목코드"]] = s["매도가능수량"]
 
     # ────────────── 매도 ──────────────
-    sell = {code: current_hold.get(code, 0) for code in sell_targets if current_hold.get(code, 0) > 0}
+    # target_qty = 이번 리밸에서 매도할 수량(이탈=전량, 비중축소=일부).
+    # baseline 대비 이번 세션 이미 매도된 양을 차감해 라운드 반복 과다매도 방지.
+    baseline = target.get("baseline_hold", {})
+    sell = {}
+    for code, info in sell_targets.items():
+        tgt   = int(info.get("target_qty", 0))
+        base  = baseline.get(code, 0)
+        avail = current_hold.get(code, 0)
+        sold_this_session = max(base - avail, 0)   # baseline 대비 줄어든 만큼 = 이미 매도분
+        remaining = tgt - sold_this_session if tgt > 0 else avail
+        if remaining <= 0:
+            continue
+        qty = min(remaining, avail)
+        if qty > 0:
+            sell[code] = qty
 
     if len(sell) == 0:
         message.append("MOMENTUM: 매도 종목 없음")
@@ -814,10 +859,15 @@ def do_trade(order: dict, target: dict, message: list):
     if isinstance(refreshed, list):
         hold_qty_map = {s["종목코드"]: s["보유수량"] for s in refreshed}
 
+    # target_qty는 '이번 리밸 추가매수 수량(diff)'이므로, baseline 대비
+    # 이번 세션에 이미 매수된 양만 차감한다 (미체결 잔량 중복주문 방지).
+    baseline = target.get("baseline_hold", {})
     buy, buy_prices = {}, {}
     for code, info in buy_targets.items():
-        held = hold_qty_map.get(code, 0)
-        remaining = info["target_qty"] - held
+        base = baseline.get(code, 0)
+        now_held = hold_qty_map.get(code, 0)
+        bought_this_session = max(now_held - base, 0)
+        remaining = info["target_qty"] - bought_this_session
         if remaining > 0:
             buy[code] = remaining
 
@@ -920,7 +970,14 @@ message.append(cancel_msg)
 
 # ── 1회차: 크롤링 + target 생성 + 3분 대기 ──
 if order['round'] == 1:
+    # 1회차 시작 시점 보유수량을 baseline으로 저장 (세션 누적 체결 추적용)
+    init_stocks = KIS.get_KR_stock_balance()
+    baseline_hold = {}
+    if isinstance(init_stocks, list):
+        baseline_hold = {s["종목코드"]: s["보유수량"] for s in init_stocks}
     target = do_crawl_and_build_target(message)
+    target["baseline_hold"] = baseline_hold
+    save_json(target, MOMENTUM_TARGET_PATH)
     message.append("MOMENTUM: 크롤링 완료, 3분 대기 후 매매 시작...")
     # TA.send_tele(message)
     # message = []

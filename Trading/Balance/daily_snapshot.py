@@ -78,6 +78,7 @@ ACCOUNTS = [
     # USQT: 단일 계좌 + SCG/TCM (category csv 기반 분류)
     ("Global Market", "USQT", "SCG",    "63692011", "01", "us_usqt_cat", {"category": "SCG"}),
     ("Global Market", "USQT", "TCM",    "63692011", "01", "us_usqt_cat", {"category": "TCM"}),
+    ("Global Market", "USQT", "HEDGE",  "63692011", "01", "us_usqt_cat", {"category": "HEDGE"}),
 
     # JPQT: 일본주식
     ("Global Market", "JPQT", "JPQT1", "63604155", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
@@ -355,9 +356,10 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         return {"error": f"KR 조회 예외: {e}"}
 
     if is_pension:
-        # ── 1차 추정: 3개 예수금 후보 중 최대값 ──
-        cash_candidates = [dnca_tot_amt, prvs_rcdl_excc_amt, nxdy_excc_amt]
-        cash = max(cash_candidates) if any(c > 0 for c in cash_candidates) else 0.0
+        # ── 1차 추정: D+2 정산완료 추정값(prvs) 우선 ──
+        # dnca/nxdy 는 매도 미정산분이 일시 포함돼 부풀 수 있음(리밸런싱 당일).
+        # prvs_rcdl_excc_amt(가수도정산)가 실제 D+2 결제완료 현금에 가장 근접.
+        cash = prvs_rcdl_excc_amt or nxdy_excc_amt or dnca_tot_amt
 
         # ── 2차 보강: TTTC8908R (매수가능조회) ──
         # 연금저축(22) 동작, IRP(29)는 빈 {} 반환 (KIS 미지원)
@@ -404,16 +406,9 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
             # IRP(29): tot_evlu_amt = 주식평가액만 → 현금 반드시 합산
             total = stock_eval + cash
         else:
-            # 연금저축(22):
-            #   기본은 (주식+현금) 과 API 총평가액(tot_evlu_amt) 중 큰 쪽.
-            #   단, 수기 예수금이 적용된 경우(manual_note)에는 API 총평가액이
-            #   예수금을 누락했을 가능성이 크므로 (주식+수기현금) 을 우선.
-            if manual_note:
-                total = stock_eval + cash
-            else:
-                total = max(stock_eval + cash, tot_evlu_amt)
-                if cash <= 0 and tot_evlu_amt > stock_eval:
-                    cash = tot_evlu_amt - stock_eval
+            # 연금저축(22): 주식평가금(output1 직접합산) + 정산기준 현금
+            #   tot_evlu_amt 와의 max() 는 매도 직후 cash 시점차로 이중계상 위험 → 제거
+            total = stock_eval + cash
 
         return {
             "stocks": stocks,
@@ -923,7 +918,8 @@ def fetch_overseas_balance(cano: str, acnt_prdt_cd: str,
     except Exception:
         pass
 
-    real_deposit = frcr_deposit + today_sell_amt - today_buy_amt
+    # real_deposit = frcr_deposit + today_sell_amt - today_buy_amt
+    real_deposit = orderable if orderable > 0 else frcr_deposit
 
     return {
         "stocks": stocks,
@@ -1288,8 +1284,10 @@ def split_krqt_by_result(balance: dict, krqt_result: dict, target_cat: str) -> d
 
 USQT_RESULT_PATH = "/var/autobot/TR_USQT/USQT_result.json"
 USQT_REBAL_PATH  = "/var/autobot/TR_USQT/USQT_rebal.json"
+USQT_HEDGE_TARGET_PATH = "/var/autobot/TR_USQT/USQT_hedge_target.json"
 # 흡수 카테고리: 매핑되지 않은 잔존 종목(remain_last 포함)을 모두 여기에 합산
 USQT_ABSORB_CATEGORY = "SCG"
+USQT_HEDGE_TICKERS = {"IAU", "IEF", "SGOV"}
 
 def load_usqt_result() -> dict:
     """
@@ -1320,18 +1318,20 @@ def load_usqt_rebal() -> dict:
     except Exception:
         return {}
 
-
 def split_usqt_by_result(balance: dict, usqt_result: dict, target_cat: str) -> dict:
     """
-    실시간 USD 잔고(balance)와 USQT_result.json을 매칭해 target_cat 종목만 추출.
-    중복종목은 result.json의 split qty 비율로 재분할한다.
-    미국 티커는 zfill 처리 없이 그대로 매칭 (대문자 통일).
- 
-    ✅ 수정: 매핑 안 된 종목(remain_last 포함) 은 USQT_ABSORB_CATEGORY 에 전량 흡수.
-       → 카테고리 stock_eval 합 == bal 전체 stock_eval 보장.
- 
+    실시간 USD 잔고(balance)를 target_cat 으로 분류.
+    - 일반 카테고리(SCG/TCM): result.json 의 split qty 비율로 종목 배분.
+        헤지 티커(IAU/IEF/SGOV)는 제외. 미매핑 잔존종목은 ABSORB(SCG)가 흡수.
+    - HEDGE 카테고리: 잔고 중 헤지 티커만 수집 (result.json 에 없어도 잡힘).
+
+    정합성: Σ(SCG+TCM+HEDGE).stock_eval == bal 전체 stock_eval
+
     Returns: {"stocks": [...], "stock_eval": float}  (USD 단위)
     """
+    is_hedge_cat = (target_cat == "HEDGE")
+
+    # result.json 의 카테고리별 split qty 맵 (헤지 티커는 매핑 대상에서 제외)
     cat_split = {}
     total_split = {}
     mapped_codes = set()
@@ -1340,48 +1340,61 @@ def split_usqt_by_result(balance: dict, usqt_result: dict, target_cat: str) -> d
             continue
         for s in stocks:
             code = str(s.get("code", "")).strip().upper()
+            if code in USQT_HEDGE_TICKERS:
+                continue
             q = float(s.get("qty", 0) or 0)
             cat_split[(code, cat)] = cat_split.get((code, cat), 0.0) + q
             total_split[code] = total_split.get(code, 0.0) + q
             mapped_codes.add(code)
- 
+
     filtered = []
     stock_eval_sum = 0.0
- 
+
     for s in balance.get("stocks", []):
         code = str(s.get("code", "")).strip().upper()
         real_qty  = float(s.get("qty", 0) or 0)
         real_eval = float(s.get("eval_amt", 0) or 0)
         if real_qty <= 0:
             continue
- 
+
+        is_hedge_code = code in USQT_HEDGE_TICKERS
+
+        # ── HEDGE 카테고리: 헤지 티커만 ──
+        if is_hedge_cat:
+            if not is_hedge_code:
+                continue
+            ns = dict(s)
+            ns["_hedge"] = True
+            filtered.append(ns)
+            stock_eval_sum += real_eval
+            continue
+
+        # ── 일반 카테고리: 헤지 티커는 건너뜀 ──
+        if is_hedge_code:
+            continue
+
         if code in mapped_codes:
-            # ── 매핑된 종목: 카테고리별 split 비율 적용 ──
+            # 매핑 종목: 카테고리별 split 비율 적용
             cat_q = cat_split.get((code, target_cat), 0.0)
             if cat_q <= 0:
                 continue
             total_q = total_split.get(code, 0.0)
             ratio = cat_q / total_q if total_q > 0 else 1.0
- 
             ns = dict(s)
             ns["qty"]      = real_qty * ratio
             ns["eval_amt"] = real_eval * ratio
             ns["_split_ratio"] = ratio
             filtered.append(ns)
             stock_eval_sum += real_eval * ratio
- 
         else:
-            # ── 매핑 안 된 종목 (remain_last 또는 신규 미반영) ──
-            #    USQT_ABSORB_CATEGORY 에만 전량 흡수
+            # 미매핑 잔존종목: ABSORB 카테고리(SCG)만 흡수
             if target_cat != USQT_ABSORB_CATEGORY:
                 continue
             ns = dict(s)
-            ns["qty"]      = real_qty
-            ns["eval_amt"] = real_eval
-            ns["_absorbed"] = True       # 디버그용 (remain_last/unmatched 표시)
+            ns["_absorbed"] = True
             filtered.append(ns)
             stock_eval_sum += real_eval
- 
+
     return {"stocks": filtered, "stock_eval": stock_eval_sum}
 
 
@@ -1681,6 +1694,8 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     for s in bal.get("stocks", []):
         code = str(s.get("code", "")).strip().upper()
         evl  = float(s.get("eval_amt", 0) or 0)
+        if code in USQT_HEDGE_TICKERS:      # 헤지 티커는 HEDGE 서브에서 처리 → 경고 제외
+            continue
         if code not in all_known_codes and evl > 0:
             name = str(s.get("name", "") or "").strip()
             unmatched.append(f"{code}({name},${evl:,.2f})")

@@ -1,0 +1,178 @@
+{
+    "AMC": {
+        "name": "AMC Entertainment Holdings Class A",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 1.775,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 677,
+        "kind": "USQT"
+    },
+    "ARKO": {
+        "name": "ARKO",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 7.76,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 154,
+        "kind": "USQT"
+    },
+    "CHGG": {
+        "name": "Chegg",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 1.4554,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 825,
+        "kind": "USQT"
+    },
+    "CLF": {
+        "name": "Cleveland Cliffs",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 13.6,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 88,
+        "kind": "USQT"
+    },
+    "CNDT": {
+        "name": "Conduent",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 1.73,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 694,
+        "kind": "USQT"
+    },
+    "CURV": {
+        "name": "Torrid Holdings",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 1.58,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 760,
+        "kind": "USQT"
+    },
+    "DCGO": {
+        "name": "DocGo",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 0.658,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 1826,
+        "kind": "USQT"
+    },
+    "DNUT": {
+        "name": "Krispy Kreme",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 3.52,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 341,
+        "kind": "USQT"
+    },
+    "DOMO": {
+        "name": "Domo Class B",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 4.1,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 293,
+        "kind": "USQT"
+    },
+    "HTZ": {
+        "name": "HERTZ GLOBAL HLDGS",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 5.4,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 222,
+        "kind": "USQT"
+    },
+    "HUN": {
+        "name": "Huntsman",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 15.35,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 78,
+        "kind": "USQT"
+    },
+    "MAGN": {
+        "name": "Magnera",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 11.37,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 105,
+        "kind": "USQT"
+    },
+    "OSCR": {
+        "name": "Oscar Health Class A",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 22.2962,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 53,
+        "kind": "USQT"
+    },
+    "PBF": {
+        "name": "PBF Energy Class A",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 40.7,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 29,
+        "kind": "USQT"
+    },
+    "RXT": {
+        "name": "Rackspace Technology",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 5.18,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 232,
+        "kind": "USQT"
+    },
+    "SPWH": {
+        "name": "Sportsmans Warehouse Holdings",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 1.32,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 910,
+        "kind": "USQT"
+    },
+    "SPWR": {
+        "name": "Sunpower",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 1.06,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 1133,
+        "kind": "USQT"
+    },
+    "TBI": {
+        "name": "Trueblue",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 6.21,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 193,
+        "kind": "USQT"
+    },
+    "UIS": {
+        "name": "Unisys",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 4.66,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 257,
+        "kind": "USQT"
+    },
+    "ZIP": {
+        "name": "Ziprecruiter Class A",
+        "weight_eff": 0.04250000000000001,
+        "current_price": 3.24,
+        "target_invest": 1202.0178865000003,
+        "target_qty": 370,
+        "kind": "USQT"
+    },
+    "SGOV": {
+        "name": "SGOV",
+        "weight_eff": 0.0,
+        "current_price": 100.4035,
+        "target_invest": 0.0,
+        "target_qty": 0,
+        "kind": "USQT"
+    },
+    "IAU": {
+        "name": "iShares Gold Trust",
+        "weight_eff": 0.15,
+        "current_price": 84.74,
+        "target_invest": 4242.416069999999,
+        "target_qty": 50,
+        "kind": "IAU"
+    }
+}
