@@ -1,14 +1,18 @@
 {
-    "date": "2026-03-22",
-    "total_stocks": 2319020.0,
-    "total_cash": 121282.38,
-    "total_asset": 2440302.38,
+    "date": "2026-06-01",
+    "total_stocks": 2741500.0,
+    "total_cash": 831375.93,
+    "total_asset": 3572875.93,
     "total_asset_ret": 0.0,
     "currency": "JPY",
-    "trend": 346400.0,
-    "trend_ret": 0.0,
-    "value": 532800.0,
-    "value_ret": 0.0,
-    "remain_last": 1439820.0,
-    "remain_last_ret": 0.0
+    "hedge_state": "Bull",
+    "stock_ratio": 0.8,
+    "gold_ratio": 0.2,
+    "bond_ratio": 0.0,
+    "FINISH1": 2005146.0000000002,
+    "FINISH1_ret": 0.0,
+    "hedge_gold": 716100.0,
+    "hedge_gold_ret": 0.0,
+    "hedge_bond": 0.0,
+    "hedge_bond_ret": 0.0
 }
