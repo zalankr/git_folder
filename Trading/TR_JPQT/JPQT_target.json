@@ -1,161 +1,151 @@
 {
-    "3386": {
-        "name": "Cosmo Bio",
-        "weight": 0.066,
+    "2693": {
+        "name": "YKT",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 1288.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 407.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 500
     },
-    "4579": {
-        "name": "RaQualia Pharma",
-        "weight": 0.066,
+    "3723": {
+        "name": "Nihon Falcom",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 818.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 2349.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 100
     },
-    "4838": {
-        "name": "Space Shower Skiyaki Holdings",
-        "weight": 0.066,
+    "4286": {
+        "name": "Cl Holdings",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 767.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 1077.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 200
     },
-    "5491": {
-        "name": "Nippon Kinzoku",
-        "weight": 0.066,
+    "4375": {
+        "name": "Safie",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 924.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 707.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 300
     },
-    "5870": {
-        "name": "Nalnet Communications",
-        "weight": 0.066,
+    "5195": {
+        "name": "Bando Chemical Industries",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 1009.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 2194.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 100
     },
-    "5959": {
-        "name": "Okabe",
-        "weight": 0.066,
+    "6149": {
+        "name": "Odawara Engineering",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 968.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 2054.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 100
     },
-    "6046": {
-        "name": "Linkbal",
-        "weight": 0.066,
+    "7463": {
+        "name": "Advan Group",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 173.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 900.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 200
     },
-    "6616": {
-        "name": "Torex Semiconductor",
-        "weight": 0.066,
+    "7887": {
+        "name": "Nankai Plywood",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 1640.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 1564.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 100
     },
-    "6666": {
-        "name": "River Eletec",
-        "weight": 0.066,
+    "7966": {
+        "name": "LINTEC",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 736.0,
-        "target_invest": 0.0,
+        "current_price": 5910.0,
+        "target_invest": 239328.47799999994,
         "target_qty": 0
     },
-    "6771": {
-        "name": "Ikegami Tsushink",
-        "weight": 0.066,
+    "8141": {
+        "name": "Shinko Shoji",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 748.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 1580.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 100
     },
-    "7138": {
-        "name": "Torico",
-        "weight": 0.066,
+    "8887": {
+        "name": "Syla Holdings",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 248.0,
-        "target_invest": 0.0,
-        "target_qty": 0
+        "current_price": 341.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 700
     },
-    "7266": {
-        "name": "Imasen Electric Industrial",
-        "weight": 0.066,
+    "8928": {
+        "name": "Anabuki Kosan",
+        "weight": 0.06666666666666665,
         "categories": [
             "FINISH1"
         ],
-        "current_price": 854.0,
+        "current_price": 2455.0,
+        "target_invest": 239328.47799999994,
+        "target_qty": 0
+    },
+    "1328": {
+        "name": "Nomura NF Gold",
+        "weight": 0.2,
+        "categories": [
+            "hedge_gold"
+        ],
+        "current_price": 17025.0,
+        "target_invest": 717985.434,
+        "target_qty": 42
+    },
+    "1482": {
+        "name": "iShares JGB 7-10Y",
+        "weight": 0.0,
+        "categories": [
+            "hedge_bond"
+        ],
+        "current_price": 1575.0,
         "target_invest": 0.0,
         "target_qty": 0
     },
-    "7345": {
-        "name": "Ai Partners Financial",
-        "weight": 0.066,
-        "categories": [
-            "FINISH1"
-        ],
-        "current_price": 1186.0,
-        "target_invest": 0.0,
-        "target_qty": 0
-    },
-    "8864": {
-        "name": "Airport Facilities",
-        "weight": 0.066,
-        "categories": [
-            "FINISH1"
-        ],
-        "current_price": 998.0,
-        "target_invest": 0.0,
-        "target_qty": 0
-    },
-    "9980": {
-        "name": "Mrk Holdings",
-        "weight": 0.066,
-        "categories": [
-            "FINISH1"
-        ],
-        "current_price": 107.0,
-        "target_invest": 0.0,
-        "target_qty": 0
-    },
-    "CASH": {
-        "name": "CASH",
-        "weight": 0.01,
-        "categories": [
-            "CASH"
-        ],
-        "target_invest": 0.0,
-        "target_qty": 0
+    "_meta": {
+        "date": "2026-06-02",
+        "state": "Bull",
+        "stock_ratio": 0.8,
+        "gold_ratio": 0.2,
+        "bond_ratio": 0.0,
+        "total_asset_jpy": 3589927.17,
+        "is_first_td": false
     }
 }

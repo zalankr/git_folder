@@ -1,6 +1,6 @@
 {
-    "last_signal_date": "2026-06-01",
-    "last_rebal_date": "2026-06-01",
+    "last_signal_date": "2026-06-02",
+    "last_rebal_date": "2026-06-02",
     "current_state": "Bull",
     "previous_state": "Bull",
     "weights": {
@@ -9,9 +9,9 @@
         "bond": 0.0
     },
     "signal_detail": {
-        "close": 417.9,
-        "ma200": 364.02649999999994,
-        "mom12": 0.4709609292502639,
+        "close": 417.5,
+        "ma200": 364.5799999999999,
+        "mom12": 0.4716249559393726,
         "signal_ma": true,
         "signal_mom": true
     },
@@ -26,6 +26,13 @@
         },
         {
             "date": "2026-06-01",
+            "state": "Bull",
+            "ma200": true,
+            "mom12": true,
+            "trigger": "JPQT_quarterly"
+        },
+        {
+            "date": "2026-06-02",
             "state": "Bull",
             "ma200": true,
             "mom12": true,

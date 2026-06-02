@@ -451,6 +451,8 @@ if order['round'] == 1:
     # ----------------------------------------
     # 5) 종목별 현재가 + 목표 수량
     # ----------------------------------------
+    # --- 1-pass: 현재가 조회 + 단위 버림 목표수량 ---
+    shortfall_candidates = []  # 단위 미달로 0주가 된 종목 (부족분 작은 순 추가배정용)
     for ticker in target_code:
         price = KIS.get_JP_current_price(ticker)
         if not isinstance(price, float) or price <= 0:
@@ -460,7 +462,6 @@ if order['round'] == 1:
         target[ticker]['current_price'] = price
         target[ticker]['target_invest'] = float(target[ticker]['weight'] * total_jpy_asset)
 
-        # 매매 단위: 헷지 ETF는 1주, 개별주는 100주
         unit = unit_size(ticker)
         if target[ticker]['target_invest'] <= 0:
             new_target_qty = 0
@@ -469,7 +470,40 @@ if order['round'] == 1:
             new_target_qty = (raw_qty // unit) * unit
 
         target[ticker]['target_qty'] = new_target_qty
+
+        # 비중>0인데 단위 미달로 0주 → 1단위 추가배정 후보
+        if new_target_qty == 0 and target[ticker]['target_invest'] > 0 and not is_hedge_ticker(ticker):
+            one_unit_cost = price * unit
+            shortfall = one_unit_cost - target[ticker]['target_invest']  # 1단위 채우는 데 부족한 금액
+            shortfall_candidates.append((ticker, one_unit_cost, shortfall))
         time_module.sleep(0.15)
+
+    # --- 2-pass: 미배정 잔여 예산으로 1단위라도 채울 수 있는 종목 보충 ---
+    # 보충배정 가용현금 = 현금 - (이번에 신규/추가 매수로 빠질 금액)
+    # 기존 보유분은 매도 안 하면 현금이 안 생기므로, 신규 매수분만 현금에서 차감
+    new_buy_cost = 0.0
+    for t in target_code:
+        held = next((s['quantity'] for s in stocks_list if s['ticker'] == t), 0)
+        delta = target[t]['target_qty'] - held
+        if delta > 0:
+            new_buy_cost += delta * target[t]['current_price']
+    leftover = orderable_jpy - new_buy_cost  # 실제 현금에서 신규매수분 차감한 여유
+
+    # 부족분이 작은(=가장 사기 쉬운) 종목부터 채움
+    shortfall_candidates.sort(key=lambda x: x[2])
+    for ticker, one_unit_cost, _short in shortfall_candidates:
+        if leftover >= one_unit_cost:
+            unit = unit_size(ticker)
+            target[ticker]['target_qty'] = unit
+            leftover -= one_unit_cost
+            message.append(
+                f"JPQT 보충배정: {ticker} 1단위({unit}주) 매수 "
+                f"(¥{one_unit_cost:,.0f}, 잔여 ¥{leftover:,.0f})"
+            )
+        else:
+            message.append(
+                f"JPQT 보충불가: {ticker} 1단위 ¥{one_unit_cost:,.0f} > 잔여 ¥{leftover:,.0f}"
+            )
 
     # ----------------------------------------
     # 6) target 저장
