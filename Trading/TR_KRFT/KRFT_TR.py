@@ -68,7 +68,7 @@ K200_REG_THRESHOLD_RATIO = 0.9
 HEDGE3_T1_PBR     = 3.0         # 1단계 진입 PBR (30%)
 HEDGE3_T2_PBR     = 3.6         # 2단계 진입 PBR (60%)
 HEDGE3_T1_RATIO   = 0.3         # 1단계 비중
-HEDGE3_T2_RATIO   = 0.6         # 2단계 비중
+HEDGE3_T2_RATIO   = 0.7         # 2단계 비중
 HEDGE3_EXIT_RATIO = 2.0 / 3.0   # peak × 2/3 이하 시 청산
 
 # 라운드 시간표 (KST, HH:MM:SS)
@@ -120,7 +120,7 @@ def calc_spot_eval_krw(result_cfg: dict) -> dict:
                 "krqt": 0.0, "krtr": 0.0}
 
     krqt_w = float(cfg.get("spot_basis", {}).get("krqt_weight", 1.00))
-    krtr_w = float(cfg.get("spot_basis", {}).get("krtr_weight", 0.80))
+    krtr_w = float(cfg.get("spot_basis", {}).get("krtr_weight", 0.90))
 
     # daily_snapshot 모듈 import (동일 EC2에서 작동 중)
     sys.path.insert(0, "/var/autobot/Balance")
