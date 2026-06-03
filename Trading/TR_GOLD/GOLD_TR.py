@@ -111,7 +111,7 @@ SELL_QTY_RATIO = 100        # 단위: %
 #   총 TRADING_DAYS 일 동안, 하루 SPLITS_PER_DAY 회 분할
 #   → cron이 하루 SPLITS_PER_DAY 회 호출하며, 매 호출 = 1주문
 #   ※ SPLITS_PER_DAY 는 cron 1일 호출 횟수와 반드시 일치시킬 것
-TRADING_DAYS   = 4          # 총 매매일 수
+TRADING_DAYS   = 19         # 총 매매일 수
 SPLITS_PER_DAY = 7          # 1일 분할 횟수 = 1일 cron 호출 횟수
 
 # ── 분할 스케줄 (시, 분) — 현재 시각으로 몇 번째 분할인지 자동 판별 ───────
