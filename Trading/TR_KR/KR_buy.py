@@ -29,7 +29,7 @@ TICKER     = "0167A0"
 TICKER_NM  = "SOL AI반도체TOP2플러스"
 
 # ── 매수 모드 설정 ──────────────────────────
-BUY_TOTAL_AMT  = 59990000      # 총 매입 예정금액 (원)
+BUY_TOTAL_AMT  = 63800000      # 총 매입 예정금액 (원)
 BUY_TRADE_DAYS = 20            # 총 거래일 수 (분할매수일 수)
 BUY_SPLIT      = 7             # 일 분할 횟수
 
