@@ -1112,8 +1112,12 @@ def get_prev_usd_cash(max_lookback_days: int = 10) -> tuple:
     전일 USD 현금 조회 (balance JSON에서).
     신/구 두 가지 포맷을 모두 지원하여 연속성 유지.
 
-    - 신 포맷: US.categories.USAA.items[USLA].usd_raw.cash(_adjusted)
-    - 구 포맷: US.USD.cash_adjusted → US.USD.cash (단일계좌 버전)
+    - 신 포맷: US.categories.USAA.items[USLA].usd_raw — cash 와 cash_adjusted 중 큰 값
+    - 구 포맷: US.USD.cash / cash_adjusted 중 큰 값 (단일계좌 버전)
+
+    ※ 큰 값 채택 이유: 정상적인 전일 US 스냅샷은 이체 전이라 원본 cash 가 정답(큼)이고
+      cash_adjusted 는 없음. 드물게 전일 US 가 이체 후 실행돼 보정된 날이면 원본 cash≈0,
+      cash_adjusted 에 복원값이 들어가므로, 둘 중 큰 값을 쓰면 어느 경우든 유효 현금을 얻는다.
     """
     today = datetime.now().date()
     for i in range(1, max_lookback_days + 1):
@@ -1133,16 +1137,17 @@ def get_prev_usd_cash(max_lookback_days: int = 10) -> tuple:
             for it in usaa_items:
                 urw = it.get("usd_raw", {}) if isinstance(it, dict) else {}
                 if urw:
-                    prev = float(urw.get("cash_adjusted", urw.get("cash", 0)) or 0)
+                    prev = max(float(urw.get("cash", 0) or 0),
+                               float(urw.get("cash_adjusted", 0) or 0))
                     if prev > 0:
                         break
 
-            # ② 구 포맷 fallback: US.USD.cash_adjusted 또는 US.USD.cash
+            # ② 구 포맷 fallback: US.USD.cash / cash_adjusted 중 큰 값
             if prev <= 0 and isinstance(us_block, dict):
                 usd_old = us_block.get("USD", {})
                 if isinstance(usd_old, dict):
-                    prev = float(usd_old.get("cash_adjusted",
-                                 usd_old.get("cash", 0)) or 0)
+                    prev = max(float(usd_old.get("cash", 0) or 0),
+                               float(usd_old.get("cash_adjusted", 0) or 0))
 
             if prev > 0:
                 return prev, d.strftime("%Y%m%d")
@@ -1153,26 +1158,57 @@ def get_prev_usd_cash(max_lookback_days: int = 10) -> tuple:
 
 def apply_rp_adjustment(usd_raw: dict, usaa_tr: dict) -> tuple:
     """
-    외화RP 보정 적용
-    Returns: (adjusted_usd, rp_adjusted_bool, rp_prev_date, original_cash)
+    외화RP 보정 적용 (헷징/수비모드 + 전일 US 스냅샷 cash 승계)
+    Returns: (adjusted_usd, rp_adjusted_bool, baseline_src, original_cash)
+
+    [동작 원리]
+    외화RP 이체 시 주식평가는 유지되고 현금만 계좌에서 빠져나가, 잔돈만 남고
+    cash 가 사실상 0 에 가까워진다. 이를 '이체 직전 현금(기준선)' 으로 복원한다.
+
+    [기준선: 전일 US 스냅샷의 USD cash]
+      운영 타임라인:
+        22:00(KST) US 모드  : 미국장 마감(HAA 매수 체결) 후 + RP 이체 *전*
+                              → 이 시점 USD cash 가 '이체 직전 현금'의 정답.
+        익일 08:00 ASIA 모드: 09:00 RP 이체 *후* → USD cash ≈ 0
+                              → 전일(어제) US 스냅샷의 cash 를 승계해 복원.
+      ※ USAA_TR.json 의 USD_total 은 리밸런싱 *시작 직전* 값이라
+        이후 HAA 매수분만큼 실제와 어긋나므로 기준선으로 쓰지 않는다.
+      ※ save_snapshot 은 날짜별 파일에 mode 블록을 저장하므로, ASIA(익일)가
+        읽는 어제 파일의 US 블록은 이체 전 값이 그대로 보존된다(순환 없음).
+
+    [감지 조건] is_defensive(헷징/수비모드) 이고, 현금이 기준선 대비
+      90%↑ 급감 + 감소분 $1,000↑ 일 때만 보정 → 정상 매매는 오인하지 않음.
     """
-    original_cash = usd_raw.get("cash", 0)
+    original_cash = float(usd_raw.get("cash", 0) or 0)
+    stock_eval    = float(usd_raw.get("stock_eval", 0) or 0)
+
     usla_mode = usaa_tr.get("USLA_Mode", "")
     haa_mode  = usaa_tr.get("HAA_Mode", "")
     is_defensive = (usla_mode == "헷징모드") or (haa_mode == "수비모드")
-    RP_THRESHOLD = 100.0   # 보수적으로 $100 미만이면 "사실상 0"으로 간주
-    if not (is_defensive and original_cash < RP_THRESHOLD):
+    if not is_defensive:
         return usd_raw, False, "", original_cash
 
-    prev_cash, prev_date = get_prev_usd_cash()
-    if prev_cash <= 0:
+    # ── 기준선: 전일(어제) US 스냅샷의 USD cash ──
+    baseline, baseline_date = get_prev_usd_cash()
+    if baseline <= 0:
+        return usd_raw, False, "", original_cash
+    baseline_src = f"전일US({baseline_date})"
+
+    # ── 외화RP 이체 감지: 기준선 대비 90%↑ 사라졌고 감소분이 $1,000↑ ──
+    cash_dropped = (original_cash < baseline * 0.1) and \
+                   ((baseline - original_cash) > 1000.0)
+    if not cash_dropped:
+        # 헷징모드지만 현금이 멀쩡 → 아직 이체 전이거나 정상 보유 상태
         return usd_raw, False, "", original_cash
 
-    usd_raw["cash"] = prev_cash
-    usd_raw["total"] = usd_raw["stock_eval"] + prev_cash
-    usd_raw["cash_adjusted"] = prev_cash
-    usd_raw["cash_adjustment_reason"] = "외화RP 추정 (전일값 승계)"
-    return usd_raw, True, prev_date, original_cash
+    usd_raw["cash"] = baseline
+    usd_raw["total"] = stock_eval + baseline
+    usd_raw["cash_adjusted"] = baseline
+    usd_raw["cash_adjustment_reason"] = (
+        f"외화RP 추정 ({baseline_src} 기준, "
+        f"실잔액 ${original_cash:,.2f} → ${baseline:,.2f})"
+    )
+    return usd_raw, True, baseline_src, original_cash
 
 
 # ══════════════════════════════════════════════════
@@ -2508,7 +2544,7 @@ def format_report(mode: str, items: list, prev: dict) -> list:
                             # cash_adjusted = 승계값, 원래 API cash는 덮어써졌음 → 0 근사
                             prev = float(urw.get("cash_adjusted", 0) or 0)
                         prev_date = it.get("rp_prev_date", "")
-                        msg.append(f"  💱 외화RP 보정: API현금≈$0 → 전일값 {fmt_usd(prev)} ({prev_date})")
+                        msg.append(f"  💱 외화RP 보정: API현금≈$0 → {fmt_usd(prev)} ({prev_date})")
                         break
 
             for it in sitems:

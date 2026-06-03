@@ -14,7 +14,7 @@ daily_snapshot.py
 계좌 정보: ACCOUNTS 리스트 (코드 내 선언적 구성)
 미연결 계좌(노라임/노라송/퇴직연금): 0원 placeholder
 Gold: 키움 실계좌 실시간 조회 (GOLD_TR.py import)
-JPUSbond·연금저축-1: 한투 계좌 투자금 0원 → manual_assets.json 수기 잔고 사용
+연금저축(22)·IRP(29): KIS 잔고 조회 + 예수금 수기 fallback(manual_assets.json)
 """
 
 import sys
@@ -78,6 +78,7 @@ ACCOUNTS = [
     # USQT: 단일 계좌 + SCG/TCM (category csv 기반 분류)
     ("Global Market", "USQT", "SCG",    "63692011", "01", "us_usqt_cat", {"category": "SCG"}),
     ("Global Market", "USQT", "TCM",    "63692011", "01", "us_usqt_cat", {"category": "TCM"}),
+    ("Global Market", "USQT", "HEDGE",  "63692011", "01", "us_usqt_cat", {"category": "HEDGE"}),
 
     # JPQT: 일본주식
     ("Global Market", "JPQT", "JPQT1", "63604155", "01", "overseas_all", {"natn_cd": "392", "currency": "JPY", "excg": "TKSE", "repr_cd": "7203"}),
@@ -85,12 +86,8 @@ ACCOUNTS = [
     # HKQT: 홍콩주식
     ("Global Market", "HKQT", "HKQ1T", "63604155", "01", "overseas_all", {"natn_cd": "344", "currency": "HKD", "excg": "SEHK", "repr_cd": "00700"}),
 
-    # ETC: 일본 채권 (한투 실계좌 63721147 투자금 0원 → manual_assets.json 수기 잔고 사용)
-    ("Global Market", "ETC",  "JPUSbond", "63721147", "01", "manual_asset", {"section": "JPUSbond"}),
-
     # GBFT: 해외선물옵션 (acnt_prdt_cd=08) — OTFM3118R + OTFM3114R 사용
-    ("Global Market", "GBFT", "Hedge & Boost", "64753341", "08", "gbft", {"currency": "USD"}),
-    ("Global Market", "GBFT", "Commmodity",    "64753341", "08", "gbft", {"currency": "USD"}),
+    ("Global Market", "GBFT", "Commodity", "64753341", "08", "gbft", {"currency": "USD"}),
 
     # ── Alternative ──────────────────────────────
     ("Alternative", "Gold",   "Gold",   "키움 52953897", "", "gold", {"currency": "KRW"}),
@@ -99,7 +96,7 @@ ACCOUNTS = [
     # ── 연금 & ISA ────────────────────────────────
     ("연금&ISA", "ISA",     "ISA",        "43665648", "01", "kr_simple",   {}),
     ("연금&ISA", "ISA",     "윤숙ISA",    "43680827", "01", "kr_simple",   {}),
-    ("연금&ISA", "Pension", "연금저축-1", "43685950", "22", "manual_asset", {"section": "Pension_연금저축-1"}),
+    ("연금&ISA", "Pension", "연금저축-1", "43685950", "22", "kr_simple",   {}),
     ("연금&ISA", "Pension", "연금저축-2", "44334640", "22", "kr_simple",   {}),
     ("연금&ISA", "Pension", "IRP",        "43685950", "29", "kr_simple",   {}),
     ("연금&ISA", "Pension", "퇴직연금",   "미래에셋", "",   "placeholder", {"currency": "KRW"}),
@@ -120,7 +117,7 @@ US_MODE_KEYS = {"USAA", "USQT", "Crypto"}
 # ══════════════════════════════════════════════════
 
 # ── 수동 입력 자산 (manual_assets.json) ────────────────────
-# 다른 증권사 보유분(JPUSbond, 연금 등) + IRP 예수금을 한 파일로 통합 관리.
+# 다른 증권사 보유분(연금저축-1 등) + IRP 예수금을 한 파일로 통합 관리.
 # 종목/예수금만 수기 입력 → 시세는 코드가 실시간 조회.
 _manual_assets_cache = None
 
@@ -150,6 +147,33 @@ def get_manual_irp_cash(cano: str, acnt_prdt_cd: str) -> tuple:
     if isinstance(entry, dict):
         return float(entry.get("value", 0) or 0), entry.get("updated", "")
     return float(entry or 0), ""
+
+
+def get_manual_pension_cash(cano: str, acnt_prdt_cd: str) -> tuple:
+    """
+    manual_assets.json 의 연금/IRP 예수금 수기 fallback 통합 조회.
+
+    KIS API 로 연금저축(22)·IRP(29) 의 예수금(RP 운용자산 등)이
+    0 으로만 잡히는 경우, 사용자가 MTS 보고 입력한 값으로 보강한다.
+
+    조회 우선순위 (먼저 매칭되는 것 사용):
+      1) "PensionCash_<cano>_<acnt>" : {"value":..., "updated":..., "note":...}
+         (연금저축/IRP 공용 신규 표준 섹션)
+      2) "IRP_<cano>" : {"<cano>_<acnt>_IRP_cash": {...}}
+         (기존 IRP 섹션 — 하위호환)
+
+    Returns: (value, updated_date)
+    """
+    data = load_manual_assets()
+
+    # 1) 신규 표준 섹션 (연금저축/IRP 공용)
+    key = f"PensionCash_{cano}_{acnt_prdt_cd}"
+    entry = data.get(key)
+    if isinstance(entry, dict):
+        return float(entry.get("value", 0) or 0), entry.get("updated", "")
+
+    # 2) 기존 IRP 섹션 (하위호환) — acnt_prdt_cd=29 등
+    return get_manual_irp_cash(cano, acnt_prdt_cd)
 
 
 _token_cache = {}   # {cano: {"appkey":..., "secret":..., "token":...}}
@@ -332,9 +356,10 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         return {"error": f"KR 조회 예외: {e}"}
 
     if is_pension:
-        # ── 1차 추정: 3개 예수금 후보 중 최대값 ──
-        cash_candidates = [dnca_tot_amt, prvs_rcdl_excc_amt, nxdy_excc_amt]
-        cash = max(cash_candidates) if any(c > 0 for c in cash_candidates) else 0.0
+        # ── 1차 추정: D+2 정산완료 추정값(prvs) 우선 ──
+        # dnca/nxdy 는 매도 미정산분이 일시 포함돼 부풀 수 있음(리밸런싱 당일).
+        # prvs_rcdl_excc_amt(가수도정산)가 실제 D+2 결제완료 현금에 가장 근접.
+        cash = prvs_rcdl_excc_amt or nxdy_excc_amt or dnca_tot_amt
 
         # ── 2차 보강: TTTC8908R (매수가능조회) ──
         # 연금저축(22) 동작, IRP(29)는 빈 {} 반환 (KIS 미지원)
@@ -361,29 +386,29 @@ def fetch_kr_balance(cano: str, acnt_prdt_cd: str) -> dict:
         except Exception:
             pass
 
-        # ── 3차: IRP(29) 전용 — KIS API 조회 불가, manual_assets.json 사용 ──
-        # IRP의 예수금(RP 운용자산)은 증권 API에서 조회되지 않음.
-        # manual_assets.json 의 IRP 섹션에서 사용자가 MTS 보고 입력한 값 사용.
+        # ── 3차: 수기 예수금 fallback (연금저축 22 + IRP 29 공용) ──
+        # 연금저축(22)·IRP(29) 모두 예수금(특히 RP 운용자산)이 KIS API 에서
+        # 0 으로만 잡히는 경우가 있음. manual_assets.json 에 사용자가 MTS 보고
+        # 입력한 값이 있으면, 자동조회 cash 보다 클 때 그 값을 사용 (하이브리드).
+        #   - 자동조회가 정상이면 그 값이 그대로 유지됨 (수기값이 더 작으면 무시)
+        #   - 자동조회가 0/과소면 수기값으로 보강
         manual_note = ""
         manual_cash = 0.0
-        if acnt_prdt_cd == "29":
-            mv, md = get_manual_irp_cash(cano, acnt_prdt_cd)
-            if mv > 0:
-                manual_cash = mv
+        mv, md = get_manual_pension_cash(cano, acnt_prdt_cd)
+        if mv > 0:
+            manual_cash = mv
+            if manual_cash > cash:
+                cash = manual_cash
                 manual_note = f"수동입력 예수금 ({md})"
-                # API cash 가 0이면 수동값 사용, API에 값이 있으면 둘 중 큰 쪽
-                if manual_cash > cash:
-                    cash = manual_cash
 
-        # ── 총자산 = 주식평가금 + 현금 (IRP는 수동 예수금 포함) ──
-        # IRP(29): tot_evlu_amt = 주식평가액만 이므로, 수동 예수금 반드시 합산
-        if acnt_prdt_cd == "29" and manual_cash > 0:
+        # ── 총자산 = 주식평가금 + 현금 ──
+        if acnt_prdt_cd == "29":
+            # IRP(29): tot_evlu_amt = 주식평가액만 → 현금 반드시 합산
             total = stock_eval + cash
         else:
-            # 연금저축(22): 기존 로직 유지
-            total = max(stock_eval + cash, tot_evlu_amt)
-            if cash <= 0 and tot_evlu_amt > stock_eval:
-                cash = tot_evlu_amt - stock_eval
+            # 연금저축(22): 주식평가금(output1 직접합산) + 정산기준 현금
+            #   tot_evlu_amt 와의 max() 는 매도 직후 cash 시점차로 이중계상 위험 → 제거
+            total = stock_eval + cash
 
         return {
             "stocks": stocks,
@@ -893,7 +918,8 @@ def fetch_overseas_balance(cano: str, acnt_prdt_cd: str,
     except Exception:
         pass
 
-    real_deposit = frcr_deposit + today_sell_amt - today_buy_amt
+    # real_deposit = frcr_deposit + today_sell_amt - today_buy_amt
+    real_deposit = orderable if orderable > 0 else frcr_deposit
 
     return {
         "stocks": stocks,
@@ -1258,8 +1284,10 @@ def split_krqt_by_result(balance: dict, krqt_result: dict, target_cat: str) -> d
 
 USQT_RESULT_PATH = "/var/autobot/TR_USQT/USQT_result.json"
 USQT_REBAL_PATH  = "/var/autobot/TR_USQT/USQT_rebal.json"
+USQT_HEDGE_TARGET_PATH = "/var/autobot/TR_USQT/USQT_hedge_target.json"
 # 흡수 카테고리: 매핑되지 않은 잔존 종목(remain_last 포함)을 모두 여기에 합산
 USQT_ABSORB_CATEGORY = "SCG"
+USQT_HEDGE_TICKERS = {"IAU", "IEF", "SGOV"}
 
 def load_usqt_result() -> dict:
     """
@@ -1290,18 +1318,20 @@ def load_usqt_rebal() -> dict:
     except Exception:
         return {}
 
-
 def split_usqt_by_result(balance: dict, usqt_result: dict, target_cat: str) -> dict:
     """
-    실시간 USD 잔고(balance)와 USQT_result.json을 매칭해 target_cat 종목만 추출.
-    중복종목은 result.json의 split qty 비율로 재분할한다.
-    미국 티커는 zfill 처리 없이 그대로 매칭 (대문자 통일).
- 
-    ✅ 수정: 매핑 안 된 종목(remain_last 포함) 은 USQT_ABSORB_CATEGORY 에 전량 흡수.
-       → 카테고리 stock_eval 합 == bal 전체 stock_eval 보장.
- 
+    실시간 USD 잔고(balance)를 target_cat 으로 분류.
+    - 일반 카테고리(SCG/TCM): result.json 의 split qty 비율로 종목 배분.
+        헤지 티커(IAU/IEF/SGOV)는 제외. 미매핑 잔존종목은 ABSORB(SCG)가 흡수.
+    - HEDGE 카테고리: 잔고 중 헤지 티커만 수집 (result.json 에 없어도 잡힘).
+
+    정합성: Σ(SCG+TCM+HEDGE).stock_eval == bal 전체 stock_eval
+
     Returns: {"stocks": [...], "stock_eval": float}  (USD 단위)
     """
+    is_hedge_cat = (target_cat == "HEDGE")
+
+    # result.json 의 카테고리별 split qty 맵 (헤지 티커는 매핑 대상에서 제외)
     cat_split = {}
     total_split = {}
     mapped_codes = set()
@@ -1310,48 +1340,61 @@ def split_usqt_by_result(balance: dict, usqt_result: dict, target_cat: str) -> d
             continue
         for s in stocks:
             code = str(s.get("code", "")).strip().upper()
+            if code in USQT_HEDGE_TICKERS:
+                continue
             q = float(s.get("qty", 0) or 0)
             cat_split[(code, cat)] = cat_split.get((code, cat), 0.0) + q
             total_split[code] = total_split.get(code, 0.0) + q
             mapped_codes.add(code)
- 
+
     filtered = []
     stock_eval_sum = 0.0
- 
+
     for s in balance.get("stocks", []):
         code = str(s.get("code", "")).strip().upper()
         real_qty  = float(s.get("qty", 0) or 0)
         real_eval = float(s.get("eval_amt", 0) or 0)
         if real_qty <= 0:
             continue
- 
+
+        is_hedge_code = code in USQT_HEDGE_TICKERS
+
+        # ── HEDGE 카테고리: 헤지 티커만 ──
+        if is_hedge_cat:
+            if not is_hedge_code:
+                continue
+            ns = dict(s)
+            ns["_hedge"] = True
+            filtered.append(ns)
+            stock_eval_sum += real_eval
+            continue
+
+        # ── 일반 카테고리: 헤지 티커는 건너뜀 ──
+        if is_hedge_code:
+            continue
+
         if code in mapped_codes:
-            # ── 매핑된 종목: 카테고리별 split 비율 적용 ──
+            # 매핑 종목: 카테고리별 split 비율 적용
             cat_q = cat_split.get((code, target_cat), 0.0)
             if cat_q <= 0:
                 continue
             total_q = total_split.get(code, 0.0)
             ratio = cat_q / total_q if total_q > 0 else 1.0
- 
             ns = dict(s)
             ns["qty"]      = real_qty * ratio
             ns["eval_amt"] = real_eval * ratio
             ns["_split_ratio"] = ratio
             filtered.append(ns)
             stock_eval_sum += real_eval * ratio
- 
         else:
-            # ── 매핑 안 된 종목 (remain_last 또는 신규 미반영) ──
-            #    USQT_ABSORB_CATEGORY 에만 전량 흡수
+            # 미매핑 잔존종목: ABSORB 카테고리(SCG)만 흡수
             if target_cat != USQT_ABSORB_CATEGORY:
                 continue
             ns = dict(s)
-            ns["qty"]      = real_qty
-            ns["eval_amt"] = real_eval
-            ns["_absorbed"] = True       # 디버그용 (remain_last/unmatched 표시)
+            ns["_absorbed"] = True
             filtered.append(ns)
             stock_eval_sum += real_eval
- 
+
     return {"stocks": filtered, "stock_eval": stock_eval_sum}
 
 
@@ -1651,6 +1694,8 @@ def handle_us_usqt_cat(cano: str, acnt: str, kwargs: dict) -> dict:
     for s in bal.get("stocks", []):
         code = str(s.get("code", "")).strip().upper()
         evl  = float(s.get("eval_amt", 0) or 0)
+        if code in USQT_HEDGE_TICKERS:      # 헤지 티커는 HEDGE 서브에서 처리 → 경고 제외
+            continue
         if code not in all_known_codes and evl > 0:
             name = str(s.get("name", "") or "").strip()
             unmatched.append(f"{code}({name},${evl:,.2f})")
@@ -1782,10 +1827,10 @@ def handle_krft(cano: str, acnt: str, kwargs: dict) -> dict:
 def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
     """해외선물옵션 계좌 잔고 (OTFM1412R + OTFM1411R, USD)
 
-    한 계좌에 여러 sub("Hedge & Boost", "Commodity")가 매핑된 경우:
+    현재 단일 sub("Commodity")만 매핑됨:
       - 캐시 키는 (cano, acnt, currency) 단위 → 첫 sub에서 잔고 1회 조회 후 캐시
-      - 첫 호출자(=Hedge & Boost)에게 잔고 전체를 부여
-      - 두 번째 이후 sub는 0원 (향후 result.json 기반 split 도입 가능)
+      - 첫 호출자(=Commodity)에게 잔고 전체를 부여
+      - (향후 여러 sub로 분리 시 result.json 기반 split 도입 가능)
 
     fetch_gbft_balance가 placeholder=True 반환시:
       - 에러가 아닌 정상 placeholder로 처리 → 텔레그램 '[미연결] 0원'
@@ -1830,7 +1875,7 @@ def handle_gbft(cano: str, acnt: str, kwargs: dict) -> dict:
     # KRW 환산: 1) native total × 환율,   2) 실패 시 KRW 직접값(tot_asst_krw) 사용
     total_krw = (total_native * exrt) if exrt > 0 else bal.get("tot_asst_krw", 0)
 
-    # 첫 호출자(Hedge & Boost)에만 전체 잔고 부여, 나머지는 0
+    # 첫 호출자(Commodity)에만 전체 잔고 부여, 나머지는 0
     if not is_first_caller:
         total_native = 0.0
         total_krw    = 0.0
@@ -2159,7 +2204,9 @@ def handle_gold(cano: str, acnt: str, kwargs: dict) -> dict:
 
 
 def handle_manual_asset(cano: str, acnt: str, kwargs: dict) -> dict:
-    """manual_assets.json 수동 입력 자산 (JPUSbond, 연금저축-1 등)"""
+    """manual_assets.json 수동 입력 자산 (다른 증권사 보유분 등).
+    ※ 현재 ACCOUNTS 에서 직접 참조하는 항목은 없음 (연금저축-1 은 KIS 직접조회로 전환).
+       향후 KIS API 로 조회 불가한 타 증권사 자산 추가 시 재사용 가능."""
     section_key = kwargs.get("section", "")
     bal = fetch_manual_asset(section_key)
 
@@ -2244,7 +2291,7 @@ def collect_accounts(mode: str) -> list:
                 prev_s.get("eval_amt", 0)
             )
 
-        # 통화별 전일 대비 (USAA/USQT/JPQT/HKQT/ETC)
+        # 통화별 전일 대비 (USAA/USQT/JPQT/HKQT)
         day_change_native = 0.0
         if data.get("currency") != "KRW":
             cur_l = data["currency"].lower()
@@ -2442,7 +2489,7 @@ def format_report(mode: str, items: list, prev: dict) -> list:
             # USAA/USQT: 메인(is_main=True) 항목에만 MODE / 통화소계 표기
             is_usaa = (strategy == "USAA")
             is_usqt = (strategy == "USQT")
-            is_jp_hk = strategy in ("JPQT", "HKQT", "ETC")
+            is_jp_hk = strategy in ("JPQT", "HKQT")
             is_gbft = (strategy == "GBFT")
             is_krqt = (strategy == "KRQT")
 
@@ -2539,7 +2586,7 @@ def format_report(mode: str, items: list, prev: dict) -> list:
 
                 msg.append(line)
 
-            # 소계 (KRQT/USQT/USAA/GBFT/JPQT/HKQT/ETC)
+            # 소계 (KRQT/USQT/USAA/GBFT/JPQT/HKQT)
             if strategy == "KRTR":
                 msg.append(f"  → {strategy}소계: {fmt_krw(strat_sum_krw)}")
             elif strategy == "KRQT":

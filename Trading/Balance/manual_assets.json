@@ -14,7 +14,7 @@
     "_label": "Pension시트 J4 — 퇴직연금 (미래에셋)",
     "market": "KR",
     "deposit": {
-      "KRW": 173036
+      "KRW": 266547
     },
     "holdings": [
       { "code": "441800", "name": "TIMEFOLIO Korea플러스배당액티브", "qty": 516 },
@@ -31,7 +31,7 @@
     "_label": "Pension시트 — IRP 예수금 (KIS API 조회불가, MTS 수동입력)",
     "_note": "IRP는 예수금(RP 운용자산)이 KIS API로 조회되지 않음. MTS에서 'IRP 자산 - 주식평가금액' 확인 후 value 수정.",
     "43685950_29_IRP_cash": {
-      "value": 107693,
+      "value": 116821,
       "updated": "2026-05-24",
       "note": "MTS IRP 자산 - 주식평가금액 = 예수금(RP 운용). MTS에서 확인 후 수동 수정"
     }
