@@ -21,14 +21,32 @@ KRX 가격 DB 관리 (DuckDB 기반)
   db = PriceDB()
   df = db.get_ohlcv('005930', start='2024-01-01', end='2024-12-31')
 """
+import io
 import os
 import sys
 import time
 import argparse
 from datetime import datetime, timedelta
+from pathlib import Path
 import duckdb
 import pandas as pd
-from pykrx import stock as krx
+
+# ── KRX 자격증명 주입 (pykrx import 전에 반드시 실행) ──
+# venv_krx의 pykrx는 import 시점에 KRX_ID/KRX_PW 환경변수로 로그인함.
+# 누락 시 모든 KRX 호출이 빈 응답 → "0거래일" / "Expecting value" 에러.
+_CRED_FILE = Path("/var/autobot/KIS/KRX_nkr.txt")
+if _CRED_FILE.is_file():
+    _lines = [ln.strip() for ln in
+              _CRED_FILE.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if len(_lines) >= 2:
+        os.environ.setdefault("KRX_ID", _lines[0])
+        os.environ.setdefault("KRX_PW", _lines[1])
+
+# pykrx import 시 출력되는 KRX 안내 로그 차단
+_buf, _stdout = io.StringIO(), sys.stdout
+sys.stdout = _buf
+from pykrx import stock as krx  # noqa: E402
+sys.stdout = _stdout
 
 DB_PATH = "/var/autobot/DB/krx_prices.duckdb"
 
@@ -145,7 +163,8 @@ class PriceDB:
         total = 0
         for mkt in ("KOSPI", "KOSDAQ"):
             try:
-                df = krx.get_market_cap(date, market=mkt)
+                # kospi_pbr_cache.py에서 검증된 함수명 사용
+                df = krx.get_market_cap_by_ticker(date, market=mkt)
             except Exception as e:
                 print(f"[WARN] {mkt} {date} mcap 실패: {e}")
                 continue
@@ -154,6 +173,12 @@ class PriceDB:
             df = df.reset_index().rename(columns={
                 "티커": "code", "시가총액": "mcap", "상장주식수": "shares"
             })
+            # 컬럼 존재 보장 (pykrx 버전차 방어)
+            if "code" not in df.columns:
+                df = df.rename(columns={df.columns[0]: "code"})
+            for col in ("mcap", "shares"):
+                if col not in df.columns:
+                    df[col] = 0
             df["date"] = pd.to_datetime(date).date()
             df = df[["date", "code", "mcap", "shares"]]
             self.conn.execute("DELETE FROM market_cap WHERE date = ?", [df["date"].iloc[0]])
@@ -281,10 +306,23 @@ class PriceDB:
 # ---------- CLI ----------
 def cmd_init(days: int = 400):
     """초기 1회 — 과거 N일 벌크 로드 (약 20~30분 소요)"""
+    # 자격증명 검증
+    if not (os.getenv("KRX_ID") and os.getenv("KRX_PW")):
+        print(f"[ERROR] KRX 자격증명 누락. {_CRED_FILE} 확인 (1행 ID, 2행 PW).",
+              file=sys.stderr)
+        sys.exit(1)
     db = PriceDB()
     today = datetime.now().strftime("%Y%m%d")
     past  = (datetime.now() - timedelta(days=days)).strftime("%Y%m%d")
     trading_days = krx.get_previous_business_days(fromdate=past, todate=today)
+    if not trading_days:
+        print("[ERROR] 거래일 조회 결과 0건. KRX 로그인 실패 또는 네트워크 차단 의심.",
+              file=sys.stderr)
+        print("  점검: /var/autobot/venv_krx/bin/python3 -c "
+              "\"from pykrx import stock; print(stock.get_market_ohlcv_by_ticker('20260602','KOSPI').head())\"",
+              file=sys.stderr)
+        db.close()
+        sys.exit(1)
     print(f"초기 로드: {len(trading_days)}거래일")
     for i, d in enumerate(trading_days, 1):
         ds = d.strftime("%Y%m%d")
