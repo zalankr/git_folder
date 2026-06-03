@@ -106,6 +106,9 @@ def build_dashboard():
          WHERE date >= CURRENT_DATE - 180
          ORDER BY date
     """).df()
+    # DuckDB date를 pandas datetime64로 정규화 (date 객체 비교 충돌 방지)
+    if not jac_df.empty:
+        jac_df["date"] = pd.to_datetime(jac_df["date"])
 
     data_jaccard, data_pr, data_counts = [], [], []
     for strategy in ("PEAK", "MOMENTUM", "VALUE"):
@@ -162,9 +165,10 @@ def build_dashboard():
     # 3. 요약 테이블 (HTML)
     table_html = "<table>\n<tr><th>전략</th><th>평균 Jaccard</th><th>평균 Precision</th>"
     table_html += "<th>평균 Recall</th><th>평균 SE n</th><th>평균 Clone n</th></tr>\n"
+    cutoff_30d = pd.Timestamp(datetime.now().date()) - pd.Timedelta(days=30)
     for strategy in ("PEAK", "MOMENTUM", "VALUE"):
         sub = jac_df[(jac_df["strategy"] == strategy) &
-                     (jac_df["date"] >= (datetime.now().date() - pd.Timedelta(days=30)))]
+                     (jac_df["date"] >= cutoff_30d)]
         if sub.empty:
             table_html += f"<tr><td>{strategy}</td><td colspan='5'>—</td></tr>\n"
         else:
