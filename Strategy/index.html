@@ -944,23 +944,32 @@ function playSound(){
   try{
     if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     const now=audioCtx.currentTime;
-    // 3초간 3회 반복 (0s, 1s, 2s) + 각 비프 0.6초 지속, 볼륨 크게
+    // 밝고 경쾌한 C장조 상승 아르페지오 → 4초 이내, 볼륨 0.65
+    // C5(523) E5(659) G5(784) C6(1047) | E6(1319) G6(1568) — 상승 후 마무리 화음
     const pattern=[
-      {t:0.0, freq:880, dur:0.5},
-      {t:0.7, freq:988, dur:0.5},
-      {t:1.4, freq:1047,dur:0.5},
-      {t:2.1, freq:1047,dur:0.5},
-      {t:2.5, freq:1319,dur:0.7},
+      {t:0.00, freq:523,  dur:0.22},  // C5
+      {t:0.22, freq:659,  dur:0.22},  // E5
+      {t:0.44, freq:784,  dur:0.22},  // G5
+      {t:0.66, freq:1047, dur:0.28},  // C6 — 첫 정점
+      {t:1.10, freq:523,  dur:0.18},  // C5 (짧게 재시작)
+      {t:1.28, freq:659,  dur:0.18},  // E5
+      {t:1.46, freq:784,  dur:0.18},  // G5
+      {t:1.64, freq:1047, dur:0.18},  // C6
+      {t:1.82, freq:1319, dur:0.18},  // E6
+      {t:2.00, freq:1568, dur:0.40},  // G6 — 두 번째 정점
+      {t:2.55, freq:1047, dur:0.18},  // C6 (마무리 내림)
+      {t:2.73, freq:784,  dur:0.18},  // G5
+      {t:2.91, freq:1047, dur:0.55},  // C6 — 롱 마무리
     ];
     pattern.forEach(({t,freq,dur})=>{
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-      o.type='triangle'; o.frequency.value=freq;
+      o.type='sine'; o.frequency.value=freq;
       g.gain.setValueAtTime(0,now+t);
-      g.gain.linearRampToValueAtTime(0.8,now+t+0.02);
-      g.gain.setValueAtTime(0.8,now+t+dur-0.08);
+      g.gain.linearRampToValueAtTime(0.65,now+t+0.015);
+      g.gain.setValueAtTime(0.65,now+t+dur-0.06);
       g.gain.linearRampToValueAtTime(0,now+t+dur);
       o.connect(g); g.connect(audioCtx.destination);
-      o.start(now+t); o.stop(now+t+dur+0.05);
+      o.start(now+t); o.stop(now+t+dur+0.02);
     });
   }catch(e){}
 }
