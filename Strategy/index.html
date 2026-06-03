@@ -109,13 +109,14 @@ main{flex:1;padding:8px 16px 40px;}
 .we-input.changed{border-color:var(--accent2);}
 
 /* SET ROWS */
-.set-row{display:flex;align-items:center;gap:7px;padding:11px 0;border-top:1px solid var(--line);}
-.set-lbl{width:auto;min-width:52px;font-size:15px;color:#b8c8dc;flex-shrink:0;}
-.set-target{width:58px;font-size:16px;font-weight:700;color:#ffffff;flex-shrink:0;text-align:center;}
-.set-in{width:56px;background:var(--bg);border:1px solid var(--line);border-radius:8px;
-  color:#ffffff;text-align:center;font-size:20px;padding:8px 2px;font-family:'Bebas Neue';}
-.set-in:focus{outline:none;border-color:var(--accent);}
-.set-unit{font-size:14px;color:#b8c8dc;width:18px;}
+.set-row{display:flex;align-items:center;gap:8px;padding:12px 0;border-top:1px solid var(--line);}
+.set-lbl{width:auto;min-width:90px;font-size:17px;font-weight:700;color:#dce8f5;flex-shrink:0;line-height:1.35;}
+.set-in{width:60px;background:#1e2a3a;border:1.5px solid #3a4a60;border-radius:10px;
+  color:#ffffff !important;text-align:center;font-size:26px;font-weight:900;padding:9px 2px;font-family:'Bebas Neue';
+  -webkit-text-fill-color:#ffffff !important;caret-color:#ffffff;opacity:1;text-shadow:0 0 8px rgba(255,255,255,0.6);}
+.set-in:focus{outline:none;border-color:var(--accent);background:#253347;}
+.set-in::placeholder{color:#4a5a70;-webkit-text-fill-color:#4a5a70;text-shadow:none;}
+.set-unit{font-size:15px;color:#b8c8dc;width:18px;}
 .set-done-btn{margin-left:auto;background:var(--accent);color:#0e0820;border:none;
   border-radius:9px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .set-done-btn.done{background:var(--green);color:#04130c;}
@@ -378,11 +379,11 @@ const DATA = {
        vest:{label:"무게조끼",default:14},dumbbell:null,
        sets:[6,5,5,4],goal:"4set × 10회",rest:120},
       {name:"Push up",part:"가슴",
-       vest:{label:"무게조끼",default:14},dumbbell:null,
-       sets:[20,18,15,15,12],goal:"5set × 20회",rest:90},
+       vest:{label:"무게조끼",default:18},dumbbell:null,
+       sets:[10,10,8,8,8],goal:"5set × 15회",rest:90},
       {name:"오버헤드 숄더 프레스",part:"어깨",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:12},
-       sets:[8,8,7,7],goal:"4set × 12회",rest:90},
+       sets:[8,8,7,7],goal:"4set × 10회",rest:90},
       {name:"Chin up",part:"등",
        vest:null,dumbbell:null,
        sets:[10,7,7],goal:"3set × 10회",rest:90},
@@ -394,8 +395,8 @@ const DATA = {
        sets:[8,8,8],goal:"3set × 12회",rest:90},
       {name:"Decline Push up",part:"윗가슴",
        vest:null,dumbbell:null,
-       sets:[22,20,18],goal:"3set × 22회",rest:90},
-      {name:"One arm Row",part:"등",
+       sets:[22,20,18],goal:"3set × 25회",rest:90},
+      {name:"One arm Low Row",part:"등",
        vest:null,dumbbell:{label:"덤벨",default:24},
        sets:[8,8,8],goal:"3set × 10회",rest:90},
     ]
@@ -403,30 +404,30 @@ const DATA = {
   lower:{
     name:"하체",title:"LOWER",warmup:"하체 동적 스트레칭 5분",
     exercises:[
-      {name:"덤벨 숄더 Squat",part:"하체",
-       vest:{label:"무게조끼",default:20},dumbbell:{label:"덤벨(한쪽)",default:20},
-       sets:[18,15,15,12],goal:"4set × 20회",rest:90},
-      {name:"덤벨 고블린 Squat",part:"하체",
-       vest:{label:"무게조끼",default:20},dumbbell:{label:"덤벨",default:26},
-       sets:[11,11,11],goal:"3set × 15회",rest:90},
+      {name:"양손 덤벨 Squat",part:"하체",
+       vest:{label:"무게조끼",default:20},dumbbell:{label:"덤벨(한쪽)",default:24},
+       sets:[9,8,8,7],goal:"4set × 10회",rest:90},
+      {name:"고블린 Squat",part:"하체",
+       vest:{label:"무게조끼",default:20},dumbbell:{label:"덤벨",default:28},
+       sets:[9,8,7],goal:"3set × 10회",rest:90},
       {name:"Crunch",part:"코어",
        vest:null,dumbbell:{label:"덤벨(2세트만)",default:10},
-       sets:[20,15,20],goal:"3set × 20회",rest:90},
+       sets:[21,16,20],goal:"3set × 20회",rest:90},
       {name:"Reverse Crunch",part:"코어",
        vest:null,dumbbell:null,
-       sets:[20,10,20],goal:"3set × 20회",rest:90},
+       sets:[16,10,15],goal:"3set × 20회",rest:90},
       {name:"Hip Bridge",part:"코어",
-       vest:null,dumbbell:{label:"덤벨",default:26},
-       sets:[8,8,8],goal:"3set × 10회",rest:90},
+       vest:null,dumbbell:{label:"덤벨",default:24},
+       sets:[10,10,10],goal:"3set × 10회",rest:90},
       {name:"루마니안 Deadlift",part:"후면사슬",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:32},
-       sets:[9,8,7,7],goal:"4set × 10회",rest:90},
+       sets:[9,8,8,7],goal:"4set × 10회",rest:90},
       {name:"덤벨 Split Squat",part:"하체",
-       vest:null,dumbbell:{label:"덤벨(한쪽)",default:18},
-       sets:[11,11,11],goal:"3set × 15회",rest:90},
-      {name:"덤벨 오버헤드 트라이셉 익스텐션",part:"삼두근",
-       vest:null,dumbbell:{label:"덤벨",default:20},
-       sets:[10,10,10],goal:"3set × 12회",rest:90},
+       vest:null,dumbbell:{label:"덤벨(한쪽)",default:20},
+       sets:[8,8,8],goal:"3set × 10회",rest:90},
+      {name:"트라이셉 익스텐션",part:"삼두근",
+       vest:null,dumbbell:{label:"덤벨(한쪽)",default:12},
+       sets:[8,8,8],goal:"3set × 10회",rest:90},
     ]
   }
 };
@@ -586,10 +587,10 @@ function renderExercises(){
           // 직전 로그 횟수(placeholder): 오늘 입력 없을 때만 직전 기록으로
           const lastRep=(lastW&&lastW.sets&&lastW.sets[si])?lastW.sets[si].reps:null;
           const pholder=lastRep!=null?lastRep:target;
-          const labelPrev=lastRep!=null?`<span style="font-size:10px;color:#6a7a8e;margin-left:2px;">(전:${lastRep})</span>`:'';
+          const labelGoal=`<span style="font-size:16px;font-weight:700;color:var(--accent2);margin-left:3px;">(목표:${target})</span>`;
+          const labelPrev=lastRep!=null?`<span style="font-size:11px;color:#6a7a8e;margin-left:5px;">전회${lastRep}</span>`:'';
           return `<div class="set-row">
-            <span class="set-lbl">${si+1}세트${labelPrev}</span>
-            <span class="set-target">목표 ${target}</span>
+            <span class="set-lbl"><span style="font-size:17px;font-weight:900;color:#f0f4fa;">${si+1}세트</span>${labelGoal}${labelPrev}</span>
             <input class="set-in" type="number" inputmode="numeric" id="reps-${ei}-${si}"
               placeholder="${pholder}" value="${sr.reps??''}">
             <span class="set-unit">회</span>
