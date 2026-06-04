@@ -17,6 +17,7 @@ StockEasy vs Clone 일일 비교 실행기 (cron 진입점)
 """
 import sys
 import json
+import time
 import traceback
 from datetime import datetime
 from typing import List, Dict
@@ -118,23 +119,31 @@ def _extract_initial_data(html: str) -> dict:
 
 def _crawl_standalone(strategy: str) -> dict:
     url = _CRAWL_URLS[strategy]
-    resp = requests.get(url, headers=_CRAWL_HEADERS, timeout=15)
-    resp.raise_for_status()
-    raw = _extract_initial_data(resp.text)
-    if not raw or not raw.get("success"):
-        raise ValueError(f"{strategy} StockEasy 데이터 추출 실패")
-    meta = raw.get("metadata", {})
-    holdings = []
-    for sector, stocks in raw.get("holdings", {}).items():
-        for s in stocks:
-            holdings.append({
-                "stock_code": s.get("stock_code", ""),
-                "stock_name": s.get("stock_name", ""),
-                "sector": sector,
-                "holding_days": s.get("holding_days", 0),
-                "return_rate": s.get("return_rate", 0),
-            })
-    return {"target_date": meta.get("target_date", ""), "holdings": holdings}
+    last_err = None
+    for attempt in range(2):  # 최초 1회 + 재시도 1회
+        try:
+            resp = requests.get(url, headers=_CRAWL_HEADERS, timeout=15)
+            resp.raise_for_status()
+            raw = _extract_initial_data(resp.text)
+            if not raw or not raw.get("success"):
+                raise ValueError(f"{strategy} StockEasy 데이터 추출 실패")
+            meta = raw.get("metadata", {})
+            holdings = []
+            for sector, stocks in raw.get("holdings", {}).items():
+                for s in stocks:
+                    holdings.append({
+                        "stock_code": s.get("stock_code", ""),
+                        "stock_name": s.get("stock_name", ""),
+                        "sector": sector,
+                        "holding_days": s.get("holding_days", 0),
+                        "return_rate": s.get("return_rate", 0),
+                    })
+            return {"target_date": meta.get("target_date", ""), "holdings": holdings}
+        except Exception as e:
+            last_err = e
+            if attempt == 0:
+                time.sleep(5)  # 일시적 오류 시 5초 후 재시도
+    raise last_err
 
 
 # ---------- 클론 스크리너 어댑터 ----------
@@ -177,7 +186,7 @@ def run_morning():
     db = ComparisonDB()
     summary_lines = [f"📊 <b>StockEasy 비교</b> {today}\n"]
 
-    for strategy in STRATEGIES:
+    for idx, strategy in enumerate(STRATEGIES):
         try:
             print(f"\n=== {strategy} ===")
 
@@ -215,6 +224,10 @@ def run_morning():
         except Exception as e:
             TA.send_tele(f"[비교] {strategy} 처리 오류: {e}")
             traceback.print_exc()
+
+        # 전략 간 3초 대기 (StockEasy IP 차단 방지). 마지막 전략 뒤에는 생략.
+        if idx < len(STRATEGIES) - 1:
+            time.sleep(3)
 
     db.close()
     TA.send_tele("\n".join(summary_lines))
