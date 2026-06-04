@@ -69,9 +69,19 @@ CRAWL_HEADERS = {
 }
 
 def fetch_stockeasy_page() -> str:
-    resp = requests.get(CRAWL_URL, headers=CRAWL_HEADERS, timeout=15)
-    resp.raise_for_status()
-    return resp.text
+    """StockEasy 페이지 요청 (일시적 오류 대응: 최대 3회 재시도).
+    실매매 진입점이므로 단발 실패로 그날 매매가 누락되지 않도록 재시도한다."""
+    last_err = None
+    for attempt in range(3):
+        try:
+            resp = requests.get(CRAWL_URL, headers=CRAWL_HEADERS, timeout=15)
+            resp.raise_for_status()
+            return resp.text
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                time_module.sleep(5 * (attempt + 1))  # 5초 → 10초 백오프
+    raise last_err
 
 def extract_data_from_html(html: str) -> dict:
     """Next.js SSR __next_f.push 안의 initialData JSON 추출
