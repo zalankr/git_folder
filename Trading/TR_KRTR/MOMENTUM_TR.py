@@ -847,11 +847,17 @@ def do_trade(order: dict, target: dict, message: list):
     time_module.sleep(600)
 
     # ────────────── 매수 ──────────────
+    # [보강1] 매수 직전 미체결 전량취소 → 묶인 현금(nrcvb_buy_amt 예약분) 해제
+    #         → 7초 대기 후 현금 재조회 (취소 즉시 조회 시 현금 미반영으로 잠김 반복)
+    cancel_orders(side='buy')   # 매수 미체결만 취소(매도 미체결은 현금 무관·다음 회차서 정리)
+    time_module.sleep(7)
+
     KRW = KIS.get_KR_orderable_cash()
     if not isinstance(KRW, (int, float)):
         TA.send_tele(f"MOMENTUM: 주문가능현금 조회 불가 ({KRW})")
         sys.exit(1)
-    orderable_KRW = float(KRW)
+    # [보강2] 안전마진 0.99 — 분할 지정가가 현재가보다 높은 회차(예: 12회차 1.02) 대비
+    orderable_KRW = float(KRW) * 0.99
 
     # 잔고 재조회 → 이미 체결된 수량 차감
     refreshed = KIS.get_KR_stock_balance()
@@ -871,9 +877,10 @@ def do_trade(order: dict, target: dict, message: list):
         if remaining > 0:
             buy[code] = remaining
 
-    # 현재가 + 매수총액 산출
+    # [보강3] 매수총액 추정에 분할가 '평균' 사용 (마지막 1개 배율만 쓰던 오차 제거)
+    #         실제 주문은 lsp[i] 배열로 나가므로 평균이 전체 집행액에 가장 근사.
     target_KRW = 0
-    buy_rate = buy_split[1][-1] if buy_split[1] else 1.0
+    buy_rate = (sum(buy_split[1]) / len(buy_split[1])) if buy_split[1] else 1.0
     for code, qty in buy.items():
         p = KIS.get_KR_current_price(code)
         if not isinstance(p, int) or p == 0:
@@ -896,18 +903,20 @@ def do_trade(order: dict, target: dict, message: list):
         # 1차 조정: 비례 축소 (최소 1주 보장으로 종목 누락 방지)
         for code in buy:
             buy[code] = max(int(buy[code] * adj), 1)
-        # 1주 보장으로 자금 초과 가능 → 비싼 종목부터 1주씩 감액
+        # [보강4] 한도 초과분 감액: 비싼 종목부터 1주씩.
+        #   buy[c] >= 1 조건 → 1주짜리도 한도 초과면 0주로 제거(거절 주문 방지).
+        #   (기존 buy[c] > 1 은 1주짜리를 못 깎아 '주문가능금액 초과' 거절 스팸 유발)
         recheck_KRW = sum(buy[c] * buy_rate * buy_prices.get(c, 0) for c in buy)
         if recheck_KRW > orderable_KRW:
             sorted_codes = sorted(buy.keys(), key=lambda c: -buy_prices.get(c, 0))
             for c in sorted_codes:
-                while recheck_KRW > orderable_KRW and buy[c] > 1:
+                while recheck_KRW > orderable_KRW and buy[c] >= 1:
                     buy[c] -= 1
                     recheck_KRW -= buy_rate * buy_prices.get(c, 0)
                 if recheck_KRW <= orderable_KRW:
                     break
         buy = {k: v for k, v in buy.items() if v > 0}
-        message.append(f"MOMENTUM 매수수량 조정 (adjust_rate={adj:.4f}, 최소1주)")
+        message.append(f"MOMENTUM 매수수량 조정 (adjust_rate={adj:.4f})")
     else:
         message.append("MOMENTUM 매수가능금 충분")
 

@@ -1,5 +1,6 @@
 import requests
 import json
+import fcntl
 from datetime import datetime, timedelta
 import telegram_alert as TA
 import sys
@@ -48,8 +49,13 @@ class KIS_API:
     def load_token(self) -> Optional[Dict]:
         try:
             if os.path.exists(self.token_file_path):
-                with open(self.token_file_path, 'r') as f:
-                    return json.load(f)
+                lock_path = self.token_file_path + ".lock"
+                with open(lock_path, 'a') as lock_f:   # 'a': 파일 없으면 생성
+                    fcntl.flock(lock_f, fcntl.LOCK_SH)
+                    with open(self.token_file_path, 'r') as f:
+                        data = json.load(f)
+                    fcntl.flock(lock_f, fcntl.LOCK_UN)
+                    return data
             return None
         except Exception as e:
             TA.send_tele(f"KIS 토큰 로드 오류: {e}")
@@ -62,8 +68,14 @@ class KIS_API:
                 "issued_at": datetime.now().isoformat(),
                 "expires_in": expires_in
             }
-            with open(self.token_file_path, 'w') as f:
-                json.dump(token_data, f, indent=2)
+            lock_path = self.token_file_path + ".lock"
+            with open(lock_path, 'a') as lock_f:
+                fcntl.flock(lock_f, fcntl.LOCK_EX)   # 최종 파일 기준 락
+                tmp_path = self.token_file_path + ".tmp"
+                with open(tmp_path, 'w') as f:
+                    json.dump(token_data, f, indent=2)
+                os.replace(tmp_path, self.token_file_path)
+                fcntl.flock(lock_f, fcntl.LOCK_UN)
             return True
         except Exception as e:
             TA.send_tele(f"KIS 토큰 저장 오류: {e}")
@@ -77,7 +89,7 @@ class KIS_API:
             expires_in = token_data.get('expires_in', 86400)
             now = datetime.now()
             expiry_time = issued_at + timedelta(seconds=expires_in)
-            safe_expiry_time = expiry_time - timedelta(minutes=60)
+            safe_expiry_time = expiry_time - timedelta(minutes=120)
             return now < safe_expiry_time
         except:
             return False
@@ -492,6 +504,12 @@ class KIS_API:
                 for attempt in range(max_retry):
                     try:
                         response = requests.get(url, headers=headers, params=params, timeout=10)
+                        # ↓ 500 에러 시 토큰 갱신 후 재시도 (기존 raise_for_status 대체)
+                        if response.status_code == 500 and attempt < max_retry - 1:
+                            time.sleep(1.5 * (attempt + 1))
+                            self.access_token = self.get_new_token()
+                            headers["authorization"] = f"Bearer {self.access_token}"
+                            continue
                         response.raise_for_status()
                         data = response.json()
                         resp_tr_cont = response.headers.get("tr_cont", "").strip()
@@ -500,7 +518,7 @@ class KIS_API:
                             requests.exceptions.ChunkedEncodingError,
                             requests.exceptions.ReadTimeout) as conn_err:
                         if attempt == max_retry - 1:
-                            TA.send_tele(f"HK잔고 연결 오류(최종): {conn_err}")
+                            TA.send_tele(f"HK 잔고조회 연결 오류(최종): {conn_err}")
                             return None
                         time.sleep(1.0 * (attempt + 1))
 
@@ -631,6 +649,11 @@ class KIS_API:
                 for attempt in range(max_retry):
                     try:
                         response = requests.get(url, headers=headers, params=params, timeout=10)
+                        if response.status_code == 500 and attempt < max_retry - 1:
+                            time.sleep(1.5 * (attempt + 1))
+                            self.access_token = self.get_new_token()
+                            headers["authorization"] = f"Bearer {self.access_token}"
+                            continue
                         response.raise_for_status()
                         data = response.json()
                         resp_tr_cont = response.headers.get("tr_cont", "").strip()

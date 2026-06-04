@@ -267,7 +267,7 @@ is_first_round = (order['round'] == 1)
 if jpqt_is_active_today(order['date']):
     TA.send_tele(
         f"JP_Hedge: 오늘({order['date']}) JPQT 분기 리밸런싱과 겹침 "
-        f"→ JPQT_TR.py가 헷지 통합 처리 중. {order['round']}회차 종료."
+        f"→ JPQT_TR.py가 헷지 통합 처리 중. JP_Hedge {order['round']}회차 종료."
     )
     sys.exit(0)
 
