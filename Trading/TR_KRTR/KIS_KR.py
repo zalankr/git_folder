@@ -37,7 +37,10 @@ class KIS_API:
     def _load_api_keys(self): #
         try:
             with open(self.key_file_path) as f:
-                self.app_key, self.app_secret = [line.strip() for line in f.readlines()]
+                lines = [line.strip() for line in f.readlines() if line.strip()]
+            if len(lines) < 2:
+                raise ValueError(f"\ud0a4 \ud30c\uc77c \ud615\uc2dd \uc624\ub958(2\uc904 \ud544\uc694, \uc2e4\uc81c {len(lines)}\uc904): {self.key_file_path}")
+            self.app_key, self.app_secret = lines[0], lines[1]
         except FileNotFoundError:
             TA.send_tele(f"API Key 파일을 찾을 수 없습니다: {self.key_file_path}")
             sys.exit(1)
@@ -95,7 +98,7 @@ class KIS_API:
             safe_expiry_time = expiry_time - timedelta(minutes=120)
             
             return now < safe_expiry_time
-        except:
+        except Exception:
             return False
     
     # 토큰 발급
@@ -110,19 +113,36 @@ class KIS_API:
         
         url = f"{self.url_base}/{path}"
         
-        try:
-            response = requests.post(url, headers=headers, data=json.dumps(body), timeout=10)
-            response.raise_for_status()
+        for attempt in range(3):
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(body), timeout=10)
+                
+                # 403/429 = 분당 1회 발급제한 위반 → 기존 유효 토큰 재사용 우선
+                if response.status_code in (403, 429):
+                    cached = self.load_token()
+                    if cached and self.is_token_valid(cached):
+                        TA.send_tele("토큰 발급 제한(403/429) → 기존 토큰 재사용")
+                        return cached['access_token']
+                    if attempt < 2:
+                        time.sleep(65)  # 1분 쿨다운 후 재시도
+                        continue
+                
+                response.raise_for_status()
+                token_response = response.json()
+                access_token = token_response['access_token']
+                expires_in = token_response.get('expires_in', 86400)
+                self.save_token(access_token, expires_in)
+                return access_token
             
-            token_response = response.json()
-            access_token = token_response['access_token']
-            expires_in = token_response.get('expires_in', 86400)
-            
-            self.save_token(access_token, expires_in)
-            return access_token
-        except Exception as e:
-            TA.send_tele(f"KIS 토큰 발급 실패: {e}")
-            sys.exit(1)
+            except Exception as e:
+                cached = self.load_token()
+                if cached and self.is_token_valid(cached):
+                    return cached['access_token']
+                if attempt < 2:
+                    time.sleep(5)
+                    continue
+                TA.send_tele(f"KIS 토큰 발급 실패: {e}")
+                sys.exit(1)
 
     # 토큰 접속
     def get_access_token(self) -> Optional[str]: #
@@ -238,9 +258,7 @@ class KIS_API:
                         # ↓ 500 에러 시 토큰 갱신 후 재시도 (기존 raise_for_status 대체)
                         if response.status_code == 500 and attempt < max_retry - 1:
                             time.sleep(1.5 * (attempt + 1))
-                            self.access_token = self.get_new_token()
-                            headers["authorization"] = f"Bearer {self.access_token}"
-                            continue
+                            continue   # 500은 서버 일시 오류 → 토큰 재발급 없이 재시도
                         response.raise_for_status()
                         data = response.json()
                         resp_tr_cont = response.headers.get("tr_cont", "").strip()
@@ -377,9 +395,7 @@ class KIS_API:
                         response = requests.get(url, headers=headers, params=params, timeout=10)
                         if response.status_code == 500 and attempt < max_retry - 1:
                             time.sleep(1.5 * (attempt + 1))
-                            self.access_token = self.get_new_token()
-                            headers["authorization"] = f"Bearer {self.access_token}"
-                            continue
+                            continue   # 500은 서버 일시 오류 → 토큰 재발급 없이 재시도
                         response.raise_for_status()
                         data = response.json()
                         resp_tr_cont = response.headers.get("tr_cont", "").strip()
