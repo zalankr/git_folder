@@ -11,10 +11,15 @@ StockEasy Momentum 전략 자동매매 (단일 파일 통합)
   12회차 매매 완료 후:
     → 10분 대기 → 미체결 전량취소 → 잔고조회 → momentum_data.json 저장 + Telegram 리포트
 
+신규·이탈 없는 날(무변화):
+  1회차: 크롤링 후 변화 없음 감지 → no_change 플래그 저장 → 매매 없이 무음 종료
+  2~11회차: no_change 플래그 확인 → 무음 즉시 종료
+  12회차: no_change 플래그 확인 → 매매 생략, 결산만 1회 수행(보유이력·수익률 기록 + 리포트 1회)
+
 crontab (UTC+0, EC2):
   6,36 0-5 * * 1-5 timeout -s 9 1500 /usr/bin/python3 /var/autobot/TR_KRTR/MOMENTUM_TR.py
 
-보유 상한: 25종목, 종목당 균등배분 (총자산 / 25)
+보유 상한 없음: 사이트 추천 보유종목수(n)로 균등배분 (총자산 / n)
 """
 
 import sys
@@ -53,7 +58,6 @@ MOMENTUM_HISTORY_DIR  = os.path.join(BASE_DIR, "MOMENTUM_history")
 
 os.makedirs(MOMENTUM_HISTORY_DIR, exist_ok=True)
 OVERRIDE_PATH = os.path.join(BASE_DIR, "momentum_override.json") # 수동 개입 경로
-MAX_HOLDINGS = 25   # 최대 보유 종목 수
 MIN_ORDER_KRW = 100_000   # 비중조정 최소 주문 임계 (10만원) — 이 미만 조정은 스킵
 MOMENTUM_PENDING_PATH    = os.path.join(BASE_DIR, "momentum_pending.json")  # 자금부족 미체결 큐
 
@@ -460,29 +464,12 @@ def do_crawl_and_build_target(message: list) -> dict:
 
     # 보유 상한 제거 — overflow 강제매도 없음 (사이트 추천 수만큼 무제한 보유)
 
-    # 계좌 조회 → 종목당 투자금
-    account = KIS.get_KR_account_summary()
-    if not isinstance(account, dict):
-        TA.send_tele(f"MOMENTUM: 계좌요약 조회 불가 ({account})")
-        sys.exit(1)
-    total_asset = account['total_krw_asset']
-    # 분모 n = 오늘 거래 후 실제 보유하게 될 종목수 = 보유 ∪ 신규진입 − 이탈
-    #   buy_codes  = 신규진입(pending·refill 포함, 미보유분), sell_codes = 이탈(보유분)
-    #   → after_count = 현재보유 − 이탈 + 신규.  100% 투자 위해 n으로 균등 분할.
-    after_count = cur_hold_cnt - len(sell_codes) + len(buy_codes)
-    invest_divisor = max(after_count, 1)   # 0종목 방어
-    per_stock_invest = int(total_asset / invest_divisor)
-    has_change = (len(buy_codes) > 0 or len(sell_codes) > 0)   # 신규 또는 이탈 발생 여부
-    message.append(
-        f"총자산: {int(total_asset):,}원 | 분모(보유후): {invest_divisor} "
-        f"(현재={cur_hold_cnt},이탈={len(sell_codes)},신규={len(buy_codes)}) | 종목당: {per_stock_invest:,}원 "
-        f"| 비중조정: {'ON' if has_change else 'OFF'}"
-    )
-
-    # ── 비중조정 매매 산출 ──────────────────────────────────────
-    # 실제 잔고 1회 조회 (현재 보유수량/현재가 확보)
-    buy_targets = {}
-    sell_targets = {}
+    # ────────────────────────────────────────────
+    # [미추천 정리] 실제 계좌 잔고에 있으나 사이트 추천목록에 없는 종목 → 전량매도
+    #   추천집합 = 사이트보유(all_holdings) ∪ 신규매수(buy_codes; pending·refill 포함)
+    #            ∪ 수동 force_buy(override 보호)
+    #   계좌 잔고 종목 중 추천집합 밖이면 미추천으로 보고 이탈(sell_codes)에 편입.
+    #   ※ 잔고는 여기서 1회만 조회하여 bal_map으로 재사용(이후 비중조정에서도 사용).
     stocks = KIS.get_KR_stock_balance()
     bal_map = {}   # 종목코드 → {qty, price, name}
     if isinstance(stocks, list):
@@ -492,6 +479,51 @@ def do_crawl_and_build_target(message: list) -> dict:
                 "price": s.get("현재가", 0),
                 "name":  s.get("종목명", s["종목코드"]),
             }
+
+    site_hold_codes = {h["stock_code"] for h in all_holdings}
+    ov_today = load_today_override()
+    force_buy_codes = {
+        str(i.get("stock_code", "")).zfill(6) for i in (ov_today.get("force_buy") or [])
+    }
+    recommended = site_hold_codes | set(buy_codes) | force_buy_codes
+
+    untracked_codes = [
+        code for code, info in bal_map.items()
+        if info["qty"] > 0 and code not in recommended and code not in sell_codes
+    ]
+    if untracked_codes:
+        names_u = [bal_map[c]["name"] for c in untracked_codes]
+        message.append(f"🧹 미추천 정리 {len(untracked_codes)}종목 전량매도: {names_u}")
+        # 이탈 목록에 편입 → 기존 이탈 전량매도 로직·결산·has_change 처리에 자연 흡수
+        sell_codes = sell_codes + untracked_codes
+    # ────────────────────────────────────────────
+
+    # 계좌 조회 → 종목당 투자금
+    account = KIS.get_KR_account_summary()
+    if not isinstance(account, dict):
+        TA.send_tele(f"MOMENTUM: 계좌요약 조회 불가 ({account})")
+        sys.exit(1)
+    total_asset = account['total_krw_asset']
+    # 분모 n = 오늘 거래 후 실제 보유하게 될 종목수 = 보유 ∪ 신규진입 − 이탈
+    #   buy_codes  = 신규진입(pending·refill 포함, 미보유분), sell_codes = 이탈(보유분)
+    #   → after_count = 현재보유 − 이탈 + 신규.  100% 투자 위해 n으로 균등 분할.
+    #   ※ 미추천 정리분(untracked)은 추천목록 밖이라 분모에서 빼지 않는다.
+    #     (분모는 추천기준 그대로 유지 → 회수현금은 비중확대·신규매수에 자연 흡수)
+    recommend_exits = [c for c in sell_codes if c not in untracked_codes]
+    after_count = cur_hold_cnt - len(recommend_exits) + len(buy_codes)
+    invest_divisor = max(after_count, 1)   # 0종목 방어
+    per_stock_invest = int(total_asset / invest_divisor)
+    has_change = (len(buy_codes) > 0 or len(sell_codes) > 0)   # 신규·이탈·미추천 매도 발생 여부
+    message.append(
+        f"총자산: {int(total_asset):,}원 | 분모(보유후): {invest_divisor} "
+        f"(현재={cur_hold_cnt},이탈={len(recommend_exits)},신규={len(buy_codes)},미추천={len(untracked_codes)}) "
+        f"| 종목당: {per_stock_invest:,}원 | 비중조정: {'ON' if has_change else 'OFF'}"
+    )
+
+    # ── 비중조정 매매 산출 ──────────────────────────────────────
+    # (잔고 bal_map은 미추천 정리 단계에서 이미 1회 조회·확보됨 → 재조회 생략)
+    buy_targets = {}
+    sell_targets = {}
 
     # 신규/이탈 종목명 매핑
     entry_name = {e["stock_code"]: e["stock_name"] for e in new_entries}
@@ -553,18 +585,22 @@ def do_crawl_and_build_target(message: list) -> dict:
     target = {
         "date":              str(datetime.now().date()),
         "crawl_date":        crawl["target_date"],
+        "no_change":         not has_change,   # 신규·이탈 모두 없음 → 무변화 종료 플래그
         "sell_codes":        list(sell_targets.keys()),
         "buy_codes":         list(buy_targets.keys()),
         "buy_targets":       buy_targets,
         "sell_targets":      sell_targets,
         "per_stock_invest":  per_stock_invest,
         "current_hold_count": cur_hold_cnt,
-        "expected_after":    cur_hold_cnt - len(sell_codes) + len(buy_codes),
+        "expected_after":    cur_hold_cnt - len(recommend_exits) + len(buy_codes),
         "refill_codes":      refill_codes,
         "pending_codes":     pending_codes,
+        "untracked_codes":   untracked_codes,   # 미추천 정리 대상 (결산 리포트 구분용)
     }
     # ▼ 추가: 수동 개입 적용
     target = apply_manual_override(target, message, per_stock_invest)
+    # 수동개입이 매매를 추가/제거할 수 있으므로, 최종 타깃 기준으로 no_change 재계산
+    target["no_change"] = (not target["buy_targets"]) and (not target["sell_targets"])
     save_json(target, MOMENTUM_TARGET_PATH)
 
     for code, info in target["buy_targets"].items():
@@ -572,9 +608,6 @@ def do_crawl_and_build_target(message: list) -> dict:
     for code, info in target["sell_targets"].items():
         message.append(f"  매도목표: {info['name']}({code}) {info['target_qty']}주")
 
-    if not target["buy_targets"] and not target["sell_targets"]:
-        TA.send_tele(message + ["MOMENTUM: 오늘 매매 대상 없음. 종료."])
-        sys.exit(0)
 
     return target
 
@@ -617,8 +650,9 @@ def do_daily_settlement():
     prev_holdings = prev_data.get("holdings", {})
 
     # 오늘 target (이탈 코드 참조)
-    target     = load_json(MOMENTUM_TARGET_PATH)
-    sell_codes = target.get("sell_codes", [])
+    target          = load_json(MOMENTUM_TARGET_PATH)
+    sell_codes      = target.get("sell_codes", [])
+    untracked_codes = target.get("untracked_codes", [])
 
     # 현재 보유종목 정리
     new_holdings = {}
@@ -669,6 +703,18 @@ def do_daily_settlement():
                 "return_rate": prev.get("return_rate", 0),
             })
 
+    # 미추천 정리 종목 기록 (추천목록 밖이라 prev_holdings에 없을 수 있음 → 별도 집계)
+    #   매도 완료(now 보유 0) 종목만 정리됨으로 간주. 부분 잔존 시 다음 날 재시도.
+    cleared_untracked = []
+    for code in untracked_codes:
+        if code not in new_holdings:   # 전량매도되어 잔고에서 사라짐
+            prev = prev_holdings.get(code, {})
+            cleared_untracked.append({
+                "stock_code": code,
+                "name":       prev.get("name", code),
+                "sell_date":  today,
+            })
+
     # 월/연 수익률 (히스토리 기반)
     month_return, year_return = 0.0, 0.0
     this_month = datetime.now().strftime("%Y-%m")
@@ -707,6 +753,7 @@ def do_daily_settlement():
         },
         "holdings":    new_holdings,
         "exits_today": exits_today,
+        "cleared_untracked": cleared_untracked,
     }
     save_json(momentum_data, MOMENTUM_DATA_PATH)
     save_json(momentum_data, os.path.join(MOMENTUM_HISTORY_DIR, f"momentum_{today}.json"))
@@ -768,6 +815,11 @@ def do_daily_settlement():
                 f"매입:{ex['buy_price']:,.0f} 수익:{ex['return_rate']:+.2f}% "
                 f"({ex['buy_date']}→{ex['sell_date']})"
             )
+
+    if cleared_untracked:
+        message.append("\n🧹 미추천 정리(추천목록 외 전량매도):")
+        for cu in cleared_untracked:
+            message.append(f"  {cu['name']}({cu['stock_code']}) → 청산 ({cu['sell_date']})")
 
     message.append("✅ momentum_data.json 저장 완료")
     TA.send_tele(message)
@@ -978,28 +1030,30 @@ message = []
 
 order = order_time()
 if order['round'] == 0:
-    TA.send_tele("MOMENTUM: 매매시간이 아닙니다.")
+    # 매매시간 외 — 무음 종료 (불필요한 알림 제거)
     sys.exit(0)
 
-message.append(f"MOMENTUM: {order['date']} {order['time']} {order['round']}/{order['total_round']}회차")
-
-# 전회 미체결 취소
-cancel_msg = cancel_orders(side='all')
-message.append(cancel_msg)
-
-# ── 1회차: 크롤링 + target 생성 + 3분 대기 ──
+# ── 1회차: 크롤링 + target 생성 ──
 if order['round'] == 1:
     # 1회차 시작 시점 보유수량을 baseline으로 저장 (세션 누적 체결 추적용)
     init_stocks = KIS.get_KR_stock_balance()
     baseline_hold = {}
     if isinstance(init_stocks, list):
         baseline_hold = {s["종목코드"]: s["보유수량"] for s in init_stocks}
+
     target = do_crawl_and_build_target(message)
     target["baseline_hold"] = baseline_hold
-    save_json(target, MOMENTUM_TARGET_PATH)
+    save_json(target, MOMENTUM_TARGET_PATH)   # do_crawl 내부 저장본에 baseline 병합 후 1회만 재저장
+
+    # 신규·이탈 없음 → 매매 없이 무음 종료. (결산은 12회차에서 1회 수행)
+    if target.get("no_change"):
+        sys.exit(0)
+
+    # 변화 있음 → 매매 시작 알림 후 진행
+    message.append(f"MOMENTUM: {order['date']} {order['time']} {order['round']}/{order['total_round']}회차")
+    cancel_msg = cancel_orders(side='all')   # 전회 미체결 취소
+    message.append(cancel_msg)
     message.append("MOMENTUM: 크롤링 완료, 3분 대기 후 매매 시작...")
-    # TA.send_tele(message)
-    # message = []
     time_module.sleep(180)   # 3분 대기
 
 # ── 2~12회차: target 로드 ──
@@ -1008,8 +1062,17 @@ else:
     if not target:
         TA.send_tele("MOMENTUM: momentum_target.json 없음. 1회차 미실행?")
         sys.exit(1)
-    # TA.send_tele(message)
-    # message = []
+
+    # 무변화 날: 2~11회차는 무음 종료, 12회차만 결산 1회 수행
+    if target.get("no_change"):
+        if order['round'] == 12:
+            do_daily_settlement()
+        sys.exit(0)
+
+    # 변화 있음 → 정상 진행
+    message.append(f"MOMENTUM: {order['date']} {order['time']} {order['round']}/{order['total_round']}회차")
+    cancel_msg = cancel_orders(side='all')   # 전회 미체결 취소
+    message.append(cancel_msg)
 
 # ── 매매 실행 ──
 do_trade(order, target, message)
