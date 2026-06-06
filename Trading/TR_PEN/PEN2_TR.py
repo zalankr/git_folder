@@ -26,15 +26,15 @@ PEN_target_path = "/var/autobot/TR_PEN/PEN2_target.json" # json
 target = {
     "0113D0": {
         "name": "TIME 글로벌탑픽액티브",
-        "weight": 0.2
+        "weight": 0.16
     },
     "456600": {
         "name": "TIME 글로벌AI인공지능액티브",
-        "weight": 0.3
+        "weight": 0.23
     },
     "0035T0": {
         "name": "PLUS 글로벌휴머노이드로봇액티브",
-        "weight": 0.1
+        "weight": 0.16
     },
     "490490": {
         "name": "SOL 미국배당미국채혼합50",
@@ -46,7 +46,7 @@ target = {
     },
     "411060": {
         "name": "ACE KRX금현물",
-        "weight": 0.1
+        "weight": 0.15
     }
 }
 

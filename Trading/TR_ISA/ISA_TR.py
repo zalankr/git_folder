@@ -26,15 +26,15 @@ ISA_target_path = "/var/autobot/TR_ISA/ISA_target.json" # json
 target = {
     "0113D0": {
         "name": "TIME 글로벌탑픽액티브",
-        "weight": 0.20
+        "weight": 0.16
     },
     "456600": {
         "name": "TIME 글로벌AI인공지능액티브",
-        "weight": 0.15
+        "weight": 0.18
     },
     "0035T0": {
         "name": "PLUS 글로벌휴머노이드로봇액티브",
-        "weight": 0.14
+        "weight": 0.16
     },
     "498400": {
         "name": "KODEX 200타겟위클리커버드콜",
@@ -50,7 +50,7 @@ target = {
     },
     "CASH": {
         "name": "CASH",
-        "weight": 0.01
+        "weight": 0.00
     }
 }
 
