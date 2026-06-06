@@ -377,28 +377,28 @@ const DATA = {
     exercises:[
       {name:"Pull up",part:"등",
        vest:{label:"무게조끼",default:14},dumbbell:null,
-       sets:[6,5,5,4],goal:"4set × 10회",rest:120},
+       sets:[6,5,5,4],goal:"목표 10회",rest:120},
       {name:"Push up",part:"가슴",
-       vest:{label:"무게조끼",default:18},dumbbell:null,
-       sets:[10,10,8,8,8],goal:"5set × 15회",rest:90},
+       vest:{label:"무게조끼",default:16},dumbbell:null,
+       sets:[12,12,11,11,10],goal:"목표 15회",rest:90},
       {name:"오버헤드 숄더 프레스",part:"어깨",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:12},
-       sets:[8,8,7,7],goal:"4set × 10회",rest:90},
+       sets:[9,8,7,7],goal:"목표 12회",rest:90},
       {name:"Chin up",part:"등",
        vest:null,dumbbell:null,
-       sets:[10,7,7],goal:"3set × 10회",rest:90},
+       sets:[10,7,7],goal:"목표 10회",rest:90},
       {name:"Side Lateral Raise",part:"어깨",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:8},
-       sets:[8,8,8],goal:"3set × 12회",rest:90},
+       sets:[9,8,8],goal:"목표 12회",rest:90},
       {name:"Dumbbell Curl",part:"이두근",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:12},
-       sets:[8,8,8],goal:"3set × 12회",rest:90},
+       sets:[8,8,8],goal:"목표 12회",rest:90},
       {name:"Decline Push up",part:"윗가슴",
-       vest:null,dumbbell:null,
-       sets:[22,20,18],goal:"3set × 25회",rest:90},
+       vest:{label:"무게조끼",default:14},dumbbell:null,
+       sets:[12,11,10],goal:"목표 15회",rest:90},
       {name:"One arm Low Row",part:"등",
        vest:null,dumbbell:{label:"덤벨",default:24},
-       sets:[8,8,8],goal:"3set × 10회",rest:90},
+       sets:[8,8,8],goal:"목표 12회",rest:90},
     ]
   },
   lower:{
@@ -406,28 +406,28 @@ const DATA = {
     exercises:[
       {name:"양손 덤벨 Squat",part:"하체",
        vest:{label:"무게조끼",default:20},dumbbell:{label:"덤벨(한쪽)",default:24},
-       sets:[9,8,8,7],goal:"4set × 10회",rest:90},
+       sets:[8,7,6,5],goal:"목표 12회",rest:90},
       {name:"고블린 Squat",part:"하체",
        vest:{label:"무게조끼",default:20},dumbbell:{label:"덤벨",default:28},
-       sets:[9,8,7],goal:"3set × 10회",rest:90},
+       sets:[8,7,6],goal:"목표 12회",rest:90},
       {name:"Crunch",part:"코어",
-       vest:null,dumbbell:{label:"덤벨(2세트만)",default:10},
-       sets:[21,16,20],goal:"3set × 20회",rest:90},
+       vest:null,dumbbell:{label:"덤벨(2·4세트)",default:10},
+       sets:[20,15,20],goal:"목표 20회",rest:90,note:"1·3세트 맨몸, 2세트 덤벨 10kg"},
       {name:"Reverse Crunch",part:"코어",
        vest:null,dumbbell:null,
-       sets:[16,10,15],goal:"3set × 20회",rest:90},
+       sets:[16,10,15],goal:"목표 20회",rest:90,note:"2세트는 행잉레그레이즈 10회"},
       {name:"Hip Bridge",part:"코어",
        vest:null,dumbbell:{label:"덤벨",default:24},
-       sets:[10,10,10],goal:"3set × 10회",rest:90},
+       sets:[10,10,10],goal:"목표 10회",rest:90,note:"회당 10초 유지"},
       {name:"루마니안 Deadlift",part:"후면사슬",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:32},
-       sets:[9,8,8,7],goal:"4set × 10회",rest:90},
+       sets:[9,8,8,7],goal:"목표 12회",rest:90},
       {name:"덤벨 Split Squat",part:"하체",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:20},
-       sets:[8,8,8],goal:"3set × 10회",rest:90},
+       sets:[8,8,8],goal:"목표 10회",rest:90,note:"한 다리씩"},
       {name:"트라이셉 익스텐션",part:"삼두근",
        vest:null,dumbbell:{label:"덤벨(한쪽)",default:12},
-       sets:[8,8,8],goal:"3set × 10회",rest:90},
+       sets:[8,8,8],goal:"목표 12회",rest:90},
     ]
   }
 };
@@ -580,6 +580,7 @@ function renderExercises(){
           <div class="target-box"><div class="t-l">🎯 목표</div><div class="t-v">${ex.goal}</div></div>
           <div class="target-box"><div class="t-l">📌 직전 중량</div><div class="t-v" style="font-size:11px;">${prevStr}</div></div>
         </div>
+        ${ex.note?`<div style="font-size:12px;color:#7a9abf;background:rgba(100,140,200,0.08);border-left:3px solid var(--accent2);border-radius:0 6px 6px 0;padding:6px 10px;margin-bottom:8px;">📝 ${ex.note}</div>`:''}
         ${weHTML}
         ${ex.sets.map((target,si)=>{
           const sr=rec.sets[si]||{};
