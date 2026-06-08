@@ -97,7 +97,7 @@
     }
   ],
   "last_run": {
-    "date": "2026-06-01",
+    "date": "2026-06-08",
     "type": "hedge3_daily",
     "signals": {
       "hedge3": {
@@ -105,7 +105,7 @@
         "ratio": 0.0,
         "active": false,
         "peak_pbr": 0.0,
-        "reason": "Hedge3 미발동 (PBR 2.6971 < 3.0)"
+        "reason": "Hedge3 미발동 (PBR 2.2942 < 3.1)"
       }
     },
     "orders": [],
@@ -114,7 +114,7 @@
   "snapshots": {
     "_comment": "전일/전월 평가금 스냅샷 (수익 변동 계산용)",
     "prev_day": {
-      "date": "2026-06-01",
+      "date": "2026-06-08",
       "evlu_pfls": 0.0,
       "evlu_amt": 0.0
     },

@@ -250,21 +250,31 @@ def save_state(state):
 # ============================================
 # USQT csv → 개별종목 target_qty 산출 (헤지 USQT 비중 반영)
 # ============================================
-def build_hedge_targets(applied_target: Dict, total_usd_asset: float) -> Tuple[Dict, List[str]]:
-    """csv 의 USQT 개별종목 weight × hedge_usqt_ratio 로 target_qty 산출
-    + IAU, BOND 비중에 따른 target_qty 산출
+def build_hedge_targets(applied_target: Dict, total_usd_asset: float,
+                        prev_usqt_ratio: float = 0.0,
+                        hold_now: Optional[Dict] = None) -> Tuple[Dict, List[str]]:
+    """헤지 target_qty 산출.
+
+    ▸ 핵심 원칙 (USQT 내부 종목간 리밸 = 분기 USQT_TR.py 전담):
+      - 헤지는 '자산군 비중(USQT/IAU/BOND)'만 조정한다.
+      - USQT 바스켓은 하나의 자산처럼 다룬다 → 각 종목을 동일 배율(scale)로만 가감.
+        scale = 새 USQT비중 / 직전 USQT비중
+        target_qty = round(현보유수량 × scale)
+      - scale=1 (USQT 비중 불변) → 매도/매수 0건 → 종목간 상대비중 그대로 보존.
+      - 직전 USQT비중을 알 수 없는 경우(분기 리밸 직후 첫 헤지 등)에만
+        예외적으로 csv weight 기반 초기 포지션(invest/price)을 세팅.
+
+    Parameters:
+        applied_target  : 적용 자산군 비중 dict (USQT/IAU/BOND/bond_ticker)
+        total_usd_asset : 총 USD 자산 (주식평가 + 가용현금)
+        prev_usqt_ratio : 직전 적용 USQT 자산비중 (scale 산출용)
+        hold_now        : {ticker: 보유수량} (없으면 내부에서 1회 조회)
 
     Returns:
         (target dict, log msgs)
-        target = {
-            ticker: {
-                "name": str, "weight_eff": float,  # 전체 자산 대비 실효 비중
-                "current_price": float,
-                "target_invest": float,
-                "target_qty": int,
-                "kind": "USQT" | "IAU" | "BOND"
-            },
-            ...
+        target[ticker] = {
+            "name", "weight_eff", "current_price",
+            "target_invest", "target_qty", "kind"
         }
     """
     msgs = []
@@ -272,6 +282,13 @@ def build_hedge_targets(applied_target: Dict, total_usd_asset: float) -> Tuple[D
     iau_ratio  = applied_target.get("IAU",  0.0)
     bond_ratio = applied_target.get("BOND", 0.0)
     bond_ticker = applied_target.get("bond_ticker", "IEF")
+
+    # 현 보유수량 확보 (USQT 종목 배율 적용용)
+    if hold_now is None:
+        hold_now = {}
+        _bal = KIS.get_US_stock_balance()
+        if isinstance(_bal, list):
+            hold_now = {s["ticker"]: int(s["quantity"]) for s in _bal}
 
     target = {}
 
@@ -294,19 +311,38 @@ def build_hedge_targets(applied_target: Dict, total_usd_asset: float) -> Tuple[D
         if stock_weight_sum <= 0:
             msgs.append("USQT_target.json: 종목 weight 합이 0 → USQT 개별종목 스킵")
         else:
+            # ── 모드 결정 ─────────────────────────────────────────────
+            # scale 모드: 직전 USQT비중을 알 때 → 보유수량 × (새비중/직전비중)
+            #             (USQT 내부 종목간 상대비중 보존, 비중 동일 시 매매 0)
+            # init  모드: 직전 USQT비중 미상(0) → csv weight 기반 초기 포지션 세팅
+            use_scale = prev_usqt_ratio > 0
+            scale = (usqt_ratio / prev_usqt_ratio) if use_scale else None
+            if use_scale:
+                msgs.append(f"USQT 바스켓 자산군 비중 조정: 직전 {prev_usqt_ratio:.2%} "
+                            f"→ 현재 {usqt_ratio:.2%} (scale={scale:.4f}, 종목간 상대비중 유지)")
+            else:
+                msgs.append("USQT 바스켓 초기 세팅: 직전 비중 미상 → csv weight 기준 포지션 구성")
+
             for code, v in base.items():
                 if code == "CASH":
                     continue
                 csv_w = float(v.get("weight", 0))
-                # 정규화 후 usqt_ratio 적용: (csv_w / stock_weight_sum) × usqt_ratio
-                w_eff = (csv_w / stock_weight_sum) * usqt_ratio
+                w_eff = (csv_w / stock_weight_sum) * usqt_ratio   # 표시용 실효비중
                 price = KIS.get_US_current_price(code)
                 if not isinstance(price, float) or price <= 0:
                     msgs.append(f"USQT 개별 {code} 현재가 조회 실패 → 스킵")
                     time_module.sleep(0.15)
                     continue
-                invest = w_eff * total_usd_asset
-                qty    = int(invest / price)
+
+                if use_scale:
+                    # ✅ 보유수량 × scale → 종목간 상대비중 보존, 비중 불변 시 0거래
+                    held = int(hold_now.get(code, 0))
+                    qty  = int(round(held * scale))
+                    invest = qty * price
+                else:
+                    invest = w_eff * total_usd_asset
+                    qty    = int(invest / price)
+
                 target[code] = {
                     "name":          v.get("name", code),
                     "weight_eff":    w_eff,
@@ -369,16 +405,21 @@ def build_hedge_targets(applied_target: Dict, total_usd_asset: float) -> Tuple[D
 # ============================================
 # 신호 계산 + 상태 갱신 (1회차 진입시)
 # ============================================
-def signal_and_decide(message: List[str]) -> Tuple[Optional[Dict], Optional[str]]:
-    """신호 계산 → 적용비중 결정 → 상태파일 갱신. (applied_target, mode) 반환."""
+def signal_and_decide(message: List[str]) -> Tuple[Optional[Dict], Optional[str], float]:
+    """신호 계산 → 적용비중 결정 → 상태파일 갱신.
+    (applied_target, mode, prev_usqt_ratio) 반환."""
     state = load_state()
+
+    # ✅ 상태 갱신(덮어쓰기) 전에 직전 USQT 자산비중 캡처 (scale 산출용)
+    _prev = state.get("current_target") or state.get("last_monthly_target") or {}
+    prev_usqt_ratio = float(_prev.get("USQT", 0.0))
 
     # 신호 계산
     signals = Sig.compute_signals(KIS)
     if signals is None:
         message.append("USQT_Hedge: 신호 계산 실패 → 직전 비중으로 매매 진행")
         applied = state.get("current_target", state["last_monthly_target"])
-        return applied, "no_change"
+        return applied, "no_change", prev_usqt_ratio
 
     message.append(
         f"USQT 신호 [{signals['asof_date']}]: SPY={signals['spy_close']:.2f} "
@@ -414,7 +455,7 @@ def signal_and_decide(message: List[str]) -> Tuple[Optional[Dict], Optional[str]
     # rsi_hold / no_change → in_rsi_hedge 유지
 
     save_state(new_state)
-    return applied, mode
+    return applied, mode, prev_usqt_ratio
 
 
 def _is_month_end_signal(today):
@@ -501,8 +542,8 @@ def main():
     # 1회차: 신호 + target 산출 + 저장
     # ============================================
     if ot['round'] == 1:
-        # 1) 신호 계산 + 적용비중 결정
-        applied, mode = signal_and_decide(message)
+        # 1) 신호 계산 + 적용비중 결정 (+ 직전 USQT 비중 캡처)
+        applied, mode, prev_usqt_ratio = signal_and_decide(message)
         message.append(f"USQT_Hedge 적용 비중 [{mode}]: USQT={applied['USQT']:.2%}, "
                        f"IAU={applied['IAU']:.2%}, BOND({applied['bond_ticker']})={applied['BOND']:.2%}")
 
@@ -512,6 +553,8 @@ def main():
             TA.send_tele(f"USQT_Hedge: 잔고 조회 불가 종료 ({stocks_list})")
             sys.exit(1)
         stock_eval = sum(s['eval_amt'] for s in stocks_list)
+        # ✅ USQT 종목 배율(scale) 적용용 현 보유수량 맵 (중복 조회 방지)
+        hold_now = {s["ticker"]: int(s["quantity"]) for s in stocks_list}
         time_module.sleep(0.2)
 
         orderable = KIS.get_US_order_available()
@@ -523,7 +566,13 @@ def main():
                        f"(주식:${stock_eval:,.2f} + 현금:${orderable:,.2f})")
 
         # 3) target 산출
-        target, tmsgs = build_hedge_targets(applied, total_usd)
+        #    USQT 바스켓: 보유수량 × (새 USQT비중 / 직전 USQT비중) → 종목간 상대비중 보존
+        #    자산군 비중 불변(scale=1)이면 USQT 매매 0건, IAU/BOND만 조정
+        target, tmsgs = build_hedge_targets(
+            applied, total_usd,
+            prev_usqt_ratio=prev_usqt_ratio,
+            hold_now=hold_now
+        )
         message.extend(tmsgs)
 
         # 4) 저장 (회차간 보관용 헤지 전용 target)
