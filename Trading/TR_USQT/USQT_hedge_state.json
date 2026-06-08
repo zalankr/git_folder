@@ -4,17 +4,17 @@
         "USQT": 0.85,
         "IAU": 0.15,
         "BOND": 0.0,
-        "bond_ticker": "IEF"
+        "bond_ticker": "SGOV"
     },
     "last_monthly_state": "Bull",
-    "last_monthly_vol": 0.09760615320049519,
-    "last_signal_date": "2026-06-01",
+    "last_monthly_vol": 0.1281419667920595,
+    "last_signal_date": "2026-06-08",
     "current_target": {
         "USQT": 0.85,
         "IAU": 0.15,
         "BOND": 0.0,
-        "bond_ticker": "IEF"
+        "bond_ticker": "SGOV"
     },
-    "active_since": "2026-06-01",
-    "active_trading_day": "2026-06-01"
+    "active_since": "2026-06-08",
+    "active_trading_day": "2026-06-08"
 }

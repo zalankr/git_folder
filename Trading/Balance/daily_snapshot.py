@@ -5,7 +5,7 @@ daily_snapshot.py
 
 스케줄 (crontab, UTC):
   0 22 * * *  → KST 07:00 매일: US 모드 (미국주식 + Upbit)
-  0  8 * * *  → KST 17:00 매일: ASIA 모드 (전계좌)
+  50 7 * * *  → KST 16:50 매일: ASIA 모드 (전계좌)
 
 사용:
   python3 daily_snapshot.py US
