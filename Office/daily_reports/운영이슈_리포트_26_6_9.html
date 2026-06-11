@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>26. 6. 9. 운영이슈 리포트</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        :root {
+            --primary-color: #007AFF; /* GS리테일 느낌의 블루톤 조정 가능 */
+            --bg-color: #F4F6F9;
+            --card-bg: #FFFFFF;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --border-color: #E5E5EA;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.5px;
+        }
+        .header p {
+            color: var(--text-sub);
+            margin: 0;
+            font-size: 16px;
+        }
+        .card {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            background-color: #FAFAFC;
+            transition: transform 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.04);
+        }
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+        .program-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        .program-date {
+            font-size: 14px;
+            color: var(--text-sub);
+            font-weight: 500;
+            background: #EBF5FF;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .issue-content {
+            font-size: 15px;
+            color: var(--text-main);
+            white-space: pre-wrap; /* 파이썬의 \n 줄바꿈을 HTML 화면에 그대로 유지 */
+        }
+        .no-data {
+            text-align: center;
+            padding: 50px 0;
+            color: #999;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>운영이슈 집계 리포트</h1>
+            <p>기준일자 : <strong>26. 6. 9.</strong></p>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">렌탈.</h2>
+                <span class="program-date">26. 6. 9.(화) 1:00~2:00</span>
+            </div>
+            <div class="issue-content">[최재성]- AI 활용 숏 와이드 PT 사전녹화 진행</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">렌탈.</h2>
+                <span class="program-date">26. 6. 9.(화) 6:15~7:15</span>
+            </div>
+            <div class="issue-content">[노현홍]의료기기 원리 설명(고주파 > 심부혈 발현 > 전신 통증 완화)
+방송에서만 최저 렌탈료 강조</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이미용.</h2>
+                <span class="program-date">26. 6. 9.(화) 7:15~8:15</span>
+            </div>
+            <div class="issue-content">[김유진][신규]
+혜택 타이틀
+1등 LED 오브제
+토너 활용도 (공병 미스트 / 화장솜 패드) 2분할 사전녹화
+토너 - 앰플 사전녹화 (구멍전면 최초공개 내용 확인 필요)
+여름 시즌 맞이 신규 리뷰 추가</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">건강식품.</h2>
+                <span class="program-date">26. 6. 9.(화) 8:15~9:25</span>
+            </div>
+            <div class="issue-content">[정은지]LED PT - 신규
+AI 어린아이 키 니즈, 키 비교, 무릎마사지기 사전녹화</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">Style Now</h2>
+                <span class="program-date">26. 6. 9.(화) 9:25~10:55</span>
+            </div>
+            <div class="issue-content">[양서이]베디베로 컬러별 안경/선글라스 사전녹화
+클립온 원리 3D 무빙바, 전면
+문가영 화보 동일모델 강조 오브제 제작
+
+쏘내추럴 : 아더 컬러 안내 그래픽 제작</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이미용.</h2>
+                <span class="program-date">26. 6. 9.(화) 11:35~12:35</span>
+            </div>
+            <div class="issue-content">[임성빈]99패키지 타이틀
+선크림,선스틱 UV캠 반분할 사전녹화</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">생활용품.</h2>
+                <span class="program-date">26. 6. 9.(화) 12:35~13:35</span>
+            </div>
+            <div class="issue-content">[최재성]-초특가구성 소구 위한 브릿지/ 2인PT 사전녹화
+-삶음니즈 소구 위한 삶은빨래 스케치
+-지난 모든방송 전체매진 소구 위한 그래픽 제작</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">보험.</h2>
+                <span class="program-date">26. 6. 9.(화) 13:35~14:35</span>
+            </div>
+            <div class="issue-content">[이혜지]니즈 컨텐츠 다각화</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">건강식품.</h2>
+                <span class="program-date">26. 6. 9.(화) 14:35~15:35</span>
+            </div>
+            <div class="issue-content">등록된 운영 이슈를 찾지 못했습니다.</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">생활가전.</h2>
+                <span class="program-date">26. 6. 9.(화) 15:35~16:35</span>
+            </div>
+            <div class="issue-content">[김태완]<위닉스 제습기 24L 런칭>
+- 런칭 혜택 타이틀
+- 니즈 브릿지
+- <그것이 뽀송하게 알고싶다> AI 브릿지
+- 백성훈SH 사용기
+- 집중건조키트 활용기 3분할
+- 니즈+프로모션 숏PT</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">건강식품.</h2>
+                <span class="program-date">26. 6. 9.(화) 16:35~17:35</span>
+            </div>
+            <div class="issue-content">[최희재][new 제작]
+- 하이퍼셀 ai 영상
+- LED PT
+- 구성강조</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">건강식품.</h2>
+                <span class="program-date">26. 6. 9.(화) 17:35~18:35</span>
+            </div>
+            <div class="issue-content">[송아영]전체적인 세트 톤 밝게 리뉴얼
+오브제 키워드 다이어트 근력 펩타이드로 교체
+메인 호스트 섭취기 추가</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">일반식품.</h2>
+                <span class="program-date">26. 6. 9.(화) 18:35~19:35</span>
+            </div>
+            <div class="issue-content">[한창훈]파김치 컨텐츠
+>원산지 그래픽/타이틀 6월 버전 업데이트</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이진아 셀렉션</h2>
+                <span class="program-date">26. 6. 9.(화) 19:35~20:45</span>
+            </div>
+            <div class="issue-content">[고서린]런칭 컨텐츠
+뱀부 컨셉 신규 LED 세트
+뱀부공정 AI 인서트
+대나무숲 AI 뷰티
+뱀부 강조 특화전면, 바
+SH MD 사용기
+
+사전녹화
+- 이불 2채 강조
+- 컬러 스틸
+- 스케치 녹화</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">레포츠의류.</h2>
+                <span class="program-date">26. 6. 9.(화) 20:45~21:45</span>
+            </div>
+            <div class="issue-content">[윤유성][스케쳐스 핫썸머 슈즈 최초공개 대특집]
+
+모델 블랙 샌들 TPO
+모델 로즈 샌들 TPO
+수조 시연 샌들
+수조 시연 슬라이드
+수조 DP 샌들, 슬라이드
+샌들 슬립인스 있/없 반분할
+남성용 메쉬 갑피 드라이아이스 시연
+남성용 메쉬 갑피 LED손전등 시연</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">종합</h2>
+                <span class="program-date">26. 6. 9.(화) 21:45~23:55</span>
+            </div>
+            <div class="issue-content">[윤중영]- 패션 릴레이 세일 타이틀
+- 패션 릴레이 세일 현수막 등 세트 오브제</div>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이진아 셀렉션</h2>
+                <span class="program-date">26. 6. 9.(화) 23:55~1:00</span>
+            </div>
+            <div class="issue-content">[임세찬]-빌보 조명 신규 LED월 세트
+-빌보조명 특화전면/바/영상전면/바
+-뷰티 잡지 인서트
+-5성급 호텔, 뷰티활용기, 있다면없다면 활용도
+-론칭 예고 SB, 타이틀
+-LED월 소스 활용용 브랜드 필름 인서트
+-디저트 테이블 스케치, 그린/크롬 스케치, 장스탠드형 스케치, 낮버전 스케치, 구성 스케치</div>
+        </div>
+
+    </div>
+</body>
+</html>
