@@ -48,6 +48,17 @@ ENABLE_TEAMS = True
 # Teams 채팅방 검색어 (검색창에 입력 후 결과 최상단 방 선택)
 TEAMS_TARGET_NAME = "팀장님+스디"
 
+# ----------------------------------------------------------
+# [신규] 공휴일 처리 설정
+#   - 공휴일/주말에는 Teams 전송을 보류(미전송분은 상태파일에 누적).
+#   - 다음 근무일에 누적분 + 당일분을 함께 전송.
+#   - 공휴일 목록은 로컬 JSON(holidays.json)에서 읽는다(네트워크 의존 X).
+#     형식: {"2026": ["2026-01-01", "2026-03-01", ...], "2027": [...]}
+#   - 토/일은 코드에서 자동으로 휴일 처리(주말 근무 시 SKIP_WEEKEND=False).
+# ----------------------------------------------------------
+HOLIDAYS_PATH = os.path.join(REPORT_DIR, "holidays.json")
+SKIP_WEEKEND = True  # 주말(토,일)도 휴일로 간주하여 전송 보류
+
 
 # ==========================================================
 # 2. 상태 파일(JSON) 관리
@@ -68,6 +79,48 @@ def save_state(state):
     with open(STATE_PATH, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
     print(f"💾 상태 저장 완료: {STATE_PATH}")
+
+
+# ==========================================================
+# 2-B. 공휴일 판정
+#   is_holiday(date) → 주말 또는 holidays.json에 등록된 날이면 True
+# ==========================================================
+def _load_holiday_set():
+    """holidays.json에서 'YYYY-MM-DD' 문자열 집합을 로드. 없으면 빈 집합."""
+    if os.path.exists(HOLIDAYS_PATH):
+        try:
+            with open(HOLIDAYS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            s = set()
+            # {"2026":[...]} 또는 ["YYYY-MM-DD", ...] 양식 모두 허용
+            if isinstance(data, dict):
+                for _y, lst in data.items():
+                    for d in lst:
+                        s.add(str(d).strip())
+            elif isinstance(data, list):
+                for d in data:
+                    s.add(str(d).strip())
+            return s
+        except Exception as e:
+            print(f"⚠️ 공휴일 파일 읽기 실패({e}). 공휴일 목록 없이 진행.")
+    else:
+        print(f"ℹ️ 공휴일 파일이 없습니다: {HOLIDAYS_PATH} (주말만 휴일로 간주)")
+    return set()
+
+
+def is_holiday(d):
+    """d(datetime/date)가 휴일인지 판정. 주말(옵션) 또는 등록 공휴일이면 True."""
+    if SKIP_WEEKEND and d.weekday() >= 5:  # 5=토, 6=일
+        return True
+    key = d.strftime("%Y-%m-%d")
+    return key in _load_holiday_set()
+
+
+def holiday_name(d):
+    """간단한 휴일 사유 문자열(로그/기록용)."""
+    if SKIP_WEEKEND and d.weekday() >= 5:
+        return "주말"
+    return "공휴일"
 
 
 # ==========================================================
@@ -226,14 +279,32 @@ def fetch_one_page(driver, wait, cid, quiet=False):
     }
 
 
-def crawl_id_range(driver, wait, start_id, end_id):
-    """start_id ~ end_id (양끝 포함) 사이의 모든 페이지를 방문하여 수집."""
+def probe_exists(driver, cid, probe_timeout=1.5):
+    """[빠른 탐색 전용] 해당 ID에 게시물이 존재하는지만 빠르게 확인.
+    긴 WebDriverWait(15초) 대신 짧은 타임아웃으로 날짜요소 유무만 본다.
+    빈 ID에서 15초씩 낭비하던 문제를 해결하는 핵심 함수."""
+    driver.get(BASE_URL.format(cid))
+    short = WebDriverWait(driver, probe_timeout)
+    try:
+        date_xpath = "//span[contains(@class, 'text-3lg') and not(contains(@class, 'border-l'))]"
+        short.until(EC.presence_of_element_located((By.XPATH, date_xpath)))
+        return True
+    except Exception:
+        return False
+
+
+def crawl_id_range(driver, wait, start_id, end_id, probe_timeout=1.5):
+    """start_id ~ end_id (양끝 포함) 사이의 모든 페이지를 방문하여 수집.
+    빈 페이지는 probe로 빠르게 건너뛴다."""
     results = []
     lo, hi = min(start_id, end_id), max(start_id, end_id)
     print(f"\n================= ID 구간 스캔: {lo} ~ {hi} ({hi - lo + 1}건) =================")
 
     for cid in range(lo, hi + 1):
-        page = fetch_one_page(driver, wait, cid)
+        if probe_exists(driver, cid, probe_timeout):
+            page = fetch_one_page(driver, wait, cid)
+        else:
+            page = None
         if page is None:
             print(f"  [ID {cid}] 빈/없는 페이지 → 스킵")
             continue
@@ -248,84 +319,107 @@ def crawl_id_range(driver, wait, start_id, end_id):
 # 5-B. 적응형 갭 점프 탐색
 #   ID가 불연속(큰 점프)일 때 효율적으로 '다음 유효 게시물'을 찾는다.
 #   전략:
-#     1) from_id 부터 1씩 최대 FINE_LIMIT(=100)개 스캔 → 유효 게시물 즉시 반환
-#     2) 못 찾으면 큰 점프(coarse): step씩(10→커지며) 멀리 도약하여
-#        유효 게시물이 나오는 대략 위치를 먼저 찾는다
-#     3) 대략 위치를 찾으면 그 '직전 도약폭'을 1씩 되짚어 정확한 시작 ID 확정
+#     1) from_id 부터 1씩 소량(fine_limit) probe → 인접 게시물 즉시 포착
+#     2) 못 찾으면 고정 보폭(14)으로 빠른 도약 (probe로 빈 페이지 대기 최소화)
+#     3) 유효 ID를 찍으면 역방향으로 '블록(같은 날) 시작'을 정밀 추적
 # ==========================================================
-def find_next_valid_id(driver, wait, from_id, fine_limit=100,
-                       coarse_step=10, coarse_max_span=20000):
-    """from_id 이상에서 '가장 가까운 유효 게시물'의 페이지(dict)를 찾아 반환.
-    못 찾으면 None."""
-    print(f"\n🔎 다음 유효 게시물 탐색 시작 (from {from_id})")
+def find_next_valid_id(driver, wait, from_id, fine_limit=30,
+                       coarse_step=14, coarse_max_span=30000,
+                       probe_timeout=1.5, back_limit=None):
+    """from_id 이상에서 '가장 가까운 유효 게시물'의 페이지(dict)를 찾아 반환. 없으면 None.
 
-    # 1) 정밀(1씩) 탐색
+    속도 개선 핵심:
+      - 빈 ID 확인을 probe_exists(짧은 타임아웃)로 처리 → 빈 페이지당 15초→1.5초.
+      - 정밀(1씩)은 소량(기본 30)만, 그 뒤는 고정 보폭(14)으로 빠르게 도약.
+      - 보폭 14는 하루 방송 블록 최소폭(약 15)보다 작아 블록을 통째로 건너뛰지 않음.
+      - 유효 ID를 한 번 찍으면 '블록의 시작'을 역방향으로 정밀 탐색.
+
+    back_limit: 역추적이 이 ID 미만으로는 내려가지 않도록 하는 하한.
+      (일일 운영처럼 from_id가 '직전 날과 연속'일 때, 이미 처리한 영역을
+       다시 블록 시작으로 오인하지 않도록 from_id를 넘겨준다.)
+    """
+    print(f"\n🔎 다음 유효 게시물 탐색 (from {from_id}, probe={probe_timeout}s)")
+
+    # 1) 정밀(1씩) 소량 탐색 - 인접 게시물 즉시 포착
     cid = from_id
-    fine_checked = 0
-    while fine_checked < fine_limit:
-        page = fetch_one_page(driver, wait, cid)
-        if page is not None:
-            print(f"   ✔ 정밀탐색에서 발견: ID {cid} ({page['date']})")
-            return page
-        cid += 1
-        fine_checked += 1
-    print(f"   …정밀 {fine_limit}개 내 없음 → 큰 점프(coarse) 탐색 전환")
-
-    # 2) coarse 점프: step을 점점 키우며 유효 페이지가 나오는 지점을 찾는다
-    coarse_pos = cid  # 정밀 탐색이 끝난 지점부터
-    step = coarse_step
-    span = 0
-    last_empty = coarse_pos - 1  # 직전까지 비어있던 마지막 위치
-    found_page = None
-    while span < coarse_max_span:
-        page = fetch_one_page(driver, wait, coarse_pos)
-        if page is not None:
-            found_page = page
-            print(f"   ✔ coarse 도약에서 발견: ID {coarse_pos} ({page['date']})")
+    checked = 0
+    hit_id = None
+    while checked < fine_limit:
+        if probe_exists(driver, cid, probe_timeout):
+            hit_id = cid
             break
-        last_empty = coarse_pos
-        coarse_pos += step
-        span += step
-        # 보폭 확대하되 상한 15: 하루 방송 구간 폭(약 19)보다 작아야
-        # 도약 중 유효 구간을 건너뛰지 않는다.
-        if step < 15:
-            step = min(step * 2, 15)
-        print(f"   …coarse 빈 구간 통과: 다음 {coarse_pos} (step={step}, 누적 {span})")
+        cid += 1
+        checked += 1
 
-    if found_page is None:
-        print(f"   ❌ coarse {coarse_max_span} 범위 내 유효 게시물 없음")
-        return None
+    # 2) 못 찾았으면 고정 보폭(14)으로 빠른 도약
+    if hit_id is None:
+        print(f"   …정밀 {fine_limit}개 없음 → 보폭 {coarse_step} 빠른 도약")
+        span = 0
+        pos = cid
+        while span < coarse_max_span:
+            if probe_exists(driver, pos, probe_timeout):
+                hit_id = pos
+                break
+            pos += coarse_step
+            span += coarse_step
+            if span % (coarse_step * 30) == 0:
+                print(f"   …도약 중 (현재 {pos}, 누적 {span})")
+        if hit_id is None:
+            print(f"   ❌ {coarse_max_span} 범위 내 유효 게시물 없음")
+            return None
 
-    # 3) 되짚기: last_empty+1 ~ found_page['id'] 사이의 '진짜 시작 ID'를 1씩 확인
-    #    (coarse가 건너뛴 사이에 더 앞선 유효 게시물이 있을 수 있음)
-    refine_start = last_empty + 1
-    refine_end = found_page["id"]
-    if refine_start < refine_end:
-        print(f"   🔁 되짚기 정밀탐색: {refine_start} ~ {refine_end - 1}")
-        for rid in range(refine_start, refine_end):
-            page = fetch_one_page(driver, wait, rid)
-            if page is not None:
-                print(f"   ✔ 되짚기에서 더 앞선 게시물 발견: ID {rid} ({page['date']})")
-                return page
-    return found_page
+    print(f"   ✔ 유효 ID 포착: {hit_id} → 블록 시작 역추적")
+
+    # 3) 역방향으로 '블록(같은 날) 시작' 찾기
+    #    hit_id에서 1씩 내려가며 빈 ID를 만나기 직전까지가 블록 시작.
+    #    back_limit이 지정되면 그 미만으로는 내려가지 않는다(이미 처리한 영역 보호).
+    back_margin = 30
+    floor_candidate = min(from_id, hit_id) - back_margin
+    if back_limit is not None:
+        floor_candidate = max(floor_candidate, back_limit)
+    back_floor = max(1, floor_candidate)
+    block_start = hit_id
+    back = hit_id - 1
+    while back >= back_floor:
+        if probe_exists(driver, back, probe_timeout):
+            block_start = back
+            back -= 1
+        else:
+            break
+
+    page = fetch_one_page(driver, wait, block_start)
+    if page is not None:
+        print(f"   ✔ 블록 시작 확정: ID {block_start} ({page['date']})")
+        return page
+    return fetch_one_page(driver, wait, hit_id)
 
 
-def collect_target_date(driver, wait, first_page, target_date_key):
+def collect_target_date(driver, wait, first_page, target_date_key,
+                        probe_timeout=1.5):
     """first_page(유효 게시물)부터 시작해 '목표 날짜(target_date_key)'에
     해당하는 게시물만 1씩 전진하며 수집. 목표 날짜를 지나면 종료.
-    target_date_key: 'YY. M. D.' 형태 문자열 (예: '26. 6. 8.')"""
+    target_date_key: 'YY. M. D.' 형태 문자열 (예: '26. 6. 8.')
+
+    속도 개선: 각 ID를 probe_exists로 먼저 빠르게 확인하고,
+    존재할 때만 full fetch → 빈 페이지 대기 최소화."""
     results = []
     cid = first_page["id"]
     started = False
     miss_after_start = 0
 
     while True:
-        page = fetch_one_page(driver, wait, cid) if cid != first_page["id"] else first_page
+        if cid == first_page["id"]:
+            page = first_page
+        elif probe_exists(driver, cid, probe_timeout):
+            page = fetch_one_page(driver, wait, cid)
+        else:
+            page = None
+
         if page is None:
             # 수집 시작 후 빈 페이지가 연속되면 종료(다음 점프 구간일 수 있음)
             if started:
                 miss_after_start += 1
-                if miss_after_start >= 15:
+                if miss_after_start >= 10:
                     print(f"  🛑 목표일 수집 후 빈 페이지 연속 → 종료 (ID {cid})")
                     break
             cid += 1
@@ -361,6 +455,7 @@ def discover_latest_id(driver):
 
 def login_dashboard(user_id, user_pw):
     options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")  # 👈 이 줄을 추가합니다.
     options.add_argument("--start-maximized")
     options.add_argument("--disable-gpu")
     options.add_argument('--ignore-certificate-errors')
@@ -410,7 +505,9 @@ def determine_target_date(state):
 
 
 def collect_results(driver, wait, args, state):
-    """수집 실행. (results, used_start_hint) 반환."""
+    """수집 실행. results 반환."""
+    probe_timeout = getattr(args, "probe", 1.5)
+
     # (A) 수동 구간 지정 → 해당 구간 전체 수집(기존 방식)
     if args.start is not None and args.end is not None:
         print(f"▶ 수동 구간 모드: {args.start} ~ {args.end}")
@@ -433,17 +530,18 @@ def collect_results(driver, wait, args, state):
         from_id = last_done + 1
         print(f"ℹ️ 전회 저장 ID {last_done} → {from_id}부터 탐색 시작.")
 
-    # 적응형 탐색으로 from_id 이상에서 첫 유효 게시물 찾기
-    first = find_next_valid_id(driver, wait, from_id)
+    # 적응형 탐색으로 from_id 이상에서 첫 유효 게시물 찾기 (빠른 probe)
+    # back_limit=from_id: 이미 처리한 직전 날(연속 ID)을 침범하지 않도록 보호
+    first = find_next_valid_id(driver, wait, from_id,
+                               probe_timeout=probe_timeout, back_limit=from_id)
     if first is None:
         print("❌ 다음 유효 게시물을 찾지 못했습니다.")
         return []
 
     # 찾은 게시물이 목표 날짜보다 과거면, 목표 날짜가 나올 때까지 전진하며 수집
-    # (collect_target_date가 '아직 목표일 아님 → 전진'을 처리)
-    results = collect_target_date(driver, wait, first, target_key)
+    results = collect_target_date(driver, wait, first, target_key,
+                                  probe_timeout=probe_timeout)
 
-    # 만약 목표 날짜를 못 만나고 끝났다면(예: 목표일 게시물이 아직 없음)
     if not results:
         fpart, _ = split_date_time(first["date"], first.get("datetime"))
         print(f"ℹ️ 목표 날짜 '{target_key}' 게시물을 찾지 못했습니다. (첫 발견일: {fpart})")
@@ -648,14 +746,24 @@ def _gs_format_issue_column(sh, ws):
 #         → 파일첨부 아이콘 클릭 → '이 디바이스에서 업로드' → input[file]에 경로 주입
 #         → 채팅창에 안내 메시지 입력 후 전송
 # ==========================================================
-def send_teams_message(user_id, user_pw, file_path, file_tag):
+def send_teams_message(user_id, user_pw, file_paths, message_text):
+    """Teams 채팅방에 여러 HTML 파일을 첨부하고 안내 메시지를 전송.
+    file_paths: 첨부할 파일 경로 리스트 (1개 이상)
+    message_text: 보낼 안내 메시지 문구
+    반환: 성공 True / 실패 False"""
     print("\n================= Teams 전송 프로세스 시작 =================")
 
-    if not os.path.exists(file_path):
-        print(f"❌ 첨부할 파일이 없습니다: {file_path}")
-        return
+    # 리스트 정규화 + 존재하는 파일만 추림
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
+    valid_files = [p for p in file_paths if p and os.path.exists(p)]
+    if not valid_files:
+        print(f"❌ 첨부할 유효한 파일이 없습니다: {file_paths}")
+        return False
+    print(f"📎 첨부 대상 {len(valid_files)}개: {[os.path.basename(p) for p in valid_files]}")
 
     options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")  # 👈 이 줄을 추가합니다.
     options.add_argument("--start-maximized")
     options.add_argument("--disable-gpu")
     options.add_argument('--ignore-certificate-errors')
@@ -790,99 +898,92 @@ def send_teams_message(user_id, user_pw, file_path, file_tag):
         if not entered:
             print(f"❌ 대상 채팅방('{TEAMS_TARGET_NAME}') 진입을 확인하지 못했습니다.")
             print("   엉뚱한 방에 업로드되는 사고 방지를 위해 첨부/전송을 중단합니다.")
-            return
+            return False
         print(f"✅ 대상 채팅방 진입 확인: '{TEAMS_TARGET_NAME}'")
 
-        # --- 파일 첨부 ---
+        # --- 파일 첨부 (여러 개) ---
         print("📎 리포트 파일 첨부를 시작합니다...")
-        # 방 진입 후 메시지 영역이 완전히 렌더링되도록 추가 대기 (느린 환경 대비 상향)
+        # 방 진입 후 메시지 영역이 완전히 렌더링되도록 추가 대기 (느린 환경 대비)
         time.sleep(15)
-        upload_ok = False
 
-        # 1차: 숨은 input[type=file]에 직접 주입 (가장 안정적, 메뉴 없이 가능한 경우)
-        try:
-            file_input = driver.find_element(By.XPATH, "//input[@type='file']")
-            file_input.send_keys(file_path)
-            print("⏳ (1차) 숨은 input 직접 업로드 중 (약 15초)...")
-            time.sleep(15)
-            upload_ok = True
-        except Exception:
-            print("ℹ️ 숨은 input 미발견 → 아이콘 클릭 방식으로 전환.")
-
-        # 2차: 첨부 아이콘 클릭 → '이 디바이스에서 업로드' → 노출된 input에 주입
-        if not upload_ok:
+        def _find_file_input():
+            """현재 DOM에서 input[type=file] 탐색. 없으면 첨부 아이콘→메뉴 경유로 노출."""
+            # 1차: 이미 노출된 숨은 input
             try:
-                # 아이콘: svg/path 까지의 경로는 클릭이 빗나갈 수 있어 상위 button을 클릭
-                attach_btn_candidates = [
-                    '//*[@id="message-pane-layout-a11y"]/div[4]/div/div/div[4]/div/div[3]/div[2]/button[2]',
-                    '//button[contains(@aria-label,"첨부") or contains(@aria-label,"Attach")]',
-                    '//button[contains(@aria-label,"파일") or contains(@aria-label,"File")]',
-                ]
-                attach_btn = None
-                # 아이콘이 늦게 뜰 수 있어 넉넉히 재시도 (느린 환경 대비 5회)
-                for _try in range(5):
-                    for xp in attach_btn_candidates:
-                        try:
-                            attach_btn = WebDriverWait(driver, 6).until(
-                                EC.element_to_be_clickable((By.XPATH, xp)))
-                            break
-                        except Exception:
-                            continue
-                    if attach_btn is not None:
-                        break
-                    print(f"   …첨부 아이콘 대기 재시도 ({_try+1}/5)")
-                    time.sleep(5)
-
-                if attach_btn is None:
-                    raise RuntimeError("첨부 아이콘을 찾지 못함")
-
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", attach_btn)
-                time.sleep(1)
-                try:
-                    attach_btn.click()
-                except Exception:
-                    driver.execute_script("arguments[0].click();", attach_btn)
-                print("   첨부 메뉴 여는 중...")
-                time.sleep(6)
-
-                # '이 디바이스에서 업로드' 메뉴
-                upload_menu_candidates = [
-                    "/html/body/div[12]/div/div[2]/div/div[1]/div/ul/li[9]/a/span[2]/span",
-                    "//*[contains(text(),'이 디바이스') or contains(text(),'Upload from this device')]",
-                    "//ul//a[contains(.,'업로드') or contains(.,'Upload')]",
-                ]
-                menu_clicked = False
-                for xp in upload_menu_candidates:
+                return driver.find_element(By.XPATH, "//input[@type='file']")
+            except Exception:
+                pass
+            # 2차: 첨부 아이콘 클릭 → '이 디바이스에서 업로드'
+            attach_btn_candidates = [
+                '//*[@id="message-pane-layout-a11y"]/div[4]/div/div/div[4]/div/div[3]/div[2]/button[2]',
+                '//button[contains(@aria-label,"첨부") or contains(@aria-label,"Attach")]',
+                '//button[contains(@aria-label,"파일") or contains(@aria-label,"File")]',
+            ]
+            attach_btn = None
+            for _try in range(5):
+                for xp in attach_btn_candidates:
                     try:
-                        menu = WebDriverWait(driver, 6).until(
+                        attach_btn = WebDriverWait(driver, 6).until(
                             EC.element_to_be_clickable((By.XPATH, xp)))
-                        try:
-                            menu.click()
-                        except Exception:
-                            driver.execute_script("arguments[0].click();", menu)
-                        menu_clicked = True
-                        print("   '이 디바이스에서 업로드' 선택됨.")
-                        time.sleep(4)
                         break
                     except Exception:
                         continue
-                if not menu_clicked:
-                    print("   ℹ️ 업로드 메뉴 항목을 못 찾음(이미 input 노출 가능). 계속 진행.")
+                if attach_btn is not None:
+                    break
+                print(f"   …첨부 아이콘 대기 재시도 ({_try+1}/5)")
+                time.sleep(5)
+            if attach_btn is None:
+                raise RuntimeError("첨부 아이콘을 찾지 못함")
 
-                # 메뉴 클릭 후 노출되는 input[type=file]에 경로 주입 (넉넉히 대기)
-                file_input = WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.XPATH, "//input[@type='file']")))
-                file_input.send_keys(file_path)
-                print("⏳ (2차) 아이콘 경유 업로드 중 (약 15초)...")
-                time.sleep(15)
-                upload_ok = True
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", attach_btn)
+            time.sleep(1)
+            try:
+                attach_btn.click()
+            except Exception:
+                driver.execute_script("arguments[0].click();", attach_btn)
+            print("   첨부 메뉴 여는 중...")
+            time.sleep(6)
+
+            upload_menu_candidates = [
+                "/html/body/div[12]/div/div[2]/div/div[1]/div/ul/li[9]/a/span[2]/span",
+                "//*[contains(text(),'이 디바이스') or contains(text(),'Upload from this device')]",
+                "//ul//a[contains(.,'업로드') or contains(.,'Upload')]",
+            ]
+            for xp in upload_menu_candidates:
+                try:
+                    menu = WebDriverWait(driver, 6).until(
+                        EC.element_to_be_clickable((By.XPATH, xp)))
+                    try:
+                        menu.click()
+                    except Exception:
+                        driver.execute_script("arguments[0].click();", menu)
+                    print("   '이 디바이스에서 업로드' 선택됨.")
+                    time.sleep(4)
+                    break
+                except Exception:
+                    continue
+
+            return WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//input[@type='file']")))
+
+        uploaded_count = 0
+        for idx, fpath in enumerate(valid_files, 1):
+            try:
+                print(f"  [{idx}/{len(valid_files)}] 첨부: {os.path.basename(fpath)}")
+                file_input = _find_file_input()
+                file_input.send_keys(fpath)
+                print(f"  ⏳ 업로드 중 (약 12초)...")
+                time.sleep(12)
+                uploaded_count += 1
             except Exception as e:
-                print(f"⚠️ 파일 업로드 실패: {e}")
+                print(f"  ⚠️ '{os.path.basename(fpath)}' 첨부 실패: {e}")
 
+        upload_ok = uploaded_count > 0
         if upload_ok:
-            # 업로드가 채팅창에 반영(썸네일 표시)될 때까지 추가 안정화 대기
-            print("⏳ 업로드 반영 대기 (약 12초)...")
+            print(f"✅ {uploaded_count}/{len(valid_files)}개 첨부 완료. 반영 대기 (약 12초)...")
             time.sleep(12)
+        else:
+            print("⚠️ 첨부된 파일이 없습니다. 메시지만 전송을 시도합니다.")
 
         # --- 안내 메시지 입력 ---
         print("✉️ 안내 메시지를 작성하고 발송합니다...")
@@ -902,16 +1003,21 @@ def send_teams_message(user_id, user_pw, file_path, file_tag):
             except Exception:
                 continue
 
+        sent_ok = False
         if chat_box is not None:
             try:
-                date_display = file_tag.replace("_", ".")
-                msg = f"안녕하세요, {date_display}일 방송준비 운영이슈 리포트 공유드립니다."
                 chat_box.click()
                 time.sleep(1)
-                chat_box.send_keys(msg)
+                # 여러 줄 메시지: 줄바꿈은 Shift+Enter, 마지막에 Enter로 전송
+                lines = message_text.split("\n")
+                for li, line in enumerate(lines):
+                    chat_box.send_keys(line)
+                    if li < len(lines) - 1:
+                        chat_box.send_keys(Keys.SHIFT, Keys.ENTER)
                 time.sleep(2)
                 chat_box.send_keys(Keys.ENTER)
                 print("✅ Teams 메시지 발송 완료!")
+                sent_ok = True
                 time.sleep(8)
             except Exception as e:
                 print(f"⚠️ 메시지 입력 중 오류: {e}")
@@ -920,13 +1026,17 @@ def send_teams_message(user_id, user_pw, file_path, file_tag):
                 print("ℹ️ 입력창을 못 찾았지만 파일은 첨부됨. 첨부 상태에서 Enter 시도.")
                 try:
                     driver.switch_to.active_element.send_keys(Keys.ENTER)
+                    sent_ok = True
                 except Exception:
                     pass
             else:
                 print("⚠️ 채팅 입력창을 끝내 찾지 못했습니다.")
 
+        return sent_ok
+
     except Exception as e:
         print(f"\n❌ Teams 발송 중 오류가 발생했습니다: {e}")
+        return False
     finally:
         time.sleep(2)
         driver.quit()
@@ -941,6 +1051,8 @@ def main():
     parser.add_argument("--start", type=int, default=None, help="스캔 시작 ID")
     parser.add_argument("--end", type=int, default=None, help="스캔 끝 ID")
     parser.add_argument("--no-save", action="store_true", help="상태파일(last_id) 갱신 안 함")
+    parser.add_argument("--probe", type=float, default=1.5,
+                        help="빈 페이지 판정 타임아웃(초). 네트워크가 빠르면 1.0~1.2로 낮추면 더 빠름")
     args = parser.parse_args()
 
     print("🤖 전일 운영이슈 자동화 시스템(크롤링 모드)을 가동합니다.")
@@ -997,16 +1109,79 @@ def main():
     else:
         print("\n⏸️ 구글시트 백업은 건너뜁니다 (ENABLE_GSHEET=False).")
 
-    # Teams 전송
-    if ENABLE_TEAMS:
-        report_path = os.path.join(REPORT_DIR, f"운영이슈_리포트_{file_tag}.html")
-        if os.path.exists(report_path):
-            print(f"\n📄 전송 대기 파일: {report_path}")
-            send_teams_message(user_id, user_pw, report_path, file_tag)
-        else:
-            print(f"❌ 전송할 {file_tag} 일자 파일을 찾지 못해 Teams 발송을 취소합니다.")
-    else:
+    # ======================================================
+    # Teams 전송 (공휴일 인식)
+    #   - 오늘(실행일)이 휴일이면: 당일 HTML을 pending_reports에 누적, 전송 보류.
+    #   - 근무일이면: pending_reports(과거 미전송분) + 당일분을 모아 한 번에 전송.
+    #     전송 성공 시 pending_reports 비움.
+    # ======================================================
+    today = datetime.now()
+    report_path = os.path.join(REPORT_DIR, f"운영이슈_리포트_{file_tag}.html")
+    pending = state.get("pending_reports", [])
+
+    if not ENABLE_TEAMS:
         print("\n⏸️ Teams 전송 단계는 건너뜁니다 (ENABLE_TEAMS=False).")
+    elif not os.path.exists(report_path):
+        print(f"❌ 전송할 {file_tag} 일자 파일을 찾지 못해 Teams 처리를 건너뜁니다.")
+    elif is_holiday(today):
+        # 휴일: 전송 보류 + 누적 기록
+        reason = holiday_name(today)
+        entry = {
+            "file_tag": file_tag,
+            "display_date": display_date_str,
+            "path": report_path,
+            "created": today.isoformat(),
+        }
+        # 중복 누적 방지(같은 file_tag면 갱신)
+        pending = [p for p in pending if p.get("file_tag") != file_tag]
+        pending.append(entry)
+        state["pending_reports"] = pending
+        save_state(state)
+        print(f"\n🏖️ 오늘은 {reason}({today.strftime('%Y-%m-%d')})이라 Teams 전송을 보류합니다.")
+        print(f"   미전송 리포트 누적: 총 {len(pending)}건 (전송은 다음 근무일에 일괄 진행)")
+    else:
+        # 근무일: 누적분 + 당일분 일괄 전송
+        # 첨부 파일 목록(과거 누적 → 당일 순, 존재하는 것만)
+        attach = []
+        labels = []
+        for p in pending:
+            if os.path.exists(p.get("path", "")):
+                attach.append(p["path"])
+                labels.append(p.get("display_date", p.get("file_tag", "")))
+        # 당일분(누적에 이미 없으면 추가)
+        if report_path not in attach:
+            attach.append(report_path)
+            labels.append(display_date_str)
+
+        # 안내 메시지 구성
+        if len(attach) == 1:
+            msg = f"안녕하세요, {labels[0]}일 방송준비 운영이슈 리포트 공유드립니다."
+        else:
+            joined = ", ".join(labels)
+            msg = ("안녕하세요, 휴일 기간 미전송분을 포함하여 운영이슈 리포트 "
+                   f"{len(attach)}건을 한 번에 공유드립니다.\n대상 일자: {joined}")
+
+        print(f"\n📄 전송 대상 {len(attach)}건: {labels}")
+        ok = send_teams_message(user_id, user_pw, attach, msg)
+
+        if ok:
+            # 전송 성공 → 누적 비움
+            state["pending_reports"] = []
+            state["last_sent"] = today.isoformat()
+            save_state(state)
+            print(f"✅ 일괄 전송 완료. 미전송 누적을 비웠습니다.")
+        else:
+            # 실패 → 당일분도 누적에 추가해 다음 근무일 재시도
+            if not any(p.get("file_tag") == file_tag for p in pending):
+                pending.append({
+                    "file_tag": file_tag,
+                    "display_date": display_date_str,
+                    "path": report_path,
+                    "created": today.isoformat(),
+                })
+            state["pending_reports"] = pending
+            save_state(state)
+            print(f"⚠️ 전송 실패. 다음 실행에서 재시도합니다. (누적 {len(pending)}건)")
 
 
 if __name__ == "__main__":
