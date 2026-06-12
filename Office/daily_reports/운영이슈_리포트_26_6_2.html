@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>26. 6. 2. 운영이슈 리포트</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        :root { --primary-color: #007AFF; --bg-color: #F4F6F9; --card-bg: #FFFFFF; --text-main: #333333; --text-sub: #666666; --border-color: #E5E5EA; }
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 40px 20px; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; background: var(--card-bg); border-radius: 16px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .header { text-align: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 20px; margin-bottom: 40px; }
+        .header h1 { font-size: 28px; font-weight: 700; margin: 0 0 10px 0; }
+        .header p { color: var(--text-sub); margin: 0; font-size: 16px; }
+        .card { border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 24px; background-color: #FAFAFC; }
+        .card-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 16px; margin-bottom: 16px; }
+        .program-title { font-size: 20px; font-weight: 700; color: var(--primary-color); margin: 0; }
+        .program-meta { display:flex; gap:8px; align-items:center; }
+        .program-id { font-size: 12px; color:#999; }
+        .program-date { font-size: 14px; color: var(--text-sub); background: #EBF5FF; padding: 6px 12px; border-radius: 20px; }
+        .issue-content { font-size: 15px; color: var(--text-main); white-space: pre-wrap; }
+        .issue-empty { color:#aaa; font-style: italic; }
+        .no-data { text-align: center; padding: 50px 0; color: #999; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>일일 운영이슈 집계 리포트</h1>
+            <p>기준일자 : <strong>26. 6. 2.</strong></p>
+        </div>
+
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">보험.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635206</span>
+                    <span class="program-date">26. 6. 2.(화) 1:00~2:00</span>
+                </div>
+            </div>
+            <div class="issue-content">[유혜영]2인 pt 4회 + 1인 pt 2회</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이미용.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635207</span>
+                    <span class="program-date">26. 6. 2.(화) 6:00~8:15</span>
+                </div>
+            </div>
+            <div class="issue-content">[김유진]오늘의 브랜드 특집 / 크림 최대용량 6월 단 한 번
+- 특집 프로모션 강조 타이틀
+- LED 현수막, LED 오브제
+- 라박 신규 촬영 (기존 동일 구성 백 변경)
+- 민준 SH 마스크팩+크림 사용기 / 구멍전면 사전녹화</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">건강식품.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635211</span>
+                    <span class="program-date">26. 6. 2.(화) 10:25~11:35</span>
+                </div>
+            </div>
+            <div class="issue-content issue-empty">운영이슈 없음</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이미용.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635213</span>
+                    <span class="program-date">26. 6. 2.(화) 12:35~13:35</span>
+                </div>
+            </div>
+            <div class="issue-content issue-empty">운영이슈 없음</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">보험.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635214</span>
+                    <span class="program-date">26. 6. 2.(화) 13:35~14:35</span>
+                </div>
+            </div>
+            <div class="issue-content">[노현홍]와이드 PT 1회 / 1인PT 3회 / 2인 PT 3회 / 컨셉PT 2회</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">건강식품.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635215</span>
+                    <span class="program-date">26. 6. 2.(화) 14:35~15:35</span>
+                </div>
+            </div>
+            <div class="issue-content">[구희원]- 프로모션 강조 타이틀, 오브제, 특화 그래픽 활용
+- 모델 2인 섭취 스케치 신규 녹화</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이미용.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635216</span>
+                    <span class="program-date">26. 6. 2.(화) 15:35~16:35</span>
+                </div>
+            </div>
+            <div class="issue-content">[안미진]<구성강조 컨텐츠>
+원데이 타이틀, 행잉 현수막, 특집바, LED PT</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">건강식품.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635218</span>
+                    <span class="program-date">26. 6. 2.(화) 17:35~18:35</span>
+                </div>
+            </div>
+            <div class="issue-content issue-empty">운영이슈 없음</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">일반식품.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635219</span>
+                    <span class="program-date">26. 6. 2.(화) 18:35~19:35</span>
+                </div>
+            </div>
+            <div class="issue-content">[고서린]- AI 런칭 히스토리 타이틀
+- 신제품 강조 특화바
+- 전용 신규 강조특화
+- 바삭 식감 강조 ASMR 녹화 / 동영상 바전면
+- 비법반죽 강조 녹화
+- 셰프님 웍시연 녹화</div>
+        </div>
+        <div class="card">
+            <div class="card-top">
+                <h2 class="program-title">이미용.</h2>
+                <div class="program-meta">
+                    <span class="program-id">ID 635221</span>
+                    <span class="program-date">26. 6. 2.(화) 20:45~21:45</span>
+                </div>
+            </div>
+            <div class="issue-content">[마주영]금일
+6/2 20:45 방분취 169만(100%, 핵심2130 선택1 매진) 원데이 2부
+6/2 1535 방분취 207만(100%, 핵심943 전체매진) 원데이1부
+
+5/15 1730 방분취 235만(101%, 핵심 460, VIP 582 전체매진)-원데이 2부
+5/15 1135 방분취 247만 (122% 핵심 450 VIP 250 전체매진) - 원데이 1부
+5/4 1235 방분취 307만 (131%, 핵심 427, VIP 270, 전체매진)
+4/24 1930 방분취 230만 (96.7%, 핵심 2,890, 선택1 매진) - 원데이 2부
+4/24 1330 방분취 238만 (107%, 핵심 897, 전체매진) - 원데이 1부
+4/13 1335 방분취 228만 (115%, 핵심 365, VIP 260, 전체매진)
+3/16 1535 방분취 225만 (120%, 핵심 882세트, 총 904세트)-원데이 2부
+3/16 0815 방분취 164만 (104% 핵심 1731세트, 총 1750세트)-원데이 1부
+3/3 1835 방분취 161만 (68% VIP 390세트, 총 950세트)
+2/20 1530 방분취 284만 (101% VIP 566세트, 총 760세트) -원데이 2부
+2/20 0715 방분취 199만 (112% VIP 900세트, 총 1100세트) -원데이 1부
+2/11 1235 방분취 274만 (133.8% VIP 400세트, 총 830세트)
+1/30 1330 방분취 294만 (131.6% VIP 400세트 총 1000세트 )
+1/19 0715 방분취 214만 (73.5%, VIP 545세트, 총 1206세트)
+1/9 1730 방분취 216만 ( 89.1%, VIP 504세트, 총 984세트)
+1/4 1230 방분취 328만 (113.8%, VIP 1764세트 총 3046세트)-원데이 2부
+1/4 1605 방분취 241만(109%, VIP 1193세트 총1964세트)-원데이 1부</div>
+        </div></div></body></html>
